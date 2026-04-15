@@ -319,6 +319,18 @@ public class TopoDroidApp extends Application
     if ( mDrawingWindow != null ) mDrawingWindow.setToolsToolbarParams();
   }
 
+  /** refresh the drawing window after the line library has been reloaded
+   */
+  public static void refreshDrawingAfterLineLibraryReload()
+  {
+    final DrawingWindow window = mDrawingWindow;
+    if ( window != null ) {
+      window.runOnUiThread( new Runnable() {
+        @Override public void run() { window.refreshAfterLineLibraryReload(); }
+      } );
+    }
+  }
+
   // -------------------------------------------------------------------------------------
   // static SIZE methods
 

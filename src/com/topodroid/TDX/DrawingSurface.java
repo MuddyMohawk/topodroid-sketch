@@ -1199,6 +1199,16 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     return mCommandManager3;
   }
 
+  /** rebind line paints in every cached drawing manager
+   */
+  void refreshLinePaints()
+  {
+    if ( commandManager != null ) commandManager.refreshLinePaints();
+    if ( mCommandManager1 != null && mCommandManager1 != commandManager ) mCommandManager1.refreshLinePaints();
+    if ( mCommandManager2 != null && mCommandManager2 != commandManager ) mCommandManager2.refreshLinePaints();
+    if ( mCommandManager3 != null && mCommandManager3 != commandManager ) mCommandManager3.refreshLinePaints();
+  }
+
   // -------------------------------------------------------------------
   // LOAD
 

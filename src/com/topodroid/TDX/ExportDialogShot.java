@@ -417,7 +417,7 @@ public class ExportDialogShot extends MyDialog
     switch ( mSelectedPos ) {
       case TDConst.SURVEY_POS_ZIP: // Zip 
         {
-          // TDSetting.mZipWithSymbols = ((CheckBox) findViewById( R.id.zip_symbols )).isChecked();
+          TDSetting.mZipWithSymbols = ((CheckBox) findViewById( R.id.zip_symbols )).isChecked();
           // TDSetting.mZipShare = ((CheckBox) findViewById( R.id.zip_share )).isChecked();
           TDSetting.mZipOverwrite = ((CheckBox) findViewById( R.id.zip_overwrite )).isChecked();
         }
@@ -543,6 +543,7 @@ public class ExportDialogShot extends MyDialog
   {
     ((CheckBox) findViewById( R.id.export_share )).setChecked( TDSetting.mExportDataShare );
     // ((CheckBox) findViewById( R.id.zip_share )).setChecked( TDSetting.mZipShare );
+    ((CheckBox) findViewById( R.id.zip_symbols )).setChecked( false );
     ((CheckBox) findViewById( R.id.zip_overwrite )).setChecked( TDSetting.mZipOverwrite );
 
     // ((CheckBox) findViewById( R.id.compass_prefix )).setChecked( TDSetting.mExportStationsPrefix );
@@ -606,5 +607,4 @@ public class ExportDialogShot extends MyDialog
   }
 
 }
-
 

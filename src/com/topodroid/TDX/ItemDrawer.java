@@ -26,6 +26,7 @@ import android.graphics.Canvas;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
 
 abstract class ItemDrawer extends Activity
 {
@@ -130,6 +131,83 @@ abstract class ItemDrawer extends Activity
         if ( ! enabled ) mRecentArea[k]  = null;
       }
     }
+  }
+
+  /** refresh line recent tools after the line library has been reloaded
+   */
+  static void refreshRecentLineSymbols()
+  {
+    ArrayList< Symbol > refreshed = new ArrayList<>();
+    for ( int k = 0; k < NR_RECENT; ++k ) {
+      Symbol line = mRecentLine[k];
+      if ( line == null ) continue;
+      Symbol current = BrushManager.getLineByThName( line.getFullThName() );
+      if ( current == null || ! current.isEnabled() ) continue;
+      if ( hasRecentSymbol( refreshed, current.getFullThName() ) ) continue;
+      refreshed.add( current );
+    }
+    setRecentLineList( refreshed );
+  }
+
+  /** prepend line symbols to the recent-line toolbar, preserving unique items
+   * @param lines   symbols to prepend
+   */
+  static void prependRecentLines( Symbol[] lines )
+  {
+    ArrayList< Symbol > merged = new ArrayList<>();
+    if ( lines != null ) {
+      for ( Symbol line : lines ) {
+        if ( line == null ) continue;
+        if ( hasRecentSymbol( merged, line.getFullThName() ) ) continue;
+        merged.add( line );
+        if ( merged.size() >= NR_RECENT ) break;
+      }
+    }
+    for ( int k = 0; k < NR_RECENT && merged.size() < NR_RECENT; ++k ) {
+      Symbol line = mRecentLine[k];
+      if ( line == null ) continue;
+      if ( hasRecentSymbol( merged, line.getFullThName() ) ) continue;
+      merged.add( line );
+    }
+    setRecentLineList( merged );
+  }
+
+  /** serialize recent line symbols for the configuration table
+   * @return serialized recent line names
+   */
+  static String serializeRecentLines()
+  {
+    StringBuilder lines = new StringBuilder();
+    boolean first = false;
+    for ( int k = NR_RECENT - 1; k >= 0; --k ) {
+      Symbol symbol = mRecentLine[k];
+      if ( symbol == null ) continue;
+      if ( first ) {
+        lines.append( " " ).append( symbol.getThName() );
+      } else {
+        first = true;
+        lines.append( symbol.getThName() );
+      }
+    }
+    return lines.toString();
+  }
+
+  private static void setRecentLineList( ArrayList< Symbol > lines )
+  {
+    int nr = ( lines == null ) ? 0 : lines.size();
+    for ( int k = 0; k < NR_RECENT; ++k ) {
+      mRecentLine[k] = ( k < nr ) ? lines.get( k ) : null;
+      mRecentLineAge[k] = NR_RECENT - k;
+    }
+  }
+
+  private static boolean hasRecentSymbol( ArrayList< Symbol > symbols, String fullThName )
+  {
+    if ( fullThName == null ) return false;
+    for ( Symbol symbol : symbols ) {
+      if ( symbol != null && fullThName.equals( symbol.getFullThName() ) ) return true;
+    }
+    return false;
   }
 
   // DEBUG

@@ -205,8 +205,14 @@ public class TDSetting
   {
     if ( f > 0.1f && f != mUnitLines ) {
       mUnitLines = f;
-      BrushManager.reloadLineLibrary( TDInstance.getResources() );
+      reloadLineLibrary();
     }
+  }
+
+  private static void reloadLineLibrary()
+  {
+    Resources res = TDInstance.getResources();
+    if ( res != null ) BrushManager.reloadLineLibrary( res );
   }
 
   public static String setSlopeLSide( int f )
@@ -559,14 +565,14 @@ public class TDSetting
   public static float mLoopThr = 1.0f; // selective compensation threshold [%]
   
   // ----------- UNITS
-  public static final  String UNIT_LENGTH         = "meters";
+  public static final  String UNIT_LENGTH         = "feet";
   public static final  String UNIT_ANGLE          = "degrees";
   // public static final  String UNIT_ANGLE_GRADS = "grads";
   // public static final  String UNIT_ANGLE_SLOPE = "slope";
   // conversion factor from internal units (m) to user units
-  public static float mUnitLength = 1;
+  public static float mUnitLength = TDUtil.M2FT;
   public static float mUnitAngle  = 1;
-  public static String mUnitLengthStr = "m";    // N.B. Therion syntax: "m", "ft"
+  public static String mUnitLengthStr = "ft";    // N.B. Therion syntax: "m", "ft"
   public static String mUnitAngleStr  = "deg";  // N.B. Therion syntax: "deg", "grad"
 
   // public static final String EXTEND_THR = TDString.TEN; 
@@ -596,8 +602,8 @@ public class TDSetting
   // ------------- UNIT SIZES
   public static float mUnitIcons = 1.4f; // drawing unit icons
   public static float mUnitLines = 1.4f; // drawing unit lines
-  public static float mUnitGrid    = 1;         // 1: meter, 0.9... yard
-  public static float mUnitMeasure = -1;        // -1: grid-cell
+  public static float mUnitGrid    = 0.6096f;   // 2 feet
+  public static float mUnitMeasure = 0.3048f;   // feet
 
   // selection_radius = cutoff + closeness / zoom
   public static final float mCloseCutoff = 0.01f; // minimum selection radius
@@ -634,10 +640,10 @@ public class TDSetting
   private static final int LINE_STYLE_THREE  = 3;
   private static final int LINE_STYLE_SIMPLIFIED = 4;
   // private static final String LINE_STYLE     = TDString.TWO;     // LINE_STYLE_TWO NORMAL
-  public static int   mLineStyle = LINE_STYLE_BEZIER;    
+  public static int   mLineStyle = LINE_STYLE_ONE;    
   public static int   mLineType;        // line type:  1       1     2    3
-  public static int   mLineSegment   = 10;
-  public static int   mLineSegment2  = 100;   // square of mLineSegment
+  public static int   mLineSegment   = 1;
+  public static int   mLineSegment2  = 1;   // square of mLineSegment
   public static float mLineAccuracy  = 1f;
   public static float mLineCorner    = 20;    // corner threshold
   // public static int   mContinueLine  = DrawingWindow.CONT_NONE; // 0
@@ -661,6 +667,12 @@ public class TDSetting
   public static boolean mScalableLabel = false; // whether labels scale with the drawing
   public static float mFixedThickness  = 1;    // width of fixed lines
   public static float mLineThickness   = 1;    // width of drawing lines
+  public static final float DEFAULT_USER_LINE_FINE_WIDTH     = 1.0f;
+  public static final float DEFAULT_USER_LINE_STANDARD_WIDTH = 2.0f;
+  public static final float DEFAULT_USER_LINE_THICK_WIDTH    = 5.0f;
+  public static float mUserLineFineWidth     = DEFAULT_USER_LINE_FINE_WIDTH;
+  public static float mUserLineStandardWidth = DEFAULT_USER_LINE_STANDARD_WIDTH;
+  public static float mUserLineThickWidth    = DEFAULT_USER_LINE_THICK_WIDTH;
   public static boolean mAutoSectionPt = false;
   public static int   mBackupNumber    = 5;
   public static int   mBackupInterval  = 60;
@@ -1525,14 +1537,17 @@ public class TDSetting
 
     key = TDPrefKey.mLine;
     mLineThickness = tryFloat( prefs,  key[0].key,      key[0].dflt );   // DISTOX_LINE_THICKNESS
-    setLineStyleAndType( prefs.getString( key[1].key,   key[1].dflt ) ); // DISTOX_LINE_STYLE
-    setLineSegment( tryInt(    prefs,  key[2].key,      key[2].dflt ) ); // DISTOX_LINE_SEGMENT
-    mLineClose     = prefs.getBoolean( key[3].key, bool(key[3].dflt) );  // DISTOX_LINE_CLOSE
-    mArrowLength   = tryFloat( prefs,  key[4].key,      key[4].dflt );   // DISTOX_ARROW_LENGTH
-    mAutoSectionPt = prefs.getBoolean( key[5].key, bool(key[5].dflt) );  // DISTOX_AUTO_SECTION_PT
-    mAreaBorder    = prefs.getBoolean( key[6].key, bool(key[6].dflt) );  // DISTOX_AREA_BORDER
-    mUnitLines     = tryFloat( prefs,  key[7].key,      key[7].dflt );   // DISTOX_LINE_UNITS
-    mSlopeLSide    = tryInt(   prefs,  key[8].key,      key[8].dflt );   // DISTOX_SLOPE_LSIDE
+    mUserLineFineWidth     = positiveOrDefault( tryFloat( prefs, key[1].key, key[1].dflt ), DEFAULT_USER_LINE_FINE_WIDTH );
+    mUserLineStandardWidth = positiveOrDefault( tryFloat( prefs, key[2].key, key[2].dflt ), DEFAULT_USER_LINE_STANDARD_WIDTH );
+    mUserLineThickWidth    = positiveOrDefault( tryFloat( prefs, key[3].key, key[3].dflt ), DEFAULT_USER_LINE_THICK_WIDTH );
+    setLineStyleAndType( prefs.getString( key[4].key,   key[4].dflt ) ); // DISTOX_LINE_STYLE
+    setLineSegment( tryInt(    prefs,  key[5].key,      key[5].dflt ) ); // DISTOX_LINE_SEGMENT
+    mLineClose     = prefs.getBoolean( key[6].key, bool(key[6].dflt) );  // DISTOX_LINE_CLOSE
+    mArrowLength   = tryFloat( prefs,  key[7].key,      key[7].dflt );   // DISTOX_ARROW_LENGTH
+    mAutoSectionPt = prefs.getBoolean( key[8].key, bool(key[8].dflt) );  // DISTOX_AUTO_SECTION_PT
+    mAreaBorder    = prefs.getBoolean( key[9].key, bool(key[9].dflt) );  // DISTOX_AREA_BORDER
+    mUnitLines     = tryFloat( prefs,  key[10].key,     key[10].dflt );  // DISTOX_LINE_UNITS
+    mSlopeLSide    = tryInt(   prefs,  key[11].key,     key[11].dflt );  // DISTOX_SLOPE_LSIDE
     // mContinueLine  = tryInt(   prefs,  key[7].key,      key[7].dflt );   // DISTOX_LINE_CONTINUE
     // mWithLineJoin  = prefs.getBoolean( key[8].key, bool(key[8].dflt) );  // DISTOX_WITH_CONTINUE_LINE
 
@@ -2854,30 +2869,36 @@ public class TDSetting
     TDPrefKey[] key = TDPrefKey.mLine;
     if ( k.equals( key[ 0 ].key ) ) { // DISTOX_LINE_THICKNESS
       ret = setLineThickness( tryStringValue( hlp, k, v, key[0].dflt ) );
-    } else if ( k.equals( key[ 1 ].key ) ) { // DISTOX_LINE_STYLE (choice)
-      setLineStyleAndType( tryStringValue( hlp, k, v, key[1].dflt ) );
-    } else if ( k.equals( key[ 2 ].key ) ) { // DISTOX_LINE_SEGMENT
-      ret = setLineSegment( tryIntValue(   hlp, k, v, key[2].dflt ) );
-    } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_LINE_CLOSE
-      mLineClose = tryBooleanValue( hlp, k, v, bool(key[3].dflt) );
-    } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_ARROW_LENGTH
-      ret = setArrowLength( tryFloatValue( hlp, k, v, key[4].dflt ) );
-    } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_AUTO_SECTION_PT (bool)
-      mAutoSectionPt = tryBooleanValue( hlp, k, v, bool(key[5].dflt) );
+    } else if ( k.equals( key[ 1 ].key ) ) { // DISTOX_USER_LINE_FINE_WIDTH
+      ret = setUserLineFineWidth( tryStringValue( hlp, k, v, key[1].dflt ) );
+    } else if ( k.equals( key[ 2 ].key ) ) { // DISTOX_USER_LINE_STANDARD_WIDTH
+      ret = setUserLineStandardWidth( tryStringValue( hlp, k, v, key[2].dflt ) );
+    } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_USER_LINE_THICK_WIDTH
+      ret = setUserLineThickWidth( tryStringValue( hlp, k, v, key[3].dflt ) );
+    } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_LINE_STYLE (choice)
+      setLineStyleAndType( tryStringValue( hlp, k, v, key[4].dflt ) );
+    } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_LINE_SEGMENT
+      ret = setLineSegment( tryIntValue(   hlp, k, v, key[5].dflt ) );
+    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_LINE_CLOSE
+      mLineClose = tryBooleanValue( hlp, k, v, bool(key[6].dflt) );
+    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_ARROW_LENGTH
+      ret = setArrowLength( tryFloatValue( hlp, k, v, key[7].dflt ) );
+    } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_AUTO_SECTION_PT (bool)
+      mAutoSectionPt = tryBooleanValue( hlp, k, v, bool(key[8].dflt) );
     // } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_LINE_CONTINUE (choice)
     //   mContinueLine  = tryIntValue( hlp, k, v, key[7].dflt );
     // } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_WITH_CONTINUE_LINE (bool)
     //   mWithLineJoin = tryBooleanValue(  hlp, k, v, bool(key[8].dflt) );
-    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_AREA_BORDER (bool)
-      mAreaBorder = tryBooleanValue( hlp, k, v, bool(key[6].dflt) );
-    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_LINE_UNITS
+    } else if ( k.equals( key[ 9 ].key ) ) { // DISTOX_AREA_BORDER (bool)
+      mAreaBorder = tryBooleanValue( hlp, k, v, bool(key[9].dflt) );
+    } else if ( k.equals( key[ 10 ].key ) ) { // DISTOX_LINE_UNITS
       try {
-        setDrawingUnitLines( tryFloatValue( hlp, k, v, key[1].dflt ) );
+        setDrawingUnitLines( tryFloatValue( hlp, k, v, key[10].dflt ) );
       } catch ( NumberFormatException e ) {
         TDLog.e( e.getMessage() );
       }
-    } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_SLOPE_LSIDE
-      ret = setSlopeLSide( tryIntValue( hlp, k, v, key[8].dflt ) );
+    } else if ( k.equals( key[ 11 ].key ) ) { // DISTOX_SLOPE_LSIDE
+      ret = setSlopeLSide( tryIntValue( hlp, k, v, key[11].dflt ) );
     } else {
       TDLog.e("missing LINE key: " + k );
     }
@@ -2981,20 +3002,26 @@ public class TDSetting
       ret = String.format(Locale.US, "%.2f", mLabelSize );
     } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_LINE_THICKNESS
       ret = setLineThickness( tryStringValue( hlp, k, v, key[3].dflt ) );
-    } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_LINE_STYLE (choice)
-      setLineStyleAndType( tryStringValue( hlp, k, v, key[4].dflt ) );
-    } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_LINE_CLOSE
-      mLineClose = tryBooleanValue( hlp, k, v, bool(key[5].dflt) );
-    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_LINE_SEGMENT
-      ret = setLineSegment( tryIntValue(   hlp, k, v, key[6].dflt ) );
-    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_ARROW_LENGTH
-      ret = setArrowLength( tryFloatValue( hlp, k, v, key[7].dflt ) );
-    } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_AUTO_SECTION_PT (bool)
-      mAutoSectionPt = tryBooleanValue( hlp, k, v, bool(key[8].dflt) );
+    } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_USER_LINE_FINE_WIDTH
+      ret = setUserLineFineWidth( tryStringValue( hlp, k, v, key[4].dflt ) );
+    } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_USER_LINE_STANDARD_WIDTH
+      ret = setUserLineStandardWidth( tryStringValue( hlp, k, v, key[5].dflt ) );
+    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_USER_LINE_THICK_WIDTH
+      ret = setUserLineThickWidth( tryStringValue( hlp, k, v, key[6].dflt ) );
+    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_LINE_STYLE (choice)
+      setLineStyleAndType( tryStringValue( hlp, k, v, key[7].dflt ) );
+    } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_LINE_CLOSE
+      mLineClose = tryBooleanValue( hlp, k, v, bool(key[8].dflt) );
+    } else if ( k.equals( key[ 9 ].key ) ) { // DISTOX_LINE_SEGMENT
+      ret = setLineSegment( tryIntValue(   hlp, k, v, key[9].dflt ) );
+    } else if ( k.equals( key[ 10 ].key ) ) { // DISTOX_ARROW_LENGTH
+      ret = setArrowLength( tryFloatValue( hlp, k, v, key[10].dflt ) );
+    } else if ( k.equals( key[ 11 ].key ) ) { // DISTOX_AUTO_SECTION_PT (bool)
+      mAutoSectionPt = tryBooleanValue( hlp, k, v, bool(key[11].dflt) );
     // } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_LINE_CONTINUE (choice)
     //   mContinueLine  = tryIntValue( hlp, k, v, key[8].dflt );
-    } else if ( k.equals( key[ 9 ].key ) ) { // DISTOX_AREA_BORDER (bool)
-      mAreaBorder = tryBooleanValue( hlp, k, v, bool(key[9].dflt) );
+    } else if ( k.equals( key[ 12 ].key ) ) { // DISTOX_AREA_BORDER (bool)
+      mAreaBorder = tryBooleanValue( hlp, k, v, bool(key[12].dflt) );
     // } else if ( k.equals( key[ 10 ].key ) ) { // DISTOX_REDUCE_ANGLE
     //   ret = setReduceAngle( tryFloatValue( hlp, k, v, key[10] ) );
     } else {
@@ -3103,7 +3130,7 @@ public class TDSetting
 
   private static void setLineStyleAndType( String style )
   {
-    mLineStyle = LINE_STYLE_TWO; // default
+    mLineStyle = LINE_STYLE_ONE; // default
     mLineType  = 1;
     if ( style.equals( TDString.ZERO ) ) {
       mLineStyle = LINE_STYLE_BEZIER;
@@ -3112,7 +3139,7 @@ public class TDSetting
       mLineStyle = LINE_STYLE_ONE;
       // mLineType  = 1;                 // already assigned
     } else if ( style.equals( TDString.TWO ) ) {
-      // mLineStyle = LINE_STYLE_TWO;    // already assigned
+      mLineStyle = LINE_STYLE_TWO;
       mLineType  = 2;
     } else if ( style.equals( TDString.THREE ) ) {
       mLineStyle = LINE_STYLE_THREE;
@@ -3129,6 +3156,16 @@ public class TDSetting
   public static boolean isLineStyleBezier() { return mLineStyle == LINE_STYLE_BEZIER; }
   public static boolean isLineStyleSimplified() { return mLineStyle == LINE_STYLE_SIMPLIFIED; }
 
+  private static float positiveOrDefault( float value, float dflt )
+  {
+    return ( value > 0 ) ? value : dflt;
+  }
+
+  private static String formatLineWidthValue( float value )
+  {
+    return String.format( Locale.US, "%.2f", value );
+  }
+
   private static String setLineThickness( String str )
   {
     String ret = null;
@@ -3138,9 +3175,52 @@ public class TDSetting
       else if ( f > 10 ) { f = 10; ret = "10.0"; }
       if ( f != mLineThickness ) {
         mLineThickness = f;
-        BrushManager.reloadLineLibrary( TDInstance.getResources() );
+        reloadLineLibrary();
       } 
     } catch ( NumberFormatException e ) { ret = String.format(Locale.US, "%.1f", mLineThickness); }
+    return ret;
+  }
+
+  private static String setUserLineFineWidth( String str )
+  {
+    return setUserLineWidth( str, DEFAULT_USER_LINE_FINE_WIDTH, 0 );
+  }
+
+  private static String setUserLineStandardWidth( String str )
+  {
+    return setUserLineWidth( str, DEFAULT_USER_LINE_STANDARD_WIDTH, 1 );
+  }
+
+  private static String setUserLineThickWidth( String str )
+  {
+    return setUserLineWidth( str, DEFAULT_USER_LINE_THICK_WIDTH, 2 );
+  }
+
+  private static String setUserLineWidth( String str, float dflt, int which )
+  {
+    float current = ( which == 0 ) ? mUserLineFineWidth
+                  : ( which == 1 ) ? mUserLineStandardWidth
+                  : mUserLineThickWidth;
+    String ret = null;
+    try {
+      float f = Float.parseFloat( str );
+      if ( f <= 0 ) {
+        f = dflt;
+        ret = formatLineWidthValue( f );
+      }
+      if ( f != current ) {
+        if ( which == 0 ) {
+          mUserLineFineWidth = f;
+        } else if ( which == 1 ) {
+          mUserLineStandardWidth = f;
+        } else {
+          mUserLineThickWidth = f;
+        }
+        reloadLineLibrary();
+      }
+    } catch ( NumberFormatException e ) {
+      ret = formatLineWidthValue( current );
+    }
     return ret;
   }
 
@@ -3753,6 +3833,9 @@ B DISTOX_SAP5_BIT16_BUG true
       k="DISTOX_LABEL_SIZE";            if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mLabelSize );
       k="DISTOX_FIXED_THICKNESS";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mFixedThickness );
       k="DISTOX_LINE_THICKNESS";        if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mLineThickness );
+      k="DISTOX_USER_LINE_FINE_WIDTH";  if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mUserLineFineWidth );
+      k="DISTOX_USER_LINE_STANDARD_WIDTH"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mUserLineStandardWidth );
+      k="DISTOX_USER_LINE_THICK_WIDTH"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mUserLineThickWidth );
       k="DISTOX_SCALABLE_LABEL";        if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, mScalableLabel );
       k="DISTOX_XSECTION_OFFSET";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mXSectionOffset );
       k="DISTOX_CLOSENESS";             if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mSelectness );
@@ -4025,7 +4108,16 @@ B DISTOX_SAP5_BIT16_BUG true
               mFixedThickness = Float.parseFloat( value );  setPreference( editor, kay, mFixedThickness );
               break;
             case "DISTOX_LINE_THICKNESS":
-              mLineThickness  = Float.parseFloat( value );  setPreference( editor, kay, mLineThickness );
+              setLineThickness( value ); setPreference( editor, kay, mLineThickness );
+              break;
+            case "DISTOX_USER_LINE_FINE_WIDTH":
+              setUserLineFineWidth( value ); setPreference( editor, kay, mUserLineFineWidth );
+              break;
+            case "DISTOX_USER_LINE_STANDARD_WIDTH":
+              setUserLineStandardWidth( value ); setPreference( editor, kay, mUserLineStandardWidth );
+              break;
+            case "DISTOX_USER_LINE_THICK_WIDTH":
+              setUserLineThickWidth( value ); setPreference( editor, kay, mUserLineThickWidth );
               break;
             case "DISTOX_SCALABLE_LABEL":
               mScalableLabel = Boolean.parseBoolean( value ); setPreference( editor, kay, mScalableLabel );

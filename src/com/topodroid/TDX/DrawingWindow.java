@@ -2556,6 +2556,32 @@ public class DrawingWindow extends ItemDrawer
     }
   }
 
+  /** refresh drawing lines after the line library has been reloaded
+   */
+  public void refreshAfterLineLibraryReload()
+  {
+    ItemDrawer.refreshRecentLineSymbols();
+
+    if ( mDrawingSurface != null ) {
+      mDrawingSurface.refreshLinePaints();
+    }
+    if ( mCurrentLinePath != null ) {
+      mCurrentLinePath.setLineType( mCurrentLinePath.mLineType );
+    }
+
+    if ( mBtnRecentL != null && mLayoutTools != null ) {
+      mRecentDimX = Float.parseFloat( getResources().getString( R.string.dimxl ) );
+      mRecentDimY = Float.parseFloat( getResources().getString( R.string.dimyl ) );
+      setButtonRecent( mBtnRecentL, mRecentLine );
+      setToolsToolbars();
+    }
+
+    if ( mDrawingSurface != null ) {
+      mDrawingSurface.refresh( mDrawingSurface.getHolder() );
+      mDrawingSurface.invalidate();
+    }
+  }
+
   @Override
   public void onCreate(Bundle savedInstanceState) 
   {

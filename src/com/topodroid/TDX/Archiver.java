@@ -334,15 +334,42 @@ public class Archiver
     return true;
   }
 
+  /** compress only the personal sketch line symbols
+   * @param zipfile  compressed zip file
+   * @return true if successful
+   */
+  private boolean compressPersonalSketchLines( File zipfile )
+  {
+    ZipOutputStream zos = null;
+    boolean ret = false;
+    try {
+      zos = new ZipOutputStream( new BufferedOutputStream( new FileOutputStream( zipfile ) ) );
+      for ( String filename : PersonalSketchLineManager.getLineFilenames() ) {
+        File file = TDPath.getLineFile( filename );
+        if ( file.exists() ) {
+          addOptionalEntry( zos, file, file.getPath() );
+          ret = true;
+        }
+      }
+    } catch ( FileNotFoundException e ) {
+      return false;
+    } finally {
+      if ( zos != null ) try { zos.close(); } catch ( IOException e ) { TDLog.e("ZIP-personal-line close error"); }
+    }
+    return ret;
+  }
+
   /** uncompress symbol files
    * @param zin      compressed input stream
    * @param type     symbols type
    * @param prefix   symbol prefix in the database config table
+   * @param force    whether to ignore the expert zip-symbol gate
+   * @param overwrite whether to overwrite existing symbols
    * @return true is a symbol has been uncompressed
    */
-  static private boolean uncompressSymbols( InputStream zin, String type, String prefix )
+  static private boolean uncompressSymbols( InputStream zin, String type, String prefix, boolean force, boolean overwrite )
   {
-    if ( ! (TDLevel.overExpert && TDSetting.mZipWithSymbols ) ) return false;
+    if ( ! force && ! (TDLevel.overExpert && TDSetting.mZipWithSymbols ) ) return false;
     boolean ret = false;
     // TDLog.v( "ZIP-uncompress symbol type " + type + " prefix " + prefix );
     File tempfile = TDFile.getExternalFile( null, "tmp.zip" );
@@ -361,7 +388,7 @@ public class Archiver
       while ( ( sze = szin.getNextEntry() ) != null ) { // NOTE getNextEntry() throws ZipException if zip file entry name contains '..' or starts with '/'
         File symbolfile = TDFile.getPrivateFile( type, sze.getName() );
         // TDLog.v( "ZIP try to uncompress symbol " + type + " " + sze.getName() );
-        if ( ! symbolfile.exists() ) { // don't overwrite
+        if ( overwrite || ! symbolfile.exists() ) {
           // TDLog.v( "ZIP-uncompress symbol " + symbolfile.getPath() );
           // FileOutputStream sfout = TDFile.getFileOutputStream( symbolfilename ); // uncompress symbols zip
           FileOutputStream sfout = new FileOutputStream( symbolfile ); 
@@ -381,7 +408,7 @@ public class Archiver
           if ( line.startsWith("th_name") ) {
             String th_name = line.substring(8).trim();
             // TDLog.v( "ZIP enable " + th_name );
-            TopoDroidApp.mData.setSymbolEnabled( prefix + th_name, true );
+            TopoDroidApp.mData.setSymbolEnabled( prefix + Symbol.deprefix_u( th_name ), true );
             break;
           }
         }
@@ -452,18 +479,10 @@ public class Archiver
       TDLog.v("ZIP note file " + pathname );
       addOptionalEntry( zos, TDFile.getTopoDroidFile( pathname ), pathname );
 
-      if ( TDLevel.overExpert && TDSetting.mZipWithSymbols ) {
-        File file = TDFile.getExternalFile( null, "points.zip" );
-        if ( compressSymbols( file, BrushManager.getPointLib(), TDPath.getSymbolPointDirname() ) )  {
-          addOptionalEntry( zos, file, "points.zip" );
-        }
-        file = TDFile.getExternalFile( null, "lines.zip" );
-        if ( compressSymbols( file, BrushManager.getLineLib(), TDPath.getSymbolLineDirname() ) )  {
+      if ( TDSetting.mZipWithSymbols ) {
+        File file = TDFile.getExternalFile( null, "lines.zip" );
+        if ( compressPersonalSketchLines( file ) )  {
           addOptionalEntry( zos, file, "lines.zip" );
-        }
-        file = TDFile.getExternalFile( null, "areas.zip" );
-        if ( compressSymbols( file, BrushManager.getAreaLib(), TDPath.getSymbolAreaDirname() ) )  {
-          addOptionalEntry( zos, file, "areas.zip" );
         }
       }
 
@@ -802,15 +821,16 @@ public class Archiver
             TDFile.makeTopoDroidDir( pathname );
             pathname = TDPath.getSurveyJpgFile( mManifestSurveyname, ze.getName() );
           } else if ( ze.getName().equals( "points.zip" ) ) { // POINTS
-            if ( uncompressSymbols( zin, TDPath.getSymbolPointDirname(), "p_" ) ) {
+            if ( uncompressSymbols( zin, TDPath.getSymbolPointDirname(), "p_", false, false ) ) {
               BrushManager.reloadPointLibrary( app, app.getResources() );
             }
           } else if ( ze.getName().equals( "lines.zip" ) ) { // LINES
-            if ( uncompressSymbols( zin, TDPath.getSymbolLineDirname(), "l_" ) ) {
+            if ( uncompressSymbols( zin, TDPath.getSymbolLineDirname(), "l_", true, true ) ) {
+              PersonalSketchLineManager.syncPrefsFromSymbolFiles();
               BrushManager.reloadLineLibrary( app.getResources() );
             }
           } else if ( ze.getName().equals( "areas.zip" ) ) { // AREAS
-            if ( uncompressSymbols( zin, TDPath.getSymbolAreaDirname(), "a_" ) ) {
+            if ( uncompressSymbols( zin, TDPath.getSymbolAreaDirname(), "a_", false, false ) ) {
               BrushManager.reloadAreaLibrary( app.getResources() );
             }
           } else {
@@ -957,15 +977,16 @@ public class Archiver
             // TDFile.makeTopoDroidDir( pathname );
             pathname = TDPath.getJpgFile( ze.getName() );
           } else if ( ze.getName().equals( "points.zip" ) ) { // POINTS
-            if ( uncompressSymbols( zin, TDPath.getSymbolPointDirname(), "p_" ) ) {
+            if ( uncompressSymbols( zin, TDPath.getSymbolPointDirname(), "p_", false, false ) ) {
               BrushManager.reloadPointLibrary( app, app.getResources() );
             }
           } else if ( ze.getName().equals( "lines.zip" ) ) { // LINES
-            if ( uncompressSymbols( zin, TDPath.getSymbolLineDirname(), "l_" ) ) {
+            if ( uncompressSymbols( zin, TDPath.getSymbolLineDirname(), "l_", true, true ) ) {
+              PersonalSketchLineManager.syncPrefsFromSymbolFiles();
               BrushManager.reloadLineLibrary( app.getResources() );
             }
           } else if ( ze.getName().equals( "areas.zip" ) ) { // AREAS
-            if ( uncompressSymbols( zin, TDPath.getSymbolAreaDirname(), "a_" ) ) {
+            if ( uncompressSymbols( zin, TDPath.getSymbolAreaDirname(), "a_", false, false ) ) {
               BrushManager.reloadAreaLibrary( app.getResources() );
             }
           } else {
@@ -1011,4 +1032,3 @@ public class Archiver
   }
 
 }
-

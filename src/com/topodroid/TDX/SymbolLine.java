@@ -286,7 +286,7 @@ public class SymbolLine extends Symbol
   	    } else if ( vals[k].equals("width") ) {
               try {
                 k_val = k;
-                width = nextInt( vals, s ) * TDSetting.mLineThickness;
+                width = nextFloat( vals, s, 1.0f );
   	        // ++k; while ( k < s && vals[k].length() == 0 ) ++k;    
   	        // if ( k < s ) {
   	        //   width = Integer.parseInt( vals[k] ) * TDSetting.mLineThickness;
@@ -526,4 +526,3 @@ public class SymbolLine extends Symbol
   }
 
 }
-

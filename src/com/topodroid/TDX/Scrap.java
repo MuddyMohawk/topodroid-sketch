@@ -70,6 +70,20 @@ public class Scrap
    */
   boolean hasPlotName( String plot_name ) { return mPlotName != null && mPlotName.equals( plot_name ); }
 
+  /** rebind line paints after the line library has been reloaded
+   */
+  void refreshLinePaints()
+  {
+    synchronized( TDPath.mCommandsLock ) {
+      for ( ICanvasCommand cmd : mCurrentStack ) {
+        if ( cmd instanceof DrawingLinePath ) {
+          DrawingLinePath line = (DrawingLinePath)cmd;
+          line.setLineType( line.mLineType );
+        }
+      }
+    }
+  }
+
   // ----------------------------------------------------------
   /** "merge" a second rectangle into a first rectangle
    * @param b0   first rectangle

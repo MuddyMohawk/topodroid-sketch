@@ -509,10 +509,10 @@ class TDPrefKey
    * ruler units [cell, m, ft]
    */
   static TDPrefKey[] mUnits = {
-    new TDPrefKey(  B,   UI, "DISTOX_UNIT_LENGTH",  R.string.pref_unit_length_title,  R.string.pref_unit_length_summary,  "meters", R.array.unitLength,   R.array.unitLengthValue ),
+    new TDPrefKey(  B,   UI, "DISTOX_UNIT_LENGTH",  R.string.pref_unit_length_title,  R.string.pref_unit_length_summary,  "feet", R.array.unitLength,   R.array.unitLengthValue ),
     new TDPrefKey(  B,   UI, "DISTOX_UNIT_ANGLE",   R.string.pref_unit_angle_title,   R.string.pref_unit_angle_summary,   "degrees",R.array.unitAngle,    R.array.unitAngleValue  ),
-    new TDPrefKey(  B,   UI, "DISTOX_UNIT_GRID",    R.string.pref_unit_grid_title,    R.string.pref_unit_grid_summary,    "1.0",    R.array.unitGrid,     R.array.unitGridValue   ),
-    new TDPrefKey(  B,   UI, "DISTOX_UNIT_MEASURE", R.string.pref_unit_measure_title, R.string.pref_unit_measure_summary, "-1.0",   R.array.unitMeasure,  R.array.unitMeasureValue )
+    new TDPrefKey(  B,   UI, "DISTOX_UNIT_GRID",    R.string.pref_unit_grid_title,    R.string.pref_unit_grid_summary,    "0.6096", R.array.unitGrid,     R.array.unitGridValue   ),
+    new TDPrefKey(  B,   UI, "DISTOX_UNIT_MEASURE", R.string.pref_unit_measure_title, R.string.pref_unit_measure_summary, "0.3048", R.array.unitMeasure,  R.array.unitMeasureValue )
   };
 
   /** accuracy settings
@@ -580,8 +580,11 @@ class TDPrefKey
    */
   static TDPrefKey[] mLine = {
     new TDPrefKey( N, FLT,  UI, "DISTOX_LINE_THICKNESS",  R.string.pref_line_thickness_title, R.string.pref_line_thickness_summary,  TDString.ONE ),
-    new TDPrefKey( N,       DR, "DISTOX_LINE_STYLE",      R.string.pref_linestyle_title,      R.string.pref_linestyle_summary,       TDString.TWO, R.array.lineStyle, R.array.lineStyleValue ),
-    new TDPrefKey( N, LONG, DR, "DISTOX_LINE_SEGMENT",    R.string.pref_segment_title,        R.string.pref_segment_message,         TDString.TEN ),
+    new TDPrefKey( N, FLT,  UI, "DISTOX_USER_LINE_FINE_WIDTH",     R.string.pref_user_line_fine_width_title,     R.string.pref_user_line_fine_width_summary,     TDString.ONE ),
+    new TDPrefKey( N, FLT,  UI, "DISTOX_USER_LINE_STANDARD_WIDTH", R.string.pref_user_line_standard_width_title, R.string.pref_user_line_standard_width_summary, TDString.TWO ),
+    new TDPrefKey( N, FLT,  UI, "DISTOX_USER_LINE_THICK_WIDTH",    R.string.pref_user_line_thick_width_title,    R.string.pref_user_line_thick_width_summary,    TDString.FIVE ),
+    new TDPrefKey( N,       DR, "DISTOX_LINE_STYLE",      R.string.pref_linestyle_title,      R.string.pref_linestyle_summary,       TDString.ONE, R.array.lineStyle, R.array.lineStyleValue ),
+    new TDPrefKey( N, LONG, DR, "DISTOX_LINE_SEGMENT",    R.string.pref_segment_title,        R.string.pref_segment_message,         TDString.ONE ),
     new TDPrefKey( N, BOOL, DR, "DISTOX_LINE_CLOSE",      R.string.pref_line_close_title,     R.string.pref_line_close_summary,      TRUE ),
     new TDPrefKey( A, FLT,  DR, "DISTOX_ARROW_LENGTH",    R.string.pref_arrow_length_title,   R.string.pref_arrow_length_message,    "8"  ),
     new TDPrefKey( A, BOOL, UI, "DISTOX_AUTO_SECTION_PT", R.string.pref_auto_section_pt_title,R.string.pref_auto_section_pt_summary, TRUE ),
@@ -626,9 +629,12 @@ class TDPrefKey
     new TDPrefKey( B, FLT,  DR, "DISTOX_DRAWING_UNIT",    R.string.pref_drawing_unit_title,    R.string.pref_drawing_unit_summary,    "1.2" ),
     new TDPrefKey( B, FLT,  UI, "DISTOX_LABEL_SIZE",      R.string.pref_label_size_title,      R.string.pref_label_size_summary,      TDString.TWENTYFOUR ),
     new TDPrefKey( N, FLT,  UI, "DISTOX_LINE_THICKNESS",  R.string.pref_line_thickness_title,  R.string.pref_line_thickness_summary,  TDString.ONE ),
-    new TDPrefKey( N,       DR, "DISTOX_LINE_STYLE",      R.string.pref_linestyle_title,       R.string.pref_linestyle_summary,       TDString.TWO, R.array.lineStyle, R.array.lineStyleValue ),
-    new TDPrefKey( N, LONG, DR, "DISTOX_LINE_CLOSE",      R.string.pref_line_close_title,      R.string.pref_line_close_summary,      TRUE ),
-    new TDPrefKey( N, BOOL, DR, "DISTOX_LINE_SEGMENT",    R.string.pref_segment_title,         R.string.pref_segment_message,         TDString.TEN ),
+    new TDPrefKey( N, FLT,  UI, "DISTOX_USER_LINE_FINE_WIDTH",     R.string.pref_user_line_fine_width_title,     R.string.pref_user_line_fine_width_summary,     TDString.ONE ),
+    new TDPrefKey( N, FLT,  UI, "DISTOX_USER_LINE_STANDARD_WIDTH", R.string.pref_user_line_standard_width_title, R.string.pref_user_line_standard_width_summary, TDString.TWO ),
+    new TDPrefKey( N, FLT,  UI, "DISTOX_USER_LINE_THICK_WIDTH",    R.string.pref_user_line_thick_width_title,    R.string.pref_user_line_thick_width_summary,    TDString.FIVE ),
+    new TDPrefKey( N,       DR, "DISTOX_LINE_STYLE",      R.string.pref_linestyle_title,       R.string.pref_linestyle_summary,       TDString.ONE, R.array.lineStyle, R.array.lineStyleValue ),
+    new TDPrefKey( N, BOOL, DR, "DISTOX_LINE_CLOSE",      R.string.pref_line_close_title,      R.string.pref_line_close_summary,      TRUE ),
+    new TDPrefKey( N, LONG, DR, "DISTOX_LINE_SEGMENT",    R.string.pref_segment_title,         R.string.pref_segment_message,         TDString.ONE ),
     new TDPrefKey( A, FLT,  UI, "DISTOX_ARROW_LENGTH",    R.string.pref_arrow_length_title,    R.string.pref_arrow_length_message,    "8" ),
     new TDPrefKey( A, BOOL, DR, "DISTOX_AUTO_SECTION_PT", R.string.pref_auto_section_pt_title, R.string.pref_auto_section_pt_summary, FALSE ),
     new TDPrefKey( N, BOOL, UI, "DISTOX_AREA_BORDER",     R.string.pref_area_border_title,     R.string.pref_area_border_summary,     TRUE )

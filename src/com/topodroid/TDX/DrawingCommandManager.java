@@ -386,6 +386,25 @@ public class DrawingCommandManager
    * @note for export classes
    */
   public List< Scrap > getScraps() { return mScraps; }
+
+  /** rebind line paints after the line library has been reloaded
+   */
+  void refreshLinePaints()
+  {
+    synchronized( mSyncScrap ) {
+      for ( Scrap scrap : mScraps ) scrap.refreshLinePaints();
+    }
+    synchronized( mSyncOutline ) {
+      for ( DrawingLinePath path : mPlotOutline ) {
+        if ( path != null ) path.setLineType( path.mLineType );
+      }
+    }
+    synchronized( TDPath.mXSectionsLock ) {
+      for ( DrawingOutlinePath path : mXSectionOutlines ) {
+        if ( path != null && path.mPath != null ) path.mPath.setLineType( path.mPath.mLineType );
+      }
+    }
+  }
   
   // TH2EDIT scrap options are used only for TH2EDIT
   public boolean setScrapOptions( int idx, String options )
