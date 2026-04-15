@@ -346,6 +346,7 @@ public class BrushManager
   public static final Paint fixedGridPaint    = makePaint( TDColor.DARK_GRID,   WIDTH_FIXED, Paint.Style.STROKE);
   public static final Paint fixedGrid10Paint  = makePaint( TDColor.GRID,        WIDTH_FIXED, Paint.Style.STROKE);
   public static final Paint fixedGrid100Paint = makePaint( TDColor.LIGHT_GRID,  WIDTH_FIXED, Paint.Style.STROKE);
+  public static final Paint outlinePaint      = makePaint( TDColor.LIGHT_GRID,  WIDTH_FIXED, Paint.Style.STROKE);
 
   public static final Paint fixedStationPaint = makePaint( TDColor.REDDISH,     WIDTH_FIXED, Paint.Style.FILL_AND_STROKE);
   public static final Paint fixedStationSavedPaint   = makePaint( TDColor.ORANGE, WIDTH_FIXED, Paint.Style.FILL_AND_STROKE);
@@ -645,6 +646,43 @@ public class BrushManager
     /* if (deepBluePaint != null)     */ deepBluePaint.setStrokeWidth( WIDTH_FIXED * TDSetting.mFixedThickness );
     /* if (paintSplayXB != null)      */ paintSplayXB.setStrokeWidth( WIDTH_FIXED * TDSetting.mFixedThickness );
     /* if (paintSplayXViewed != null) */ paintSplayXViewed.setStrokeWidth( WIDTH_FIXED * TDSetting.mFixedThickness );
+    setGridPaints();
+  }
+
+  private static int makeGridColor( int rgb, int alpha )
+  {
+    return ( ( alpha & 0xff ) << 24 ) | ( rgb & 0x00ffffff );
+  }
+
+  private static int darkerGridColor( int rgb )
+  {
+    int red   = ( ( rgb >> 16 ) & 0xff ) * 2 / 3;
+    int green = ( ( rgb >>  8 ) & 0xff ) * 2 / 3;
+    int blue  = (   rgb         & 0xff ) * 2 / 3;
+    return makeGridColor( ( red << 16 ) | ( green << 8 ) | blue, 0x99 );
+  }
+
+  private static int lighterGridColor( int rgb )
+  {
+    int red0   = ( rgb >> 16 ) & 0xff;
+    int green0 = ( rgb >>  8 ) & 0xff;
+    int blue0  =   rgb         & 0xff;
+    int red    = red0   + ( 255 - red0   ) / 2;
+    int green  = green0 + ( 255 - green0 ) / 2;
+    int blue   = blue0  + ( 255 - blue0  ) / 2;
+    return makeGridColor( ( red << 16 ) | ( green << 8 ) | blue, 0x99 );
+  }
+
+  public static void setGridPaints()
+  {
+    int rgb = TDSetting.mSketchGridColor & 0x00ffffff;
+    float width = ( TDSetting.mSketchGridWidth > 0 ) ? TDSetting.mSketchGridWidth : WIDTH_FIXED;
+    fixedGridPaint.setColor( darkerGridColor( rgb ) );
+    fixedGrid10Paint.setColor( makeGridColor( rgb, 0x99 ) );
+    fixedGrid100Paint.setColor( lighterGridColor( rgb ) );
+    fixedGridPaint.setStrokeWidth( width );
+    fixedGrid10Paint.setStrokeWidth( width );
+    fixedGrid100Paint.setStrokeWidth( width );
   }
 
   /** set the text size of certain paints according to the relevant settings

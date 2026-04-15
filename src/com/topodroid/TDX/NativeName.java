@@ -20,13 +20,28 @@ import java.util.Set;
 class NativeName
 {
   static NativeName mNativeName = null; // singleton
+  private static boolean mLoadAttempted = false;
+  private static boolean mLibraryLoaded = false;
 
   public native static String incrementName( String name, Set<String> stations );
 
   public native void initLog();
 
-  static {
-    System.loadLibrary( "nativename" );
+  // Lazy loading lets station naming fall back to Java when the native
+  // library is not packaged in the APK.
+  private static boolean ensureLibraryLoaded()
+  {
+    if ( ! mLoadAttempted ) {
+      mLoadAttempted = true;
+      try {
+        System.loadLibrary( "nativename" );
+        mLibraryLoaded = true;
+      } catch ( java.lang.UnsatisfiedLinkError e ) {
+        TDLog.e("Native link error " + e.getMessage() );
+        mLibraryLoaded = false;
+      }
+    }
+    return mLibraryLoaded;
   }
 
   private NativeName()
@@ -39,6 +54,7 @@ class NativeName
    */
   static NativeName get()
   {
+    if ( ! ensureLibraryLoaded() ) return null;
     if ( mNativeName == null ) {
       try {
         mNativeName = new NativeName();
@@ -46,6 +62,7 @@ class NativeName
       } catch ( java.lang.UnsatisfiedLinkError e ) {
         TDLog.e("Native link error " + e.getMessage() );
         mNativeName = null;
+        mLibraryLoaded = false;
       }
     }
     return mNativeName;
@@ -53,4 +70,3 @@ class NativeName
 
 
 }
-

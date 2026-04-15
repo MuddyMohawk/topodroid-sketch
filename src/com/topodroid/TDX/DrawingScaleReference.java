@@ -35,6 +35,11 @@ class DrawingScaleReference
   private static final float MIN_WIDTH_PERCENT = 0.2f;
   private static final float MAX_WIDTH_PERCENT = 1.0f;
   private static final int HEIGHT_BARS = 6;
+  private static final int UNIT_MODE_METER     = 0;
+  private static final int UNIT_MODE_YARD      = 1;
+  private static final int UNIT_MODE_FOOT      = 2;
+  private static final int UNIT_MODE_TWO_FEET  = 3;
+  private static final int UNIT_MODE_DECIMETER = 4;
 
   private Point mLocation;
   private float mMaxWidthPercent;
@@ -94,15 +99,57 @@ class DrawingScaleReference
     // mExtendAzimuth = with_azimuth;
   }
 
+  /** @return the sketch-unit mode nearest to the current grid size
+   * @param sketch_unit    sketch-unit length [m]
+   */
+  private int getUnitMode( float sketch_unit )
+  {
+    int mode = UNIT_MODE_METER;
+    float delta = Math.abs( sketch_unit - 1.0f );
+
+    float d = Math.abs( sketch_unit - 0.914f );
+    if ( d < delta ) {
+      mode = UNIT_MODE_YARD;
+      delta = d;
+    }
+
+    d = Math.abs( sketch_unit - 0.3048f );
+    if ( d < delta ) {
+      mode = UNIT_MODE_FOOT;
+      delta = d;
+    }
+
+    d = Math.abs( sketch_unit - 0.6096f );
+    if ( d < delta ) {
+      mode = UNIT_MODE_TWO_FEET;
+      delta = d;
+    }
+
+    d = Math.abs( sketch_unit - 0.1f );
+    if ( d < delta ) {
+      mode = UNIT_MODE_DECIMETER;
+    }
+
+    return mode;
+  }
+
   /** @return the units of unit
    * @param sketch_unit    sketch_unit length [m]
    */
   private String getUnits( float sketch_unit )
   {
-    return  ( sketch_unit > 0.99f)? " m"  // 1.0 m
-          : ( sketch_unit > 0.8f)? " yd"  // about 0.98 m
-          : ( sketch_unit > 0.2f)? " ft"  // about 0.33 m
-          : " dm";                 // 0.1 m
+    switch ( getUnitMode( sketch_unit ) ) {
+      case UNIT_MODE_YARD:
+        return " yd";
+      case UNIT_MODE_FOOT:
+      case UNIT_MODE_TWO_FEET:
+        return " ft";
+      case UNIT_MODE_DECIMETER:
+        return " dm";
+      case UNIT_MODE_METER:
+      default:
+        return " m";
+    }
   }
 
   // /** @return scale reference current color (or white) - UNUSED
@@ -135,9 +182,16 @@ class DrawingScaleReference
   private float getReferenceLength( float width, float canvas_unit, float sketch_unit )
   {
     float refLen = width * mMaxWidthPercent / canvas_unit;
-    // canvas_unit 1:m 0.914:y 0.6096:2ft
-    if ( sketch_unit < 0.2f )      { refLen *= 10; } // using m instead of dm
-    else if ( sketch_unit < 0.8f ) { refLen *=  2; } // using ft instead of 2ft
+    switch ( getUnitMode( sketch_unit ) ) {
+      case UNIT_MODE_DECIMETER:
+        refLen *= 10; // display decimeter grids using meter labels
+        break;
+      case UNIT_MODE_TWO_FEET:
+        refLen *= 2;  // display two-foot grids using foot labels
+        break;
+      default:
+        break;
+    }
       
     int k = mValues.length - 1;
     while ( k > 0 && refLen < mValues[k] ) --k;
@@ -180,8 +234,7 @@ class DrawingScaleReference
       {
         float canvasLen = canvasUnit * referenceLen;
         canvasLen *= sketch_unit;
-        if ( sketch_unit < 0.2f ) { } // using m instead of dm
-	else if ( sketch_unit < 0.8f ) canvasLen /= 2;
+        if ( getUnitMode( sketch_unit ) == UNIT_MODE_TWO_FEET ) canvasLen /= 2;
 
         String refstr = (( referenceLen < 1 )?  Float.toString(referenceLen) : Integer.toString((int)referenceLen)) + getUnits( sketch_unit );
         float locX = (locx > 0) ? locx : canvas.getWidth()  + locx - referenceLen;
@@ -269,8 +322,7 @@ class DrawingScaleReference
         paint.setTextSize( PDF_SCALE * mPaint.getTextSize() );
         float canvasLen = canvasUnit * referenceLen;
         canvasLen *= sketch_unit;
-        if ( sketch_unit < 0.2f ) { } // using m instead of dm
-	else if ( sketch_unit < 0.8f ) canvasLen /= 2;
+        if ( getUnitMode( sketch_unit ) == UNIT_MODE_TWO_FEET ) canvasLen /= 2;
 
         String refstr = (( referenceLen < 1 )?  Float.toString(referenceLen) : Integer.toString((int)referenceLen)) + getUnits( sketch_unit );
         float locX = (locx > 0) ? locx : canvas.getWidth()  + locx - referenceLen;

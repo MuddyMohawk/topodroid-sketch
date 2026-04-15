@@ -666,6 +666,10 @@ public class TDSetting
   public static float mLabelSize       = 24;   // size of labels [pt]
   public static boolean mScalableLabel = false; // whether labels scale with the drawing
   public static float mFixedThickness  = 1;    // width of fixed lines
+  public static final float DEFAULT_SKETCH_GRID_WIDTH = 1.0f;
+  public static final int   DEFAULT_SKETCH_GRID_COLOR = TDColor.MID_GRAY & 0x00ffffff;
+  public static float mSketchGridWidth = DEFAULT_SKETCH_GRID_WIDTH;
+  public static int   mSketchGridColor = DEFAULT_SKETCH_GRID_COLOR;
   public static float mLineThickness   = 1;    // width of drawing lines
   public static final float DEFAULT_USER_LINE_FINE_WIDTH     = 1.0f;
   public static final float DEFAULT_USER_LINE_STANDARD_WIDTH = 2.0f;
@@ -929,6 +933,27 @@ public class TDSetting
     }
     TDPrefHelper.update( key, i );
     return i;
+  }
+
+  private static boolean isLengthUnitFeet( String value )
+  {
+    return "feet".equalsIgnoreCase( value ) || "ft".equalsIgnoreCase( value );
+  }
+
+  private static void setLengthUnit( String value )
+  {
+    if ( isLengthUnitFeet( value ) ) {
+      mUnitLength = TDUtil.M2FT;
+      mUnitLengthStr = "ft";
+    } else {
+      mUnitLength = 1.0f;
+      mUnitLengthStr = "m";
+    }
+  }
+
+  private static String getLengthUnitPreferenceValue()
+  {
+    return isLengthUnitFeet( mUnitLengthStr ) ? "feet" : "meters";
   }
 
   /** set the loop closure setting
@@ -1482,13 +1507,7 @@ public class TDSetting
     // TDLog.v("SETTING load secondary GEEK line done");
 
     key = TDPrefKey.mUnits;
-    if ( prefs.getString( key[0].key, key[0].dflt ).equals( key[0].dflt ) ) {
-      mUnitLength = 1.0f;
-      mUnitLengthStr = "m";
-    } else {
-      mUnitLength = TDUtil.M2FT;
-      mUnitLengthStr = "ft";
-    }
+    setLengthUnit( prefs.getString( key[0].key, key[0].dflt ) );
     if ( prefs.getString( key[1].key,  key[1].dflt ).equals( key[1].dflt ) ) {
       mUnitAngle = 1.0f;
       mUnitAngleStr = "deg";
@@ -1526,13 +1545,16 @@ public class TDSetting
 
     key = TDPrefKey.mScreen;
     mFixedThickness = tryFloat( prefs, key[ 0].key, key[ 0].dflt );  // DISTOX_FIXED_THICKNESS
-    mStationSize    = tryFloat( prefs, key[ 1].key, key[ 1].dflt );  // DISTOX_STATION_SIZE
-    mDotRadius      = tryFloat( prefs, key[ 2].key, key[ 2].dflt );  // DISTOX_DOT_RADIUS
-    mSelectness     = tryFloat( prefs, key[ 3].key, key[ 3].dflt );  // DISTOX_CLOSENESS
-    mEraseness      = tryFloat( prefs, key[ 4].key, key[ 4].dflt );  // DISTOX_ERASENESS
-    mMinShift       = tryInt(   prefs, key[ 5].key, key[ 5].dflt );  // DISTOX_MIN_SHIFT
-    mPointingRadius = tryInt(   prefs, key[ 6].key, key[ 6].dflt );  // DISTOX_POINTING
-    mSplayAlpha     = tryInt(   prefs, key[ 7].key, key[ 7].dflt );  // DISTOX_SPLAY_ALPHA
+    mSketchGridWidth = positiveOrDefault( tryFloat( prefs, key[ 1].key, key[ 1].dflt ), DEFAULT_SKETCH_GRID_WIDTH );
+    mSketchGridColor = tryColor( prefs, key[ 2].key, key[ 2].dflt ) & 0x00ffffff;
+    mStationSize    = tryFloat( prefs, key[ 3].key, key[ 3].dflt );  // DISTOX_STATION_SIZE
+    mDotRadius      = tryFloat( prefs, key[ 4].key, key[ 4].dflt );  // DISTOX_DOT_RADIUS
+    mSelectness     = tryFloat( prefs, key[ 5].key, key[ 5].dflt );  // DISTOX_CLOSENESS
+    mEraseness      = tryFloat( prefs, key[ 6].key, key[ 6].dflt );  // DISTOX_ERASENESS
+    mMinShift       = tryInt(   prefs, key[ 7].key, key[ 7].dflt );  // DISTOX_MIN_SHIFT
+    mPointingRadius = tryInt(   prefs, key[ 8].key, key[ 8].dflt );  // DISTOX_POINTING
+    mSplayAlpha     = tryInt(   prefs, key[ 9].key, key[ 9].dflt );  // DISTOX_SPLAY_ALPHA
+    BrushManager.setGridPaints();
     BrushManager.setSplayAlpha( mSplayAlpha );
 
     key = TDPrefKey.mLine;
@@ -2739,13 +2761,7 @@ public class TDSetting
     // TDLog.v("update pref units: " + k );
     TDPrefKey[] key = TDPrefKey.mUnits;
     if ( k.equals( key[ 0 ].key ) ) {    // DISTOX_UNIT_LENGTH (choice)
-      if ( tryStringValue( hlp, k, v, key[0].dflt ).equals(key[0].dflt) ) {
-        mUnitLength = 1.0f;
-        mUnitLengthStr = "m";
-      } else {
-        mUnitLength = TDUtil.M2FT;
-        mUnitLengthStr = "ft";
-      }
+      setLengthUnit( tryStringValue( hlp, k, v, key[0].dflt ) );
     } else if ( k.equals( key[ 1 ].key ) ) { // DISTOX_UNIT_ANGLE (choice)
       if ( tryStringValue( hlp, k, v, key[1].dflt ).equals(key[1].dflt) ) {
         mUnitAngle = 1.0f;
@@ -2755,7 +2771,13 @@ public class TDSetting
         mUnitAngleStr = "grad";
       }
     } else if ( k.equals( key[ 2 ].key ) ) { // DISTOX_UNIT_GRID (choice)
-      mUnitGrid = tryFloatValue( hlp, k, v, key[2].dflt ); 
+      float unitGrid = tryFloatValue( hlp, k, v, key[2].dflt );
+      if ( unitGrid != mUnitGrid ) {
+        mUnitGrid = unitGrid;
+        TopoDroidApp.refreshDrawingAfterGridSettingsChange( true );
+      } else {
+        mUnitGrid = unitGrid;
+      }
     } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_UNIT_MEASURE (choice)
       mUnitMeasure = tryFloatValue( hlp, k, v, key[3].dflt ); 
     } else {
@@ -2833,25 +2855,29 @@ public class TDSetting
        	else if ( f < 0.5f ) { f = 0.5f; ret = "0.5"; }
 	else if ( f > 10f )  { f =  10f; ret = TDString.TEN; }
       } catch ( NumberFormatException e ) { ret = String.format(Locale.US, "%.2f", mFixedThickness ); }
-    } else if ( k.equals( key[ 1 ].key ) ) { // DISTOX_STATION_SIZE
+    } else if ( k.equals( key[ 1 ].key ) ) { // DISTOX_SKETCH_GRID_WIDTH
+      ret = setSketchGridWidth( tryStringValue( hlp, k, v, key[1].dflt ) );
+    } else if ( k.equals( key[ 2 ].key ) ) { // DISTOX_SKETCH_GRID_COLOR
+      ret = setSketchGridColor( tryColorValue( hlp, k, v, key[2].dflt ) );
+    } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_STATION_SIZE
       try {
-        setStationSize( Float.parseFloat( tryStringValue( hlp, k, v, key[1].dflt ) ), true );
+        setStationSize( Float.parseFloat( tryStringValue( hlp, k, v, key[3].dflt ) ), true );
       } catch ( NumberFormatException e ) {
         TDLog.e( e.getMessage() );
       }
       ret = String.format(Locale.US, "%.2f", mStationSize );
-    } else if ( k.equals( key[ 2 ].key ) ) { // DISTOX_DOT_RADIUS
-      ret = setDotRadius( tryFloatValue( hlp, k, v, key[2].dflt ) );
-    } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_CLOSENESS
-      ret = setSelectness( tryFloatValue( hlp, k, v, key[3].dflt ) );
-    } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_ERASENESS
-      ret = setEraseness( tryFloatValue( hlp, k, v, key[4].dflt ) );
-    } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_MIN_SHIFT
-      ret = setMinShift( tryIntValue(  hlp, k, v, key[5].dflt ) );
-    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_POINTING
-      ret = setPointingRadius( tryIntValue( hlp, k, v, key[6].dflt ) );
-    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_SPLAY_ALPHA
-      mSplayAlpha = tryIntValue( hlp, k, v, key[ 7].dflt ); 
+    } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_DOT_RADIUS
+      ret = setDotRadius( tryFloatValue( hlp, k, v, key[4].dflt ) );
+    } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_CLOSENESS
+      ret = setSelectness( tryFloatValue( hlp, k, v, key[5].dflt ) );
+    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_ERASENESS
+      ret = setEraseness( tryFloatValue( hlp, k, v, key[6].dflt ) );
+    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_MIN_SHIFT
+      ret = setMinShift( tryIntValue(  hlp, k, v, key[7].dflt ) );
+    } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_POINTING
+      ret = setPointingRadius( tryIntValue( hlp, k, v, key[8].dflt ) );
+    } else if ( k.equals( key[ 9 ].key ) ) { // DISTOX_SPLAY_ALPHA
+      mSplayAlpha = tryIntValue( hlp, k, v, key[ 9].dflt ); 
       if ( mSplayAlpha < 0 ) { mSplayAlpha = 0; ret = Float.toString( mSplayAlpha ); }
       if ( mSplayAlpha > 100 ) { mSplayAlpha = 100; ret = Float.toString( mSplayAlpha ); }
       BrushManager.setSplayAlpha( mSplayAlpha );
@@ -3164,6 +3190,46 @@ public class TDSetting
   private static String formatLineWidthValue( float value )
   {
     return String.format( Locale.US, "%.2f", value );
+  }
+
+  private static String setSketchGridWidth( String str )
+  {
+    String ret = null;
+    try {
+      float f = Float.parseFloat( str );
+      if ( f <= 0 ) {
+        f = DEFAULT_SKETCH_GRID_WIDTH;
+        ret = formatLineWidthValue( f );
+      }
+      if ( f != mSketchGridWidth ) {
+        mSketchGridWidth = f;
+        BrushManager.setGridPaints();
+        TopoDroidApp.refreshDrawingAfterGridSettingsChange( false );
+      }
+    } catch ( NumberFormatException e ) {
+      ret = formatLineWidthValue( mSketchGridWidth );
+    }
+    return ret;
+  }
+
+  private static String setSketchGridColor( int color )
+  {
+    int rgb = color & 0x00ffffff;
+    if ( rgb != mSketchGridColor ) {
+      mSketchGridColor = rgb;
+      BrushManager.setGridPaints();
+      TopoDroidApp.refreshDrawingAfterGridSettingsChange( false );
+    }
+    return Integer.toString( mSketchGridColor );
+  }
+
+  private static String setSketchGridColor( String str )
+  {
+    try {
+      return setSketchGridColor( Integer.parseInt( str ) );
+    } catch ( NumberFormatException e ) {
+      return Integer.toString( mSketchGridColor );
+    }
   }
 
   private static String setLineThickness( String str )
@@ -3806,7 +3872,7 @@ B DISTOX_SAP5_BIT16_BUG true
       k="DISTOX_EXTEND_FRAC";           if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mExtendFrac) );
       k="DISTOX_LOOP_CLOSURE_VALUE";    if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mLoopClosure );
       k="DISTOX_LOOP_THR";              if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mLoopThr );
-      k="DISTOX_UNIT_LENGTH";           if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "S %s %s\n",   k, ( mUnitLength > 0.99f ? "meters" : "feet" ) );
+      k="DISTOX_UNIT_LENGTH";           if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "S %s %s\n",   k, getLengthUnitPreferenceValue() );
       k="DISTOX_UNIT_ANGLE";            if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "S %s %s\n",   k, ( mUnitAngle > 0.99f ?  "degrees" : "grads" ) );
       k="DISTOX_THUMBNAIL";             if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mThumbSize );
       k="DISTOX_SAVED_STATIONS";        if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mSavedStations) );
@@ -3832,6 +3898,8 @@ B DISTOX_SAP5_BIT16_BUG true
       k="DISTOX_STATION_SIZE";          if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mStationSize );
       k="DISTOX_LABEL_SIZE";            if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mLabelSize );
       k="DISTOX_FIXED_THICKNESS";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mFixedThickness );
+      k="DISTOX_SKETCH_GRID_WIDTH";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mSketchGridWidth );
+      k="DISTOX_SKETCH_GRID_COLOR";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mSketchGridColor );
       k="DISTOX_LINE_THICKNESS";        if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mLineThickness );
       k="DISTOX_USER_LINE_FINE_WIDTH";  if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mUserLineFineWidth );
       k="DISTOX_USER_LINE_STANDARD_WIDTH"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mUserLineStandardWidth );
@@ -4094,6 +4162,7 @@ B DISTOX_SAP5_BIT16_BUG true
               break;
             case "DISTOX_UNIT_GRID":
               mUnitGrid  = Float.parseFloat( value );    setPreference( editor, kay, mUnitGrid );
+              TopoDroidApp.refreshDrawingAfterGridSettingsChange( true );
               break;
             case "DISTOX_UNIT_MEASURE":
               mUnitMeasure = Float.parseFloat( value ); setPreference( editor, kay, mUnitMeasure );
@@ -4106,6 +4175,13 @@ B DISTOX_SAP5_BIT16_BUG true
               break;
             case "DISTOX_FIXED_THICKNESS":
               mFixedThickness = Float.parseFloat( value );  setPreference( editor, kay, mFixedThickness );
+              BrushManager.setStrokeWidths();
+              break;
+            case "DISTOX_SKETCH_GRID_WIDTH":
+              setSketchGridWidth( value ); setPreference( editor, kay, mSketchGridWidth );
+              break;
+            case "DISTOX_SKETCH_GRID_COLOR":
+              setSketchGridColor( value ); setPreference( editor, kay, mSketchGridColor );
               break;
             case "DISTOX_LINE_THICKNESS":
               setLineThickness( value ); setPreference( editor, kay, mLineThickness );
@@ -4586,14 +4662,8 @@ B DISTOX_SAP5_BIT16_BUG true
               mLoopThr = Float.parseFloat( value ); setPreference( editor, kay, mLoopThr );
               break;
             case "DISTOX_UNIT_LENGTH":
-              if ( value.equals( TDPrefKey.mUnits[0].dflt ) ) {
-                  mUnitLength = 1.0f;
-                  mUnitLengthStr = "m";
-                } else {
-                  mUnitLength = TDUtil.M2FT;
-                  mUnitLengthStr = "ft";
-                }
-              setPreference( editor, kay, ( mUnitLength > 0.99f ? "meters" : "feet" ) );
+              setLengthUnit( value );
+              setPreference( editor, kay, getLengthUnitPreferenceValue() );
               break;
             case "DISTOX_UNIT_ANGLE":
               if ( value.equals( TDPrefKey.mUnits[1].dflt ) ) {

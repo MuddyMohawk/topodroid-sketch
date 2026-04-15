@@ -992,7 +992,7 @@ public class DrawingIO
           if (    in_scrap && path != null 
                && ( BrushManager.isLineWallGroup( path.mLineType ) || path.hasOutline() ) ) {
             // TDLog.v("outline add path ... " + path.mFirst.x + " " + path.mFirst.y + " path size " + path.size()  );
-            path.setPathPaint( BrushManager.fixedGrid100Paint );
+            path.setPathPaint( BrushManager.outlinePaint );
             if ( name != null ) { // xsection outline
               surface.addXSectionOutlinePath( new DrawingOutlinePath( name, path, scrap_id ) );
             } else {

@@ -1981,6 +1981,10 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <!-- UNUSED string name="pref_zoom_lower_bound_summary">Zoom-fit minimum scale [0.1]</string -->
   <string name="pref_fixed_thickness_title">Survey line width</string>
   <string name="pref_fixed_thickness_summary">Survey line width</string>
+  <string name="pref_sketch_grid_width_title">Sketch grid width</string>
+  <string name="pref_sketch_grid_width_summary">Width of the background sketch grid lines</string>
+  <string name="pref_sketch_grid_color_title">Sketch grid color</string>
+  <string name="pref_sketch_grid_color_summary">Color of the background sketch grid</string>
   <!-- UNUSED string name="pref_device_title">Device</string -->
   <!-- UNUSED string name="pref_device_summary">Surveying device address name</string -->
   <string name="pref_checkBT_title" copyable="all">Bluetooth</string>

@@ -2582,6 +2582,25 @@ public class DrawingWindow extends ItemDrawer
     }
   }
 
+  /** refresh drawing references after grid settings have changed
+   * @param rebuildReferences whether the current plot references must be rebuilt
+   */
+  public void refreshAfterGridSettingsChange( boolean rebuildReferences )
+  {
+    if ( rebuildReferences ) {
+      if ( PlotType.isAnySection( mType ) ) {
+        doRestart();
+      } else if ( PlotType.isSketch2D( mType ) ) {
+        recomputeReferences( false );
+      }
+    }
+
+    if ( mDrawingSurface != null ) {
+      mDrawingSurface.refresh( mDrawingSurface.getHolder() );
+      mDrawingSurface.invalidate();
+    }
+  }
+
   @Override
   public void onCreate(Bundle savedInstanceState) 
   {

@@ -331,6 +331,19 @@ public class TopoDroidApp extends Application
     }
   }
 
+  /** refresh the drawing window after grid settings have changed
+   * @param rebuildReferences whether to rebuild the current drawing references
+   */
+  public static void refreshDrawingAfterGridSettingsChange( final boolean rebuildReferences )
+  {
+    final DrawingWindow window = mDrawingWindow;
+    if ( window != null ) {
+      window.runOnUiThread( new Runnable() {
+        @Override public void run() { window.refreshAfterGridSettingsChange( rebuildReferences ); }
+      } );
+    }
+  }
+
   // -------------------------------------------------------------------------------------
   // static SIZE methods
 

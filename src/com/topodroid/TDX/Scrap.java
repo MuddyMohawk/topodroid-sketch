@@ -3023,7 +3023,7 @@ public class Scrap
           DrawingPath path = (DrawingPath)cmd;
           if ( path.isLine() ) { // path instanceof DrawingLinePath
             DrawingLinePath line = (DrawingLinePath)path;
-            if ( line.hasOutline() ) line.drawWithPaint( canvas, mat, bbox, BrushManager.fixedGrid100Paint );
+            if ( line.hasOutline() ) line.drawWithPaint( canvas, mat, bbox, BrushManager.outlinePaint );
           }
         }
       }

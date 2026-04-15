@@ -2,8 +2,15 @@ plugins {
     id 'com.android.application'
 }
 
-def possibleJniDirs = ['../libs', '../lib', '../jniLibs'].findAll { file(it).isDirectory() }
+def possibleJniDirs = ['../libs', '../lib', '../jniLibs', 'libs', 'lib', 'jniLibs']
+    .collect { file(it) }
+    .findAll { it.isDirectory() }
+    .unique()
 def libjarsDir = file('../libjars')
+
+if (possibleJniDirs.isEmpty()) {
+    logger.lifecycle('No JNI libs directory found. Native libraries such as libnativename.so must be present under libs/<abi>, lib/<abi>, or jniLibs/<abi> before packaging.')
+}
 
 android {
     namespace 'com.topodroid.TDX'

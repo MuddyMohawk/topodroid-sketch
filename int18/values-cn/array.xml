@@ -85,6 +85,7 @@
   <string-array name="unitGrid">
      <item name="meter">米</item>
      <item name="yard">码</item>
+     <item name="one_tf">1 英尺</item>
      <item name="two_tf">2 英尺</item>
      <item name="ten_cm">10 厘米</item>
   </string-array>

@@ -547,6 +547,8 @@ class TDPrefKey
  
   /** canvas settings
    * thickness of fixed lines
+   * width of the sketch grid
+   * color of the sketch grid
    * size of station names [pt]
    * radius of green dots
    * "select" radius // "select" radius // "select" radius
@@ -557,6 +559,8 @@ class TDPrefKey
    */
   static TDPrefKey[] mScreen = { 
     new TDPrefKey( B, FLT,  UI, "DISTOX_FIXED_THICKNESS", R.string.pref_fixed_thickness_title,R.string.pref_fixed_thickness_summary,TDString.ONE ),
+    new TDPrefKey( B, FLT,  UI, "DISTOX_SKETCH_GRID_WIDTH", R.string.pref_sketch_grid_width_title, R.string.pref_sketch_grid_width_summary, TDString.ONE ),
+    new TDPrefKey( B, COL,  UI, "DISTOX_SKETCH_GRID_COLOR", R.string.pref_sketch_grid_color_title, R.string.pref_sketch_grid_color_summary, "10066329" ),
     new TDPrefKey( B, FLT,  UI, "DISTOX_STATION_SIZE",    R.string.pref_station_size_title,   R.string.pref_station_size_summary,   TDString.TWENTY ),
     new TDPrefKey( N, FLT,  UI, "DISTOX_DOT_RADIUS",      R.string.pref_dot_radius_title,     R.string.pref_dot_radius_message,     TDString.FIVE ), 
     new TDPrefKey( B, LONG, UI, "DISTOX_CLOSENESS",       R.string.pref_closeness_title,      R.string.pref_closeness_message,      TDString.TWENTYFOUR ),
