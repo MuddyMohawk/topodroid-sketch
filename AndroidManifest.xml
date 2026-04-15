@@ -42,10 +42,10 @@
 	     API-36 = Android 16    Baklava
     -->
     <uses-sdk
-       android:minSdkVersion="21"
-       android:targetSdkVersion="36"
-       tools:ignore="GradleOverrides,OldTargetApi"
-    />
+        tools:ignore="GradleOverrides,OldTargetApi"
+        />
+
+
     <!-- android:maxSdkVersion="29" min 21 -->
 
     <queries>

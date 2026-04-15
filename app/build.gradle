@@ -1,0 +1,61 @@
+plugins {
+    id 'com.android.application'
+}
+
+def possibleJniDirs = ['../libs', '../lib', '../jniLibs'].findAll { file(it).isDirectory() }
+def libjarsDir = file('../libjars')
+
+android {
+    namespace 'com.topodroid.TDX'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.topodroid.TDX'
+        minSdk 21
+        targetSdk 36
+        versionCode 604027
+        versionName '6.4.27'
+        multiDexEnabled true
+    }
+
+    buildTypes {
+        debug {
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), '../proguard.cfg'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    sourceSets {
+        main {
+            manifest.srcFile '../AndroidManifest.xml'
+            java.srcDirs = ['../src']
+            res.srcDirs = ['../res']
+            assets.srcDirs = ['../assets']
+            if (!possibleJniDirs.isEmpty()) {
+                jniLibs.srcDirs = possibleJniDirs
+            }
+        }
+    }
+
+    packaging {
+        resources {
+            excludes += ['/META-INF/{AL2.0,LGPL2.1}']
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.google.ai.client.generativeai:generativeai:0.9.0'
+    implementation 'com.google.guava:guava:33.0.0-android'
+
+    if (libjarsDir.isDirectory()) {
+        implementation fileTree(dir: libjarsDir, include: ['*.jar'])
+    }
+}
