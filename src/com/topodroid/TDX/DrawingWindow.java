@@ -585,7 +585,11 @@ public class DrawingWindow extends ItemDrawer
   private LinearLayout mLayoutToolsP;
   private LinearLayout mLayoutToolsL;
   private LinearLayout mLayoutToolsA;
+  private LinearLayout mLayoutToolsProfile;
   private LinearLayout mLayoutScale;
+  private Button mBtnProfile1;
+  private Button mBtnProfile2;
+  private int mPendingSketchProfile = 0;
   // private ItemButton[] mBtnRecent;
   private ItemButton[] mBtnRecentP;
   private ItemButton[] mBtnRecentL;
@@ -2540,6 +2544,10 @@ public class DrawingWindow extends ItemDrawer
       lp0 = mLayoutToolsA.getLayoutParams();
       lp0.height = (int)(scale * Float.parseFloat( getResources().getString( R.string.dimyl ) ) ) + 8; // 4 pxl on both sides 
       mLayoutToolsA.setLayoutParams( lp0 );
+
+      lp0 = mLayoutToolsProfile.getLayoutParams();
+      lp0.height = (int)(scale * Float.parseFloat( getResources().getString( R.string.dimyl ) ) ) + 8; // 4 pxl on both sides
+      mLayoutToolsProfile.setLayoutParams( lp0 );
     }
     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams( 0, LinearLayout.LayoutParams.WRAP_CONTENT );
     lp.setMargins( 0, 0, 0, 0 );
@@ -2784,8 +2792,18 @@ public class DrawingWindow extends ItemDrawer
     mLayoutToolsP = (LinearLayout) findViewById( R.id.layout_tool_p );
     mLayoutToolsL = (LinearLayout) findViewById( R.id.layout_tool_l );
     mLayoutToolsA = (LinearLayout) findViewById( R.id.layout_tool_a );
+    mLayoutToolsProfile = (LinearLayout) findViewById( R.id.layout_tool_profile );
     mLayoutScale  = (LinearLayout) findViewById( R.id.layout_scale  );
+    mBtnProfile1  = (Button) findViewById( R.id.button_profile_1 );
+    mBtnProfile2  = (Button) findViewById( R.id.button_profile_2 );
     mScaleBar     = (SeekBar)findViewById( R.id.scalebar );
+    mBtnProfile1.setOnClickListener( new View.OnClickListener() {
+      @Override public void onClick( View v ) { requestSketchProfileSelection( TDSetting.SKETCH_PROFILE_1 ); }
+    } );
+    mBtnProfile2.setOnClickListener( new View.OnClickListener() {
+      @Override public void onClick( View v ) { requestSketchProfileSelection( TDSetting.SKETCH_PROFILE_2 ); }
+    } );
+    updateSketchProfileButtons();
     mScaleBar.setOnSeekBarChangeListener( new SeekBar.OnSeekBarChangeListener() {
       public void onProgressChanged( SeekBar seekbar, int progress, boolean fromUser) {
         if ( fromUser ) {
@@ -2910,6 +2928,64 @@ public class DrawingWindow extends ItemDrawer
     );
 
     setToolsToolbarParams();
+  }
+
+  private boolean hasPendingSketchStroke()
+  {
+    return mCurrentLinePath != null || mCurrentAreaPath != null;
+  }
+
+  private int getDisplayedSketchProfile()
+  {
+    return ( mPendingSketchProfile != 0 ) ? mPendingSketchProfile : TDSetting.getActiveSketchProfile();
+  }
+
+  private void updateSketchProfileButton( Button button, boolean active )
+  {
+    if ( button == null ) return;
+    button.setBackgroundColor( active ? 0xffd9d9d9 : 0xff7a7a7a );
+    button.setTextColor( active ? 0xff111111 : 0xffffffff );
+  }
+
+  private void updateSketchProfileButtons()
+  {
+    int profile = getDisplayedSketchProfile();
+    updateSketchProfileButton( mBtnProfile1, profile == TDSetting.SKETCH_PROFILE_1 );
+    updateSketchProfileButton( mBtnProfile2, profile == TDSetting.SKETCH_PROFILE_2 );
+  }
+
+  private void applySketchProfileSelection( int profile )
+  {
+    int normalized = ( profile == TDSetting.SKETCH_PROFILE_2 ) ? TDSetting.SKETCH_PROFILE_2 : TDSetting.SKETCH_PROFILE_1;
+    mPendingSketchProfile = 0;
+    TDSetting.selectSketchProfile( TDInstance.getPrefs(), normalized );
+    setToolsToolbars();
+    updateSketchProfileButtons();
+  }
+
+  private void requestSketchProfileSelection( int profile )
+  {
+    int normalized = ( profile == TDSetting.SKETCH_PROFILE_2 ) ? TDSetting.SKETCH_PROFILE_2 : TDSetting.SKETCH_PROFILE_1;
+    int active = TDSetting.getActiveSketchProfile();
+    if ( hasPendingSketchStroke() ) {
+      mPendingSketchProfile = ( normalized == active ) ? 0 : normalized;
+      updateSketchProfileButtons();
+      return;
+    }
+    if ( normalized != active ) {
+      applySketchProfileSelection( normalized );
+    } else {
+      updateSketchProfileButtons();
+    }
+  }
+
+  private void applyPendingSketchProfileSelection()
+  {
+    if ( mPendingSketchProfile != 0 ) {
+      applySketchProfileSelection( mPendingSketchProfile );
+    } else {
+      updateSketchProfileButtons();
+    }
   }
 
   // ------------------------------------- PUSH / POP INFO --------------------------------
@@ -5110,6 +5186,7 @@ public class DrawingWindow extends ItemDrawer
         }
         mPointerDown = false;
         modified();
+        applyPendingSketchProfileSelection();
       } else if ( mMode == MODE_EDIT ) {
         if ( Math.abs(mStartX - xc) < TDSetting.mPointingRadius 
           && Math.abs(mStartY - yc) < TDSetting.mPointingRadius ) {
@@ -10140,6 +10217,7 @@ public class DrawingWindow extends ItemDrawer
       mLayoutToolsP.setVisibility( View.VISIBLE );
       mLayoutToolsL.setVisibility( View.GONE );
       mLayoutToolsA.setVisibility( View.GONE );
+      mLayoutToolsProfile.setVisibility( View.VISIBLE );
       mLayoutScale.setVisibility( View.GONE );
       k = getCurrentPointIndex();
       // TDLog.v("Set tools toolbars: Current point index " + k );
@@ -10150,6 +10228,7 @@ public class DrawingWindow extends ItemDrawer
       mLayoutToolsP.setVisibility( View.GONE );
       mLayoutToolsL.setVisibility( View.VISIBLE );
       mLayoutToolsA.setVisibility( View.GONE );
+      mLayoutToolsProfile.setVisibility( View.VISIBLE );
       mLayoutScale.setVisibility( View.GONE );
       k = getCurrentLineIndex();
       // TDLog.v("Set tools toolbars: Current line index " + k );
@@ -10160,6 +10239,7 @@ public class DrawingWindow extends ItemDrawer
       mLayoutToolsP.setVisibility( View.GONE );
       mLayoutToolsL.setVisibility( View.GONE );
       mLayoutToolsA.setVisibility( View.VISIBLE );
+      mLayoutToolsProfile.setVisibility( View.VISIBLE );
       mLayoutScale.setVisibility( View.GONE );
       k = getCurrentAreaIndex();
       // TDLog.v("Set tools toolbars: Current area index " + k );
@@ -10167,6 +10247,7 @@ public class DrawingWindow extends ItemDrawer
       setHighlight( SymbolType.AREA, k );
       setButton2( BTN_TOOL, mDrawingState.isRetraceArea() ? mBMtoolsAreaCont : mBMtoolsArea );
     }
+    updateSketchProfileButtons();
     mLayoutTools.invalidate();
   }
 
@@ -10183,6 +10264,7 @@ public class DrawingWindow extends ItemDrawer
       mLayoutToolsP.setVisibility( View.GONE );
       mLayoutToolsL.setVisibility( View.GONE );
       mLayoutToolsA.setVisibility( View.GONE );
+      mLayoutToolsProfile.setVisibility( View.GONE );
       mLayoutScale.setVisibility( View.VISIBLE );
     } else {
       // TDLog.v("set scale bar - invisible " );

@@ -639,11 +639,23 @@ public class TDSetting
   private static final int LINE_STYLE_TWO    = 2;
   private static final int LINE_STYLE_THREE  = 3;
   private static final int LINE_STYLE_SIMPLIFIED = 4;
+  public static final int SKETCH_PROFILE_1 = 1;
+  public static final int SKETCH_PROFILE_2 = 2;
+  private static final String ACTIVE_SKETCH_PROFILE_KEY   = "DISTOX_ACTIVE_SKETCH_PROFILE";
+  private static final String PROFILE_1_LINE_STYLE_KEY    = "DISTOX_PROFILE_1_LINE_STYLE";
+  private static final String PROFILE_1_LINE_SEGMENT_KEY  = "DISTOX_PROFILE_1_LINE_SEGMENT";
+  private static final String PROFILE_2_LINE_STYLE_KEY    = "DISTOX_PROFILE_2_LINE_STYLE";
+  private static final String PROFILE_2_LINE_SEGMENT_KEY  = "DISTOX_PROFILE_2_LINE_SEGMENT";
   // private static final String LINE_STYLE     = TDString.TWO;     // LINE_STYLE_TWO NORMAL
   public static int   mLineStyle = LINE_STYLE_ONE;    
   public static int   mLineType;        // line type:  1       1     2    3
   public static int   mLineSegment   = 1;
   public static int   mLineSegment2  = 1;   // square of mLineSegment
+  public static int   mActiveSketchProfile    = SKETCH_PROFILE_1;
+  public static int   mSketchProfile1LineStyle   = LINE_STYLE_ONE;
+  public static int   mSketchProfile1LineSegment = 1;
+  public static int   mSketchProfile2LineStyle   = LINE_STYLE_BEZIER;
+  public static int   mSketchProfile2LineSegment = 10;
   public static float mLineAccuracy  = 1f;
   public static float mLineCorner    = 20;    // corner threshold
   // public static int   mContinueLine  = DrawingWindow.CONT_NONE; // 0
@@ -1579,6 +1591,24 @@ public class TDSetting
     mAreaBorder    = prefs.getBoolean( key[12].key, bool(key[12].dflt) );// DISTOX_AREA_BORDER
     mUnitLines     = tryFloat( prefs,  key[13].key,     key[13].dflt );  // DISTOX_LINE_UNITS
     mSlopeLSide    = tryInt(   prefs,  key[14].key,     key[14].dflt );  // DISTOX_SLOPE_LSIDE
+    boolean hasProfile1Style   = prefs.contains( PROFILE_1_LINE_STYLE_KEY );
+    boolean hasProfile1Segment = prefs.contains( PROFILE_1_LINE_SEGMENT_KEY );
+    boolean hasProfile2Style   = prefs.contains( PROFILE_2_LINE_STYLE_KEY );
+    boolean hasProfile2Segment = prefs.contains( PROFILE_2_LINE_SEGMENT_KEY );
+    boolean hasActiveProfile   = prefs.contains( ACTIVE_SKETCH_PROFILE_KEY );
+    mSketchProfile1LineStyle   = hasProfile1Style
+                               ? parseLineStylePreferenceValue( prefs.getString( PROFILE_1_LINE_STYLE_KEY, TDString.ONE ) )
+                               : mLineStyle;
+    mSketchProfile1LineSegment = hasProfile1Segment
+                               ? normalizeLineSegmentValue( tryInt( prefs, PROFILE_1_LINE_SEGMENT_KEY, TDString.ONE ) )
+                               : mLineSegment;
+    mSketchProfile2LineStyle   = parseLineStylePreferenceValue( prefs.getString( PROFILE_2_LINE_STYLE_KEY, TDString.ZERO ) );
+    mSketchProfile2LineSegment = normalizeLineSegmentValue( tryInt( prefs, PROFILE_2_LINE_SEGMENT_KEY, "10" ) );
+    mActiveSketchProfile       = normalizeSketchProfile( tryInt( prefs, ACTIVE_SKETCH_PROFILE_KEY, TDString.ONE ) );
+    applySketchProfile( mActiveSketchProfile );
+    if ( ! hasProfile1Style || ! hasProfile1Segment || ! hasProfile2Style || ! hasProfile2Segment || ! hasActiveProfile ) {
+      persistSketchProfileState( prefs );
+    }
     // mContinueLine  = tryInt(   prefs,  key[7].key,      key[7].dflt );   // DISTOX_LINE_CONTINUE
     // mWithLineJoin  = prefs.getBoolean( key[8].key, bool(key[8].dflt) );  // DISTOX_WITH_CONTINUE_LINE
 
@@ -1640,8 +1670,11 @@ public class TDSetting
       case TDPrefCat.PREF_ACCURACY:        return updatePrefAccuracy( hlp, k, v );
       case TDPrefCat.PREF_LOCATION:        return updatePrefLocation( hlp, k, v );
       case TDPrefCat.PREF_PLOT_SCREEN:     return updatePrefScreen( hlp, k, v );
+      case TDPrefCat.PREF_TOOL_PROFILE:    return null;
       case TDPrefCat.PREF_TOOL_LINE:       return updatePrefLine( hlp, k, v );
       case TDPrefCat.PREF_TOOL_POINT:      return updatePrefPoint( hlp, k, v );
+      case TDPrefCat.PREF_PROFILE_1:       return updatePrefProfile1( hlp, k, v );
+      case TDPrefCat.PREF_PROFILE_2:       return updatePrefProfile2( hlp, k, v );
       // case TDPrefCat.PREF_PLOT_WALLS:      return updatePrefWalls( hlp, k, v ); // AUTOWALLS
       case TDPrefCat.PREF_PLOT_DRAW:       return updatePrefDraw( hlp, k, v );
       case TDPrefCat.PREF_PLOT_ERASE:      return updatePrefErase( hlp, k, v );
@@ -2900,6 +2933,7 @@ public class TDSetting
   private static String updatePrefLine( TDPrefHelper hlp, String k, String v )
   {
     String ret = null;
+    boolean syncProfile = false;
     // TDLog.v("update pref line: " + k );
     TDPrefKey[] key = TDPrefKey.mLine;
     if ( k.equals( key[ 0 ].key ) ) { // DISTOX_LINE_THICKNESS
@@ -2918,8 +2952,10 @@ public class TDSetting
       ret = setUserLineThickColor( tryColorValue( hlp, k, v, key[6].dflt ) );
     } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_LINE_STYLE (choice)
       setLineStyleAndType( tryStringValue( hlp, k, v, key[7].dflt ) );
+      syncProfile = true;
     } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_LINE_SEGMENT
       ret = setLineSegment( tryIntValue(   hlp, k, v, key[8].dflt ) );
+      syncProfile = true;
     } else if ( k.equals( key[ 9 ].key ) ) { // DISTOX_LINE_CLOSE
       mLineClose = tryBooleanValue( hlp, k, v, bool(key[9].dflt) );
     } else if ( k.equals( key[ 10 ].key ) ) { // DISTOX_ARROW_LENGTH
@@ -2942,6 +2978,10 @@ public class TDSetting
       ret = setSlopeLSide( tryIntValue( hlp, k, v, key[14].dflt ) );
     } else {
       TDLog.e("missing LINE key: " + k );
+    }
+    if ( syncProfile ) {
+      syncActiveSketchProfileFromLineSettings();
+      persistSketchProfileState( hlp.getSharedPrefs() );
     }
     if ( ret != null ) TDPrefHelper.update( k, ret );
     return ret;
@@ -3023,6 +3063,7 @@ public class TDSetting
   private static String updatePrefDraw( TDPrefHelper hlp, String k, String v )
   {
     String ret = null;
+    boolean syncProfile = false;
     // TDLog.v("update pref draw: " + k );
     TDPrefKey[] key = TDPrefKey.mDraw;
     if ( k.equals( key[ 0 ].key ) ) { // DISTOX_UNSCALED_POINTS (bool)
@@ -3057,10 +3098,12 @@ public class TDSetting
       ret = setUserLineThickColor( tryColorValue( hlp, k, v, key[9].dflt ) );
     } else if ( k.equals( key[ 10 ].key ) ) { // DISTOX_LINE_STYLE (choice)
       setLineStyleAndType( tryStringValue( hlp, k, v, key[10].dflt ) );
+      syncProfile = true;
     } else if ( k.equals( key[ 11 ].key ) ) { // DISTOX_LINE_CLOSE
       mLineClose = tryBooleanValue( hlp, k, v, bool(key[11].dflt) );
     } else if ( k.equals( key[ 12 ].key ) ) { // DISTOX_LINE_SEGMENT
       ret = setLineSegment( tryIntValue(   hlp, k, v, key[12].dflt ) );
+      syncProfile = true;
     } else if ( k.equals( key[ 13 ].key ) ) { // DISTOX_ARROW_LENGTH
       ret = setArrowLength( tryFloatValue( hlp, k, v, key[13].dflt ) );
     } else if ( k.equals( key[ 14 ].key ) ) { // DISTOX_AUTO_SECTION_PT (bool)
@@ -3074,8 +3117,45 @@ public class TDSetting
     } else {
       TDLog.e("missing DRAW key: " + k );
     }
+    if ( syncProfile ) {
+      syncActiveSketchProfileFromLineSettings();
+      persistSketchProfileState( hlp.getSharedPrefs() );
+    }
     if ( ret != null ) TDPrefHelper.update( k, ret );
     return ret;
+  }
+
+  private static String updatePrefProfile( TDPrefHelper hlp, String k, String v, TDPrefKey[] key, int profile )
+  {
+    String ret = null;
+    if ( k.equals( key[0].key ) ) {
+      setSketchProfileLineStyle( profile, parseLineStylePreferenceValue( tryStringValue( hlp, k, v, key[0].dflt ) ) );
+    } else if ( k.equals( key[1].key ) ) {
+      int segment = tryIntValue( hlp, k, v, key[1].dflt );
+      if ( segment < 1 ) {
+        segment = 1;
+        ret = TDString.ONE;
+      }
+      setSketchProfileLineSegment( profile, segment );
+    } else {
+      TDLog.e("missing PROFILE key: " + k );
+    }
+    if ( normalizeSketchProfile( profile ) == mActiveSketchProfile ) {
+      applySketchProfile( mActiveSketchProfile );
+    }
+    persistSketchProfileState( hlp.getSharedPrefs() );
+    if ( ret != null ) TDPrefHelper.update( k, ret );
+    return ret;
+  }
+
+  private static String updatePrefProfile1( TDPrefHelper hlp, String k, String v )
+  {
+    return updatePrefProfile( hlp, k, v, TDPrefKey.mProfile1, SKETCH_PROFILE_1 );
+  }
+
+  private static String updatePrefProfile2( TDPrefHelper hlp, String k, String v )
+  {
+    return updatePrefProfile( hlp, k, v, TDPrefKey.mProfile2, SKETCH_PROFILE_2 );
   }
 
   private static String updatePrefErase( TDPrefHelper hlp, String k, String v )
@@ -3175,26 +3255,154 @@ public class TDSetting
 
   // -----------------------------------------------------------------------------
 
+  private static int normalizeLineStyle( int style )
+  {
+    switch ( style ) {
+      case LINE_STYLE_BEZIER:
+      case LINE_STYLE_ONE:
+      case LINE_STYLE_TWO:
+      case LINE_STYLE_THREE:
+      case LINE_STYLE_SIMPLIFIED:
+        return style;
+      default:
+        return LINE_STYLE_ONE;
+    }
+  }
+
+  private static int normalizeLineSegmentValue( int value )
+  {
+    return ( value < 1 ) ? 1 : value;
+  }
+
+  private static int normalizeSketchProfile( int profile )
+  {
+    return ( profile == SKETCH_PROFILE_2 ) ? SKETCH_PROFILE_2 : SKETCH_PROFILE_1;
+  }
+
+  private static int lineTypeFromStyle( int style )
+  {
+    switch ( normalizeLineStyle( style ) ) {
+      case LINE_STYLE_TWO:   return 2;
+      case LINE_STYLE_THREE: return 3;
+      default:               return 1;
+    }
+  }
+
+  private static int parseLineStylePreferenceValue( String style )
+  {
+    if ( TDString.ZERO.equals( style ) )  return LINE_STYLE_BEZIER;
+    if ( TDString.TWO.equals( style ) )   return LINE_STYLE_TWO;
+    if ( TDString.THREE.equals( style ) ) return LINE_STYLE_THREE;
+    if ( TDString.FOUR.equals( style ) )  return LINE_STYLE_SIMPLIFIED;
+    return LINE_STYLE_ONE;
+  }
+
+  private static String getLineStylePreferenceValue( int style )
+  {
+    switch ( normalizeLineStyle( style ) ) {
+      case LINE_STYLE_BEZIER:     return TDString.ZERO;
+      case LINE_STYLE_TWO:        return TDString.TWO;
+      case LINE_STYLE_THREE:      return TDString.THREE;
+      case LINE_STYLE_SIMPLIFIED: return TDString.FOUR;
+      default:                    return TDString.ONE;
+    }
+  }
+
+  private static void setLineStyleAndType( int style )
+  {
+    mLineStyle = normalizeLineStyle( style );
+    mLineType  = lineTypeFromStyle( mLineStyle );
+  }
+
   private static void setLineStyleAndType( String style )
   {
-    mLineStyle = LINE_STYLE_ONE; // default
-    mLineType  = 1;
-    if ( style.equals( TDString.ZERO ) ) {
-      mLineStyle = LINE_STYLE_BEZIER;
-      // mLineType  = 1;                 // already assigned
-    } else if ( style.equals( TDString.ONE ) ) {
-      mLineStyle = LINE_STYLE_ONE;
-      // mLineType  = 1;                 // already assigned
-    } else if ( style.equals( TDString.TWO ) ) {
-      mLineStyle = LINE_STYLE_TWO;
-      mLineType  = 2;
-    } else if ( style.equals( TDString.THREE ) ) {
-      mLineStyle = LINE_STYLE_THREE;
-      mLineType  = 3;
-    } else if ( style.equals( TDString.FOUR ) ) {
-      mLineStyle = LINE_STYLE_SIMPLIFIED;
-      // mLineType  = 1;
+    setLineStyleAndType( parseLineStylePreferenceValue( style ) );
+  }
+
+  private static int getSketchProfileLineStyle( int profile )
+  {
+    return ( normalizeSketchProfile( profile ) == SKETCH_PROFILE_2 ) ? mSketchProfile2LineStyle : mSketchProfile1LineStyle;
+  }
+
+  private static int getSketchProfileLineSegment( int profile )
+  {
+    return ( normalizeSketchProfile( profile ) == SKETCH_PROFILE_2 ) ? mSketchProfile2LineSegment : mSketchProfile1LineSegment;
+  }
+
+  private static void setSketchProfileLineStyle( int profile, int style )
+  {
+    if ( normalizeSketchProfile( profile ) == SKETCH_PROFILE_2 ) {
+      mSketchProfile2LineStyle = normalizeLineStyle( style );
+    } else {
+      mSketchProfile1LineStyle = normalizeLineStyle( style );
     }
+  }
+
+  private static void setSketchProfileLineSegment( int profile, int segment )
+  {
+    if ( normalizeSketchProfile( profile ) == SKETCH_PROFILE_2 ) {
+      mSketchProfile2LineSegment = normalizeLineSegmentValue( segment );
+    } else {
+      mSketchProfile1LineSegment = normalizeLineSegmentValue( segment );
+    }
+  }
+
+  private static void syncActiveSketchProfileFromLineSettings()
+  {
+    setSketchProfileLineStyle( mActiveSketchProfile, mLineStyle );
+    setSketchProfileLineSegment( mActiveSketchProfile, mLineSegment );
+  }
+
+  private static void applySketchProfile( int profile )
+  {
+    mActiveSketchProfile = normalizeSketchProfile( profile );
+    setLineStyleAndType( getSketchProfileLineStyle( mActiveSketchProfile ) );
+    setLineSegment( getSketchProfileLineSegment( mActiveSketchProfile ) );
+  }
+
+  private static void storeSketchProfileDefinition( Editor editor, int profile )
+  {
+    if ( normalizeSketchProfile( profile ) == SKETCH_PROFILE_2 ) {
+      setPreference( editor, PROFILE_2_LINE_STYLE_KEY,   getLineStylePreferenceValue( mSketchProfile2LineStyle ) );
+      setPreference( editor, PROFILE_2_LINE_SEGMENT_KEY, mSketchProfile2LineSegment );
+    } else {
+      setPreference( editor, PROFILE_1_LINE_STYLE_KEY,   getLineStylePreferenceValue( mSketchProfile1LineStyle ) );
+      setPreference( editor, PROFILE_1_LINE_SEGMENT_KEY, mSketchProfile1LineSegment );
+    }
+  }
+
+  private static void storeLiveLinePreferences( Editor editor )
+  {
+    setPreference( editor, "DISTOX_LINE_STYLE",   getLineStylePreferenceValue( mLineStyle ) );
+    setPreference( editor, "DISTOX_LINE_SEGMENT", mLineSegment );
+  }
+
+  private static void storeSketchProfileState( Editor editor )
+  {
+    storeSketchProfileDefinition( editor, SKETCH_PROFILE_1 );
+    storeSketchProfileDefinition( editor, SKETCH_PROFILE_2 );
+    setPreference( editor, ACTIVE_SKETCH_PROFILE_KEY, mActiveSketchProfile );
+    storeLiveLinePreferences( editor );
+  }
+
+  private static void persistSketchProfileState( SharedPreferences prefs )
+  {
+    Editor editor = prefs.edit();
+    storeSketchProfileState( editor );
+    commitEditor( editor );
+  }
+
+  public static int getActiveSketchProfile()
+  {
+    return mActiveSketchProfile;
+  }
+
+  public static boolean selectSketchProfile( SharedPreferences prefs, int profile )
+  {
+    applySketchProfile( profile );
+    Editor editor = prefs.edit();
+    storeSketchProfileState( editor );
+    return commitEditor( editor );
   }
 
   public static boolean isLineStyleComplex() 
@@ -3740,6 +3948,9 @@ public class TDSetting
           }
         }
       }
+      if ( ( flag & (1 << TDPrefKey.DR) ) != 0 ) {
+        pw.printf( Locale.US, "I %s %d\n", ACTIVE_SKETCH_PROFILE_KEY, mActiveSketchProfile );
+      }
       // TDLog.v("Printed " + cnt + " settings");
 /*
       // this list is incomplete: the following keys are missing - these are probably missing also from importSettings()
@@ -4164,7 +4375,10 @@ B DISTOX_SAP5_BIT16_BUG true
         String kay   = vals[1];
         String value = vals[2];
         // int group    = TDPrefKey.getKeyGroup( kay ); // FIXME TODO
-        if ( TDPrefKey.checkKeyGroup( kay, flag ) ) {
+        boolean allowImport = kay.equals( ACTIVE_SKETCH_PROFILE_KEY )
+                           ? ( ( flag & (1 << TDPrefKey.DR) ) != 0 )
+                           : TDPrefKey.checkKeyGroup( kay, flag );
+        if ( allowImport ) {
           switch ( kay ) {
             case "DISTOX_SIZE_BUTTONS":
               size = Integer.parseInt( value );
@@ -4324,6 +4538,26 @@ B DISTOX_SAP5_BIT16_BUG true
               break;
             case "DISTOX_LINE_SEGMENT":
               setLineSegment( Integer.parseInt( value ) ); setPreference( editor, kay, mLineSegment );
+              break;
+            case "DISTOX_PROFILE_1_LINE_STYLE":
+              setSketchProfileLineStyle( SKETCH_PROFILE_1, parseLineStylePreferenceValue( value ) );
+              setPreference( editor, kay, getLineStylePreferenceValue( mSketchProfile1LineStyle ) );
+              break;
+            case "DISTOX_PROFILE_1_LINE_SEGMENT":
+              setSketchProfileLineSegment( SKETCH_PROFILE_1, Integer.parseInt( value ) );
+              setPreference( editor, kay, mSketchProfile1LineSegment );
+              break;
+            case "DISTOX_PROFILE_2_LINE_STYLE":
+              setSketchProfileLineStyle( SKETCH_PROFILE_2, parseLineStylePreferenceValue( value ) );
+              setPreference( editor, kay, getLineStylePreferenceValue( mSketchProfile2LineStyle ) );
+              break;
+            case "DISTOX_PROFILE_2_LINE_SEGMENT":
+              setSketchProfileLineSegment( SKETCH_PROFILE_2, Integer.parseInt( value ) );
+              setPreference( editor, kay, mSketchProfile2LineSegment );
+              break;
+            case ACTIVE_SKETCH_PROFILE_KEY:
+              mActiveSketchProfile = normalizeSketchProfile( Integer.parseInt( value ) );
+              setPreference( editor, kay, mActiveSketchProfile );
               break;
             // caes "DISTOX_LINE_CONTINUE":
             //   mContinueLine = Integer.parseInt( value );        setPreference( editor, kay, mContinueLine );
@@ -4894,6 +5128,8 @@ B DISTOX_SAP5_BIT16_BUG true
           } // switch ( kay )
         }
       }
+      applySketchProfile( mActiveSketchProfile );
+      storeSketchProfileState( editor );
       fr.close();
     } catch ( IOException e ) { 
       TDLog.e("failed to import settings"); 

@@ -206,6 +206,7 @@ class TDPrefKey
     new TDPrefKey( B, BOOL, GEN, "DISTOX_PLOT_CACHE",     R.string.pref_plot_cache_title,    R.string.pref_plot_cache_summary,    TRUE ),
     new TDPrefKey( B,       NON, "DISTOX_TOOL_POINT",     R.string.pref_tool_point_title  ),
     new TDPrefKey( N,       NON, "DISTOX_TOOL_LINE",      R.string.pref_tool_line_title   ),
+    new TDPrefKey( B,       NON, "DISTOX_TOOL_PROFILE",   R.string.pref_tool_profile_title ),
     new TDPrefKey( B,       NON, "DISTOX_PLOT_SCREEN",    R.string.pref_plot_screen_title )
   };
 
@@ -650,6 +651,24 @@ class TDPrefKey
     new TDPrefKey( N, BOOL, UI, "DISTOX_AREA_BORDER",     R.string.pref_area_border_title,     R.string.pref_area_border_summary,     TRUE )
   };
 
+  /** sketch profile settings
+   * profile 1 and 2 use the same line-style and point-spacing settings as the live draw configuration
+   */
+  static TDPrefKey[] mToolProfile = {
+    new TDPrefKey( B, NON, "DISTOX_PROFILE_1_SCREEN", R.string.pref_profile_1_title ),
+    new TDPrefKey( B, NON, "DISTOX_PROFILE_2_SCREEN", R.string.pref_profile_2_title )
+  };
+
+  static TDPrefKey[] mProfile1 = {
+    new TDPrefKey( N,       DR, "DISTOX_PROFILE_1_LINE_STYLE",   R.string.pref_linestyle_title, R.string.pref_linestyle_summary, TDString.ONE,  R.array.lineStyle, R.array.lineStyleValue ),
+    new TDPrefKey( N, LONG, DR, "DISTOX_PROFILE_1_LINE_SEGMENT", R.string.pref_segment_title,   R.string.pref_segment_message,   TDString.ONE )
+  };
+
+  static TDPrefKey[] mProfile2 = {
+    new TDPrefKey( N,       DR, "DISTOX_PROFILE_2_LINE_STYLE",   R.string.pref_linestyle_title, R.string.pref_linestyle_summary, TDString.ZERO, R.array.lineStyle, R.array.lineStyleValue ),
+    new TDPrefKey( N, LONG, DR, "DISTOX_PROFILE_2_LINE_SEGMENT", R.string.pref_segment_title,   R.string.pref_segment_message,   "10" )
+  };
+
   /** eraser settings
    * "select" radius // "select" radius // "select" radius
    * "erase" radius // "erase" radius
@@ -971,6 +990,9 @@ class TDPrefKey
     mExportCsv,
     mExportSrv, // 41
     mExportPly,
+    mToolProfile,
+    mProfile1,
+    mProfile2,
     null
   };
 
