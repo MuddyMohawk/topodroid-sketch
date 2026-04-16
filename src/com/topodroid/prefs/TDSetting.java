@@ -614,6 +614,14 @@ public class TDSetting
   public static int mPointingRadius = 24;
   public static boolean mStylusOnly = false;        // stylus only sketching - false by default
   public static float mStylusSize = 0;              // stylus size
+  public static final int SPEN_ACTION_NONE = 0;
+  public static final int SPEN_ACTION_UNDO = 1;
+  public static final int SPEN_ACTION_REDO = 2;
+  public static final int SPEN_ACTION_TOGGLE_PROFILE = 3;
+  public static final int SPEN_ACTION_TOGGLE_PALETTE = 4;
+  public static int mSPenSingleClickAction = SPEN_ACTION_NONE;
+  public static int mSPenLongClickAction   = SPEN_ACTION_NONE;
+  public static int mSPenDoubleClickAction = SPEN_ACTION_NONE;
 
   // public static final String LINE_SHIFT = "20.0";
 
@@ -1242,6 +1250,11 @@ public class TDSetting
     mAutoPair        = prefs.getBoolean(   key[ 5].key,  bool(key[ 5].dflt) );  // DISTOX_AUTO_PAIR // FIXME DROP_PAIRING
     // TDLog.v("SETTING load device done");
 
+    key = TDPrefKey.mSPen;
+    mSPenSingleClickAction = normalizeSPenAction( tryInt( prefs, key[0].key, key[0].dflt ) );
+    mSPenLongClickAction   = normalizeSPenAction( tryInt( prefs, key[1].key, key[1].dflt ) );
+    mSPenDoubleClickAction = normalizeSPenAction( tryInt( prefs, key[2].key, key[2].dflt ) );
+
     key = TDPrefKey.mGeekDevice;
     mUnnamedDevice  = prefs.getBoolean( key[ 1].key, bool(key[ 1].dflt)  ); // DISTOX_UNNAMED_DEVICE BT_NONAME
     mConnectSocketDelay = tryInt(prefs, key[ 2].key,      key[ 2].dflt );   // DISTOX_SOCKET_DELAY
@@ -1649,6 +1662,7 @@ public class TDSetting
       case TDPrefCat.PREF_CATEGORY_PLOT:   return updatePrefPlot( hlp, k, v );
       case TDPrefCat.PREF_CATEGORY_CALIB:  return updatePrefCalib( hlp, k, v );
       case TDPrefCat.PREF_CATEGORY_DEVICE: return updatePrefDevice( hlp, k, v );
+      case TDPrefCat.PREF_CATEGORY_SPEN:   return updatePrefSPen( hlp, k, v );
       // case TDPrefCat.PREF_CATEGORY_SKETCH: return updatePrefSketch( hlp, k, v ); // SKETCH_3D --> moved to GEEK SKETCH
       case TDPrefCat.PREF_CATEGORY_EXPORT: return updatePrefExport( hlp, k, v );
       case TDPrefCat.PREF_CATEGORY_IMPORT: return updatePrefImport( hlp, k, v );
@@ -1964,6 +1978,32 @@ public class TDSetting
     } else {
       TDLog.e("missing DEVICE key: " + k );
     }
+    if ( ret != null ) TDPrefHelper.update( k, ret );
+    return ret;
+  }
+
+  private static String updatePrefSPen( TDPrefHelper hlp, String k, String v )
+  {
+    String ret = null;
+    TDPrefKey[] key = TDPrefKey.mSPen;
+    int action = SPEN_ACTION_NONE;
+
+    if ( k.equals( key[0].key ) ) {
+      action = tryIntValue( hlp, k, v, key[0].dflt );
+      mSPenSingleClickAction = normalizeSPenAction( action );
+      if ( mSPenSingleClickAction != action ) ret = Integer.toString( mSPenSingleClickAction );
+    } else if ( k.equals( key[1].key ) ) {
+      action = tryIntValue( hlp, k, v, key[1].dflt );
+      mSPenLongClickAction = normalizeSPenAction( action );
+      if ( mSPenLongClickAction != action ) ret = Integer.toString( mSPenLongClickAction );
+    } else if ( k.equals( key[2].key ) ) {
+      action = tryIntValue( hlp, k, v, key[2].dflt );
+      mSPenDoubleClickAction = normalizeSPenAction( action );
+      if ( mSPenDoubleClickAction != action ) ret = Integer.toString( mSPenDoubleClickAction );
+    } else {
+      TDLog.e("missing SPEN key: " + k );
+    }
+
     if ( ret != null ) TDPrefHelper.update( k, ret );
     return ret;
   }
@@ -3274,6 +3314,19 @@ public class TDSetting
     return ( value < 1 ) ? 1 : value;
   }
 
+  private static int normalizeSPenAction( int action )
+  {
+    switch ( action ) {
+      case SPEN_ACTION_UNDO:
+      case SPEN_ACTION_REDO:
+      case SPEN_ACTION_TOGGLE_PROFILE:
+      case SPEN_ACTION_TOGGLE_PALETTE:
+        return action;
+      default:
+        return SPEN_ACTION_NONE;
+    }
+  }
+
   private static int normalizeSketchProfile( int profile )
   {
     return ( profile == SKETCH_PROFILE_2 ) ? SKETCH_PROFILE_2 : SKETCH_PROFILE_1;
@@ -4182,6 +4235,9 @@ B DISTOX_SAP5_BIT16_BUG true
 
       k="DISTOX_FULL_AFFINE";           if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mFullAffine) );
       k="DISTOX_STYLUS_SIZE";           if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mStylusSize );
+      k="DISTOX_SPEN_SINGLE_CLICK";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mSPenSingleClickAction );
+      k="DISTOX_SPEN_LONG_CLICK";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mSPenLongClickAction );
+      k="DISTOX_SPEN_DOUBLE_CLICK";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mSPenDoubleClickAction );
       k="DISTOX_SLANT_XSECTION";        if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mSlantXSection) );
       k="DISTOX_OBLIQUE_PROJECTED";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mObliqueMax );
       k="DISTOX_DRAWING_UNIT";          if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mUnitIcons );
@@ -4449,6 +4505,15 @@ B DISTOX_SAP5_BIT16_BUG true
               break;
             case "DISTOX_STYLUS_SIZE":
               setStylusSize( Float.parseFloat( value ) ); setPreference( editor, kay, mStylusSize ); // STYLUS_MM
+              break;
+            case "DISTOX_SPEN_SINGLE_CLICK":
+              mSPenSingleClickAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mSPenSingleClickAction );
+              break;
+            case "DISTOX_SPEN_LONG_CLICK":
+              mSPenLongClickAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mSPenLongClickAction );
+              break;
+            case "DISTOX_SPEN_DOUBLE_CLICK":
+              mSPenDoubleClickAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mSPenDoubleClickAction );
               break;
             // case "DISTOX_BACKUPS_CLEAR":
             //   mBackupsClear = Boolean.parseBoolean( value ); setPreference( editor, kay, mBackupsClear ); // CLEAR_BACKUPS

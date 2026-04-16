@@ -95,6 +95,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewConfiguration;
 //
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
@@ -134,6 +135,7 @@ import android.net.Uri;
  */
 public class DrawingWindow extends ItemDrawer
                            implements View.OnTouchListener
+                                    , View.OnGenericMotionListener
                                     , View.OnClickListener
                                     , View.OnLongClickListener
                                     , OnItemClickListener
@@ -542,6 +544,7 @@ public class DrawingWindow extends ItemDrawer
 
   private boolean mRotateAzimuth; // whether to rotate azimuth button
   private boolean mPointerDown = false;
+  private boolean mTouchActive = false;
   private boolean mEditMove;      // whether moving the selected point
   private boolean mShiftMove;     // whether to move the canvas in point-shift mode
 
@@ -1013,6 +1016,34 @@ public class DrawingWindow extends ItemDrawer
 
   // ----------------------------------------------------------------
   private Handler saveHandler = new Handler();
+  private static final int SPEN_BUTTON_MASK = MotionEvent.BUTTON_STYLUS_PRIMARY | MotionEvent.BUTTON_STYLUS_SECONDARY;
+  private final Handler mSPenHandler = new Handler();
+  private final int mSPenLongPressTimeout = ViewConfiguration.getLongPressTimeout();
+  private final int mSPenDoubleTapTimeout = ViewConfiguration.getDoubleTapTimeout();
+  private boolean mSPenButtonDown = false;
+  private boolean mSPenLongClickTriggered = false;
+  private boolean mSPenPendingSingleClick = false;
+  private long mSPenPendingSingleClickTime = 0L;
+  private int mSPenLastHoverButtons = 0;
+
+  private final Runnable mSPenLongClickRunnable = new Runnable() {
+    @Override
+    public void run()
+    {
+      if ( ! mSPenButtonDown ) return;
+      mSPenLongClickTriggered = true;
+      cancelSPenPendingSingleClick();
+      performSPenAction( TDSetting.mSPenLongClickAction );
+    }
+  };
+
+  private final Runnable mSPenSingleClickRunnable = new Runnable() {
+    @Override
+    public void run()
+    {
+      flushSPenPendingSingleClick();
+    }
+  };
 
   private final Runnable saveRunnable = new Runnable() {
     @Override 
@@ -1042,6 +1073,179 @@ public class DrawingWindow extends ItemDrawer
     if ( saveHandler != null && saveRunnable != null ) {
       saveHandler.removeCallbacks( saveRunnable );
     }
+  }
+
+  private static boolean isSPenActionButtonPressed( int buttons )
+  {
+    return ( buttons & SPEN_BUTTON_MASK ) != 0;
+  }
+
+  private boolean isStylusToolEvent( MotionEvent event )
+  {
+    int np = event.getPointerCount();
+    for ( int i = 0; i < np; ++i ) {
+      int toolType = event.getToolType( i );
+      if ( toolType == MotionEvent.TOOL_TYPE_STYLUS || toolType == MotionEvent.TOOL_TYPE_ERASER ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private void cancelSPenLongClick()
+  {
+    mSPenHandler.removeCallbacks( mSPenLongClickRunnable );
+  }
+
+  private void cancelSPenPendingSingleClick()
+  {
+    mSPenHandler.removeCallbacks( mSPenSingleClickRunnable );
+    mSPenPendingSingleClick = false;
+    mSPenPendingSingleClickTime = 0L;
+  }
+
+  private void flushSPenPendingSingleClick()
+  {
+    if ( ! mSPenPendingSingleClick ) return;
+    int action = TDSetting.mSPenSingleClickAction;
+    cancelSPenPendingSingleClick();
+    performSPenAction( action );
+  }
+
+  private void resetSPenGestureState()
+  {
+    cancelSPenLongClick();
+    cancelSPenPendingSingleClick();
+    mSPenButtonDown = false;
+    mSPenLongClickTriggered = false;
+    mSPenLastHoverButtons = 0;
+  }
+
+  private void startSPenButtonGesture( long eventTime )
+  {
+    if ( mSPenPendingSingleClick && eventTime - mSPenPendingSingleClickTime > mSPenDoubleTapTimeout ) {
+      flushSPenPendingSingleClick();
+    }
+    if ( mSPenButtonDown ) return;
+    mSPenButtonDown = true;
+    mSPenLongClickTriggered = false;
+    cancelSPenLongClick();
+    mSPenHandler.postDelayed( mSPenLongClickRunnable, mSPenLongPressTimeout );
+  }
+
+  private void scheduleSPenSingleClick( long eventTime )
+  {
+    if ( TDSetting.mSPenDoubleClickAction == TDSetting.SPEN_ACTION_NONE ) {
+      performSPenAction( TDSetting.mSPenSingleClickAction );
+      return;
+    }
+    cancelSPenPendingSingleClick();
+    mSPenPendingSingleClick = true;
+    mSPenPendingSingleClickTime = eventTime;
+    mSPenHandler.postDelayed( mSPenSingleClickRunnable, mSPenDoubleTapTimeout );
+  }
+
+  private void finishSPenButtonGesture( long eventTime )
+  {
+    if ( ! mSPenButtonDown ) return;
+    mSPenButtonDown = false;
+    cancelSPenLongClick();
+    if ( mSPenLongClickTriggered ) {
+      mSPenLongClickTriggered = false;
+      return;
+    }
+    if ( mSPenPendingSingleClick ) {
+      if ( eventTime - mSPenPendingSingleClickTime <= mSPenDoubleTapTimeout ) {
+        cancelSPenPendingSingleClick();
+        performSPenAction( TDSetting.mSPenDoubleClickAction );
+      } else {
+        flushSPenPendingSingleClick();
+        scheduleSPenSingleClick( eventTime );
+      }
+      return;
+    }
+    scheduleSPenSingleClick( eventTime );
+  }
+
+  private boolean updateSPenButtonState( int buttons, long eventTime )
+  {
+    boolean pressed = isSPenActionButtonPressed( buttons );
+    if ( pressed ) {
+      if ( ! mSPenButtonDown ) {
+        startSPenButtonGesture( eventTime );
+        return true;
+      }
+    } else if ( mSPenButtonDown ) {
+      finishSPenButtonGesture( eventTime );
+      return true;
+    }
+    return false;
+  }
+
+  private void performSPenAction( int action )
+  {
+    switch ( action ) {
+      case TDSetting.SPEN_ACTION_UNDO:
+        if ( mDrawingSurface != null && mDrawingSurface.hasMoreUndo() ) {
+          mDrawingSurface.undo();
+          modified();
+        }
+        break;
+      case TDSetting.SPEN_ACTION_REDO:
+        if ( mDrawingSurface != null && mDrawingSurface.hasMoreRedo() ) {
+          mDrawingSurface.redo();
+        }
+        break;
+      case TDSetting.SPEN_ACTION_TOGGLE_PROFILE:
+        if ( mMode == MODE_DRAW ) {
+          int profile = getDisplayedSketchProfile();
+          requestSketchProfileSelection( ( profile == TDSetting.SKETCH_PROFILE_2 ) ? TDSetting.SKETCH_PROFILE_1 : TDSetting.SKETCH_PROFILE_2 );
+        }
+        break;
+      case TDSetting.SPEN_ACTION_TOGGLE_PALETTE:
+        if ( mMode == MODE_DRAW ) {
+          rotateRecentToolset();
+        }
+        break;
+      case TDSetting.SPEN_ACTION_NONE:
+      default:
+        break;
+    }
+  }
+
+  @Override
+  public boolean onGenericMotion( View view, MotionEvent rawEvent )
+  {
+    if ( view != mDrawingSurface || ! isStylusToolEvent( rawEvent ) ) return false;
+    if ( mTouchActive ) return false;
+
+    int action = rawEvent.getAction() & MotionEvent.ACTION_MASK;
+    int buttons = rawEvent.getButtonState() & SPEN_BUTTON_MASK;
+    boolean handled = false;
+
+    switch ( action ) {
+      case MotionEvent.ACTION_BUTTON_PRESS:
+      case MotionEvent.ACTION_BUTTON_RELEASE:
+        handled = updateSPenButtonState( buttons, rawEvent.getEventTime() );
+        break;
+      case MotionEvent.ACTION_HOVER_ENTER:
+      case MotionEvent.ACTION_HOVER_MOVE:
+        if ( isSPenActionButtonPressed( mSPenLastHoverButtons ) != isSPenActionButtonPressed( buttons ) ) {
+          handled = updateSPenButtonState( buttons, rawEvent.getEventTime() );
+        }
+        break;
+      case MotionEvent.ACTION_HOVER_EXIT:
+        if ( mSPenButtonDown ) {
+          resetSPenGestureState();
+          handled = true;
+        }
+        break;
+      default:
+        break;
+    }
+
+    mSPenLastHoverButtons = buttons;
+    return handled;
   }
 
   // -------------------------------------------------------------------
@@ -2652,6 +2856,7 @@ public class DrawingWindow extends ItemDrawer
     mDrawingSurface.setZoomer( this );
     mDrawingSurface.makePreviewPath( DrawingPath.DRAWING_PATH_LINE, DrawingWindow.getPreviewPaint() );
     mDrawingSurface.setOnTouchListener(this);
+    mDrawingSurface.setOnGenericMotionListener(this);
     // mDrawingSurface.setOnLongClickListener(this);
     // mDrawingSurface.setBuiltInZoomControls(true);
 
@@ -3258,6 +3463,7 @@ public class DrawingWindow extends ItemDrawer
   protected synchronized void onPause() 
   { 
     TDLog.v( "Drawing Activity onPause " );
+    resetSPenGestureState();
     doPause();
     super.onPause();
     // TDLog.Log( TDLog.LOG_PLOT, "drawing activity on pause done");
@@ -3297,6 +3503,7 @@ public class DrawingWindow extends ItemDrawer
   @Override
   protected synchronized void onDestroy()
   {
+    resetSPenGestureState();
     super.onDestroy();
     // TDLog.v( "Drawing activity onDestroy");
     if ( mDataDownloader != null ) {
@@ -4744,6 +4951,13 @@ public class DrawingWindow extends ItemDrawer
     int action = act & MotionEvent.ACTION_MASK;
     int id = 0;
 
+    if ( action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN ) {
+      mTouchActive = true;
+      if ( mSPenButtonDown ) resetSPenGestureState();
+    } else if ( action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL ) {
+      mTouchActive = false;
+    }
+
     if ( TDSetting.mStylusOnly ) {
       int np = event.getPointerCount();
       for ( id = 0; id < np; ++id ) {
@@ -4804,6 +5018,8 @@ public class DrawingWindow extends ItemDrawer
 
     } else if (action == MotionEvent.ACTION_UP) { // ----------------------------------- UP
       return onTouchUp( x_canvas, y_canvas, x_scene, y_scene );
+    } else if ( action == MotionEvent.ACTION_CANCEL ) {
+      return true;
     } else {
       TDLog.e("on touch - unhandled action " + action );
     }
@@ -10190,7 +10406,7 @@ public class DrawingWindow extends ItemDrawer
     // mDrawingState.debug("rotate");
     if ( mRecentTools == mRecentPoint ) {
       mRecentTools = mRecentLine;
-      mRecentDimX  = 
+      mRecentDimX  = Float.parseFloat( getResources().getString( R.string.dimxp ) );
       mRecentDimY  = Float.parseFloat( getResources().getString( R.string.dimxp ) );
     } else if ( mRecentTools == mRecentLine ) {
       mRecentTools = mRecentArea;

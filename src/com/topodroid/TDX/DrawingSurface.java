@@ -986,9 +986,8 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   boolean hasMoreRedo()
   { return commandManager!= null && commandManager.hasMoreRedo(); }
 
-  // UNUSED
-  // boolean hasMoreUndo()
-  // { return commandManager!= null && commandManager.hasMoreUndo(); }
+  boolean hasMoreUndo()
+  { return commandManager!= null && commandManager.hasMoreUndo(); }
 
   // public boolean hasStationName( String name ) { return commandManager.hasUserStation( name ); }
 

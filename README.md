@@ -12,6 +12,8 @@ This was essentially entirely vibe-coded with Codex.
 - PNG export?
 - Better cross-section support?
 - More colors?
+- Palm detection, if possible
+- Press-and-hold while hovering to erase
 
 *TODO*
 - Change branding, name, versioning, etc to TopoDroid Sketch

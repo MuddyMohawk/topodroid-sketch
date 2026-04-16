@@ -66,8 +66,9 @@ public class TDPrefCat
   public static final int PREF_TOOL_PROFILE       = 43;
   public static final int PREF_PROFILE_1          = 44;
   public static final int PREF_PROFILE_2          = 45;
+  public static final int PREF_CATEGORY_SPEN      = 46;
   // public static final int PREF_CATEGORY_LOG       = 42; // this must be the last NO_LOGS
-  public static final int PREF_CATEGORY_MAX = 45; // last category
+  public static final int PREF_CATEGORY_MAX = 46; // last category
 
   // the order must be the same as TDPrefKey.mKeySet as above
   static int[] mTitleRes = {
@@ -119,6 +120,7 @@ public class TDPrefCat
     R.string.title_settings_profiles,
     R.string.title_settings_profile_1,
     R.string.title_settings_profile_2,
+    R.string.title_settings_spen,
     // R.string.title_settings_log       // 43
   };
 }

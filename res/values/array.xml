@@ -108,6 +108,21 @@
      <item name="sound">1</item>
      <item name="haptic">2</item>
   </string-array>
+
+  <string-array name="spenActions">
+     <item name="none">none</item>
+     <item name="undo">undo</item>
+     <item name="redo">redo</item>
+     <item name="toggle_profile">toggle profile</item>
+     <item name="toggle_palette">toggle palette</item>
+  </string-array>
+  <string-array name="spenActionsValue" translatable="false">
+     <item name="none">0</item>
+     <item name="undo">1</item>
+     <item name="redo">2</item>
+     <item name="toggle_profile">3</item>
+     <item name="toggle_palette">4</item>
+  </string-array>
   
   <string-array name="canvasLevels">
      <item name="none">none</item>

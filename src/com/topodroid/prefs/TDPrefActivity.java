@@ -300,6 +300,7 @@ public class TDPrefActivity extends Activity
     "PROFILES",
     "PROFILE_1",
     "PROFILE_2",
+    "SPEN",
     // R.string.title_settings_log       // 43
   };
 
@@ -380,6 +381,7 @@ public class TDPrefActivity extends Activity
       case TDPrefCat.PREF_CATEGORY_SURVEY:    mPrefs = TDPref.makeSurveyPrefs(   this, hlp ); break;
       case TDPrefCat.PREF_CATEGORY_PLOT:      mPrefs = TDPref.makePlotPrefs(     this, hlp ); break;
       case TDPrefCat.PREF_TOOL_PROFILE:       mPrefs = TDPref.makeToolProfilePrefs( this, hlp ); break;
+      case TDPrefCat.PREF_CATEGORY_SPEN:      mPrefs = TDPref.makeSPenPrefs( this, hlp ); break;
       case TDPrefCat.PREF_CATEGORY_CALIB:     mPrefs = TDPref.makeCalibPrefs(    this, hlp ); break;
       case TDPrefCat.PREF_CATEGORY_DEVICE:    mPrefs = TDPref.makeDevicePrefs(   this, hlp ); break;
       case TDPrefCat.PREF_CATEGORY_EXPORT:    mPrefs = TDPref.makeExportPrefs(   this, hlp ); break;
@@ -516,6 +518,7 @@ public class TDPrefActivity extends Activity
       linkPreference( "DISTOX_PROFILE_1_SCREEN",    TDPrefCat.PREF_PROFILE_1 );
       linkPreference( "DISTOX_PROFILE_2_SCREEN",    TDPrefCat.PREF_PROFILE_2 );
     } else if (mPrefCategory == TDPrefCat.PREF_CATEGORY_DEVICE ) {
+      linkPreference( "DISTOX_SPEN_PREF",           TDPrefCat.PREF_CATEGORY_SPEN );
       linkPreference( "DISTOX_CALIB_PREF",          TDPrefCat.PREF_CATEGORY_CALIB );
     } else if (mPrefCategory == TDPrefCat.PREF_CATEGORY_CAVE3D ) {
       linkPreference( "DISTOX_DEM3D_PREF",          TDPrefCat.PREF_DEM3D );
