@@ -308,6 +308,17 @@ public class ShotWindow extends Activity
   private Button     mMenuImage;
   private boolean onMenu = false;
   private boolean onMultiselect = false;
+  private final SPenGestureHelper mSPenGestureHelper = new SPenGestureHelper(
+    new SPenGestureHelper.TriggerListener() {
+      @Override
+      public void onSPenTrigger( int trigger )
+      {
+        if ( SPenGestureHelper.getConfiguredAction( trigger ) == TDSetting.SPEN_ACTION_BACK ) {
+          performImmediateBackAction();
+        }
+      }
+    }
+  );
 
   private BitmapDrawable mBMbluetooth;
   private BitmapDrawable mBMbluetooth_no;
@@ -1563,6 +1574,7 @@ public class ShotWindow extends Activity
   @Override
   public synchronized void onDestroy() 
   {
+    mSPenGestureHelper.cancel();
     super.onDestroy();
     TDLog.v( "Shot activity on Destroy" );
     new DataStopTask( mApp, this, mDataDownloader ).immediateExecute(); // 20251217
@@ -1584,6 +1596,7 @@ public class ShotWindow extends Activity
   @Override
   public synchronized void onPause() 
   {
+    mSPenGestureHelper.cancel();
     super.onPause();
     TDLog.v( "Shot activity on Pause" );
     // saveInstanceToData();
@@ -1640,11 +1653,35 @@ public class ShotWindow extends Activity
     }
   };
 
+  private void cancelDoubleBackPrompt()
+  {
+    doubleBack = false;
+    if ( doubleBackHandler != null ) {
+      doubleBackHandler.removeCallbacks( doubleBackRunnable );
+    }
+    if ( doubleBackToast != null ) doubleBackToast.cancel();
+    doubleBackToast = null;
+  }
+
   private void doFinish()
   {
     new DataStopTask( mApp, this, mDataDownloader ).immediateExecute();
     TopoDroidApp.mShotWindow = null;
     finish();
+  }
+
+  private void performImmediateBackAction()
+  {
+    cancelDoubleBackPrompt();
+    if ( closeMenu() ) return;
+    if ( CutNPaste.dismissPopupBT() ) return;
+    if ( onMultiselect ) {
+      clearMultiSelect();
+      return;
+    }
+    DrawingSurface.clearManagersCache();
+    TopoDroidApp.mShotWindow = null;
+    super.onBackPressed();
   }
 
   // back pressed puts the activty on pause
@@ -1679,6 +1716,13 @@ public class ShotWindow extends Activity
       doubleBackToast = TDToast.makeToast( R.string.double_back );
       doubleBackHandler.postDelayed( doubleBackRunnable, 1000 );
     }
+  }
+
+  @Override
+  public boolean dispatchGenericMotionEvent( MotionEvent event )
+  {
+    if ( mSPenGestureHelper.onGenericMotion( event, false ) ) return true;
+    return super.dispatchGenericMotionEvent( event );
   }
 
   // --------------------------------------------------------------

@@ -95,7 +95,6 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewConfiguration;
 //
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
@@ -1016,34 +1015,15 @@ public class DrawingWindow extends ItemDrawer
 
   // ----------------------------------------------------------------
   private Handler saveHandler = new Handler();
-  private static final int SPEN_BUTTON_MASK = MotionEvent.BUTTON_STYLUS_PRIMARY | MotionEvent.BUTTON_STYLUS_SECONDARY;
-  private final Handler mSPenHandler = new Handler();
-  private final int mSPenLongPressTimeout = ViewConfiguration.getLongPressTimeout();
-  private final int mSPenDoubleTapTimeout = ViewConfiguration.getDoubleTapTimeout();
-  private boolean mSPenButtonDown = false;
-  private boolean mSPenLongClickTriggered = false;
-  private boolean mSPenPendingSingleClick = false;
-  private long mSPenPendingSingleClickTime = 0L;
-  private int mSPenLastHoverButtons = 0;
-
-  private final Runnable mSPenLongClickRunnable = new Runnable() {
-    @Override
-    public void run()
-    {
-      if ( ! mSPenButtonDown ) return;
-      mSPenLongClickTriggered = true;
-      cancelSPenPendingSingleClick();
-      performSPenAction( TDSetting.mSPenLongClickAction );
+  private final SPenGestureHelper mSPenGestureHelper = new SPenGestureHelper(
+    new SPenGestureHelper.TriggerListener() {
+      @Override
+      public void onSPenTrigger( int trigger )
+      {
+        performSPenAction( SPenGestureHelper.getConfiguredAction( trigger ) );
+      }
     }
-  };
-
-  private final Runnable mSPenSingleClickRunnable = new Runnable() {
-    @Override
-    public void run()
-    {
-      flushSPenPendingSingleClick();
-    }
-  };
+  );
 
   private final Runnable saveRunnable = new Runnable() {
     @Override 
@@ -1075,113 +1055,6 @@ public class DrawingWindow extends ItemDrawer
     }
   }
 
-  private static boolean isSPenActionButtonPressed( int buttons )
-  {
-    return ( buttons & SPEN_BUTTON_MASK ) != 0;
-  }
-
-  private boolean isStylusToolEvent( MotionEvent event )
-  {
-    int np = event.getPointerCount();
-    for ( int i = 0; i < np; ++i ) {
-      int toolType = event.getToolType( i );
-      if ( toolType == MotionEvent.TOOL_TYPE_STYLUS || toolType == MotionEvent.TOOL_TYPE_ERASER ) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private void cancelSPenLongClick()
-  {
-    mSPenHandler.removeCallbacks( mSPenLongClickRunnable );
-  }
-
-  private void cancelSPenPendingSingleClick()
-  {
-    mSPenHandler.removeCallbacks( mSPenSingleClickRunnable );
-    mSPenPendingSingleClick = false;
-    mSPenPendingSingleClickTime = 0L;
-  }
-
-  private void flushSPenPendingSingleClick()
-  {
-    if ( ! mSPenPendingSingleClick ) return;
-    int action = TDSetting.mSPenSingleClickAction;
-    cancelSPenPendingSingleClick();
-    performSPenAction( action );
-  }
-
-  private void resetSPenGestureState()
-  {
-    cancelSPenLongClick();
-    cancelSPenPendingSingleClick();
-    mSPenButtonDown = false;
-    mSPenLongClickTriggered = false;
-    mSPenLastHoverButtons = 0;
-  }
-
-  private void startSPenButtonGesture( long eventTime )
-  {
-    if ( mSPenPendingSingleClick && eventTime - mSPenPendingSingleClickTime > mSPenDoubleTapTimeout ) {
-      flushSPenPendingSingleClick();
-    }
-    if ( mSPenButtonDown ) return;
-    mSPenButtonDown = true;
-    mSPenLongClickTriggered = false;
-    cancelSPenLongClick();
-    mSPenHandler.postDelayed( mSPenLongClickRunnable, mSPenLongPressTimeout );
-  }
-
-  private void scheduleSPenSingleClick( long eventTime )
-  {
-    if ( TDSetting.mSPenDoubleClickAction == TDSetting.SPEN_ACTION_NONE ) {
-      performSPenAction( TDSetting.mSPenSingleClickAction );
-      return;
-    }
-    cancelSPenPendingSingleClick();
-    mSPenPendingSingleClick = true;
-    mSPenPendingSingleClickTime = eventTime;
-    mSPenHandler.postDelayed( mSPenSingleClickRunnable, mSPenDoubleTapTimeout );
-  }
-
-  private void finishSPenButtonGesture( long eventTime )
-  {
-    if ( ! mSPenButtonDown ) return;
-    mSPenButtonDown = false;
-    cancelSPenLongClick();
-    if ( mSPenLongClickTriggered ) {
-      mSPenLongClickTriggered = false;
-      return;
-    }
-    if ( mSPenPendingSingleClick ) {
-      if ( eventTime - mSPenPendingSingleClickTime <= mSPenDoubleTapTimeout ) {
-        cancelSPenPendingSingleClick();
-        performSPenAction( TDSetting.mSPenDoubleClickAction );
-      } else {
-        flushSPenPendingSingleClick();
-        scheduleSPenSingleClick( eventTime );
-      }
-      return;
-    }
-    scheduleSPenSingleClick( eventTime );
-  }
-
-  private boolean updateSPenButtonState( int buttons, long eventTime )
-  {
-    boolean pressed = isSPenActionButtonPressed( buttons );
-    if ( pressed ) {
-      if ( ! mSPenButtonDown ) {
-        startSPenButtonGesture( eventTime );
-        return true;
-      }
-    } else if ( mSPenButtonDown ) {
-      finishSPenButtonGesture( eventTime );
-      return true;
-    }
-    return false;
-  }
-
   private void performSPenAction( int action )
   {
     switch ( action ) {
@@ -1207,6 +1080,9 @@ public class DrawingWindow extends ItemDrawer
           rotateRecentToolset();
         }
         break;
+      case TDSetting.SPEN_ACTION_BACK:
+        performImmediateBackAction();
+        break;
       case TDSetting.SPEN_ACTION_NONE:
       default:
         break;
@@ -1216,36 +1092,7 @@ public class DrawingWindow extends ItemDrawer
   @Override
   public boolean onGenericMotion( View view, MotionEvent rawEvent )
   {
-    if ( view != mDrawingSurface || ! isStylusToolEvent( rawEvent ) ) return false;
-    if ( mTouchActive ) return false;
-
-    int action = rawEvent.getAction() & MotionEvent.ACTION_MASK;
-    int buttons = rawEvent.getButtonState() & SPEN_BUTTON_MASK;
-    boolean handled = false;
-
-    switch ( action ) {
-      case MotionEvent.ACTION_BUTTON_PRESS:
-      case MotionEvent.ACTION_BUTTON_RELEASE:
-        handled = updateSPenButtonState( buttons, rawEvent.getEventTime() );
-        break;
-      case MotionEvent.ACTION_HOVER_ENTER:
-      case MotionEvent.ACTION_HOVER_MOVE:
-        if ( isSPenActionButtonPressed( mSPenLastHoverButtons ) != isSPenActionButtonPressed( buttons ) ) {
-          handled = updateSPenButtonState( buttons, rawEvent.getEventTime() );
-        }
-        break;
-      case MotionEvent.ACTION_HOVER_EXIT:
-        if ( mSPenButtonDown ) {
-          resetSPenGestureState();
-          handled = true;
-        }
-        break;
-      default:
-        break;
-    }
-
-    mSPenLastHoverButtons = buttons;
-    return handled;
+    return ( view == mDrawingSurface ) && mSPenGestureHelper.onGenericMotion( rawEvent, mTouchActive );
   }
 
   // -------------------------------------------------------------------
@@ -1711,10 +1558,46 @@ public class DrawingWindow extends ItemDrawer
     }
   };
 
+  private void cancelDoubleBackPrompt()
+  {
+    doubleBack = false;
+    if ( doubleBackHandler != null ) {
+      doubleBackHandler.removeCallbacks( doubleBackRunnable );
+    }
+    if ( doubleBackToast != null ) doubleBackToast.cancel();
+    doubleBackToast = null;
+  }
+
   void doClose()
   {
     // TDLog.v( "menu close ...");
     super.onBackPressed();
+  }
+
+  private void performImmediateBackAction()
+  {
+    cancelDoubleBackPrompt();
+    if ( dismissPopups() != DISMISS_NONE ) return;
+    if ( onMenu ) {
+      closeMenu();
+      return;
+    }
+    if ( mTh2Edit ) { // TH2EDIT
+      super.onBackPressed();
+    } else if ( PlotType.isAnySection( mType ) ) {
+      startSaveTdrTask( mType, PlotSave.SAVE, TDSetting.mBackupNumber+2, TDPath.NR_BACKUP );
+      popInfo();
+      doStart( false, -1, null );
+      if ( mSectionPt == null ) {
+        mSectionPt = findSectionPoint( mFullName3 );
+      }
+      if ( mSectionPt != null ) {
+        setXSectionOutline( mFullName3, mSectionPt.mScrap, true, mSectionPt.cx, mSectionPt.cy );
+        mSectionPt = null;
+      }
+    } else {
+      super.onBackPressed();
+    }
   }
 
   // @note doSaveTdr( ) is already called by onPause
@@ -3463,7 +3346,7 @@ public class DrawingWindow extends ItemDrawer
   protected synchronized void onPause() 
   { 
     TDLog.v( "Drawing Activity onPause " );
-    resetSPenGestureState();
+    mSPenGestureHelper.cancel();
     doPause();
     super.onPause();
     // TDLog.Log( TDLog.LOG_PLOT, "drawing activity on pause done");
@@ -3503,7 +3386,7 @@ public class DrawingWindow extends ItemDrawer
   @Override
   protected synchronized void onDestroy()
   {
-    resetSPenGestureState();
+    mSPenGestureHelper.cancel();
     super.onDestroy();
     // TDLog.v( "Drawing activity onDestroy");
     if ( mDataDownloader != null ) {
@@ -4953,7 +4836,7 @@ public class DrawingWindow extends ItemDrawer
 
     if ( action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN ) {
       mTouchActive = true;
-      if ( mSPenButtonDown ) resetSPenGestureState();
+      mSPenGestureHelper.cancel();
     } else if ( action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL ) {
       mTouchActive = false;
     }

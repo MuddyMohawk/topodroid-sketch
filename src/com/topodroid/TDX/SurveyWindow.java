@@ -77,6 +77,7 @@ import android.view.View;
 import android.view.View.OnFocusChangeListener;
 // import android.view.View.OnClickListener;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 // for FRAGMENT
 // import android.view.ViewGroup;
 // import android.view.LayoutInflater;
@@ -179,6 +180,17 @@ public class SurveyWindow extends Activity
   private boolean mSplayColor = false;
 
   private boolean mWarnTeam = true;
+  private final SPenGestureHelper mSPenGestureHelper = new SPenGestureHelper(
+    new SPenGestureHelper.TriggerListener() {
+      @Override
+      public void onSPenTrigger( int trigger )
+      {
+        if ( SPenGestureHelper.getConfiguredAction( trigger ) == TDSetting.SPEN_ACTION_BACK ) {
+          onBackPressed();
+        }
+      }
+    }
+  );
 
   private BitmapDrawable mBMpicture;
   private BitmapDrawable mBMpicture_no;
@@ -487,6 +499,7 @@ public class SurveyWindow extends Activity
   public void onPause()
   {
     TDLog.v("Survey Activity on Pause " );
+    mSPenGestureHelper.cancel();
     super.onPause();
   }
 
@@ -761,13 +774,19 @@ public class SurveyWindow extends Activity
   }
 
   @Override
+  public void onBackPressed()
+  {
+    if ( ! saveSurvey( true ) ) return;
+    TopoDroidApp.mSurveyWindow = null;
+    super.onBackPressed();
+  }
+
+  @Override
   public boolean onKeyDown( int code, KeyEvent event )
   {
     switch ( code ) {
       case KeyEvent.KEYCODE_BACK: // HARDWARE BACK (4)
-        if ( ! saveSurvey( true ) ) return true;
-        TopoDroidApp.mSurveyWindow = null;
-        super.onBackPressed();
+        onBackPressed();
         return true;
       case KeyEvent.KEYCODE_MENU:   // HARDWARE MENU (82)
         UserManualActivity.showHelpPage( mActivity, getResources().getString( HELP_PAGE ));
@@ -778,6 +797,13 @@ public class SurveyWindow extends Activity
         // TDLog.e( "key down: code " + code );
     }
     return false;
+  }
+
+  @Override
+  public boolean dispatchGenericMotionEvent( MotionEvent event )
+  {
+    if ( mSPenGestureHelper.onGenericMotion( event, false ) ) return true;
+    return super.dispatchGenericMotionEvent( event );
   }
   // ---------------------------------------------------------
 

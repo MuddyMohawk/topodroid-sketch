@@ -14,12 +14,15 @@ This was essentially entirely vibe-coded with Codex.
 - More colors?
 - Palm detection, if possible
 - Press-and-hold while hovering to erase
+- Option for double row/larger palette 
 
 *TODO*
 - Change branding, name, versioning, etc to TopoDroid Sketch
 - Add safety warnings when importing vanilla TopoDroid stuff
+- Add toggle erase action for S pen. Consider change long press to press and hold, revert on release
+- Add S pen default actions
 
-### TopoDroid Sketch v1.7 Changelog:
+### TopoDroid Sketch v1.10.1 Changelog:
 
 - Changed things so I could work in Android Studio. I'm a noob.
 

@@ -619,6 +619,7 @@ public class TDSetting
   public static final int SPEN_ACTION_REDO = 2;
   public static final int SPEN_ACTION_TOGGLE_PROFILE = 3;
   public static final int SPEN_ACTION_TOGGLE_PALETTE = 4;
+  public static final int SPEN_ACTION_BACK = 5;
   public static int mSPenSingleClickAction = SPEN_ACTION_NONE;
   public static int mSPenLongClickAction   = SPEN_ACTION_NONE;
   public static int mSPenDoubleClickAction = SPEN_ACTION_NONE;
@@ -3321,6 +3322,7 @@ public class TDSetting
       case SPEN_ACTION_REDO:
       case SPEN_ACTION_TOGGLE_PROFILE:
       case SPEN_ACTION_TOGGLE_PALETTE:
+      case SPEN_ACTION_BACK:
         return action;
       default:
         return SPEN_ACTION_NONE;

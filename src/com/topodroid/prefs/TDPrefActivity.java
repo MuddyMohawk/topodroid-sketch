@@ -21,6 +21,7 @@ import com.topodroid.ui.MyButton;
 import com.topodroid.help.IHelpViewer;
 import com.topodroid.help.AIdialog;
 // import com.topodroid.help.AIlocalModel; // GEMMA3
+import com.topodroid.TDX.SPenGestureHelper;
 import com.topodroid.TDX.TDandroid;
 import com.topodroid.TDX.TDInstance;
 import com.topodroid.TDX.TDLevel;
@@ -52,7 +53,7 @@ import android.widget.Toolbar;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.LayoutInflater;
-// import android.view.MotionEvent;
+import android.view.MotionEvent;
 import android.view.Window;
 
 /**
@@ -92,6 +93,17 @@ public class TDPrefActivity extends Activity
 
   private TextView mTitleText = null;
   private ImageButton mAIbutton;
+  private final SPenGestureHelper mSPenGestureHelper = new SPenGestureHelper(
+    new SPenGestureHelper.TriggerListener() {
+      @Override
+      public void onSPenTrigger( int trigger )
+      {
+        if ( SPenGestureHelper.getConfiguredAction( trigger ) == TDSetting.SPEN_ACTION_BACK ) {
+          onBackPressed();
+        }
+      }
+    }
+  );
 
   /** find a preference by the name
    * @param name    preference name
@@ -111,6 +123,7 @@ public class TDPrefActivity extends Activity
   @Override
   public void onDestroy( )
   {
+    mSPenGestureHelper.cancel();
     super.onDestroy();
     if ( this == mPrefActivityAll ) mPrefActivityAll = null;
     if ( this == mPrefActivitySurvey ) mPrefActivitySurvey = null;
@@ -178,6 +191,13 @@ public class TDPrefActivity extends Activity
     setResult( RESULT_OK, null ); // result is always OK
     // finish();
     super.onBackPressed();
+  }
+
+  @Override
+  public boolean dispatchGenericMotionEvent( MotionEvent event )
+  {
+    if ( mSPenGestureHelper.onGenericMotion( event, false ) ) return true;
+    return super.dispatchGenericMotionEvent( event );
   }
 
   // ---------------------------------------------------------------------

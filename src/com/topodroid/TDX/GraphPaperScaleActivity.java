@@ -30,7 +30,7 @@ import android.os.Bundle;
 import android.content.Intent;
 import android.app.Activity;
 
-// import android.view.MotionEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -51,6 +51,17 @@ public class GraphPaperScaleActivity extends Activity
   private Button  mBtnMinus;
   private Button  mBtnHelp;
   private TextView mTVdensity;
+  private final SPenGestureHelper mSPenGestureHelper = new SPenGestureHelper(
+    new SPenGestureHelper.TriggerListener() {
+      @Override
+      public void onSPenTrigger( int trigger )
+      {
+        if ( SPenGestureHelper.getConfiguredAction( trigger ) == TDSetting.SPEN_ACTION_BACK ) {
+          onBackPressed();
+        }
+      }
+    }
+  );
 
   // private float mGraphPaperScale; // in GraphPaperScaleSurface
 
@@ -173,6 +184,20 @@ public class GraphPaperScaleActivity extends Activity
     mSurface.stopDrawingThread();
     setResult( RESULT_CANCELED );
     finish();
+  }
+
+  @Override
+  public boolean dispatchGenericMotionEvent( MotionEvent event )
+  {
+    if ( mSPenGestureHelper.onGenericMotion( event, false ) ) return true;
+    return super.dispatchGenericMotionEvent( event );
+  }
+
+  @Override
+  protected void onDestroy()
+  {
+    mSPenGestureHelper.cancel();
+    super.onDestroy();
   }
 
   /** display help

@@ -29,6 +29,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.WindowManager;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 
 public class PtCmapActivity extends Activity
                             implements OnClickListener
@@ -58,6 +59,17 @@ public class PtCmapActivity extends Activity
   private EditText[] mETpoint;
 
   private Button mBtOk;
+  private final SPenGestureHelper mSPenGestureHelper = new SPenGestureHelper(
+    new SPenGestureHelper.TriggerListener() {
+      @Override
+      public void onSPenTrigger( int trigger )
+      {
+        if ( SPenGestureHelper.getConfiguredAction( trigger ) == TDSetting.SPEN_ACTION_BACK ) {
+          onBackPressed();
+        }
+      }
+    }
+  );
 
   public static String getLineThName( int k ) 
   {
@@ -198,6 +210,20 @@ public class PtCmapActivity extends Activity
   //   finish();
   // }
 
+  @Override
+  public boolean dispatchGenericMotionEvent( MotionEvent event )
+  {
+    if ( mSPenGestureHelper.onGenericMotion( event, false ) ) return true;
+    return super.dispatchGenericMotionEvent( event );
+  }
+
+  @Override
+  protected void onDestroy()
+  {
+    mSPenGestureHelper.cancel();
+    super.onDestroy();
+  }
+
 
   @Override
   public boolean onKeyDown( int code, KeyEvent event )
@@ -229,4 +255,3 @@ public class PtCmapActivity extends Activity
     TDLocale.resetTheLocale();
   }
 }
-
