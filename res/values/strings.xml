@@ -1319,7 +1319,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="export_roundtrip" copyable="all">Round-trip</string>
     <string name="export_share">Share</string>
   <string name="export_overwrite">Overwrite</string>
-  <string name="export_personal_line_symbols">Include personal line symbols</string>
+  <string name="export_sketch_line_symbols">Include sketch line symbols</string>
     <!-- UNUSED string name="export_scale_png">Resolution</string -->
     <string name="export_scale_th">Scale 1 :</string>
     <string name="export_spacing_th">Point spacing</string>
@@ -1951,12 +1951,12 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_dot_radius_message">Size of the green dots</string>
   <string name="pref_line_thickness_title">Line width</string>
   <string name="pref_line_thickness_summary">Drawing line width</string>
-  <string name="pref_user_line_fine_width_title">Fine personal line width</string>
-  <string name="pref_user_line_fine_width_summary">Width multiplier for the fine personal sketch line</string>
-  <string name="pref_user_line_standard_width_title">Standard personal line width</string>
-  <string name="pref_user_line_standard_width_summary">Width multiplier for the standard personal sketch line</string>
-  <string name="pref_user_line_thick_width_title">Thick personal line width</string>
-  <string name="pref_user_line_thick_width_summary">Width multiplier for the thick personal sketch line</string>
+  <string name="pref_sketch_line_fine_width_title">Fine sketch line width</string>
+  <string name="pref_sketch_line_fine_width_summary">Width multiplier for the fine sketch line</string>
+  <string name="pref_sketch_line_standard_width_title">Standard sketch line width</string>
+  <string name="pref_sketch_line_standard_width_summary">Width multiplier for the standard sketch line</string>
+  <string name="pref_sketch_line_thick_width_title">Thick sketch line width</string>
+  <string name="pref_sketch_line_thick_width_summary">Width multiplier for the thick sketch line</string>
   <string name="pref_line_units_title">Line style scale</string>
   <string name="pref_line_units_summary">Scale of line drawing styles</string>
   <string name="pref_line_close_title">Close closed lines</string>

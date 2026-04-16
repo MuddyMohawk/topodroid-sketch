@@ -438,9 +438,9 @@ public class BrushManager
   public static void reloadLineLibrary( Resources res )
   {
     // TDLog.v("BRUSH load line library" );
-    PersonalSketchLineManager.ensureLineSymbols();
+      SketchLineSymbolManager.ensureLineSymbols();
     mLineLib = new SymbolLineLibrary( res );
-    PersonalSketchLineManager.onLineLibraryLoaded();
+      SketchLineSymbolManager.onLineLibraryLoaded();
     TopoDroidApp.refreshDrawingAfterLineLibraryReload();
   }
 

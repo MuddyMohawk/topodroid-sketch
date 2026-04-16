@@ -9,7 +9,7 @@ This was essentially entirely vibe-coded with Codex.
 #### Planned Features
 - Active Tab Stylus button support
 - Quick switch between preset line styles (smooth, straight, fine)
-- Line colors?
+- Line colors per sketch line? (new color picker means colors everywhere!)
 - PNG export?
 - Better cross-section support?
 
