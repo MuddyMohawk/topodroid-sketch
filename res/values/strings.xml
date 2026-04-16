@@ -1372,7 +1372,11 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="title_coverage">Calibration data distribution</string>
     <string name="title_coeff">Calibration coefficients</string>
     <string name="title_coeff_two">Calibration coefficients [%1$d]</string>
-    <string name="title_color_picker">Pick a color</string>
+  <string name="title_color_picker">Pick a color</string>
+  <string name="color_preview">Preview</string>
+  <string name="color_saturation_brightness">Saturation / Brightness</string>
+  <string name="color_hue">Hue</string>
+  <string name="color_presets">Presets</string>
     <!-- UNUSED string name="title_contour">Contour</string -->
     <!-- UNUSED string name="title_coord">Enter the point coordinates:</string -->
     <string name="title_current_station">Saved stations</string>

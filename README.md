@@ -24,7 +24,7 @@ This was essentially entirely vibe-coded with Codex.
 - Added sketch grid appearance settings for both grid width and grid color
 - Added the new 1 foot sketch-grid unit alongside 2 feet, yard, meter, and 10 cm.
 - Fixed the length-unit/default regression so explicit feet vs meters values are handled correctly on load, live updates, and settings import/export.
-
+- TODO: Investigate backsight validation and cavway labels. 
 
 # topodroid
 

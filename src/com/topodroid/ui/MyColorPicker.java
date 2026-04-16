@@ -1,370 +1,523 @@
 /* MyColorPicker.java
  *
- * @note This class is adapted from API demo ColorPicker in Android 2.2 (api-8)
- *       therefore I leave the original copyright
- * ----------------------------------------------------------------------------
- * Copyright (C) 2007 The Android Open Source Project
+ * @author marco corvi
+ * @date apr 2026
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * @brief Shared HSV color picker with preset swatches
+ * --------------------------------------------------------
+ *  Copyright This software is distributed under GPL-3.0 or later
+ *  See the file COPYING.
+ * --------------------------------------------------------
  */
-
 package com.topodroid.ui;
 
-import com.topodroid.util.TDMath;
 import com.topodroid.util.TDColor;
-import com.topodroid.prefs.TDSetting;
-import com.topodroid.TDX.TopoDroidApp;
 import com.topodroid.TDX.R;
 
 import android.os.Bundle;
-// import android.app.Dialog;
 import android.content.Context;
-import android.graphics.Paint;
-import android.graphics.Color;
 import android.graphics.Canvas;
-import android.graphics.ColorMatrix;
+import android.graphics.Color;
+import android.graphics.LinearGradient;
+import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.Shader;
-import android.graphics.SweepGradient;
-
+import android.graphics.drawable.GradientDrawable;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 
 import android.widget.Button;
-import android.widget.LinearLayout;
 import android.widget.GridLayout;
+import android.widget.LinearLayout;
 
 public class MyColorPicker extends MyDialog
                            implements View.OnClickListener
 {
-  private static final int CENTER_X = 200;
-  private static final int CENTER_Y = 200;
-  private static final int CENTER_RADIUS = 64;
-  private static final int CENTER_RADIUS_2 = CENTER_RADIUS * CENTER_RADIUS;
+  private static final int GRID_COLUMNS         = 8;
+  private static final int SAT_VALUE_HEIGHT_DP  = 200;
+  private static final int HUE_HEIGHT_DP        = 32;
+  private static final int PICKER_CORNER_DP     = 8;
+  private static final int PICKER_BORDER_DP     = 1;
+  private static final int SWATCH_MIN_HEIGHT_DP = 28;
+  private static final int SWATCH_MARGIN_DP     = 4;
+  private static final int MARKER_RADIUS_DP     = 10;
+
+  private interface HueChangeListener {
+    void onHueChanged( float hue );
+  }
+
+  private interface SaturationValueChangeListener {
+    void onSaturationValueChanged( float saturation, float value );
+  }
+
+  public interface IColorChanged {
+    void colorChanged( int color );
+  }
 
   private Button mBtnOk;
   private Button mBtnClear;
   private Button mBtnClose;
 
-  public interface IColorChanged {
-    void colorChanged(int color);
+  private final IColorChanged mListener;
+  private final float[] mHsv = new float[3];
+
+  private int mSelectedColor;
+
+  private View mPreviewSwatch;
+  private GridLayout mGridLayout;
+  private LinearLayout mHueLayout;
+  private LinearLayout mSatValueLayout;
+  private HueSliderView mHueSliderView;
+  private SaturationValueView mSatValueView;
+
+  private static class HueSliderView extends View
+  {
+    private final HueChangeListener mListener;
+    private final Paint mGradientPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mBorderPaint   = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mMarkerOuter   = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mMarkerInner   = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF mRect = new RectF();
+    private final float mCornerRadius;
+    private final float mMarkerRadius;
+    private float mHue;
+
+    HueSliderView( Context context, float hue, HueChangeListener listener )
+    {
+      super( context );
+      mHue = hue;
+      mListener = listener;
+      mCornerRadius = dp( context, PICKER_CORNER_DP );
+      mMarkerRadius = dp( context, MARKER_RADIUS_DP );
+
+      mBorderPaint.setStyle( Paint.Style.STROKE );
+      mBorderPaint.setStrokeWidth( dp( context, PICKER_BORDER_DP ) );
+      mBorderPaint.setColor( 0xff555555 );
+
+      mMarkerOuter.setStyle( Paint.Style.STROKE );
+      mMarkerOuter.setStrokeWidth( dp( context, 3 ) );
+      mMarkerOuter.setColor( TDColor.WHITE );
+
+      mMarkerInner.setStyle( Paint.Style.STROKE );
+      mMarkerInner.setStrokeWidth( dp( context, 1 ) );
+      mMarkerInner.setColor( TDColor.BLACK );
+    }
+
+    void setHue( float hue )
+    {
+      mHue = clampHue( hue );
+      invalidate();
+    }
+
+    @Override
+    protected void onSizeChanged( int w, int h, int oldw, int oldh )
+    {
+      super.onSizeChanged( w, h, oldw, oldh );
+      mRect.set( 0, 0, w, h );
+      mGradientPaint.setShader( new LinearGradient(
+          0, 0, w, 0,
+          new int[] {
+            0xffff0000,
+            0xffffff00,
+            0xff00ff00,
+            0xff00ffff,
+            0xff0000ff,
+            0xffff00ff,
+            0xffff0000
+          },
+          null,
+          Shader.TileMode.CLAMP
+      ) );
+    }
+
+    @Override
+    protected void onDraw( Canvas canvas )
+    {
+      canvas.drawRoundRect( mRect, mCornerRadius, mCornerRadius, mGradientPaint );
+      canvas.drawRoundRect( mRect, mCornerRadius, mCornerRadius, mBorderPaint );
+
+      float width = Math.max( 1, getWidth() );
+      float cx = (mHue / 360.0f) * width;
+      if ( cx >= width ) cx = width - 1;
+      float cy = getHeight() * 0.5f;
+      canvas.drawCircle( cx, cy, mMarkerRadius, mMarkerOuter );
+      canvas.drawCircle( cx, cy, mMarkerRadius - dp( getContext(), 2 ), mMarkerInner );
+    }
+
+    @Override
+    public boolean onTouchEvent( MotionEvent event )
+    {
+      switch ( event.getAction() ) {
+        case MotionEvent.ACTION_DOWN:
+        case MotionEvent.ACTION_MOVE:
+          updateHueFromTouch( event.getX() );
+          return true;
+        case MotionEvent.ACTION_UP:
+          updateHueFromTouch( event.getX() );
+          performClick();
+          return true;
+        default:
+          return super.onTouchEvent( event );
+      }
+    }
+
+    @Override
+    public boolean performClick()
+    {
+      super.performClick();
+      return true;
+    }
+
+    private void updateHueFromTouch( float x )
+    {
+      float width = Math.max( 1, getWidth() );
+      float unit = clamp01( x / width );
+      float hue = 360.0f * unit;
+      if ( hue >= 360.0f ) hue = 359.999f;
+      if ( hue != mHue ) {
+        mHue = hue;
+        invalidate();
+        if ( mListener != null ) mListener.onHueChanged( mHue );
+      }
+    }
   }
 
-  private IColorChanged mListener;
-  private int mColor;
-  private ColorPickerView mColorPicker;
-
-  private LinearLayout mColorLayout;
-  private GridLayout   mGridLayout;
-
-  // content view of color picker
-  private static class ColorPickerView extends View
+  private static class SaturationValueView extends View
   {
-      private Paint mPaint;
-      private Paint mCenterPaint;
-      private final int[] mColors;
-      private IColorChanged mListener;
-      
-      private boolean mTrackingCenter;
-      private boolean mHighlightCenter;
-      private RectF   mRect;
-      
-      /** cstr
-       * @param c     context
-       * @param l     listener to color changes
-       * @param color initial color
-       */
-      ColorPickerView(Context c, IColorChanged l, int color)
-      {
-        super(c);
-        mListener = l;
-        // red cyan blue aqua green yellow red
-        mColors = new int[] { 0xFFFF0000, 0xFFFF00FF, 0xFF0000FF, 0xFF00FFFF, 0xFF00FF00, 0xFFFFFF00, 0xFFFF0000 };
-        Shader s = new SweepGradient(0, 0, mColors, null);
-        
-        mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mPaint.setShader(s);
-        mPaint.setStyle(Paint.Style.STROKE);
-        mPaint.setStrokeWidth(64);
-        
-        mCenterPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mCenterPaint.setColor(color);
-        mCenterPaint.setStrokeWidth(5);
+    private final SaturationValueChangeListener mListener;
+    private final Paint mBasePaint   = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mSatPaint    = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mValuePaint  = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mBorderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mMarkerOuter = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mMarkerInner = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final RectF mRect = new RectF();
+    private final float mCornerRadius;
+    private final float mMarkerRadius;
+    private float mHue;
+    private float mSaturation;
+    private float mValue;
 
-        float r = CENTER_X - mPaint.getStrokeWidth()*0.5f;
-	mRect = new RectF( -r, -r, r, r );
-      }
-
-      @Override 
-      protected void onDraw(Canvas canvas)
-      {
-          canvas.translate(CENTER_X, CENTER_X);
-          canvas.drawOval( mRect, mPaint);            
-          canvas.drawCircle(0, 0, CENTER_RADIUS, mCenterPaint);
-          
-          if (mTrackingCenter) {
-              int c = mCenterPaint.getColor();
-              mCenterPaint.setStyle(Paint.Style.STROKE);
-              mCenterPaint.setAlpha( mHighlightCenter? 0xff : 0x80 );
-              canvas.drawCircle(0, 0, CENTER_RADIUS + mCenterPaint.getStrokeWidth(), mCenterPaint);
-              mCenterPaint.setStyle(Paint.Style.FILL);
-              mCenterPaint.setColor(c);
-          }
-      }
-      
-      @Override
-      protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-          setMeasuredDimension(CENTER_X*2, CENTER_Y*2);
-      }
-      
-      /** @return rounded integer value
-       * @param x  input float value
-       */
-      private int floatToByte(float x) { return Math.round(x); }
-
-      /** @return byte-clipped integer, ie, in [0,255]
-       * @param n input integer
-       */
-      private int pinToByte(int n) { return ( n < 0 )? 0 : ( n > 255 ) ? 255 : n; }
-      
-      /** @return the interpolation between two integers
-       * @param s first integer
-       * @param d second integer
-       * @param p fraction of second integer - in [0,1]
-       * @note (1-p) is the fraction of the first integer
-       */
-      private int ave(int s, int d, float p) { return s + Math.round(p * (d - s)); }
-      
-      /** get the color interpolating an array of colors
-       * @param colors   array of colors
-       * @param unit     interpolation abscissa in [0,1], 0: first color, 1:last color
-       * @return interpolated color
-       * @note for circular interpolation the first and the last color must be equal
-       */
-      private int interpColor(int[] colors, float unit)
-      {
-        if (unit <= 0) {
-            return colors[0];
-        }
-        if (unit >= 1) {
-            return colors[colors.length - 1];
-        }
-        float p = unit * (colors.length - 1);
-        int i = (int)p;
-        p -= i;
-        // now p is just the fractional part [0...1) and i is the index
-        int c0 = colors[i];
-        int c1 = colors[i+1];
-        int a = ave(Color.alpha(c0), Color.alpha(c1), p);
-        int r = ave(Color.red(c0),   Color.red(c1),   p);
-        int g = ave(Color.green(c0), Color.green(c1), p);
-        int b = ave(Color.blue(c0),  Color.blue(c1),  p);
-        return Color.argb(a, r, g, b);
-      }
-      
-      /** "rotate" the color hue
-       * @param color   input color
-       * @param rad     rotation angle [radians]
-       * @return rotated color
-       */
-      private int rotateColor(int color, float rad) {
-          float deg = rad * 180 / 3.1415927f;
-          int r = Color.red(color);
-          int g = Color.green(color);
-          int b = Color.blue(color);
-          
-          ColorMatrix cm = new ColorMatrix();
-          ColorMatrix tmp = new ColorMatrix();
-
-          cm.setRGB2YUV();
-          tmp.setRotate(0, deg);
-          cm.postConcat(tmp);
-          tmp.setYUV2RGB();
-          cm.postConcat(tmp);
-          
-          final float[] a = cm.getArray();
-
-          int ir = floatToByte(a[0] * r +  a[1] * g +  a[2] * b);
-          int ig = floatToByte(a[5] * r +  a[6] * g +  a[7] * b);
-          int ib = floatToByte(a[10] * r + a[11] * g + a[12] * b);
-          
-          return Color.argb(Color.alpha(color), pinToByte(ir), pinToByte(ig), pinToByte(ib));
-      }
-      
-      private static final float PI = 3.1415926f;
-
-      /** react to user touch
-       * @param event  touch event
-       * @return true if event has been handled
-       *
-       * @note Studio: onTouch() should call View#performClick when a click is detected
-       */
-      @Override
-      public boolean onTouchEvent(MotionEvent event)
-      {
-        float x = event.getX() - CENTER_X;
-        float y = event.getY() - CENTER_Y;
-        boolean inCenter = (x*x + y*y) <= CENTER_RADIUS_2;
-        
-        switch (event.getAction()) {
-          case MotionEvent.ACTION_DOWN:
-            mTrackingCenter = inCenter;
-            if (inCenter) {
-                mHighlightCenter = true;
-                invalidate();
-                break;
-            }
-          case MotionEvent.ACTION_MOVE:
-            if (mTrackingCenter) {
-                if (mHighlightCenter != inCenter) {
-                    mHighlightCenter = inCenter;
-                    invalidate();
-                }
-            } else {
-                float angle = TDMath.atan2(y, x);
-                // need to turn angle [-PI ... PI] into unit [0....1]
-                float unit = angle/(2*PI);
-                if (unit < 0) {
-                    unit += 1;
-                }
-                mCenterPaint.setColor(interpColor(mColors, unit));
-                invalidate();
-            }
-            break;
-          case MotionEvent.ACTION_UP:
-            if (mTrackingCenter) {
-                if (inCenter) {
-                    mListener.colorChanged(mCenterPaint.getColor());
-                }
-                mTrackingCenter = false;    // so we draw w/o halo
-                invalidate();
-            }
-            break;
-        }
-        return true;
-      }
-
-      int getColor() { return mCenterPaint.getColor(); }
-    }
-    // ------------------------------------------------------------------------------
-
-    /** color call button
-     */
-    private static class MyColorCell extends Button
+    SaturationValueView( Context context, float hue, float saturation, float value, SaturationValueChangeListener listener )
     {
-      private int idx; // index of the color in TDColor.mTDColors
-
-      /** cstr
-       * @param ctx      context
-       * @param k            color index
-       * @param listener     color-changed listener
-      */
-      MyColorCell( Context ctx, int k, OnClickListener listener, int w, int h )
-      {
-        super( ctx );
-        idx = k;
-        setOnClickListener( listener );
-        setMinWidth(  w );
-        setMinHeight( h );
-        setMaxWidth(  w );
-        setMaxHeight( h );
-        setBackgroundColor( TDColor.mTDColors[ idx ] );
-      }
-
-      /** @return the color index
-       */
-      int getIndex() { return idx; }
-    }
-    // ------------------------------------------------------------------------------
-
-    /** cstr
-     * @param context      context
-     * @param listener     color-changed listener
-     * @param initialColor initial color
-     */
-    public MyColorPicker( Context context, IColorChanged listener, int initialColor)
-    {
-      super(context, null, 0); // 0 no help // null app
-      
+      super( context );
+      mHue = clampHue( hue );
+      mSaturation = clamp01( saturation );
+      mValue = clamp01( value );
       mListener = listener;
-      mColor = initialColor;
+      mCornerRadius = dp( context, PICKER_CORNER_DP );
+      mMarkerRadius = dp( context, MARKER_RADIUS_DP );
+
+      mBorderPaint.setStyle( Paint.Style.STROKE );
+      mBorderPaint.setStrokeWidth( dp( context, PICKER_BORDER_DP ) );
+      mBorderPaint.setColor( 0xff555555 );
+
+      mMarkerOuter.setStyle( Paint.Style.STROKE );
+      mMarkerOuter.setStrokeWidth( dp( context, 3 ) );
+      mMarkerOuter.setColor( TDColor.WHITE );
+
+      mMarkerInner.setStyle( Paint.Style.STROKE );
+      mMarkerInner.setStrokeWidth( dp( context, 1 ) );
+      mMarkerInner.setColor( TDColor.BLACK );
+    }
+
+    void setColorState( float hue, float saturation, float value )
+    {
+      mHue = clampHue( hue );
+      mSaturation = clamp01( saturation );
+      mValue = clamp01( value );
+      updateBaseColor();
+      invalidate();
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState)
+    protected void onSizeChanged( int w, int h, int oldw, int oldh )
     {
-      super.onCreate(savedInstanceState);
-      IColorChanged l = new IColorChanged() {
-        public void colorChanged(int color) {
-          mListener.colorChanged(color);
-          dismiss();
-        }
-      };
-      
-      initLayout( R.layout.my_color_picker, R.string.title_color_picker );
+      super.onSizeChanged( w, h, oldw, oldh );
+      mRect.set( 0, 0, w, h );
+      mSatPaint.setShader( new LinearGradient(
+          0, 0, w, 0,
+          0xffffffff,
+          0x00ffffff,
+          Shader.TileMode.CLAMP
+      ) );
+      mValuePaint.setShader( new LinearGradient(
+          0, 0, 0, h,
+          0x00000000,
+          0xff000000,
+          Shader.TileMode.CLAMP
+      ) );
+      updateBaseColor();
+    }
 
+    @Override
+    protected void onDraw( Canvas canvas )
+    {
+      canvas.drawRoundRect( mRect, mCornerRadius, mCornerRadius, mBasePaint );
+      canvas.drawRoundRect( mRect, mCornerRadius, mCornerRadius, mSatPaint );
+      canvas.drawRoundRect( mRect, mCornerRadius, mCornerRadius, mValuePaint );
+      canvas.drawRoundRect( mRect, mCornerRadius, mCornerRadius, mBorderPaint );
 
-      mBtnOk    = (Button) findViewById( R.id.btn_ok );
-      mBtnClear = (Button) findViewById( R.id.btn_clear );
-      mBtnClose = (Button) findViewById( R.id.btn_close );
-      mBtnClear.setOnClickListener( this );
-      mBtnClose.setOnClickListener( this );
+      float width = Math.max( 1, getWidth() );
+      float height = Math.max( 1, getHeight() );
+      float cx = mSaturation * width;
+      float cy = (1.0f - mValue) * height;
+      if ( cx >= width ) cx = width - 1;
+      if ( cy >= height ) cy = height - 1;
+      canvas.drawCircle( cx, cy, mMarkerRadius, mMarkerOuter );
+      canvas.drawCircle( cx, cy, mMarkerRadius - dp( getContext(), 2 ), mMarkerInner );
+    }
 
-      mColorLayout = (LinearLayout) findViewById( R.id.color_layout );
-      mGridLayout = (GridLayout) findViewById( R.id.grid_layout );
-      if ( TDSetting.mDiscreteColors == 2 ) {
-        int w = (int)(TopoDroidApp.mDisplayWidth / 5) - 50;
-        int h = (int)(TopoDroidApp.mDisplayHeight / 14) - 30;
-        LinearLayout.LayoutParams lp = TDLayout.getLayoutParams( 20, 10, 30, 20 );
-        mColorLayout.setVisibility( View.GONE );
-        mBtnOk.setVisibility( View.GONE );
-        for ( int k=0; k<TDColor.mTDColors.length; ++k ) {
-          MyColorCell cell = new MyColorCell( mContext, k, this, w, h );
-          mGridLayout.addView( cell, lp );
-        }
-      } else { // TDSetting.mDiscreteColors == 1 
-        mBtnOk.setOnClickListener( this );
-        LinearLayout.LayoutParams lp = TDLayout.getLayoutParams( 10, 10, 20, 20 );
-        mGridLayout.setVisibility( View.GONE );
-        mColorPicker = new ColorPickerView(getContext(), l, mColor);
-        mColorLayout.addView( mColorPicker, lp );
-        mColorLayout.invalidate();
-      // } else {
-      //   dismiss();
+    @Override
+    public boolean onTouchEvent( MotionEvent event )
+    {
+      switch ( event.getAction() ) {
+        case MotionEvent.ACTION_DOWN:
+        case MotionEvent.ACTION_MOVE:
+          updateFromTouch( event.getX(), event.getY() );
+          return true;
+        case MotionEvent.ACTION_UP:
+          updateFromTouch( event.getX(), event.getY() );
+          performClick();
+          return true;
+        default:
+          return super.onTouchEvent( event );
       }
     }
 
-    /** react to a user tap
-     * @param v tapped view
-     *
-     * there are two actions:
-     *   OK: set the selected color
-     *   CLEAR: clear the color
-     */
     @Override
-    public void onClick( View v )
+    public boolean performClick()
     {
-      if ( v.getId() == R.id.btn_ok ) {
-        mListener.colorChanged( mColorPicker.getColor() );
-      } else if ( v.getId() == R.id.btn_clear ) {
-        mListener.colorChanged( 0 ); // clear color is 0
-      // } else if ( v.getId() == R.id.btn_close ) {
-          /* nothing */
-      } else if ( v instanceof MyColorCell ) {
-        MyColorCell cell = (MyColorCell)v;
-        int col = TDColor.mTDColors[ cell.getIndex() ];
-        mListener.colorChanged( col );
+      super.performClick();
+      return true;
+    }
+
+    private void updateBaseColor()
+    {
+      mBasePaint.setColor( Color.HSVToColor( new float[] { mHue, 1.0f, 1.0f } ) );
+    }
+
+    private void updateFromTouch( float x, float y )
+    {
+      float width = Math.max( 1, getWidth() );
+      float height = Math.max( 1, getHeight() );
+      float saturation = clamp01( x / width );
+      float value = clamp01( 1.0f - (y / height) );
+      if ( saturation != mSaturation || value != mValue ) {
+        mSaturation = saturation;
+        mValue = value;
+        invalidate();
+        if ( mListener != null ) mListener.onSaturationValueChanged( mSaturation, mValue );
       }
+    }
+  }
+
+  private static class MyColorCell extends View
+  {
+    private final int mColor;
+
+    MyColorCell( Context context, int color, OnClickListener listener )
+    {
+      super( context );
+      mColor = color;
+      setOnClickListener( listener );
+      setClickable( true );
+      setBackgroundDrawable( createSwatchDrawable( context, color ) );
+    }
+
+    int getColor() { return mColor; }
+  }
+
+  public MyColorPicker( Context context, IColorChanged listener, int initialColor)
+  {
+    super( context, null, 0 ); // 0 no help
+    mListener = listener;
+    mSelectedColor = sanitizeColor( initialColor );
+    Color.colorToHSV( mSelectedColor, mHsv );
+  }
+
+  @Override
+  protected void onCreate(Bundle savedInstanceState)
+  {
+    super.onCreate(savedInstanceState);
+    initLayout( R.layout.my_color_picker, R.string.title_color_picker );
+
+    mBtnOk    = (Button) findViewById( R.id.btn_ok );
+    mBtnClear = (Button) findViewById( R.id.btn_clear );
+    mBtnClose = (Button) findViewById( R.id.btn_close );
+    mBtnOk.setOnClickListener( this );
+    mBtnClear.setOnClickListener( this );
+    mBtnClose.setOnClickListener( this );
+
+    mPreviewSwatch = findViewById( R.id.color_preview );
+    mSatValueLayout = (LinearLayout) findViewById( R.id.sv_layout );
+    mHueLayout = (LinearLayout) findViewById( R.id.hue_layout );
+    mGridLayout = (GridLayout) findViewById( R.id.grid_layout );
+
+    mSatValueView = new SaturationValueView( getContext(), mHsv[0], mHsv[1], mHsv[2],
+      new SaturationValueChangeListener() {
+        @Override
+        public void onSaturationValueChanged( float saturation, float value )
+        {
+          mHsv[1] = saturation;
+          mHsv[2] = value;
+          updateSelectedColorFromHsv();
+        }
+      }
+    );
+    mHueSliderView = new HueSliderView( getContext(), mHsv[0],
+      new HueChangeListener() {
+        @Override
+        public void onHueChanged( float hue )
+        {
+          mHsv[0] = hue;
+          mSatValueView.setColorState( mHsv[0], mHsv[1], mHsv[2] );
+          updateSelectedColorFromHsv();
+        }
+      }
+    );
+
+    addPickerViews();
+    buildPresetGrid();
+    syncPickerState();
+  }
+
+  @Override
+  public void onClick( View v )
+  {
+    if ( v.getId() == R.id.btn_ok ) {
+      mListener.colorChanged( mSelectedColor );
       dismiss();
+    } else if ( v.getId() == R.id.btn_clear ) {
+      mListener.colorChanged( 0 );
+      dismiss();
+    } else if ( v.getId() == R.id.btn_close ) {
+      dismiss();
+    } else if ( v instanceof MyColorCell ) {
+      MyColorCell cell = (MyColorCell)v;
+      setSelectedColor( cell.getColor() );
     }
+  }
+
+  private void addPickerViews()
+  {
+    LinearLayout.LayoutParams svParams = new LinearLayout.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        dp( SAT_VALUE_HEIGHT_DP )
+    );
+    LinearLayout.LayoutParams hueParams = new LinearLayout.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        dp( HUE_HEIGHT_DP )
+    );
+
+    mSatValueLayout.removeAllViews();
+    mSatValueLayout.addView( mSatValueView, svParams );
+
+    mHueLayout.removeAllViews();
+    mHueLayout.addView( mHueSliderView, hueParams );
+  }
+
+  private void buildPresetGrid()
+  {
+    mGridLayout.removeAllViews();
+    mGridLayout.setColumnCount( GRID_COLUMNS );
+    mGridLayout.setRowCount( (TDColor.mTDColors.length + GRID_COLUMNS - 1) / GRID_COLUMNS );
+
+    int margin = dp( SWATCH_MARGIN_DP );
+    int displayWidth = getContext().getResources().getDisplayMetrics().widthPixels;
+    int availableWidth = displayWidth - dp( 40 ) - 2 * margin * GRID_COLUMNS;
+    int cellWidth = Math.max( dp( 28 ), availableWidth / GRID_COLUMNS );
+    int cellHeight = Math.max( dp( SWATCH_MIN_HEIGHT_DP ), cellWidth / 2 );
+
+    for ( int color : TDColor.mTDColors ) {
+      MyColorCell cell = new MyColorCell( mContext, color, this );
+      GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+      lp.width = cellWidth;
+      lp.height = cellHeight;
+      lp.setMargins( margin, margin, margin, margin );
+      mGridLayout.addView( cell, lp );
+    }
+  }
+
+  private void setSelectedColor( int color )
+  {
+    mSelectedColor = sanitizeColor( color );
+    Color.colorToHSV( mSelectedColor, mHsv );
+    syncPickerState();
+  }
+
+  private void syncPickerState()
+  {
+    updatePreviewSwatch();
+    if ( mHueSliderView != null ) mHueSliderView.setHue( mHsv[0] );
+    if ( mSatValueView != null ) mSatValueView.setColorState( mHsv[0], mHsv[1], mHsv[2] );
+  }
+
+  private void updateSelectedColorFromHsv()
+  {
+    mSelectedColor = Color.HSVToColor( mHsv );
+    updatePreviewSwatch();
+  }
+
+  private void updatePreviewSwatch()
+  {
+    mPreviewSwatch.setBackgroundDrawable( createSwatchDrawable( getContext(), mSelectedColor ) );
+  }
+
+  private static int sanitizeColor( int color )
+  {
+    if ( color == 0 ) return TDColor.WHITE;
+    return 0xff000000 | ( color & 0x00ffffff );
+  }
+
+  private static GradientDrawable createSwatchDrawable( Context context, int color )
+  {
+    GradientDrawable drawable = new GradientDrawable();
+    drawable.setShape( GradientDrawable.RECTANGLE );
+    drawable.setCornerRadius( dp( context, PICKER_CORNER_DP ) );
+    drawable.setColor( 0xff000000 | ( color & 0x00ffffff ) );
+    drawable.setStroke( dp( context, PICKER_BORDER_DP ), strokeColor( color ) );
+    return drawable;
+  }
+
+  private static int strokeColor( int color )
+  {
+    int rgb = 0xff000000 | ( color & 0x00ffffff );
+    return isLightColor( rgb ) ? 0xff444444 : 0xffdddddd;
+  }
+
+  private static boolean isLightColor( int color )
+  {
+    int r = Color.red( color );
+    int g = Color.green( color );
+    int b = Color.blue( color );
+    int luma = (299 * r + 587 * g + 114 * b) / 1000;
+    return luma >= 186;
+  }
+
+  private static float clampHue( float hue )
+  {
+    if ( hue < 0.0f ) return 0.0f;
+    if ( hue >= 360.0f ) return 359.999f;
+    return hue;
+  }
+
+  private static float clamp01( float value )
+  {
+    if ( value < 0.0f ) return 0.0f;
+    if ( value > 1.0f ) return 1.0f;
+    return value;
+  }
+
+  private int dp( int value )
+  {
+    return dp( getContext(), value );
+  }
+
+  private static int dp( Context context, int value )
+  {
+    float density = context.getResources().getDisplayMetrics().density;
+    return Math.max( 1, Math.round( density * value ) );
+  }
 }
