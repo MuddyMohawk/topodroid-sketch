@@ -18,13 +18,16 @@ This was essentially entirely vibe-coded with Codex.
 - Changed things so I could work in Android Studio. I'm a noob.
 - Added three built-in sketch line variants: Thin, Standard, and Thick (user-fine, user-standard, user-thick).
 - Added per-variant width settings for new sketching lines, with defaults of 1.0x, 2.0x, and 5.0x.
+- Added a new color picker
+- Added color options to the new sketch lines
+- Added sketch grid appearance settings for both grid width and grid color
 - Made the three sketch lines default in the recent-line toolbar
 - If exported and imported into the TopoDroidX-6.4.25-36, the new sketch lines fall back into the `user` line type. It'll be ugly, but still compatible.
 - If exported with the personal line box checked, it can be imported into another copy of TopoDroid Sketch and the lines are preserved
-- Added sketch grid appearance settings for both grid width and grid color
-- Added the new 1 foot sketch-grid unit alongside 2 feet, yard, meter, and 10 cm.
+- Added the new 1 foot sketch-grid unit alongside the existing 2 feet, yard, meter, and 10 cm options
 - Fixed the length-unit/default regression so explicit feet vs meters values are handled correctly on load, live updates, and settings import/export.
 - TODO: Investigate backsight validation and cavway labels. 
+- TODO: Do we want another line 
 
 # topodroid
 
