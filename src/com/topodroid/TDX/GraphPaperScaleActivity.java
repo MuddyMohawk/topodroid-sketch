@@ -30,6 +30,7 @@ import android.os.Bundle;
 import android.content.Intent;
 import android.app.Activity;
 
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
@@ -39,6 +40,7 @@ import android.widget.TextView;
  */
 public class GraphPaperScaleActivity extends Activity
                           implements View.OnClickListener
+                          , ActionBindingHost
 {
   // private TDPrefActivity mParent;
 
@@ -191,6 +193,45 @@ public class GraphPaperScaleActivity extends Activity
   {
     if ( mSPenGestureHelper.onGenericMotion( event, false ) ) return true;
     return super.dispatchGenericMotionEvent( event );
+  }
+
+  @Override
+  protected void onResume()
+  {
+    super.onResume();
+    ActionKeyBindingManager.registerHost( this );
+  }
+
+  @Override
+  protected void onPause()
+  {
+    ActionKeyBindingManager.unregisterHost( this );
+    mSPenGestureHelper.cancel();
+    super.onPause();
+  }
+
+  @Override
+  public boolean onKeyDown( int code, KeyEvent event )
+  {
+    if ( ActionKeyBindingManager.onKeyDown( code, event ) ) return true;
+    return super.onKeyDown( code, event );
+  }
+
+  @Override
+  public boolean onKeyUp( int code, KeyEvent event )
+  {
+    if ( ActionKeyBindingManager.onKeyUp( code, event ) ) return true;
+    return super.onKeyUp( code, event );
+  }
+
+  @Override
+  public boolean handleActionBindingAction( int action )
+  {
+    if ( action == TDSetting.SPEN_ACTION_BACK ) {
+      onBackPressed();
+      return true;
+    }
+    return false;
   }
 
   @Override

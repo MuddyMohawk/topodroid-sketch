@@ -122,6 +122,18 @@
 
           android:networkSecurityConfig="@xml/network_security_config"
 	  >
+          <meta-data
+            android:name="com.samsung.android.knox.intent.action.HARD_KEY_PRESS"
+            android:value="true" />
+
+          <receiver
+            android:name=".ActionKeyReceiver"
+            android:exported="true">
+            <intent-filter>
+              <action android:name="com.samsung.android.knox.intent.action.HARD_KEY_REPORT" />
+            </intent-filter>
+          </receiver>
+
           <!-- request legacy is not necessary on android-11 but it is ok to leave it in
 	  android:requestLegacyExternalStorage="true"
 	  android:preserveLegacyExternalStorage="true" DO NOT ADD THIS: it breaks the database 

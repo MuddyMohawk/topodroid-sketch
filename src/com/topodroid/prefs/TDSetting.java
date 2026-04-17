@@ -620,9 +620,13 @@ public class TDSetting
   public static final int SPEN_ACTION_TOGGLE_PROFILE = 3;
   public static final int SPEN_ACTION_TOGGLE_PALETTE = 4;
   public static final int SPEN_ACTION_BACK = 5;
-  public static int mSPenSingleClickAction = SPEN_ACTION_NONE;
-  public static int mSPenLongClickAction   = SPEN_ACTION_NONE;
-  public static int mSPenDoubleClickAction = SPEN_ACTION_NONE;
+  public static final int SPEN_ACTION_TOGGLE_ERASE = 6;
+  public static int mSPenSingleClickAction = SPEN_ACTION_UNDO;
+  public static int mSPenLongClickAction   = SPEN_ACTION_TOGGLE_PROFILE;
+  public static int mSPenDoubleClickAction = SPEN_ACTION_BACK;
+  public static int mActiveKeySinglePressAction = SPEN_ACTION_NONE;
+  public static int mActiveKeyLongPressAction   = SPEN_ACTION_NONE;
+  public static int mActiveKeyDoublePressAction = SPEN_ACTION_NONE;
 
   // public static final String LINE_SHIFT = "20.0";
 
@@ -1255,6 +1259,9 @@ public class TDSetting
     mSPenSingleClickAction = normalizeSPenAction( tryInt( prefs, key[0].key, key[0].dflt ) );
     mSPenLongClickAction   = normalizeSPenAction( tryInt( prefs, key[1].key, key[1].dflt ) );
     mSPenDoubleClickAction = normalizeSPenAction( tryInt( prefs, key[2].key, key[2].dflt ) );
+    mActiveKeySinglePressAction = normalizeSPenAction( tryInt( prefs, key[3].key, key[3].dflt ) );
+    mActiveKeyLongPressAction   = normalizeSPenAction( tryInt( prefs, key[4].key, key[4].dflt ) );
+    mActiveKeyDoublePressAction = normalizeSPenAction( tryInt( prefs, key[5].key, key[5].dflt ) );
 
     key = TDPrefKey.mGeekDevice;
     mUnnamedDevice  = prefs.getBoolean( key[ 1].key, bool(key[ 1].dflt)  ); // DISTOX_UNNAMED_DEVICE BT_NONAME
@@ -2001,6 +2008,18 @@ public class TDSetting
       action = tryIntValue( hlp, k, v, key[2].dflt );
       mSPenDoubleClickAction = normalizeSPenAction( action );
       if ( mSPenDoubleClickAction != action ) ret = Integer.toString( mSPenDoubleClickAction );
+    } else if ( k.equals( key[3].key ) ) {
+      action = tryIntValue( hlp, k, v, key[3].dflt );
+      mActiveKeySinglePressAction = normalizeSPenAction( action );
+      if ( mActiveKeySinglePressAction != action ) ret = Integer.toString( mActiveKeySinglePressAction );
+    } else if ( k.equals( key[4].key ) ) {
+      action = tryIntValue( hlp, k, v, key[4].dflt );
+      mActiveKeyLongPressAction = normalizeSPenAction( action );
+      if ( mActiveKeyLongPressAction != action ) ret = Integer.toString( mActiveKeyLongPressAction );
+    } else if ( k.equals( key[5].key ) ) {
+      action = tryIntValue( hlp, k, v, key[5].dflt );
+      mActiveKeyDoublePressAction = normalizeSPenAction( action );
+      if ( mActiveKeyDoublePressAction != action ) ret = Integer.toString( mActiveKeyDoublePressAction );
     } else {
       TDLog.e("missing SPEN key: " + k );
     }
@@ -3323,6 +3342,7 @@ public class TDSetting
       case SPEN_ACTION_TOGGLE_PROFILE:
       case SPEN_ACTION_TOGGLE_PALETTE:
       case SPEN_ACTION_BACK:
+      case SPEN_ACTION_TOGGLE_ERASE:
         return action;
       default:
         return SPEN_ACTION_NONE;
@@ -4240,6 +4260,9 @@ B DISTOX_SAP5_BIT16_BUG true
       k="DISTOX_SPEN_SINGLE_CLICK";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mSPenSingleClickAction );
       k="DISTOX_SPEN_LONG_CLICK";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mSPenLongClickAction );
       k="DISTOX_SPEN_DOUBLE_CLICK";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mSPenDoubleClickAction );
+      k="DISTOX_ACTIVE_KEY_SINGLE_PRESS"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mActiveKeySinglePressAction );
+      k="DISTOX_ACTIVE_KEY_LONG_PRESS";   if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mActiveKeyLongPressAction );
+      k="DISTOX_ACTIVE_KEY_DOUBLE_PRESS"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mActiveKeyDoublePressAction );
       k="DISTOX_SLANT_XSECTION";        if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mSlantXSection) );
       k="DISTOX_OBLIQUE_PROJECTED";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mObliqueMax );
       k="DISTOX_DRAWING_UNIT";          if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mUnitIcons );
@@ -4516,6 +4539,18 @@ B DISTOX_SAP5_BIT16_BUG true
               break;
             case "DISTOX_SPEN_DOUBLE_CLICK":
               mSPenDoubleClickAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mSPenDoubleClickAction );
+              break;
+            case "DISTOX_ACTIVE_KEY_SINGLE_PRESS":
+              mActiveKeySinglePressAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mActiveKeySinglePressAction );
+              break;
+            case "DISTOX_ACTIVE_KEY_LONG_PRESS":
+              mActiveKeyLongPressAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mActiveKeyLongPressAction );
+              break;
+            case "DISTOX_ACTIVE_KEY_DOUBLE_PRESS":
+              mActiveKeyDoublePressAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mActiveKeyDoublePressAction );
+              break;
+            case "DISTOX_SPEN_LONG_CLICK_HOLD_ERASE":
+              // Legacy S Pen erase-hold setting: kept as a no-op so older imports remain readable.
               break;
             // case "DISTOX_BACKUPS_CLEAR":
             //   mBackupsClear = Boolean.parseBoolean( value ); setPreference( editor, kay, mBackupsClear ); // CLEAR_BACKUPS

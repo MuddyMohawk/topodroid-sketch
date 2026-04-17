@@ -33,6 +33,7 @@ import android.view.MotionEvent;
 
 public class PtCmapActivity extends Activity
                             implements OnClickListener
+                            , ActionBindingHost
 {
   // private TopoDroidApp mApp;
 
@@ -195,6 +196,20 @@ public class PtCmapActivity extends Activity
   // }
 
   @Override
+  protected void onResume()
+  {
+    super.onResume();
+    ActionKeyBindingManager.registerHost( this );
+  }
+
+  @Override
+  protected void onPause()
+  {
+    ActionKeyBindingManager.unregisterHost( this );
+    super.onPause();
+  }
+
+  @Override
   public void onClick( View v )
   {
     if ( (Button)v == mBtOk ) {
@@ -228,6 +243,7 @@ public class PtCmapActivity extends Activity
   @Override
   public boolean onKeyDown( int code, KeyEvent event )
   {
+    if ( ActionKeyBindingManager.onKeyDown( code, event ) ) return true;
     switch ( code ) {
       case KeyEvent.KEYCODE_BACK: // HARDWARE BACK (4)
         onBackPressed();
@@ -241,6 +257,23 @@ public class PtCmapActivity extends Activity
       // case KeyEvent.KEYCODE_VOLUME_DOWN: // (25)
       default:
         // TDLog.e( "key down: code " + code );
+    }
+    return false;
+  }
+
+  @Override
+  public boolean onKeyUp( int code, KeyEvent event )
+  {
+    if ( ActionKeyBindingManager.onKeyUp( code, event ) ) return true;
+    return super.onKeyUp( code, event );
+  }
+
+  @Override
+  public boolean handleActionBindingAction( int action )
+  {
+    if ( action == TDSetting.SPEN_ACTION_BACK ) {
+      onBackPressed();
+      return true;
     }
     return false;
   }

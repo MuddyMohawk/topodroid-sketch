@@ -8,7 +8,7 @@ This was essentially entirely vibe-coded with Codex.
 #### TODO
 - Change branding, name, versioning, etc to TopoDroid Sketch
 - Add safety warnings when importing vanilla TopoDroid stuff
-- Add toggle erase action for S pen. Consider change long press to press and hold, revert on release
+- Add toggle erase action for S pen
 - Add S pen default actions
 - Switch the defaults for profile 2 to a line-point spacing of 15 instead of 20
 - Add a 4th sketch line. I love sketch lines.
@@ -51,6 +51,7 @@ This was essentially entirely vibe-coded with Codex.
 - Sort shots by their ordering, not their shot ID
 - Bulk reassign splays?
 - Setting to automatically detect if there hasn't been any successful wifi or data connections in the last N minutes, and then toggle airplane mode to save battery
+- Long-press erase mode for the S pen. Attempted once, was bugged and didn't work.
 
 ### TopoDroid Sketch v1.10.1 Changelog:
 
@@ -76,7 +77,7 @@ This was essentially entirely vibe-coded with Codex.
   - Profile 2's defaults are a line style of `bezier` and a line point spacing of 20 (todo: switch to 15)
 - Added a "profiles" menu to the sketch settings screen to allow customization of each profile
 
-**S Pen Support**
+**S Pen  and Active Key Support**
 - Added support for the S Pen button for single click, double click, and long click inputs
     - *Note that this is only tested with the IP68 S pen that has no bluetooth and no battery. It may not work with other pens. Additionally, the pen must be held close to the screen in order for the button to work*
 - Added the following actions:
@@ -85,7 +86,10 @@ This was essentially entirely vibe-coded with Codex.
   - Toggle palette: Toggles the recently used bottom pallete between LINE, POINT, and AREA
   - Toggle profile: Toggles the line drawing profile between Profile 1 and Profile 2
   - Back: Goes back a screen (eg exit sketch page to shot list, or goes back one screen in the settings)
-- Added the ability to bind actions to S Pen button inputs in the *TopoDroid main settings -> Devices -> S Pen actions* menu
+  - Toggle erase/sketch: Toggles between the erase sketch mode and the drawing sketch mode
+- Added the ability to bind actions to S Pen button inputs in the *TopoDroid main settings -> Devices -> Action Key Bindings* menu
+- Added the ability to bind actions to Samsung Active key in the *TopoDroid main settings -> Devices -> Action Key Bindings* menu
+
 
 **Bug Fixes**
 - Fixed the length-unit/default regression so explicit feet vs meters values are handled correctly on load, live updates, and settings import/export. I think this was pre-existing and not caused by me.

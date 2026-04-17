@@ -21,6 +21,8 @@ import com.topodroid.ui.MyButton;
 import com.topodroid.help.IHelpViewer;
 import com.topodroid.help.AIdialog;
 // import com.topodroid.help.AIlocalModel; // GEMMA3
+import com.topodroid.TDX.ActionBindingHost;
+import com.topodroid.TDX.ActionKeyBindingManager;
 import com.topodroid.TDX.SPenGestureHelper;
 import com.topodroid.TDX.TDandroid;
 import com.topodroid.TDX.TDInstance;
@@ -53,6 +55,7 @@ import android.widget.Toolbar;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.LayoutInflater;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.Window;
 
@@ -61,6 +64,7 @@ import android.view.Window;
 public class TDPrefActivity extends Activity 
                             implements View.OnLongClickListener
                             , IHelpViewer
+                            , ActionBindingHost
 {
   static TDPrefActivity mPrefActivityAll = null;
   static TDPrefActivity mPrefActivitySurvey = null;
@@ -131,6 +135,21 @@ public class TDPrefActivity extends Activity
     AIdialog.resetChat();
   }
 
+  @Override
+  protected void onResume()
+  {
+    super.onResume();
+    ActionKeyBindingManager.registerHost( this );
+  }
+
+  @Override
+  protected void onPause()
+  {
+    ActionKeyBindingManager.unregisterHost( this );
+    mSPenGestureHelper.cancel();
+    super.onPause();
+  }
+
   /** lifecycle: activity create
    * @param savedInstanceState  saved state (unused)
    */
@@ -198,6 +217,30 @@ public class TDPrefActivity extends Activity
   {
     if ( mSPenGestureHelper.onGenericMotion( event, false ) ) return true;
     return super.dispatchGenericMotionEvent( event );
+  }
+
+  @Override
+  public boolean onKeyDown( int code, KeyEvent event )
+  {
+    if ( ActionKeyBindingManager.onKeyDown( code, event ) ) return true;
+    return super.onKeyDown( code, event );
+  }
+
+  @Override
+  public boolean onKeyUp( int code, KeyEvent event )
+  {
+    if ( ActionKeyBindingManager.onKeyUp( code, event ) ) return true;
+    return super.onKeyUp( code, event );
+  }
+
+  @Override
+  public boolean handleActionBindingAction( int action )
+  {
+    if ( action == TDSetting.SPEN_ACTION_BACK ) {
+      onBackPressed();
+      return true;
+    }
+    return false;
   }
 
   // ---------------------------------------------------------------------

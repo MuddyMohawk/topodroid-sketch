@@ -149,6 +149,7 @@ public class DrawingWindow extends ItemDrawer
                                     // , IJoinClickHandler
                                     , IPhotoInserter
                                     , IAudioInserter
+                                    , ActionBindingHost
 {
   public static final int ZOOM_TRANSLATION_1 = -50; // was -42
   // public static final int ZOOM_TRANSLATION_3 = -200;
@@ -1020,7 +1021,7 @@ public class DrawingWindow extends ItemDrawer
       @Override
       public void onSPenTrigger( int trigger )
       {
-        performSPenAction( SPenGestureHelper.getConfiguredAction( trigger ) );
+        handleSPenTrigger( trigger );
       }
     }
   );
@@ -1055,6 +1056,20 @@ public class DrawingWindow extends ItemDrawer
     }
   }
 
+  private void handleSPenTrigger( int trigger )
+  {
+    performSPenAction( SPenGestureHelper.getConfiguredAction( trigger ) );
+  }
+
+  private void toggleSPenEraseMode()
+  {
+    if ( mMode == MODE_ERASE ) {
+      setMode( MODE_DRAW );
+    } else {
+      setMode( MODE_ERASE );
+    }
+  }
+
   private void performSPenAction( int action )
   {
     switch ( action ) {
@@ -1082,6 +1097,9 @@ public class DrawingWindow extends ItemDrawer
         break;
       case TDSetting.SPEN_ACTION_BACK:
         performImmediateBackAction();
+        break;
+      case TDSetting.SPEN_ACTION_TOGGLE_ERASE:
+        toggleSPenEraseMode();
         break;
       case TDSetting.SPEN_ACTION_NONE:
       default:
@@ -3329,6 +3347,7 @@ public class DrawingWindow extends ItemDrawer
   protected synchronized void onResume()
   {
     super.onResume();
+    ActionKeyBindingManager.registerHost( this );
     TDLog.v( "Drawing Activity on Resume " );
     // TDLog.v( "Drawing Activity onResume " + ((mDataDownloader!=null)?"with DataDownloader":"") );
     doResume();
@@ -3346,6 +3365,7 @@ public class DrawingWindow extends ItemDrawer
   protected synchronized void onPause() 
   { 
     TDLog.v( "Drawing Activity onPause " );
+    ActionKeyBindingManager.unregisterHost( this );
     mSPenGestureHelper.cancel();
     doPause();
     super.onPause();
@@ -4836,8 +4856,8 @@ public class DrawingWindow extends ItemDrawer
 
     if ( action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN ) {
       mTouchActive = true;
-      mSPenGestureHelper.cancel();
-    } else if ( action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL ) {
+    }
+    if ( action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL ) {
       mTouchActive = false;
     }
 
@@ -4902,6 +4922,9 @@ public class DrawingWindow extends ItemDrawer
     } else if (action == MotionEvent.ACTION_UP) { // ----------------------------------- UP
       return onTouchUp( x_canvas, y_canvas, x_scene, y_scene );
     } else if ( action == MotionEvent.ACTION_CANCEL ) {
+      if ( mMode == MODE_ERASE ) {
+        finishErasing();
+      }
       return true;
     } else {
       TDLog.e("on touch - unhandled action " + action );
@@ -8661,6 +8684,7 @@ public class DrawingWindow extends ItemDrawer
   @Override
   public boolean onKeyDown( int code, KeyEvent event )
   {
+    if ( ActionKeyBindingManager.onKeyDown( code, event ) ) return true;
     switch ( code ) {
       case KeyEvent.KEYCODE_BACK: // HARDWARE BACK (4)
         onBackPressed();
@@ -8676,6 +8700,21 @@ public class DrawingWindow extends ItemDrawer
         TDLog.e( "key down: code " + code );
     }
     return false;
+  }
+
+  @Override
+  public boolean onKeyUp( int code, KeyEvent event )
+  {
+    if ( ActionKeyBindingManager.onKeyUp( code, event ) ) return true;
+    return super.onKeyUp( code, event );
+  }
+
+  @Override
+  public boolean handleActionBindingAction( int action )
+  {
+    if ( action == TDSetting.SPEN_ACTION_NONE ) return false;
+    performSPenAction( action );
+    return true;
   }
 
   // ---------------------------------------------------------

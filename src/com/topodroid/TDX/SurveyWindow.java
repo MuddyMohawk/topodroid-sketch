@@ -96,6 +96,7 @@ public class SurveyWindow extends Activity
                             , ITeamText
                             , OnItemClickListener
                             , View.OnClickListener
+                            , ActionBindingHost
 {
   private static final int[] izons = {
                         R.drawable.iz_note,
@@ -392,6 +393,7 @@ public class SurveyWindow extends Activity
   public synchronized void onResume() 
   {
     super.onResume();
+    ActionKeyBindingManager.registerHost( this );
     TDLog.v("Survey Activity on Resume " );
     int nrPhoto = 0;
     mApp_mData = TopoDroidApp.mData;
@@ -499,6 +501,7 @@ public class SurveyWindow extends Activity
   public void onPause()
   {
     TDLog.v("Survey Activity on Pause " );
+    ActionKeyBindingManager.unregisterHost( this );
     mSPenGestureHelper.cancel();
     super.onPause();
   }
@@ -784,6 +787,7 @@ public class SurveyWindow extends Activity
   @Override
   public boolean onKeyDown( int code, KeyEvent event )
   {
+    if ( ActionKeyBindingManager.onKeyDown( code, event ) ) return true;
     switch ( code ) {
       case KeyEvent.KEYCODE_BACK: // HARDWARE BACK (4)
         onBackPressed();
@@ -795,6 +799,23 @@ public class SurveyWindow extends Activity
       // case KeyEvent.KEYCODE_VOLUME_DOWN: // (25)
       default:
         // TDLog.e( "key down: code " + code );
+    }
+    return false;
+  }
+
+  @Override
+  public boolean onKeyUp( int code, KeyEvent event )
+  {
+    if ( ActionKeyBindingManager.onKeyUp( code, event ) ) return true;
+    return super.onKeyUp( code, event );
+  }
+
+  @Override
+  public boolean handleActionBindingAction( int action )
+  {
+    if ( action == TDSetting.SPEN_ACTION_BACK ) {
+      onBackPressed();
+      return true;
     }
     return false;
   }

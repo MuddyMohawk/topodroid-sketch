@@ -116,6 +116,7 @@
      <item name="toggle_profile">toggle profile</item>
      <item name="toggle_palette">toggle palette</item>
      <item name="back">back</item>
+     <item name="toggle_erase">toggle erase/sketch</item>
   </string-array>
   <string-array name="spenActionsValue" translatable="false">
      <item name="none">0</item>
@@ -124,6 +125,7 @@
      <item name="toggle_profile">3</item>
      <item name="toggle_palette">4</item>
      <item name="back">5</item>
+     <item name="toggle_erase">6</item>
   </string-array>
   
   <string-array name="canvasLevels">

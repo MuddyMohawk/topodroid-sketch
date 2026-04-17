@@ -109,6 +109,7 @@ public class ShotWindow extends Activity
                         , OnItemLongClickListener
                         , OnClickListener
                         , OnLongClickListener
+                        , ActionBindingHost
                         , ILister
                         , INewPlot
                         , IPhotoInserter
@@ -1596,6 +1597,7 @@ public class ShotWindow extends Activity
   @Override
   public synchronized void onPause() 
   {
+    ActionKeyBindingManager.unregisterHost( this );
     mSPenGestureHelper.cancel();
     super.onPause();
     TDLog.v( "Shot activity on Pause" );
@@ -1610,6 +1612,7 @@ public class ShotWindow extends Activity
   public synchronized void onResume() 
   {
     super.onResume();
+    ActionKeyBindingManager.registerHost( this );
     TDLog.v( "Shot Activity on Resume SID " + TDInstance.sid );
     // FIXME NOTIFY register ILister
     // if ( mApp.mComm != null ) { mApp.mComm.resume(); }
@@ -2922,6 +2925,7 @@ public class ShotWindow extends Activity
   @Override
   public boolean onKeyDown( int code, KeyEvent event )
   {
+    if ( ActionKeyBindingManager.onKeyDown( code, event ) ) return true;
     switch ( code ) {
       case KeyEvent.KEYCODE_BACK: // HARDWARE BACK (4)
         onBackPressed();
@@ -2933,6 +2937,23 @@ public class ShotWindow extends Activity
       // case KeyEvent.KEYCODE_VOLUME_DOWN: // (25)
       default:
         // TDLog.e( "key down: code " + code );
+    }
+    return false;
+  }
+
+  @Override
+  public boolean onKeyUp( int code, KeyEvent event )
+  {
+    if ( ActionKeyBindingManager.onKeyUp( code, event ) ) return true;
+    return super.onKeyUp( code, event );
+  }
+
+  @Override
+  public boolean handleActionBindingAction( int action )
+  {
+    if ( action == TDSetting.SPEN_ACTION_BACK ) {
+      onBackPressed();
+      return true;
     }
     return false;
   }

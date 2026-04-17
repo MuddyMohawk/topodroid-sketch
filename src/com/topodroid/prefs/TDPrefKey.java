@@ -253,7 +253,7 @@ class TDPrefKey
     // FIXME DROP_PAIRING
     new TDPrefKey( E,       UI,  "DISTOX_CONNECT_FEEDBACK", R.string.pref_connect_feedback_title, R.string.pref_connect_feedback_summary,TDString.ZERO, R.array.feedbackMode, R.array.feedbackModeValue ),
     new TDPrefKey( A, BOOL, BT,  "DISTOX_AUTO_PAIR",        R.string.pref_auto_pair_title,        R.string.pref_auto_pair_summary,       FALSE ), // FIXME DROP_PAIRING
-    new TDPrefKey( B,       NON, "DISTOX_SPEN_PREF",        R.string.pref_spen_actions_title ),
+    new TDPrefKey( B,       NON, "DISTOX_SPEN_PREF",        R.string.pref_action_key_bindings_title ),
     new TDPrefKey( B,       NON, "DISTOX_CALIB_PREF",       R.string.pref_cat_calib )
   };
 
@@ -947,9 +947,12 @@ class TDPrefKey
   };
 
   static TDPrefKey[] mSPen = {
-    new TDPrefKey( B, UI, "DISTOX_SPEN_SINGLE_CLICK", R.string.pref_spen_single_click_title, R.string.pref_spen_single_click_summary, TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
-    new TDPrefKey( B, UI, "DISTOX_SPEN_LONG_CLICK",   R.string.pref_spen_long_click_title,   R.string.pref_spen_long_click_summary,   TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
-    new TDPrefKey( B, UI, "DISTOX_SPEN_DOUBLE_CLICK", R.string.pref_spen_double_click_title, R.string.pref_spen_double_click_summary, TDString.ZERO, R.array.spenActions, R.array.spenActionsValue )
+    new TDPrefKey( B, UI, "DISTOX_SPEN_SINGLE_CLICK", R.string.pref_spen_single_click_title, R.string.pref_spen_single_click_summary, TDString.ONE,  R.array.spenActions, R.array.spenActionsValue ),
+    new TDPrefKey( B, UI, "DISTOX_SPEN_LONG_CLICK",   R.string.pref_spen_long_click_title,   R.string.pref_spen_long_click_summary,   "3",           R.array.spenActions, R.array.spenActionsValue ),
+    new TDPrefKey( B, UI, "DISTOX_SPEN_DOUBLE_CLICK", R.string.pref_spen_double_click_title, R.string.pref_spen_double_click_summary, "5",           R.array.spenActions, R.array.spenActionsValue ),
+    new TDPrefKey( B, UI, "DISTOX_ACTIVE_KEY_SINGLE_PRESS", R.string.pref_active_key_single_press_title, R.string.pref_active_key_single_press_summary, TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
+    new TDPrefKey( B, UI, "DISTOX_ACTIVE_KEY_LONG_PRESS",   R.string.pref_active_key_long_press_title,   R.string.pref_active_key_long_press_summary,   TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
+    new TDPrefKey( B, UI, "DISTOX_ACTIVE_KEY_DOUBLE_PRESS", R.string.pref_active_key_double_press_title, R.string.pref_active_key_double_press_summary, TDString.ZERO, R.array.spenActions, R.array.spenActionsValue )
   };
 
   // the order must follow category index in TDPrefCat

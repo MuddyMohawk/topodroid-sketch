@@ -1472,7 +1472,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="title_settings_profiles">Sketch profiles settings</string>
     <string name="title_settings_profile_1">Sketch profile 1 settings</string>
     <string name="title_settings_profile_2">Sketch profile 2 settings</string>
-    <string name="title_settings_spen">S Pen action settings</string>
+   <string name="title_settings_spen">ACTION KEY BINDINGS</string>
     <!-- UNUSED string name="title_settings_walls">Sketch autowalls settings</string -->
     <string name="title_settings_draw">Sketch draw settings</string>
     <string name="title_settings_erase">Sketch erase settings</string>
@@ -1560,7 +1560,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_cat_calib">CALIBRATIONS</string>
   <!-- UNUSED string name="pref_cat_min_algo">MIN ALGO</string -->
   <string name="pref_cat_device">DEVICES</string>
-  <string name="pref_spen_actions_title">S Pen actions</string>
+  <string name="pref_action_key_bindings_title">ACTION KEY BINDINGS</string>
   <string name="pref_cat_cave3d" copyable="all">3D VIEWER</string>
   <string name="pref_cat_geek">SECONDARY SETTINGS</string>
   <string name="pref_cat_sketch">3D SKETCH</string>
@@ -2003,6 +2003,12 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_spen_long_click_summary">Action for a long S Pen button press while hovering</string>
   <string name="pref_spen_double_click_title">S Pen double-click</string>
   <string name="pref_spen_double_click_summary">Action for a double S Pen button click while hovering</string>
+  <string name="pref_active_key_single_press_title">Active Key single press</string>
+  <string name="pref_active_key_single_press_summary">Action when the Active Key is pressed. TopoDroid must be mapped to the Samsung Active key in system settings.</string>
+  <string name="pref_active_key_long_press_title">Active Key long press</string>
+  <string name="pref_active_key_long_press_summary">Action when the Active Key is long-pressed. TopoDroid must be mapped to the Samsung Active key in system settings.</string>
+  <string name="pref_active_key_double_press_title">Active Key double press</string>
+  <string name="pref_active_key_double_press_summary">Action when the Active Key is double-pressed. TopoDroid must be mapped to the Samsung Active key in system settings.</string>
   <string name="pref_line_ends_title">Line ends cut</string>
   <string name="pref_line_ends_summary">Number of line-points to drop from the ends [0]</string>
   <!-- UNUSED string name="pref_zoom_lower_bound_title">Zoom bound</string -->
