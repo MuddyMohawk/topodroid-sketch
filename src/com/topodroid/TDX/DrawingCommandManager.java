@@ -24,13 +24,14 @@ import com.topodroid.types.PlotType;
 // import android.content.res.Configuration;
 import android.app.Activity;
 
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
-// import android.graphics.Bitmap;
 import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.PorterDuff;
 import android.graphics.RectF;
 import android.view.Display;
 
@@ -54,7 +55,10 @@ public class DrawingCommandManager
   // FIXED_ZOOM 
   private int mFixedZoom = 0;
 
-  // private static final int BORDER = 20; // for the bitmap
+  private static final int BITMAP_PADDING = 20;
+  private static final float EXPORT_BITMAP_SCALE = 10.0f;
+  private static final float MIN_EXPORT_BITMAP_SCALE = 0.125f;
+  private static final float EXPORT_DECORATION_GAP = 24.0f;
   private int mMode = 0;  // command manager mode type (PLAN PROFILE SECTION OVERVIEW)
 
   static private volatile int mDisplayMode = DisplayMode.DISPLAY_PLOT; // this display mode is shared among command managers
@@ -1537,6 +1541,232 @@ public class DrawingCommandManager
     bounds.right  *= scale;
     bounds.bottom *= scale;
     // TDLog.v( "After scraps bounds " + bounds.left + " " + bounds.top + " " + bounds.right + " " + bounds.bottom );
+    return bounds;
+  }
+
+  Bitmap renderExportBitmap( DrawingStationSplay station_splay, SketchPngExportOptions options )
+  {
+    if ( options == null ) return null;
+
+    RectF bounds = getExportBitmapBounds( options.includeLegs, options.includeSplays, options.includeStations, station_splay );
+    RectF scene_bounds = new RectF( bounds.left - BITMAP_PADDING, bounds.top - BITMAP_PADDING,
+                                    bounds.right + BITMAP_PADDING, bounds.bottom + BITMAP_PADDING );
+    float export_bitmap_scale = EXPORT_BITMAP_SCALE * options.bitmapScaleFactor;
+
+    for ( float bitmap_scale = export_bitmap_scale; bitmap_scale >= MIN_EXPORT_BITMAP_SCALE; bitmap_scale /= 2.0f ) {
+      int width  = Math.max( 1, (int)Math.ceil( scene_bounds.width() * bitmap_scale ) );
+      int height = Math.max( 1, (int)Math.ceil( scene_bounds.height() * bitmap_scale ) );
+      Bitmap bitmap = null;
+      try {
+        bitmap = Bitmap.createBitmap( width, height, Bitmap.Config.ARGB_8888 );
+        Canvas canvas = new Canvas( bitmap );
+        if ( options.transparentBackground ) {
+          canvas.drawColor( 0, PorterDuff.Mode.CLEAR );
+        } else {
+          canvas.drawColor( 0xff000000 );
+        }
+
+        Matrix mm = new Matrix();
+        mm.postTranslate( BITMAP_PADDING - bounds.left, BITMAP_PADDING - bounds.top );
+        mm.postScale( bitmap_scale, bitmap_scale );
+
+        float padding = BITMAP_PADDING * bitmap_scale;
+        float decoration_gap = EXPORT_DECORATION_GAP * bitmap_scale;
+        boolean scalable_label = TDSetting.mScalableLabel;
+        try {
+          TDSetting.mScalableLabel = false;
+          drawExportScene( canvas, mm, 1.0f / bitmap_scale, scene_bounds, station_splay, options );
+        } finally {
+          TDSetting.mScalableLabel = scalable_label;
+        }
+        drawExportDecorations( canvas, bitmap_scale, options, padding, height - padding, decoration_gap );
+        return bitmap;
+      } catch ( OutOfMemoryError e ) {
+        if ( bitmap != null ) bitmap.recycle();
+      } catch ( IllegalArgumentException e ) {
+        if ( bitmap != null ) bitmap.recycle();
+        TDLog.e( "create export bitmap illegal arg " + e.getMessage() );
+      }
+    }
+    return null;
+  }
+
+  private void drawExportScene( Canvas canvas, Matrix matrix, float scale, RectF bbox,
+                                DrawingStationSplay station_splay, SketchPngExportOptions options )
+  {
+    synchronized( TDPath.mGridsLock ) {
+      if ( options.includeGrid && mGridStack1 != null ) {
+        if ( scale < 1 ) {
+          for ( DrawingPath p1 : mGridStack1 ) p1.draw( canvas, matrix, bbox );
+        }
+        if ( scale < 10 ) {
+          for ( DrawingPath p10 : mGridStack10 ) p10.draw( canvas, matrix, bbox );
+        }
+        for ( DrawingPath p100 : mGridStack100 ) p100.draw( canvas, matrix, bbox );
+      }
+      if ( mNorthLine != null ) {
+        mNorthLine.draw( canvas, matrix, bbox );
+      }
+    }
+
+    synchronized( TDPath.mShotsLock ) {
+      if ( options.includeLegs && mLegsStack != null ) {
+        for ( DrawingPath leg : mLegsStack ) leg.draw( canvas, matrix, bbox );
+      }
+      if ( options.includeSplays && mSplaysStack != null ) {
+        if ( station_splay == null ) {
+          for ( DrawingSplayPath path : mSplaysStack ) path.draw( canvas, matrix, scale, bbox, ! mDisplayPoints );
+        } else {
+          for ( DrawingSplayPath path : mSplaysStack ) {
+            if ( ! station_splay.isStationOFF( path ) ) path.draw( canvas, matrix, scale, bbox, ! mDisplayPoints );
+          }
+        }
+      }
+    }
+
+    if ( mMode < DrawingSurface.DRAWING_SECTION ) {
+      if ( mPlotOutline != null && mPlotOutline.size() > 0 ) {
+        synchronized( mSyncOutline ) {
+          for ( DrawingLinePath path : mPlotOutline ) path.draw( canvas, matrix, null );
+        }
+      }
+      if ( mXSectionOutlines != null && mXSectionOutlines.size() > 0 && mCurrentScrap != null ) {
+        synchronized( TDPath.mXSectionsLock ) {
+          for ( DrawingOutlinePath path : mXSectionOutlines ) {
+            if ( path.isScrapId( mCurrentScrap.mScrapIdx ) ) {
+              path.draw( canvas, matrix, scale, bbox, false );
+            }
+          }
+        }
+      }
+    }
+
+    if ( options.includeStations ) {
+      if ( mStations != null ) {
+        synchronized( TDPath.mStationsLock ) {
+          for ( DrawingStationName st : mStations ) st.draw( canvas, matrix, bbox );
+        }
+      }
+      if ( ! TDSetting.mAutoStations && mCurrentScrap != null ) {
+        mCurrentScrap.drawUserStations( canvas, matrix, bbox );
+      }
+    }
+
+    if ( mMode == DrawingSurface.DRAWING_OVERVIEW ) {
+      boolean outline = (mDisplayMode & DisplayMode.DISPLAY_OUTLINE ) != 0;
+      if ( outline ) {
+        synchronized( mSyncScrap ) {
+          for ( Scrap scrap : mScraps ) scrap.drawOutline( canvas, matrix, bbox );
+        }
+      } else {
+        synchronized( mSyncScrap ) {
+          for ( Scrap scrap : mScraps ) scrap.drawAll( canvas, matrix, scale, bbox );
+        }
+      }
+    } else if ( mCurrentScrap != null ) {
+      synchronized( mSyncScrap ) {
+        for ( Scrap scrap : mScraps ) {
+          if ( scrap == mCurrentScrap ) continue;
+          scrap.drawGreyOutline( canvas, matrix, bbox );
+        }
+        mCurrentScrap.drawAll( canvas, matrix, scale, bbox );
+      }
+    }
+  }
+
+  private void drawExportDecorations( Canvas canvas, float bitmap_scale, SketchPngExportOptions options,
+                                      float scale_ref_x, float scale_ref_y, float decoration_gap )
+  {
+    if ( canvas == null || mScaleRef == null ) return;
+    float sketch_unit = isFixedZoom() ? 1.0f : TDSetting.mUnitGrid;
+    float north_x = scale_ref_x;
+    if ( options.includeScaleBar ) {
+      float scale_bar_len = mScaleRef.drawScaleBar( canvas, bitmap_scale, scale_ref_x, scale_ref_y, sketch_unit );
+      if ( scale_bar_len > 0 ) north_x += scale_bar_len + decoration_gap;
+    }
+    if ( options.includeNorthArrow ) {
+      mScaleRef.drawNorthArrow( canvas, north_x, scale_ref_y );
+    }
+  }
+
+  private RectF getExportBitmapBounds( boolean legs, boolean splays, boolean stations, DrawingStationSplay station_splay )
+  {
+    RectF bounds = new RectF( -1, -1, 1, 1 );
+    RectF b = new RectF();
+
+    synchronized( TDPath.mShotsLock ) {
+      if ( splays && mSplaysStack != null ) {
+        if ( station_splay == null ) {
+          for ( DrawingSplayPath path : mSplaysStack ) {
+            path.computeBounds( b, true );
+            Scrap.union( bounds, b );
+          }
+        } else {
+          for ( DrawingSplayPath path : mSplaysStack ) {
+            if ( station_splay.isStationOFF( path ) ) continue;
+            path.computeBounds( b, true );
+            Scrap.union( bounds, b );
+          }
+        }
+      }
+      if ( legs && mLegsStack != null ) {
+        for ( DrawingPath path : mLegsStack ) {
+          path.computeBounds( b, true );
+          Scrap.union( bounds, b );
+        }
+      }
+    }
+
+    synchronized( mSyncScrap ) {
+      for ( Scrap scrap : mScraps ) scrap.getBitmapBounds( bounds );
+      if ( stations && ! TDSetting.mAutoStations && mCurrentScrap != null ) {
+        ArrayList< DrawingStationUser > user_stations = new ArrayList<>();
+        mCurrentScrap.addUserStationsToList( user_stations );
+        for ( DrawingStationUser station : user_stations ) {
+          station.computeBounds( b, true );
+          Scrap.union( bounds, b );
+        }
+      }
+    }
+
+    if ( stations && mStations != null ) {
+      synchronized( TDPath.mStationsLock ) {
+        for ( DrawingStationName station : mStations ) {
+          station.computeBounds( b, true );
+          Scrap.union( bounds, b );
+        }
+      }
+    }
+
+    synchronized( TDPath.mGridsLock ) {
+      if ( mNorthLine != null ) {
+        mNorthLine.computeBounds( b, true );
+        Scrap.union( bounds, b );
+      }
+    }
+
+    if ( mMode < DrawingSurface.DRAWING_SECTION ) {
+      synchronized( mSyncOutline ) {
+        for ( DrawingLinePath path : mPlotOutline ) {
+          if ( path == null ) continue;
+          path.computeBounds( b, true );
+          Scrap.union( bounds, b );
+        }
+      }
+      synchronized( TDPath.mXSectionsLock ) {
+        for ( DrawingOutlinePath path : mXSectionOutlines ) {
+          if ( path == null || mCurrentScrap == null || ! path.isScrapId( mCurrentScrap.mScrapIdx ) ) continue;
+          if ( path.isPlaced() ) {
+            RectF box = path.getBox();
+            if ( box != null ) Scrap.union( bounds, box );
+          } else if ( path.mPath != null ) {
+            path.mPath.computeBounds( b, true );
+            Scrap.union( bounds, b );
+          }
+        }
+      }
+    }
+
     return bounds;
   }
 

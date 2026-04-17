@@ -32,7 +32,7 @@ public class TDConst
   // public static final int SURVEY_FORMAT_PLT = 11; // track file PltFile OziExplorer
   public static final int SURVEY_FORMAT_GPX = 11; // track file GpxFile
 
-  // public static final int SURVEY_FORMAT_PNG = 12; // NO_PNG
+  public static final int SURVEY_FORMAT_PNG = 12;
   public static final int SURVEY_FORMAT_SVG = 13;
   public static final int SURVEY_FORMAT_TH2 = 14;
   public static final int SURVEY_FORMAT_TH3 = 15;
@@ -86,6 +86,7 @@ public class TDConst
     if ( ext.equalsIgnoreCase("kml") ) return SURVEY_FORMAT_KML;
     // if ( ext.equalsIgnoreCase("plt") ) return SURVEY_FORMAT_PLT;
     // if ( ext.equalsIgnoreCase("gpx") ) return SURVEY_FORMAT_GPX;
+    if ( ext.equalsIgnoreCase("png") ) return SURVEY_FORMAT_PNG;
     if ( ext.equalsIgnoreCase("svg") ) return SURVEY_FORMAT_SVG;
     if ( ext.equalsIgnoreCase("th2") ) return SURVEY_FORMAT_TH2;
     // if ( ext.equalsIgnoreCase("th3") ) return SURVEY_FORMAT_TH3;
@@ -134,7 +135,7 @@ public class TDConst
     "application/vnd",          // 10 *KML
     // "application/octet-stream", //    trackfile (.plt)
     "application/octet-stream", // 11 trackfile (.gpx)
-    null, // "image/png",                // 12 *PNG
+    "image/png",                // 12 *PNG
     "image/svg+kml",            // 13 *SVG
     "application/octet-stream", // 14 Therion-2
     "application/octet-stream", // 15 Therion-3
@@ -488,7 +489,8 @@ public class TDConst
   public final static int PLOT_POS_SHAPEFILE = 4;
   public final static int PLOT_POS_PDF       = 5;
   public final static int PLOT_POS_XVI       = 6;
-  // public final static int PLOT_POS_TUNNEL    = 7;
+  public final static int PLOT_POS_PNG       = 7;
+  // public final static int PLOT_POS_TUNNEL    = 8;
 
   public static final String[] mPlotExportTypes = {
       "Therion",
@@ -496,9 +498,9 @@ public class TDConst
       "DXF",
       "SVG",
       "Shapefile",
-      // "PNG", // NO_PNG
       "PDF",
       "XVI",
+      "PNG"
       // "Tunnel",
       // "Cave3D",
       // "PNM", NO_PNM
@@ -510,9 +512,9 @@ public class TDConst
     SURVEY_FORMAT_DXF,
     SURVEY_FORMAT_SVG,
     SURVEY_FORMAT_SHP,
-    // SURVEY_FORMAT_PNG, // NO_PNG
     SURVEY_FORMAT_PDF,
     SURVEY_FORMAT_XVI,
+    SURVEY_FORMAT_PNG,
     // SURVEY_FORMAT_TNL,
     // SURVEY_FORMAT_C3D, // NO_C3D
     // SURVEY_FORMAT_PNM, // NO_PNM
@@ -524,9 +526,9 @@ public class TDConst
     "dxf",
     "svg",
     "shz",
-    // "png", // NO_PNG
     "pdf",
     "xvi",
+    "png",
     // "xml", // NO_TUNNEL
     // "c3d", // NO_C3D
     // "pnm", // NO_PNM
@@ -544,9 +546,9 @@ public class TDConst
       case PLOT_POS_DXF:     return name + TDPath.DXF;
       case PLOT_POS_SVG:     return name + TDPath.SVG;
       case PLOT_POS_SHAPEFILE: return name + TDPath.SHZ;
-      // case PLOT_POS_PNG: return name + ".png"; // NO_PNG
       case PLOT_POS_PDF:    return name + TDPath.PDF;
       case PLOT_POS_XVI:    return name + TDPath.XVI;
+      case PLOT_POS_PNG:    return name + TDPath.PNG;
       // case PLOT_POS_TUNNEL: return name + ".xml"; // Tunnel
       // case PLOT_POS_C3D: return name + ".c3d";
       // case PLOT_POS_PNM: return name + ".pnm"; NO_PNM

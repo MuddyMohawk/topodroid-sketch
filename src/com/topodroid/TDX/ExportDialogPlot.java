@@ -14,6 +14,8 @@ package com.topodroid.TDX;
 import com.topodroid.ui.MyDialog;
 import com.topodroid.prefs.TDSetting;
 import com.topodroid.util.TDLog;
+import com.topodroid.util.TDString;
+import com.topodroid.util.TDUtil;
 
 import java.util.Locale;
 
@@ -64,7 +66,7 @@ public class ExportDialogPlot extends MyDialog
   private LinearLayout mLayoutDxf;
   private LinearLayout mLayoutSvg;
   private LinearLayout mLayoutShp;
-  // private LinearLayout mLayoutPng; // NO_PNG
+  private LinearLayout mLayoutPng;
   private LinearLayout mLayoutPdf;
   private LinearLayout mLayoutXvi;
 
@@ -108,7 +110,7 @@ public class ExportDialogPlot extends MyDialog
     mLayoutDxf     = (LinearLayout) findViewById( R.id.layout_dxf );
     mLayoutSvg     = (LinearLayout) findViewById( R.id.layout_svg );
     mLayoutShp     = (LinearLayout) findViewById( R.id.layout_shp );
-    // mLayoutPng     = (LinearLayout) findViewById( R.id.layout_png ); // NO_PNG
+    mLayoutPng     = (LinearLayout) findViewById( R.id.layout_png );
     mLayoutPdf     = (LinearLayout) findViewById( R.id.layout_pdf );
     mLayoutXvi     = (LinearLayout) findViewById( R.id.layout_xvi );
 
@@ -199,7 +201,9 @@ public class ExportDialogPlot extends MyDialog
     Button b = (Button)v;
     if ( b == mBtnOk && mSelected != null ) {
       setOptions();
-      if ( mParentType == PARENT_DRAWING ) { // plot
+      if ( mParentType == PARENT_DRAWING && mSelectedPos == TDConst.PLOT_POS_PNG && mParent instanceof DrawingWindow ) {
+        ((DrawingWindow)mParent).doExportPng( getPngOptions() );
+      } else if ( mParentType == PARENT_DRAWING ) { // plot
         mParent.doExport( mSelected, TDConst.getPlotFilename( mSelectedPos, mPlotName1 ), null, -1L, false );  // null prefix, -1=first
         if ( mBothViews && mPlotName2 != null ) {
           mParent.doExport( mSelected, TDConst.getPlotFilename( mSelectedPos, mPlotName2 ), null, -1L, true );  // null prefix, -1=first
@@ -222,7 +226,7 @@ public class ExportDialogPlot extends MyDialog
     mLayoutDxf.setVisibility( View.GONE );
     mLayoutSvg.setVisibility( View.GONE );
     mLayoutShp.setVisibility( View.GONE );
-    // mLayoutPng.setVisibility( View.GONE ); // NO_PNG
+    mLayoutPng.setVisibility( View.GONE );
     mLayoutPdf.setVisibility( View.GONE );
     mLayoutXvi.setVisibility( View.GONE );
     if ( mParentType == PARENT_DRAWING ) { // SketchWindow
@@ -232,9 +236,9 @@ public class ExportDialogPlot extends MyDialog
         case TDConst.PLOT_POS_DXF:       mLayoutDxf.setVisibility( View.VISIBLE ); break;
         case TDConst.PLOT_POS_SVG:       mLayoutSvg.setVisibility( View.VISIBLE ); break;
         case TDConst.PLOT_POS_SHAPEFILE: if ( TDLevel.overExpert ) mLayoutShp.setVisibility( View.VISIBLE ); break;
-        // case TDConst.PLOT_POS_PNG: mLayoutPng.setVisibility( View.VISIBLE ); break; // NO_PNG
         case TDConst.PLOT_POS_PDF: mLayoutPdf.setVisibility( View.VISIBLE ); break;
         case TDConst.PLOT_POS_XVI: mLayoutXvi.setVisibility( View.VISIBLE ); break;
+        case TDConst.PLOT_POS_PNG: mLayoutPng.setVisibility( View.VISIBLE ); break;
         // case TDConst.PLOT_POS_TUNNEL: break;
       }
     } else { // mParentType == PARENT_OVERVIEW // OverviewWindow
@@ -258,6 +262,7 @@ public class ExportDialogPlot extends MyDialog
    */
   private void setOptions()
   {
+    mBothViews = false;
     int selected = mSelectedPos;
     if ( mParentType == PARENT_OVERVIEW ) {
       if ( selected > 0 ) ++selected;  // shift indices dxf .. xvi up - skip csx
@@ -408,10 +413,16 @@ public class ExportDialogPlot extends MyDialog
     
     ((CheckBox) findViewById( R.id.shp_georeference )).setChecked( TDSetting.mShpGeoref );
 
-    // ((CheckBox) findViewById( R.id.png_splays )).setChecked( TDSetting.mTherionSplays ); // NO_PNG
-    // ((CheckBox) findViewById( R.id.png_grid )).setChecked( TDSetting.mSvgGrid ); // NO_PNG
-    // ((CheckBox) findViewById( R.id.png_bgcolor )).setChecked( TDSetting.mBitmapBgcolor == 0xffffffff ); // NO_PNG
-    // ((EditText) findViewById( R.id.png_scale )).setText( Float.toString( TDSetting.mBitmapScale ) ); // NO_PNG
+    ((CheckBox) findViewById( R.id.png_stations )).setChecked( true );
+    ((CheckBox) findViewById( R.id.png_legs )).setChecked( true );
+    ((CheckBox) findViewById( R.id.png_splays )).setChecked( false );
+    ((CheckBox) findViewById( R.id.png_grid )).setChecked( true );
+    ((CheckBox) findViewById( R.id.png_scale_bar )).setChecked( true );
+    ((CheckBox) findViewById( R.id.png_north )).setChecked( true );
+    ((CheckBox) findViewById( R.id.png_transparent_background )).setChecked( true );
+    ((CheckBox) findViewById( R.id.png_overwrite )).setChecked( false );
+    ((EditText) findViewById( R.id.png_scale )).setText( String.format( Locale.US, "%.2f", 1.0f ) );
+    ((EditText) findViewById( R.id.png_filename )).setText( getDefaultPngFilename() );
 
     // ((CheckBox) findViewById( R.id.pdf_bgcolor )).setChecked( TDSetting.mBitmapBgcolor == 0xffffffff );
     // ((CheckBox) findViewById( R.id.pdf_splays )).setChecked( TDSetting.mTherionSplays );
@@ -419,6 +430,43 @@ public class ExportDialogPlot extends MyDialog
 
     ((CheckBox) findViewById( R.id.xvi_splays )).setChecked( TDSetting.mSvgSplays );
   }
+
+  private String getDefaultPngFilename()
+  {
+    if ( mParent instanceof DrawingWindow ) {
+      return ((DrawingWindow)mParent).getDefaultPngExportFilename();
+    }
+    String base = ( mPlotName1 == null ) ? null
+      : mPlotName1.trim().replaceAll( "\\s+", "_" ).replaceAll( "/", "-" ).replaceAll( "\\*", "+" )
+          .replaceAll( "\\\\", "" ).replaceAll( ":", "-" ).replaceAll( ">", "-" ).replaceAll( "<", "-" )
+          .replaceAll( "\\|", "+" ).replaceAll( "\\?", "." ).replaceAll( "\"", "" );
+    if ( TDString.isNullOrEmpty( base ) ) base = "sketch";
+    return base + "_" + TDUtil.getDateString( "yyyy-MM-dd" ) + TDPath.PNG;
+  }
+
+  private float getPngScale()
+  {
+    try {
+      return Float.parseFloat( ((EditText) findViewById( R.id.png_scale )).getText().toString() );
+    } catch ( NumberFormatException e ) {
+      TDLog.e( "PNG scale: bad value" );
+      return 1.0f;
+    }
+  }
+
+  private SketchPngExportOptions getPngOptions()
+  {
+    return new SketchPngExportOptions(
+      ((CheckBox) findViewById( R.id.png_stations )).isChecked(),
+      ((CheckBox) findViewById( R.id.png_legs )).isChecked(),
+      ((CheckBox) findViewById( R.id.png_splays )).isChecked(),
+      ((CheckBox) findViewById( R.id.png_grid )).isChecked(),
+      ((CheckBox) findViewById( R.id.png_scale_bar )).isChecked(),
+      ((CheckBox) findViewById( R.id.png_north )).isChecked(),
+      ((CheckBox) findViewById( R.id.png_transparent_background )).isChecked(),
+      ((CheckBox) findViewById( R.id.png_overwrite )).isChecked(),
+      getPngScale(),
+      ((EditText) findViewById( R.id.png_filename )).getText().toString()
+    );
+  }
 }
-
-

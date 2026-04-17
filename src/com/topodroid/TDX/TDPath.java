@@ -52,6 +52,7 @@ public class TDPath
   final static String GTX = ".gtx"; // 
   final static String KML = ".kml"; // 
   final static String PDF = ".pdf"; // 
+  final static String PNG = ".png"; // PNG
   final static String SHZ = ".shz"; // shapefile
   final static String SUR = ".sur"; // WinKarst
   final static String SVG = ".svg"; // SVG

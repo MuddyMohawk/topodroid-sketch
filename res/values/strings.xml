@@ -1311,6 +1311,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="export_georeference">Georeference</string>
     <string name="export_grid">Grid</string>
     <string name="export_faverjon" translatable="false">Faverjon</string>
+    <string name="export_legs">Legs</string>
     <string name="export_layers">Scrap layers</string>
     <string name="export_linedir">Line direction</string>
     <string name="export_lrud" copyable="all">LRUD</string>
@@ -1327,18 +1328,24 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="export_roundtrip" copyable="all">Round-trip</string>
     <string name="export_share">Share</string>
   <string name="export_overwrite">Overwrite</string>
+  <string name="export_file_exists">File already exists: %1$s</string>
   <string name="export_sketch_line_symbols">Include sketch line symbols</string>
-    <!-- UNUSED string name="export_scale_png">Resolution</string -->
+  <string name="export_png_scale">PNG scale</string>
+  <!-- UNUSED string name="export_scale_png">Resolution</string -->
+    <string name="export_png_filename">PNG filename</string>
     <string name="export_scale_th">Scale 1 :</string>
+    <string name="export_scale_bar">Scale bar</string>
     <string name="export_spacing_th">Point spacing</string>
     <string name="export_splays">Splays</string>
     <string name="export_splays_named">Named splays</string>
     <string name="export_stations" copyable="fr">Stations</string>
     <string name="export_surface" copyable="fr">Surface</string>
     <string name="export_swap_lr">Swap L/R</string>
+    <string name="export_transparent_background">Transparent background</string>
     <string name="export_trox">Trox format</string>
     <string name="export_walls">Walls</string>
     <string name="export_xvi">Xvi images</string>
+    <string name="export_north_direction">North direction</string>
     <string name="export_with_xsections">Include X-sections</string>
     <string name="export_grouped">Group elements in layers by type</string>
     <string name="export_origin">Origin station</string>

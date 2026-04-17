@@ -199,6 +199,64 @@ class DrawingScaleReference
     return (k > 0)? refLen : -1; // neg. --> cannot draw
   }
 
+  private float getCanvasLength( float reference_len, float canvas_unit, float sketch_unit )
+  {
+    float canvas_len = canvasUnit(reference_len, canvas_unit, sketch_unit);
+    if ( getUnitMode( sketch_unit ) == UNIT_MODE_TWO_FEET ) canvas_len /= 2;
+    return canvas_len;
+  }
+
+  private float canvasUnit( float reference_len, float canvas_unit, float sketch_unit )
+  {
+    return canvas_unit * reference_len * sketch_unit;
+  }
+
+  private String getReferenceText( float reference_len, float sketch_unit )
+  {
+    return (( reference_len < 1 )? Float.toString( reference_len ) : Integer.toString( (int)reference_len )) + getUnits( sketch_unit );
+  }
+
+  float drawScaleBar( Canvas canvas, float zoom, float locx, float locy, float sketch_unit )
+  {
+    if ( canvas == null ) return 0;
+    float canvas_unit = DrawingUtil.SCALE_FIX * zoom;
+    float reference_len = getReferenceLength( canvas.getWidth(), canvas_unit, sketch_unit );
+    if ( reference_len <= 0 ) return 0;
+
+    float canvas_len = getCanvasLength( reference_len, canvas_unit, sketch_unit );
+    String refstr = getReferenceText( reference_len, sketch_unit );
+
+    canvas.drawLine( locx, locy, locx + canvas_len, locy, mPaint );
+    canvas.drawLine( locx, locy, locx, locy - HEIGHT_BARS, mPaint );
+    canvas.drawLine( locx + canvas_len, locy, locx + canvas_len, locy - HEIGHT_BARS, mPaint );
+    canvas.drawText( refstr, locx + canvas_len / 2, locy - HEIGHT_BARS, mPaint );
+    return canvas_len;
+  }
+
+  float getNorthArrowLength( Canvas canvas )
+  {
+    return ( canvas == null )? 0 : (float)canvas.getWidth() / 10;
+  }
+
+  void drawNorthArrow( Canvas canvas, float locx, float locy )
+  {
+    if ( canvas == null ) return;
+
+    float arrowlen = getNorthArrowLength( canvas );
+    float arrowtip = arrowlen / 5;
+    float x = locx;
+    float y = locy - 4 * HEIGHT_BARS;
+    if ( mSdecl > 0 ) x += arrowlen * mSdecl;
+    canvas.drawLine( x, y, x, y - arrowlen, mPaint );
+    canvas.drawLine( x - arrowtip, y - arrowlen + arrowtip, x, y - arrowlen, mPaint );
+    canvas.drawLine( x + arrowtip, y - arrowlen + arrowtip, x, y - arrowlen, mPaint );
+    if ( mHasDecl ) {
+      float xd = x - arrowlen * mSdecl;
+      float yd = y - arrowlen * mCdecl;
+      canvas.drawLine( x, y, xd, yd, BrushManager.lightBluePaint );
+    }
+  }
+
   /** display the scale reference
    * @param canvas canvas to draw in
    * @param zoom zoom factor used

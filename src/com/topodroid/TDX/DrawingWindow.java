@@ -8310,6 +8310,95 @@ public class DrawingWindow extends ItemDrawer
   //   new ExportBitmapToFile( uri, format, bitmap, scale, filename, true ).execute();
   // }
 
+  private String sanitizePngFilenameValue( String value )
+  {
+    if ( value == null ) return null;
+    return value.trim()
+                .replaceAll( "\\s+", "_" )
+                .replace( '/', '-' )
+                .replace( '*', '+' )
+                .replace( "\\", "" )
+                .replace( ':', '-' )
+                .replace( '>', '-' )
+                .replace( '<', '-' )
+                .replace( '|', '+' )
+                .replace( '?', '.' )
+                .replace( "\"", "" );
+  }
+
+  private String normalizePngExportFilename( String filename )
+  {
+    String clean = sanitizePngFilenameValue( filename );
+    if ( TDString.isNullOrEmpty( clean ) ) return getDefaultPngExportFilename();
+    if ( clean.length() > TDPath.PNG.length() && clean.regionMatches( true, clean.length() - TDPath.PNG.length(), TDPath.PNG, 0, TDPath.PNG.length() ) ) {
+      clean = clean.substring( 0, clean.length() - TDPath.PNG.length() );
+    }
+    if ( TDString.isNullOrEmpty( clean ) ) return getDefaultPngExportFilename();
+    return clean + TDPath.PNG;
+  }
+
+  private String getPngExportViewSuffix()
+  {
+    if ( PlotType.isAnySection( mType ) ) return "cross-section";
+    if ( PlotType.isProfile( mType ) ) return "profile";
+    if ( PlotType.isPlan( mType ) ) return "plan";
+    return "sketch";
+  }
+
+  String getDefaultPngExportFilename()
+  {
+    String survey_name = sanitizePngFilenameValue( TDInstance.survey );
+    if ( TDString.isNullOrEmpty( survey_name ) ) survey_name = "survey";
+    String sketch_name = sanitizePngFilenameValue( getPlotName() );
+    if ( TDString.isNullOrEmpty( sketch_name ) ) sketch_name = "sketch";
+    String view_name = sanitizePngFilenameValue( getPngExportViewSuffix() );
+    if ( TDString.isNullOrEmpty( view_name ) ) view_name = "sketch";
+    String timestamp = TDUtil.getDateString( "yyyy-MM-dd" );
+    return survey_name + "_" + sketch_name + "_" + view_name + "_" + timestamp + TDPath.PNG;
+  }
+
+  public void doExportPng( SketchPngExportOptions options )
+  {
+    if ( options == null ) return;
+
+    String filename = normalizePngExportFilename( options.filename );
+    SketchPngExportOptions export_options = options;
+    if ( ! filename.equals( options.filename ) ) {
+      export_options = new SketchPngExportOptions(
+        options.includeStations,
+        options.includeLegs,
+        options.includeSplays,
+        options.includeGrid,
+        options.includeScaleBar,
+        options.includeNorthArrow,
+        options.transparentBackground,
+        options.overwriteExisting,
+        options.bitmapScaleFactor,
+        filename
+      );
+    }
+
+    File export_file = TDPath.getOutExportFile( filename );
+    if ( export_file != null && export_file.exists() && ! export_options.overwriteExisting ) {
+      TDToast.makeWarn( String.format( Locale.getDefault(), getResources().getString( R.string.export_file_exists ), filename ) );
+      return;
+    }
+
+    Bitmap bitmap = mDrawingSurface.renderExportBitmap( mType, export_options );
+    if ( bitmap == null ) {
+      TDToast.makeBad( R.string.null_bitmap );
+      return;
+    }
+
+    Uri uri = Uri.fromFile( new File( TDPath.getOutFile( filename ) ) );
+    try {
+      new ExportPngToFile( mApp, mActivity, uri, bitmap, filename, true ).execute();
+    } catch ( RejectedExecutionException e ) {
+      bitmap.recycle();
+      TDToast.makeBad( R.string.saving_file_failed );
+    }
+  }
+
   // PDF ------------------------------------------------------------------
   /** save as PDF file
    * @param uri      export URI

@@ -7,6 +7,8 @@ This was essentially entirely vibe-coded with Codex.
 
 Testing and development was done with a Cavway X1 and an Active Tab 3.
 
+This was written in English; other translations are likely not working
+
 #### TODO
 - Change branding, name, versioning, etc to TopoDroid Sketch
 - Add safety warnings when importing vanilla TopoDroid stuff
@@ -52,8 +54,10 @@ Testing and development was done with a Cavway X1 and an Active Tab 3.
 - Bulk reassign splays?
 - Setting to automatically detect if there hasn't been any successful wifi or data connections in the last N minutes, and then toggle airplane mode to save battery
 - Long-press erase mode for the S pen. Attempted once, was bugged and didn't work.
+- Legend, sketch info, etc viewport style box to use with the png export. Jealous of that Therion fanciness
+- More naming options for png export? (create a name based off of the selected export options? eg append `s` for splay, `n` for north arrow)
 
-### TopoDroid Sketch v1.14.2 Changelog:
+### TopoDroid Sketch v1.15.5 Changelog:
 
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob.
 
@@ -72,7 +76,7 @@ Testing and development was done with a Cavway X1 and an Active Tab 3.
 - Display of sketch references for cross-sections (legs, splays, etc) can be toggled by selecting the cross-section in edit mode
 - Not currently supported for station cross-sections
 
-**UX**
+**Line Presets**
 - Added two drawing "profiles" to the sketch screen, which appear as "P1" and "P2". These are intended to allow a sketcher to switch between drawing thin, detailed lines, and smooth, straight lines
   - Profile 1's defaults are a line style of `fine` and a line point spacing of 1
   - Profile 2's defaults are a line style of `bezier` and a line point spacing of 20 (todo: switch to 15)
@@ -91,13 +95,16 @@ Testing and development was done with a Cavway X1 and an Active Tab 3.
 - Added the ability to bind actions to S Pen button inputs in the *TopoDroid main settings -> Devices -> Action Key Bindings* menu
 - Added the ability to bind actions to the Samsung Active key in the *TopoDroid main settings -> Devices -> Action Key Bindings* menu
 
+**PNG Sketch Export**
+- Added a PNG export option for sketches
+- Stations, legs, splays, grid, scale bar (kinda meh), north direction, and background transparency are all toggleable options
+- The output can be scaled from 0.25 to 4.0. The default of 1.00 is great for handing to a cartographer, but the files it produces are too large to really view on the tablet. I recommend 0.25 scale for that.
+- The default filename is `<survey_name>_<sketch_name>_<sketch_type (eg plan, profile)>_YYYY-MM-DD.png`. Example: `F-Survey_toob_plan_2026-04-15.png`. 
+
 **misc UI**
 - Added a new, more capable color picker widget
 - Added sketch grid appearance settings for both grid width and grid color
 - Added the new 1 foot sketch-grid unit alongside the existing 2 feet, yard, meter, and 10 cm options
-
-**Bug Fixes**
-- Fixed the length-unit/default regression so explicit feet vs meters values are handled correctly on load, live updates, and settings import/export. I think this was pre-existing and not caused by me.
 
 # topodroid
 

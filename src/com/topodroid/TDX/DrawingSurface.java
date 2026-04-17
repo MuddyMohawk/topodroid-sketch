@@ -31,7 +31,7 @@ import android.view.SurfaceView;
 // import android.view.MotionEvent;
 
 import android.graphics.Canvas;
-// import android.graphics.Bitmap;
+import android.graphics.Bitmap;
 import android.graphics.Path;
 import android.graphics.Paint;
 import android.graphics.RectF;
@@ -1196,6 +1196,12 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     if ( PlotType.isProfile( type ) ) return mCommandManager2;
     if ( type == PlotType.PLOT_PLAN ) return mCommandManager1;
     return mCommandManager3;
+  }
+
+  Bitmap renderExportBitmap( long type, SketchPngExportOptions options )
+  {
+    DrawingCommandManager manager = getManager( type );
+    return ( manager == null ) ? null : manager.renderExportBitmap( mStationSplay, options );
   }
 
   /** rebind line paints in every cached drawing manager

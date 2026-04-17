@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- ScrollView xmlns:android="http://schemas.android.com/apk/res/android" 
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" 
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  >
+
+<LinearLayout
   style="@style/base_padding"
-  android:layout_width="match_parent" 
+  android:layout_width="match_parent"
   android:layout_height="wrap_content"
   android:orientation="vertical"
   >
@@ -385,66 +386,92 @@
       />
   </LinearLayout>
 
-  <!-- NO_PNG LinearLayout android:id="@+id/layout_png"
+  <LinearLayout android:id="@+id/layout_png"
     android:layout_width="match_parent" 
     android:layout_height="wrap_content"
     android:orientation="vertical" 
     android:layout_marginTop="@dimen/marginvbig"
     android:layout_marginBottom="@dimen/marginvbig"
     >
-    <CheckBox android:id="@+id/png_bgcolor"
+    <CheckBox android:id="@+id/png_stations"
       android:layout_width="match_parent" 
       android:layout_height="wrap_content"
-      android:text="@string/export_bgcolor"
+      android:text="@string/export_stations"
       />
-    <CheckBox android:id="@+id/png_grid"
+    <CheckBox android:id="@+id/png_legs"
       android:layout_width="match_parent" 
       android:layout_height="wrap_content"
-      android:text="@string/export_grid"
+      android:text="@string/export_legs"
       />
     <CheckBox android:id="@+id/png_splays"
       android:layout_width="match_parent" 
       android:layout_height="wrap_content"
       android:text="@string/export_splays"
       />
-    <LinearLayout 
-      android:layout_width="match_parent" 
+    <CheckBox android:id="@+id/png_grid"
+      android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:orientation="horizontal" 
+      android:text="@string/export_grid"
+      />
+    <CheckBox android:id="@+id/png_scale_bar"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/export_scale_bar"
+      />
+    <CheckBox android:id="@+id/png_north"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/export_north_direction"
+      />
+    <CheckBox android:id="@+id/png_transparent_background"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/export_transparent_background"
+      />
+    <CheckBox android:id="@+id/png_overwrite"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/export_overwrite"
+      />
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal"
       >
       <TextView android:labelFor="@+id/png_scale"
-        android:layout_width="0dp" 
-        android:layout_weight="50" 
+        android:layout_width="0dp"
+        android:layout_weight="50"
         android:layout_height="wrap_content"
-        android:text="@string/export_scale_png"
+        android:text="@string/export_png_scale"
         />
-      <EditText android:id="@id/png_scale"
-        android:layout_width="0dp" 
-        android:layout_weight="50" 
+      <EditText android:id="@+id/png_scale"
+        android:layout_width="0dp"
+        android:layout_weight="50"
         android:layout_height="wrap_content"
-          android:inputType="numberDecimal"
+        android:inputType="numberDecimal"
         android:importantForAutofill="no"
         />
     </LinearLayout>
-    <!- - LinearLayout 
+    <LinearLayout
       android:layout_width="match_parent" 
       android:layout_height="wrap_content"
-      android:orientation="horizontal" 
+      android:orientation="horizontal"
       >
-      <TextView 
+      <TextView android:labelFor="@+id/png_filename"
         android:layout_width="0dp" 
         android:layout_weight="50" 
         android:layout_height="wrap_content"
-        android:text="@string/export_bgcolor"
+        android:text="@string/export_png_filename"
         />
-      <EditText android:id="@+id/png_bgcolor"
+      <EditText android:id="@+id/png_filename"
         android:layout_width="0dp" 
         android:layout_weight="50" 
         android:layout_height="wrap_content"
+        android:inputType="text"
         android:importantForAutofill="no"
         />
-    </LinearLayout - ->
-  </LinearLayout -->
+    </LinearLayout>
+  </LinearLayout>
   <LinearLayout android:id="@+id/layout_pdf"
     android:layout_width="match_parent" 
     android:layout_height="wrap_content"
@@ -537,6 +564,6 @@
       />
     </LinearLayout>
   </LinearLayout>
-   		
+  
 </LinearLayout>
-<!-- /ScrollView -->
+</ScrollView>
