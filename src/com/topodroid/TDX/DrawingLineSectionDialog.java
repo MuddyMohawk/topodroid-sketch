@@ -61,6 +61,7 @@ class DrawingLineSectionDialog extends MyDialog
   private MyCheckBox mBtnSave  = null;
 
   private Button   mBtnCancel;
+  private Button   mBtnPlace;
   private EditText mETnick;
   private ImageView mIVimage;   // photo image
   private boolean mHSection;
@@ -222,6 +223,8 @@ class DrawingLineSectionDialog extends MyDialog
     }
     mBtnCancel = (Button) findViewById( R.id.button_cancel );
     mBtnCancel.setOnClickListener( this );
+    mBtnPlace = (Button) findViewById( R.id.button_place );
+    mBtnPlace.setOnClickListener( this );
 
   }
 
@@ -237,6 +240,13 @@ class DrawingLineSectionDialog extends MyDialog
       return;
     } else if ( v.getId() == R.id.button_cancel ) {
       onBackPressed();
+      return;
+    } else if ( v.getId() == R.id.button_place ) {
+      long type = mHSection ? PlotType.PLOT_H_SECTION : PlotType.PLOT_SECTION;
+      mNick = ( mETnick.getText() != null )? mETnick.getText().toString() : "";
+      mParent.placePlotXSection( mLine, mId, type, mFrom, mTo, mNick, mAzimuth, mClino, mTT, mCenter );
+      recycleImage();
+      dismiss();
       return;
     } else {
       long type = mHSection ? PlotType.PLOT_H_SECTION : PlotType.PLOT_SECTION;
@@ -278,4 +288,3 @@ class DrawingLineSectionDialog extends MyDialog
   }
 
 }
-

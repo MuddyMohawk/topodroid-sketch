@@ -11,7 +11,9 @@ Point properties:
 <li><b>size</b> (XS, S, M, L, XL)</li>
 <li><b>layers</b>, the canvas views on which the point is displayed. This property is only available if the <i>Secondary Settings &gt; Sketching &gt; Layers</i> setting is set to <i>by item</i> [T]</li>
 <li><i>Therion</i> <b>options</b>: the sketch point has always the "-scrap" option followed by the name of the x-section</li>
-<li><b>x-section</b> checkbox to display the xsection outline in the sketch</li>
+<li><b>x-section</b> checkbox to display the legacy xsection outline in the sketch (unplaced points only)</li>
+<li><b>box width</b> and <b>box height</b> for placed leg x-sections</li>
+<li><b>show sketch references</b> checkbox to toggle all the embedded viewport references for a leg x-section (station names, leg, splays, and north reference line)</li>
 </ul>
 <br><p>
 
@@ -23,9 +25,13 @@ In this case the selectable point will nevertheless be shown in edit mode, so th
 a layer can be assigned to the point.
 <br><p>
 
-The <b>Draw</b> button to open the x-section sketch, if it exists.
-Changes to the xsections sketch are not propagated to the outline in the sketch: to update it,
-close the outline and open it again.
+The <b>Open</b> button opens the dedicated x-section sketch, if it exists.<br>
+For leg x-sections the <b>Place on plan</b> button starts a one-shot placement on the parent plan/profile sketch.
+The next tap on the sketch drops a same-scale embedded x-section viewport there.
+If the x-section is already placed, the button becomes <b>Re-place on plan</b>.<br>
+The <b>Remove from plan</b> button removes a placed leg x-section viewport from the parent sketch but keeps the x-section file itself.<br>
+The <b>Show sketch references</b> checkbox toggles all the detached reference graphics in the placed viewport as one group.<br>
+Changes to the xsection sketch are propagated back to placed viewports when you return to the parent sketch.
 <br><p>
 
 

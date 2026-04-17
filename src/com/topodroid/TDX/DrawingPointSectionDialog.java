@@ -22,8 +22,8 @@ import com.topodroid.types.PointScale;
 import android.os.Bundle;
 import android.content.Context;
 
-// import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.EditText;
 import android.widget.Button;
 import android.widget.RadioButton;
 import android.widget.CheckBox;
@@ -36,6 +36,8 @@ class DrawingPointSectionDialog extends MyDialog
   private final DrawingWindow  mParent;
   private final DrawingPointPath mPoint;
   private final int mPointType;
+  private boolean mIsPlaced;
+  private boolean mIsLegSection;
   private boolean  mHasXSectionOutline;
   private String mXSectionName; // full section name = scrap-name
 
@@ -50,7 +52,13 @@ class DrawingPointSectionDialog extends MyDialog
   private RadioButton mBtnScaleXL;
 
   private CheckBox mCBxsection; // to display xsection outline
-  private Button   mBTdraw;
+  private Button   mBtnOpen;
+  private Button   mBtnPlace;
+  private Button   mBtnRemove;
+  private EditText mETboxWidth;
+  private EditText mETboxHeight;
+  private LinearLayout mLayoutBox;
+  private CheckBox mCBshowRefs;
 
   private CheckBox mCBbase  = null; // canvas levels
   private CheckBox mCBfloor = null;
@@ -76,6 +84,8 @@ class DrawingPointSectionDialog extends MyDialog
     mPoint  = point;
     mPointType = mPoint.mPointType;
     mXSectionName = null;
+    mIsPlaced = false;
+    mIsLegSection = false;
     mHasXSectionOutline = false;
   }
 
@@ -93,29 +103,47 @@ class DrawingPointSectionDialog extends MyDialog
     if ( mPoint.mOptions != null ) mEToptions.setText( mPoint.mOptions );
 
     mCBxsection = (CheckBox) findViewById( R.id.point_xsection );
-    mBTdraw     = (Button) findViewById( R.id.button_draw );
+    mBtnOpen    = (Button) findViewById( R.id.button_open_section );
+    mBtnPlace   = (Button) findViewById( R.id.button_place );
+    mBtnRemove  = (Button) findViewById( R.id.button_remove );
+    mETboxWidth = (EditText) findViewById( R.id.section_box_width );
+    mETboxHeight = (EditText) findViewById( R.id.section_box_height );
+    mLayoutBox  = (LinearLayout) findViewById( R.id.section_box_layout );
+    mCBshowRefs = (CheckBox) findViewById( R.id.section_show_refs );
     
-    // if ( BrushManager.isPointSection( mPoint.mPointType ) ) { // MUST BE TRUE
-      // FIXME SECTION_RENAME
-      // scrap option contains only section nickname (no survey prefix)
-      mXSectionName = TDUtil.replacePrefix( TDInstance.survey, mPoint.getOption(TDString.OPTION_SCRAP) ); 
-      // TDLog.v("Section name " + mXSectionName );
-      if ( mXSectionName != null ) {
-	// FIXME SECTION_RENAME
-	// mXSectionName = mApp.mSurvey + "-" + mXSectionName;
+    mXSectionName = TDUtil.replacePrefix( TDInstance.survey, mPoint.getOption(TDString.OPTION_SCRAP) );
+    mIsPlaced = SectionPointHelper.isPlaced( mPoint );
+    mIsLegSection = SectionPointHelper.isLegSection( mPoint );
+    if ( mXSectionName != null ) {
+      if ( TDLevel.overAdvanced && ! mIsPlaced ) {
         mHasXSectionOutline = mParent.hasXSectionOutline( mXSectionName );
-	if ( TDLevel.overAdvanced ) {
-          mCBxsection.setChecked( mHasXSectionOutline );
-	} else {
-          mCBxsection.setVisibility( View.GONE );
-	}
-        mBTdraw.setOnClickListener( this );
+        mCBxsection.setChecked( mHasXSectionOutline );
+      } else {
+        mCBxsection.setVisibility( View.GONE );
       }
-    // } else {
-    //   mCBxsection.setChecked( false );
-    //   mCBxsection.setVisibility( View.GONE );
-    //   mBTdraw.setVisibility( View.GONE );
-    // }
+      mBtnOpen.setOnClickListener( this );
+    } else {
+      mCBxsection.setVisibility( View.GONE );
+      mBtnOpen.setVisibility( View.GONE );
+    }
+
+    if ( mIsLegSection ) {
+      mETboxWidth.setText( Integer.toString( Math.round( SectionPointHelper.getBoxWidth( mPoint ) ) ) );
+      mETboxHeight.setText( Integer.toString( Math.round( SectionPointHelper.getBoxHeight( mPoint ) ) ) );
+      mCBshowRefs.setChecked( SectionPointHelper.hasPlacedReferences( mPoint ) );
+      mBtnPlace.setOnClickListener( this );
+      mBtnPlace.setText( mIsPlaced ? R.string.button_replace_on_plan : R.string.button_place_on_plan );
+      if ( mIsPlaced ) {
+        mBtnRemove.setOnClickListener( this );
+      } else {
+        mBtnRemove.setVisibility( View.GONE );
+      }
+    } else {
+      mLayoutBox.setVisibility( View.GONE );
+      mCBshowRefs.setVisibility( View.GONE );
+      mBtnPlace.setVisibility( View.GONE );
+      mBtnRemove.setVisibility( View.GONE );
+    }
 
     mBtnScaleXS = (RadioButton) findViewById( R.id.point_scale_xs );
     mBtnScaleS  = (RadioButton) findViewById( R.id.point_scale_s  );
@@ -187,8 +215,7 @@ class DrawingPointSectionDialog extends MyDialog
    */
   public void onClick(View v) 
   {
-    Button b = (Button)v;
-    if ( b == mBtnOk ) {
+    if ( v == mBtnOk ) {
       if ( mBtnScaleXS.isChecked() )      mPoint.setScale( PointScale.SCALE_XS );
       else if ( mBtnScaleS.isChecked() )  mPoint.setScale( PointScale.SCALE_S  );
       else if ( mBtnScaleM.isChecked() )  mPoint.setScale( PointScale.SCALE_M  );
@@ -197,21 +224,60 @@ class DrawingPointSectionDialog extends MyDialog
 
       // mPoint.mOptions = mEToptions.getText().toString();
 
-      if ( mXSectionName != null ) {
-        if ( TDLevel.overAdvanced && mHasXSectionOutline != mCBxsection.isChecked() ) {
+      if ( TDSetting.mWithLevels > 1 ) setLevel();
+
+      if ( mIsLegSection ) {
+        mParent.setSectionPointPlacementOptions( mPoint, getBoxWidthValue(), getBoxHeightValue(), shouldShowReferences() );
+      }
+
+      if ( mXSectionName != null && TDLevel.overAdvanced && ! mIsPlaced ) {
+        if ( mHasXSectionOutline != mCBxsection.isChecked() ) {
           mParent.setXSectionOutline( mXSectionName, mPoint.mScrap, mCBxsection.isChecked(), mPoint.cx, mPoint.cy );
         }
       }
 
-      if ( TDSetting.mWithLevels > 1 ) setLevel();
-
-    } else if ( b == mBTdraw ) {
-      mParent.openXSectionDraw( mXSectionName );
-    // } else if ( b == mBtnCancel ) {
-      // nothing
+    } else if ( v == mBtnOpen ) {
+      if ( mXSectionName != null ) mParent.openXSectionDraw( mXSectionName );
+    } else if ( v == mBtnPlace ) {
+      if ( mIsLegSection ) {
+        mParent.setSectionPointPlacementOptions( mPoint, getBoxWidthValue(), getBoxHeightValue(), shouldShowReferences() );
+        mParent.placeExistingSectionOnPlan( mPoint );
+      }
+    } else if ( v == mBtnRemove ) {
+      mParent.removeSectionPointFromPlan( mPoint );
+    } else {
+      dismiss();
+      return;
     }
+
     dismiss();
   }
 
-}
+  private float getBoxWidthValue()
+  {
+    return parseBoxSize( mETboxWidth, SectionPointHelper.getBoxWidth( mPoint ) );
+  }
 
+  private float getBoxHeightValue()
+  {
+    return parseBoxSize( mETboxHeight, SectionPointHelper.getBoxHeight( mPoint ) );
+  }
+
+  private boolean shouldShowReferences()
+  {
+    return mCBshowRefs == null || mCBshowRefs.isChecked();
+  }
+
+  private float parseBoxSize( EditText edit, float def_value )
+  {
+    if ( edit == null || edit.getText() == null ) return def_value;
+    String text = edit.getText().toString().trim();
+    if ( text.length() == 0 ) return def_value;
+    try {
+      return Math.max( SectionPointHelper.MIN_BOX_SIZE, Float.parseFloat( text ) );
+    } catch ( NumberFormatException e ) {
+      return def_value;
+    }
+  }
+
+}

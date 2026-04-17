@@ -131,7 +131,9 @@ public class SelectionPoint
   // void shiftBy( float dx, float dy, float range )
   void shiftBy( float dx, float dy )
   {
-    if ( mPoint != null ) {
+    if ( mItem.mType == DrawingPath.DRAWING_PATH_POINT ) {
+      mItem.shiftBy( dx, dy );
+    } else if ( mPoint != null ) {
       DrawingPointLinePath item = (DrawingPointLinePath)mItem;
       switch ( mMin ) {
         case 1 : mPoint.shiftCP1By( dx, dy ); break;
@@ -216,8 +218,6 @@ public class SelectionPoint
           break;
       }
       item.retracePath();
-    } else if ( mItem.mType == DrawingPath.DRAWING_PATH_POINT ) {
-      mItem.shiftBy( dx, dy );
     }
   }
 

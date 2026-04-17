@@ -68,6 +68,8 @@ The leg x-section dialog shows
 <li>the x-section id</li>
 <li>a text field for a x-section comment</li>
 </ul>
+The dialog can still open the dedicated x-section sketch with <i>Draw</i>.
+For leg x-sections it also has a <i>Place on plan</i> button: after creating or updating the x-section, the next tap on the parent sketch drops a same-scale embedded view of that x-section on the plan or profile.<br><p>
 For multiple leg x-sections, instead of the leg stations the dialog lists the id's of the legs crossed by the x-section.
 <br><p>
 
@@ -95,12 +97,15 @@ Station x-sections can be re-opened and modified by selecting, in "edit" mode, t
 <b>Section points</b><br>
 When you insert a x-section, either by drawing a section-line or inserting it at a station, a related section point is added to the sketch.
 This point marks the place of the xsection on the sketch.
-Section points are displayed as a white small cross and an orange line connecting them to the relative section line or station.<br>
+Unplaced section points are displayed as a white small cross and an orange line connecting them to the relative section line or station.<br>
 If the x-section is deleted, the corresponding section point is also deleted.<br><p>
 
-The outline of the xsection is displayed at the section point.<br>
-The outline can be moved by selecting the section point (in edit mode) and dragging it around.<br>
-Tapping the "properties" button, when a section point is selected, opens the xsection sketch for drawing.<br><p>
+Leg x-sections can also be placed directly on the parent sketch as a same-scale embedded viewport.
+In normal view the placed x-section shows the section sketch and, optionally, its sketch references; in edit mode its bounding box is shown.
+The placed viewport can be moved by selecting it in edit mode and dragging it around.<br>
+Tapping the "properties" button, when a section point is selected, opens the section-point dialog.
+That dialog has buttons to open the dedicated x-section sketch, place or re-place the x-section on the parent sketch, remove it from the parent sketch, set the viewport box width and height, and toggle all viewport sketch references on or off.
+Unplaced section points can still show the legacy x-section outline with the x-section checkbox.<br><p>
 
 <b>X-section files</b><br>
 Each x-section is saved in a separate file in the "tdr" subfolder. The files get consecutive names "MySurvey-xx0.tdr", "MySurvey-xx1.tdr", etc. The "xx0" numbering part of the name is also displayed in the Section dialog that pops up when you create or edit a section.<br>

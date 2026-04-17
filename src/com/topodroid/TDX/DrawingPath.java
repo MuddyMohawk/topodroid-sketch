@@ -832,6 +832,50 @@ public class DrawingPath extends RectF
     return null;
   }
 
+  private static boolean isOptionKey( String token )
+  {
+    return token != null && token.length() > 0 && token.charAt( 0 ) == '-';
+  }
+
+  /** set or replace the value of an option
+   * @param key    option key
+   * @param value  option value (null to remove the option)
+   */
+  public void setOption( String key, String value )
+  {
+    if ( key == null || key.length() == 0 || key.charAt(0) != '-' ) return;
+
+    StringBuilder sb = new StringBuilder();
+    boolean skipping = false;
+    if ( mOptions != null ) {
+      String[] vals = mOptions.split(" ");
+      for ( String val : vals ) {
+        if ( val == null || val.length() == 0 ) continue;
+        if ( key.equals( val ) ) {
+          skipping = true;
+          continue;
+        }
+        if ( skipping && ! isOptionKey( val ) ) continue;
+        if ( skipping ) skipping = false;
+        if ( sb.length() > 0 ) sb.append( ' ' );
+        sb.append( val );
+      }
+    }
+    if ( value != null ) {
+      if ( sb.length() > 0 ) sb.append( ' ' );
+      sb.append( key ).append( ' ' ).append( value );
+    }
+    mOptions = ( sb.length() == 0 ) ? null : sb.toString();
+  }
+
+  /** remove an option from the options string
+   * @param key  option key
+   */
+  public void removeOption( String key )
+  {
+    setOption( key, null );
+  }
+
   /** @return the options string, or empty if it is null
    */
   public String getOptionString() { return ( mOptions == null )? "" : mOptions; }

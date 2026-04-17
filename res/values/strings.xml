@@ -955,6 +955,9 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="button_off"       >off</string>
     <string name="button_on"        >on</string>
     <string name="button_open"      >Open</string>
+    <string name="button_place_on_plan">Place on plan</string>
+    <string name="button_replace_on_plan">Re-place on plan</string>
+    <string name="button_remove_from_plan">Remove from plan</string>
     <string name="button_offset" copyable="it">Offset</string>
     <string name="button_read"      >Read</string>
     <string name="button_recover"   >Recover</string>
@@ -1005,6 +1008,9 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="button_write"     >Upload</string>
     <string name="button_xsection" copyable="fr">X-Section</string>
     <string name="xsection" copyable="fr">X-Section</string>
+    <string name="section_box_width">Box width</string>
+    <string name="section_box_height">Box height</string>
+    <string name="section_show_refs">Show sketch references</string>
     <string name="buffer" copyable="all">Buffer</string>
     <string name="buffer_size">Buffer size: %1$d</string>
     <string name="buffer_sorted">sorted</string>
@@ -1400,6 +1406,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="title_draw_line">LINE %1$s</string>
     <string name="title_draw_line_no_stations">LINE %1$s: no stations</string>
     <string name="title_draw_point">POINT %1$s</string>
+    <string name="title_place_section">Place section</string>
     <string name="title_edit">Edit</string>
     <string name="title_edit_user_station">Edit user station </string>
     <string name="title_edit_station">Edit station </string>

@@ -1923,7 +1923,7 @@ public class DrawingCommandManager
         synchronized( TDPath.mXSectionsLock )  {
           for ( DrawingOutlinePath path : mXSectionOutlines ) {
             if ( path.isScrapId( mCurrentScrap.mScrapIdx ) ) {
-              path.mPath.draw( canvas, mm, null /* bbox */ );
+              path.draw( canvas, mm, scale, bbox, mDisplayPoints );
             }
           }
         }
@@ -2182,7 +2182,7 @@ public class DrawingCommandManager
   void rotateHotItem( float dy ) { mCurrentScrap.rotateHotItem( dy ); }
 
   // void shiftHotItem( float dx, float dy, float range ) 
-  void shiftHotItem( float dx, float dy ) { mCurrentScrap.shiftHotItem( dx, dy, mXSectionOutlines ); }
+  void shiftHotItem( float dx, float dy ) { mCurrentScrap.shiftHotItem( dx, dy, mXSectionOutlines, mSelectionFixed ); }
 
   SelectionPoint nextHotItem() { return mCurrentScrap.nextHotItem(); }
   SelectionPoint prevHotItem() { return mCurrentScrap.prevHotItem(); }
@@ -2342,7 +2342,17 @@ public class DrawingCommandManager
 
   /** clear te set of xsection outlines
    */
-  void clearXSectionsOutline() { synchronized( TDPath.mXSectionsLock ) { mXSectionOutlines.clear(); } }
+  void clearXSectionsOutline()
+  {
+    synchronized( TDPath.mXSectionsLock ) {
+      synchronized( TDPath.mSelectionLock ) {
+        for ( DrawingOutlinePath path : mXSectionOutlines ) {
+          if ( path != null && path.isPlaced() ) mSelectionFixed.removePath( path.getPoint() );
+        }
+      }
+      mXSectionOutlines.clear();
+    }
+  }
 
   /** @return true if the specified scrap is contained in the xsection outlines
    * @param name   scrap name
@@ -2366,6 +2376,25 @@ public class DrawingCommandManager
     synchronized( TDPath.mXSectionsLock ) {
       mXSectionOutlines.add( path );
     }
+    if ( path != null && path.isPlaced() ) {
+      DrawingPointPath point = path.getPoint();
+      RectF box = path.getBox();
+      if ( point != null && box != null ) {
+        synchronized( TDPath.mSelectionLock ) {
+          float width = box.width();
+          float height = box.height();
+          int nx = Math.max( 2, (int)Math.ceil( width / 60.0f ) );
+          int ny = Math.max( 2, (int)Math.ceil( height / 60.0f ) );
+          for ( int ix = 0; ix <= nx; ++ix ) {
+            float xx = box.left + width * ix / nx;
+            for ( int iy = 0; iy <= ny; ++iy ) {
+              float yy = box.top + height * iy / ny;
+              mSelectionFixed.insertPseudoPoint( point, xx, yy );
+            }
+          }
+        }
+      }
+    }
     // TDLog.v("sections outline " + mXSectionOutlines.size() );
   }
 
@@ -2376,9 +2405,15 @@ public class DrawingCommandManager
   {
     List< DrawingOutlinePath > xsection_outlines = Collections.synchronizedList(new ArrayList< DrawingOutlinePath >());
     synchronized( TDPath.mXSectionsLock ) {
+      synchronized( TDPath.mSelectionLock ) {
+        for ( DrawingOutlinePath path : mXSectionOutlines ) {
+          if ( path != null && path.isPlaced() && path.isScrapName( name ) ) {
+            mSelectionFixed.removePath( path.getPoint() );
+          }
+        }
+      }
       for ( DrawingOutlinePath path : mXSectionOutlines  ) {
         if ( ! path.isScrapName( name ) ) {
-          TDLog.v("clear XSection outline: retain " + name );
           xsection_outlines.add( path );
         }
       }

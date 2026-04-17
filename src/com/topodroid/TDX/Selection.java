@@ -255,6 +255,22 @@ class Selection
     sp.setBucket( getBucket( sp.X(), sp.Y() ) );
   }
 
+  /** re-bucket all selection points attached to an item
+   * @param path   drawing item
+   */
+  void rebucketPath( DrawingPath path )
+  {
+    if ( path == null ) return;
+    for ( SelectionPoint sp : mPoints ) {
+      if ( sp.mItem == path ) {
+        SelectionBucket sb = sp.mBucket;
+        if ( sb == null || ! sb.contains( sp.X(), sp.Y() ) ) {
+          sp.setBucket( getBucket( sp.X(), sp.Y() ) );
+        }
+      }
+    }
+  }
+
   /** insert an item
    * @param path  item
    * @param pt    line point
@@ -276,6 +292,20 @@ class Selection
     // }
     // sp.mBucket.dump();
     // dumpBuckets();
+  }
+
+  /** insert a pseudo selection point for a point-path
+   * @param path  drawing item
+   * @param x     point X coordinate
+   * @param y     point Y coordinate
+   * @return the inserted selection point
+   */
+  SelectionPoint insertPseudoPoint( DrawingPath path, float x, float y )
+  {
+    SelectionPoint sp = new SelectionPoint( path, new LinePoint( x, y, null ), null );
+    mPoints.add( sp );
+    sp.setBucket( getBucket( x, y ) );
+    return sp;
   }
 
   /** find the closest point of the bucket containing a given point, provided it is close enough
@@ -465,11 +495,14 @@ class Selection
         }
       }
     } else if ( path.mType == DrawingPath.DRAWING_PATH_POINT ) {  
+      ArrayList< SelectionPoint > to_remove = new ArrayList<>();
       for ( SelectionPoint sp : mPoints ) {
         if ( sp.mItem == path ) {
-          removePoint( sp );
-          break;
+          to_remove.add( sp );
         }
+      }
+      for ( SelectionPoint sp : to_remove ) {
+        removePoint( sp );
       }
     }
   }
@@ -735,6 +768,25 @@ class Selection
         // find the bucket that contains sp and assign it to sp
         sb = getBucket( sp.X(), sp.Y() );
         sp.setBucket( sb ); // this removes sp from its old bucket and add it to the new bucket
+      }
+    }
+  }
+
+  /** shift the pseudo-points of an item
+   * @param item  drawing item
+   * @param dx    X shift
+   * @param dy    Y shift
+   */
+  void shiftPathPointsBy( DrawingPath item, float dx, float dy )
+  {
+    if ( item == null ) return;
+    for ( SelectionPoint sp : mPoints ) {
+      if ( sp.mItem == item && sp.mPoint != null ) {
+        sp.mPoint.shiftBy( dx, dy );
+        SelectionBucket sb = sp.mBucket;
+        if ( sb == null || ! sb.contains( sp.X(), sp.Y() ) ) {
+          sp.setBucket( getBucket( sp.X(), sp.Y() ) );
+        }
       }
     }
   }

@@ -1504,16 +1504,23 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
 
   void setAllXSectionOutlines( DrawingWindow window, int cm )
   {
-    // PROBLEM: section points are in scraps, xsection outlines are in command manager
-    List< DrawingPointPath > pts = ( cm == 1 )? mCommandManager1.getSectionPoints()
-                                              : mCommandManager2.getSectionPoints();
-    for ( DrawingPointPath pt : pts ) {
-      String name = pt.getOption( TDString.OPTION_SCRAP );
-      if ( name != null ) {
-        String tdr = TDPath.getTdrFileWithExt( name );
-        int scrap_id = pt.mScrap;
-        setXSectionOutline( name, scrap_id, tdr, pt.cx-DrawingUtil.CENTER_X, pt.cy-DrawingUtil.CENTER_Y );
+    DrawingCommandManager manager = ( cm == 1 ) ? mCommandManager1 : mCommandManager2;
+    if ( manager == null ) return;
+
+    DrawingCommandManager old = commandManager;
+    try {
+      commandManager = manager;
+      manager.clearXSectionsOutline();
+
+      List< DrawingPointPath > pts = manager.getSectionPoints();
+      for ( DrawingPointPath pt : pts ) {
+        String name = pt.getOption( TDString.OPTION_SCRAP );
+        if ( name != null ) {
+          window.setXSectionOutline( name, pt.mScrap, true, pt.cx, pt.cy );
+        }
       }
+    } finally {
+      commandManager = old;
     }
   }
     

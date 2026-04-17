@@ -119,6 +119,63 @@
     android:layout_marginTop="@dimen/marginv"
   />
 
+  <LinearLayout android:id="@+id/section_box_layout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:layout_marginTop="@dimen/marginv"
+    >
+    <EditText android:id="@+id/section_box_width"
+      style="@style/edit_text"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:hint="@string/section_box_width"
+      android:importantForAutofill="no"
+      android:inputType="numberDecimal"
+    />
+    <EditText android:id="@+id/section_box_height"
+      style="@style/edit_text"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:layout_marginStart="@dimen/marginh"
+      android:hint="@string/section_box_height"
+      android:importantForAutofill="no"
+      android:inputType="numberDecimal"
+    />
+  </LinearLayout>
+
+  <CheckBox android:id="@+id/section_show_refs"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="@string/section_show_refs"
+    android:layout_marginTop="@dimen/marginv"
+  />
+
+  <LinearLayout android:id="@+id/section_action_layout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:layout_marginTop="@dimen/marginv"
+    android:gravity="end"
+    >
+    <Button android:id="@+id/button_open_section"
+      style="@style/button_default"
+      android:text="@string/button_open"
+      android:layout_marginEnd="@dimen/marginh"
+    />
+    <Button android:id="@+id/button_place"
+      style="@style/button_default"
+      android:text="@string/button_place_on_plan"
+      android:layout_marginEnd="@dimen/marginh"
+    />
+    <Button android:id="@+id/button_remove"
+      style="@style/button_default"
+      android:text="@string/button_remove_from_plan"
+    />
+  </LinearLayout>
+
   <LinearLayout android:id="@+id/help"
     android:layout_width="match_parent" 
     android:layout_height="wrap_content"
@@ -144,10 +201,6 @@
         style="@style/button_default"
         android:text="@string/button_save"
         android:layout_marginEnd="@dimen/marginh"
-      />
-      <Button android:id="@+id/button_draw"
-        style="@style/button_default"
-        android:text="@string/button_plot"
       />
     </LinearLayout>
   </LinearLayout>

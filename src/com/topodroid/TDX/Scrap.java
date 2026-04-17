@@ -2663,7 +2663,7 @@ public class Scrap
   }
 
   // void shiftHotItem( float dx, float dy, float range ) 
-  void shiftHotItem( float dx, float dy, List< DrawingOutlinePath > xsections )
+  void shiftHotItem( float dx, float dy, List< DrawingOutlinePath > xsections, Selection selection_fixed )
   { 
     synchronized( TDPath.mSelectionLock ) {
       // SelectionPoint sp = mSelected.shiftHotItem( dx, dy, range );
@@ -2679,12 +2679,15 @@ public class Scrap
               synchronized( TDPath.mXSectionsLock ) {
                 for ( DrawingOutlinePath xsection : xsections ) {
                   if ( xsection.isScrapName( scrap_name ) ) {
-                    xsection.mPath.shiftBy( dx, dy );
+                    xsection.shiftBy( dx, dy );
                     // break;
                   }
                 }
               }
             }
+            mSelection.rebucketPath( path );
+            if ( selection_fixed != null ) selection_fixed.shiftPathPointsBy( path, dx, dy );
+            return;
           }
         }
         mSelection.checkBucket( sp );

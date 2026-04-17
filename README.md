@@ -5,38 +5,38 @@ The intended workflow is to create beautiful sketches on the sketching screen an
 
 This was essentially entirely vibe-coded with Codex.
 
+Testing and development was done with a Cavway X1 and an Active Tab 3.
+
 #### TODO
 - Change branding, name, versioning, etc to TopoDroid Sketch
 - Add safety warnings when importing vanilla TopoDroid stuff
-- Add toggle erase action for S pen
-- Add S pen default actions
 - Switch the defaults for profile 2 to a line-point spacing of 15 instead of 20
 - Add a 4th sketch line. I love sketch lines.
 - An actual build pipeline?
 - Rename the drawing "profiles" to something else to avoid confusion with the extended profile view. Presets?
+- Change defaults for Active Key. Double tap to go back?
+- Add support for binding actions to the volume buttons
 
 #### Future Possible Features / Brainstorming
 - Sketch line collision to prevent sketching through another line
 - PNG export
 - Better PDF export
-- Better cross-section support?
-- Draw cross sections by tracing over a picture
+- At-station cross-section viewport support
+- Draw cross-sections by tracing over a picture
 - Use the new color picker to support more color settings everywhere
-- Palm detection, if possible
-- Press-and-hold while hovering to erase
+- Palm detection? This might already be a thing
+- Press-and-hold the stylus button while hovering to erase
 - Option for double row/larger recents palette
-- Change recents palette to set favorites instead
 - Side-by-side installation with vanilla TopoDroid
 - Set button size to large by default
 - Set usage profile to expert by default
-- Per-screen S Pen options/action bindings
+- Per-screen action bindings (eg double tab the Active Key from the survey page to enter the last sketch. Double tap it in the sketch page works as the back action)
 - Additional inputs using volume buttons, active key
   - Note that currently volume-down opens the menu/help page for the current screen
 - Always more actions. Some thoughts:
   - Take a shot
-  - switch between profile and plan (and cross sections?)
-  - Toggle erase (might be better off with the long press hover thingy)
-- Pie in the sky: Advanced GPS/gnss tools
+  - switch between profile and plan (and cross-sections?)
+- Pie in the sky: Advanced GPS/gnss tools. RTK when.
 - Inventory/Rope Audit/Vandalism tracking tools
 - Change the blend mode of the areas so overlapping areas get darker, not brighter. Mostly to create water pools
 - Investigate and enhance the point symbols. They could be good. They need to be aligned with the NSS conventional symbols
@@ -53,7 +53,7 @@ This was essentially entirely vibe-coded with Codex.
 - Setting to automatically detect if there hasn't been any successful wifi or data connections in the last N minutes, and then toggle airplane mode to save battery
 - Long-press erase mode for the S pen. Attempted once, was bugged and didn't work.
 
-### TopoDroid Sketch v1.10.1 Changelog:
+### TopoDroid Sketch v1.14.2 Changelog:
 
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob.
 
@@ -66,10 +66,11 @@ This was essentially entirely vibe-coded with Codex.
 - If exported and imported into the `TopoDroidX-6.4.25-36`, the new sketch lines fall back into the `user` line type. It'll be ugly, but still compatible.
 - If exported with the personal line box checked, it can be imported into another copy of TopoDroid Sketch and the lines are preserved
 
-**UI**
-- Added a new, more capable color picker widget
-- Added sketch grid appearance settings for both grid width and grid color
-- Added the new 1 foot sketch-grid unit alongside the existing 2 feet, yard, meter, and 10 cm options
+**Cross-Section Viewports**
+- Added the ability to place cross-sections directly on the plan sketch in a viewport style experience. These can be moved around and edited by selecting them in edit mode (may require TopoDroid to be in Expert mode in the main settings)
+  - To do this, use the `section` line tool and draw across the passage like normal TopoDroid. Then select the "place on plan" button in the resulting pop-up window. Tap where you want to place your cross-section. Its position can be further adjusted in edit mode.  
+- Display of sketch references for cross-sections (legs, splays, etc) can be toggled by selecting the cross-section in edit mode
+- Not currently supported for station cross-sections
 
 **UX**
 - Added two drawing "profiles" to the sketch screen, which appear as "P1" and "P2". These are intended to allow a sketcher to switch between drawing thin, detailed lines, and smooth, straight lines
@@ -88,8 +89,12 @@ This was essentially entirely vibe-coded with Codex.
   - Back: Goes back a screen (eg exit sketch page to shot list, or goes back one screen in the settings)
   - Toggle erase/sketch: Toggles between the erase sketch mode and the drawing sketch mode
 - Added the ability to bind actions to S Pen button inputs in the *TopoDroid main settings -> Devices -> Action Key Bindings* menu
-- Added the ability to bind actions to Samsung Active key in the *TopoDroid main settings -> Devices -> Action Key Bindings* menu
+- Added the ability to bind actions to the Samsung Active key in the *TopoDroid main settings -> Devices -> Action Key Bindings* menu
 
+**misc UI**
+- Added a new, more capable color picker widget
+- Added sketch grid appearance settings for both grid width and grid color
+- Added the new 1 foot sketch-grid unit alongside the existing 2 feet, yard, meter, and 10 cm options
 
 **Bug Fixes**
 - Fixed the length-unit/default regression so explicit feet vs meters values are handled correctly on load, live updates, and settings import/export. I think this was pre-existing and not caused by me.

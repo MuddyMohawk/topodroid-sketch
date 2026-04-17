@@ -68,15 +68,14 @@ public class DrawingPointPath extends DrawingPath
   public DrawingPointPath fixScrap( String survey_name )
   {
     if ( survey_name != null && BrushManager.isPointSection( mPointType ) ) {
-      // String scrapname = mOptions.replace( TDString.OPTION_SCRAP + " ", "");
-      String scrapname = mOptions.replace("-scrap ", "");
+      String scrapname = getOption( TDString.OPTION_SCRAP );
       if ( scrapname != null ) scrapname = TDUtil.replacePrefix( TDInstance.survey, scrapname );
       if ( scrapname != null ) {
         if ( ! scrapname.startsWith(survey_name) ) {
           int pos = scrapname.lastIndexOf('-');
           scrapname = survey_name + "-" + scrapname.substring(pos+1);
         }
-        mOptions = TDString.OPTION_SCRAP + " " + scrapname;
+        setOption( TDString.OPTION_SCRAP, scrapname );
       } else {
         TDLog.e("section point without scrap-name");
         return null;
@@ -417,6 +416,7 @@ public class DrawingPointPath extends DrawingPath
   @Override
   public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox )
   {
+    if ( BrushManager.isPointSection( mPointType ) && SectionPointHelper.isPlaced( this ) ) return;
     if ( intersects( bbox ) ) {
       if ( TDSetting.mUnscaledPoints ) {
         resetPath( 4 * scale );
@@ -455,6 +455,7 @@ public class DrawingPointPath extends DrawingPath
   @Override
   public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox, int xor_color )
   {
+    if ( BrushManager.isPointSection( mPointType ) && SectionPointHelper.isPlaced( this ) ) return;
     if ( intersects( bbox ) ) {
       if ( TDSetting.mUnscaledPoints ) {
         resetPath( 4 * scale );
@@ -624,9 +625,10 @@ public class DrawingPointPath extends DrawingPath
   void toTCsurvey( PrintWriter pw, String survey, String cave, String branch, String bind )
   { 
     String name = getThName( );
+    String options = getExportOptions();
     pw.format("<item type=\"point\" name=\"%s\" cave=\"%s\" branch=\"%s\" text=\"%s\" ", name, cave, branch, ((mPointText == null)? "" : mPointText) );
     if ( bind != null ) pw.format(" bind=\"%s\" ", bind );
-    pw.format(Locale.US, "scale=\"%d\" orientation=\"%.2f\" options=\"%s\" >\n", mScale, mOrientation, ((mOptions   == null)? "" : mOptions) );
+    pw.format(Locale.US, "scale=\"%d\" orientation=\"%.2f\" options=\"%s\" >\n", mScale, mOrientation, ((options == null)? "" : options) );
     float x = DrawingUtil.sceneToWorldX( cx, cy ); // convert to world coords.
     float y = DrawingUtil.sceneToWorldY( cx, cy );
     pw.format(Locale.US, " <points data=\"%.2f %.2f \" />\n", x, y );
@@ -646,10 +648,11 @@ public class DrawingPointPath extends DrawingPath
   void toTCsurvey( PrintWriter pw, String survey, String cave, String branch, String bind, String extra, PlotInfo section )
   { 
     String name = getThName( );
+    String options = getExportOptions();
     pw.format("<item type=\"point\" name=\"%s\" cave=\"%s\" branch=\"%s\" text=\"%s\" ", name, cave, branch, ((mPointText == null)? "" : mPointText) );
     if ( bind != null ) pw.format("bind=\"%s\" ", bind );
     if ( extra != null ) pw.format("%s ", extra );
-    pw.format(Locale.US, "scale=\"%d\" orientation=\"%.2f\" options=\"%s\" >\n", mScale, mOrientation, ((mOptions   == null)? "" : mOptions) );
+    pw.format(Locale.US, "scale=\"%d\" orientation=\"%.2f\" options=\"%s\" >\n", mScale, mOrientation, ((options == null)? "" : options) );
     float x = DrawingUtil.sceneToWorldX( cx, cy ); // convert to world coords.
     float y = DrawingUtil.sceneToWorldY( cx, cy );
     pw.format(Locale.US, " <points data=\"%.2f %.2f \" />\n", x, y );
@@ -738,6 +741,11 @@ public class DrawingPointPath extends DrawingPath
     }
   }
 
+  private String getExportOptions()
+  {
+    return BrushManager.isPointSection( mPointType ) ? SectionPointHelper.stripPlacementOptions( mOptions ) : mOptions;
+  }
+
   /** write options in therion format
    * @param pw   output writer
    */
@@ -757,8 +765,9 @@ public class DrawingPointPath extends DrawingPath
     //   String scrapname = TDUtil.replacePrefix( TDInstance.survey, mOptions.replace( TDString.OPTION_SCRAP + " ", "") );
     //   pw.format(" %s %s-%s", TDString.OPTION_SCRAP, mApp.mSurvey, scrapname );
     // } else {
-      if ( mOptions != null && mOptions.length() > 0 ) {
-        pw.format(" %s", mOptions );
+      String options = getExportOptions();
+      if ( options != null && options.length() > 0 ) {
+        pw.format(" %s", options );
       }
     // }
   }
@@ -840,4 +849,3 @@ public class DrawingPointPath extends DrawingPath
   }
 
 }
-
