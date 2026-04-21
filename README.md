@@ -19,9 +19,16 @@ This was written in English; other translations are likely not working
 - Change defaults for Active Key. Double tap to go back?
 - Add support for binding actions to the volume buttons
 
+#### TODO bugs:
+- There's some weird differences in the back key via S Pen stylus vs Active Key
+- Exporting to PNG with Grid lines on and transparent background off results in a pure black background. The grid lines aren't being preserved.
+- Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch 
+  - station designation font size does not affect export size 
+  - actually all the sketch settings might be respected (eg leg line size)
+
 #### Future Possible Features / Brainstorming
 - Sketch line collision to prevent sketching through another line
-- PNG export
+- Version control - file/edit/shot/survey history. Scroll back and pick versions. Check the existing backup feature?
 - Better PDF export
 - At-station cross-section viewport support
 - Draw cross-sections by tracing over a picture
@@ -37,6 +44,7 @@ This was written in English; other translations are likely not working
   - Note that currently volume-down opens the menu/help page for the current screen
 - Always more actions. Some thoughts:
   - Take a shot
+  - Download data via bluetooth from device (multi-device?)
   - switch between profile and plan (and cross-sections?)
 - Pie in the sky: Advanced GPS/gnss tools. RTK when.
 - Inventory/Rope Audit/Vandalism tracking tools
@@ -56,6 +64,12 @@ This was written in English; other translations are likely not working
 - Long-press erase mode for the S pen. Attempted once, was bugged and didn't work.
 - Legend, sketch info, etc viewport style box to use with the png export. Jealous of that Therion fanciness
 - More naming options for png export? (create a name based off of the selected export options? eg append `s` for splay, `n` for north arrow)
+- Option to toggle the display of backsights
+- Option to automatically use the Cavway backsight mark to actually make backsights into backsights
+  - Better alerting and information for bad backsights?
+  - automatically label them as going from the `to` station to the `from` station (eg, from A1->A0)
+- Tweak bad backsight orange line to be a little more subtle
+- Sound alerts/noises for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 
 ### TopoDroid Sketch v1.15.5 Changelog:
 
