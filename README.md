@@ -18,13 +18,14 @@ This was written in English; other translations are likely not working
 - Rename the drawing "profiles" to something else to avoid confusion with the extended profile view. Presets?
 - Change defaults for Active Key. Double tap to go back?
 - Add support for binding actions to the volume buttons
+- Performance check for large sketches
 
 #### TODO bugs:
 - There's some weird differences in the back key via S Pen stylus vs Active Key
 - Exporting to PNG with Grid lines on and transparent background off results in a pure black background. The grid lines aren't being preserved.
 - Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch 
   - station designation font size does not affect export size 
-  - actually all the sketch settings might be respected (eg leg line size)
+  - actually all the sketch settings might be respected (eg leg line size)?
 
 #### Future Possible Features / Brainstorming
 - Sketch line collision to prevent sketching through another line
