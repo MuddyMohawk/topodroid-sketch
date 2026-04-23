@@ -15,6 +15,7 @@ import com.topodroid.util.TDLog;
 import com.topodroid.util.TDString;
 import com.topodroid.ui.MyDialog;
 import com.topodroid.prefs.TDSetting;
+import com.topodroid.prefs.TDPrefHelper;
 
 // import android.app.Dialog;
 // import android.app.Activity;
@@ -418,6 +419,7 @@ public class ExportDialogShot extends MyDialog
       case TDConst.SURVEY_POS_ZIP: // Zip 
         {
           TDSetting.mZipWithSymbols = ((CheckBox) findViewById( R.id.zip_symbols )).isChecked();
+          TDPrefHelper.update( "DISTOX_ZIP_WITH_SYMBOLS", TDSetting.mZipWithSymbols );
           // TDSetting.mZipShare = ((CheckBox) findViewById( R.id.zip_share )).isChecked();
           TDSetting.mZipOverwrite = ((CheckBox) findViewById( R.id.zip_overwrite )).isChecked();
         }

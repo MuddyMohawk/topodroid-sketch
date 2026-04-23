@@ -23,6 +23,7 @@ android {
         versionCode 604027
         versionName '6.4.27'
         multiDexEnabled true
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
     buildTypes {
@@ -56,6 +57,10 @@ android {
             excludes += ['/META-INF/{AL2.0,LGPL2.1}']
         }
     }
+
+    testOptions {
+        animationsDisabled true
+    }
 }
 
 dependencies {
@@ -65,4 +70,11 @@ dependencies {
     if (libjarsDir.isDirectory()) {
         implementation fileTree(dir: libjarsDir, include: ['*.jar'])
     }
+
+    androidTestImplementation 'androidx.test:core:1.6.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test:rules:1.6.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.3.0'
 }

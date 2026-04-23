@@ -479,11 +479,9 @@ public class Archiver
       TDLog.v("ZIP note file " + pathname );
       addOptionalEntry( zos, TDFile.getTopoDroidFile( pathname ), pathname );
 
-      if ( TDSetting.mZipWithSymbols ) {
-        File file = TDFile.getExternalFile( null, "lines.zip" );
-        if ( compressSketchLineSymbols( file ) )  {
-          addOptionalEntry( zos, file, "lines.zip" );
-        }
+      File sketchLineSymbolsZip = TDFile.getPrivateFile( null, "lines.zip" );
+      if ( compressSketchLineSymbols( sketchLineSymbolsZip ) )  {
+        addOptionalEntry( zos, sketchLineSymbolsZip, sketchLineSymbolsZip.getPath() );
       }
 
 /* FIXME_SKETCH_3D *
