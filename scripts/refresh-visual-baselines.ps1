@@ -56,31 +56,30 @@ function Invoke-Adb {
 }
 
 function Grant-Permissions {
+  # Only runtime-grantable permissions. BLUETOOTH / BLUETOOTH_ADMIN are
+  # install-time on modern Android and POST_NOTIFICATIONS isn't declared by
+  # the manifest; attempting to grant them just produces SecurityException
+  # noise from the platform and nothing else.
   $permissions = @(
     "android.permission.ACCESS_FINE_LOCATION",
     "android.permission.ACCESS_COARSE_LOCATION",
     "android.permission.CAMERA",
     "android.permission.RECORD_AUDIO",
-    "android.permission.BLUETOOTH",
-    "android.permission.BLUETOOTH_ADMIN",
     "android.permission.BLUETOOTH_SCAN",
-    "android.permission.BLUETOOTH_CONNECT",
-    "android.permission.POST_NOTIFICATIONS"
+    "android.permission.BLUETOOTH_CONNECT"
   )
 
+  # $ErrorActionPreference assignment is function-local in PowerShell, so this
+  # reverts automatically when the function returns. Needed because under the
+  # script-wide "Stop" preference, any stderr from a native command raises a
+  # terminating NativeCommandError even when stderr is redirected.
+  $ErrorActionPreference = "Continue"
+
   foreach ($permission in $permissions) {
-    try {
-      Invoke-Adb @("shell", "pm", "grant", $AppPackage, $permission) | Out-Null
-    } catch {
-      # Ignore permissions that are not runtime-grantable on this platform.
-    }
+    & $Adb -s $Serial "shell" "pm" "grant" $AppPackage $permission 2>$null | Out-Null
   }
 
-  try {
-    Invoke-Adb @("shell", "appops", "set", "--uid", $AppPackage, "MANAGE_EXTERNAL_STORAGE", "allow") | Out-Null
-  } catch {
-    # Ignore if the platform rejects the app-op.
-  }
+  & $Adb -s $Serial "shell" "appops" "set" "--uid" $AppPackage "MANAGE_EXTERNAL_STORAGE" "allow" 2>$null | Out-Null
 }
 
 $SdkPath = Get-SdkPath
@@ -103,10 +102,6 @@ try {
   Invoke-Adb @("shell", "pm", "clear", $TestPackage) | Out-Null
   Grant-Permissions
 
-  if (Test-Path $ArtifactsLocal) {
-    Remove-Item -LiteralPath $ArtifactsLocal -Recurse -Force
-  }
-
   Invoke-Adb @("shell", "am", "instrument", "-w", "-e", "class", $FullClass, "-e", "visual_baseline_mode", "record", $Runner)
 
   if (Test-Path $ArtifactsLocal) {
@@ -119,7 +114,20 @@ try {
   }
 
   New-Item -ItemType Directory -Force -Path $GoldenTarget | Out-Null
-  Copy-Item -LiteralPath (Join-Path $GoldenSource '*') -Destination $GoldenTarget -Recurse -Force
+
+  # NOTE: must use -Path, not -LiteralPath, so the trailing '*' is treated as a
+  # wildcard. With -LiteralPath PowerShell looks for a file literally named
+  # '*', finds nothing, and Copy-Item silently no-ops — which means the staged
+  # PNGs under $GoldenSource never reach the committed golden tree, and the
+  # test would appear to "run fine" while leaving stale baselines in place.
+  $sourceItems = Get-ChildItem -LiteralPath $GoldenSource -Force
+  if ( -not $sourceItems -or $sourceItems.Count -eq 0 ) {
+    throw "No recorded goldens found in $GoldenSource to copy"
+  }
+  foreach ( $item in $sourceItems ) {
+    Copy-Item -LiteralPath $item.FullName -Destination $GoldenTarget -Recurse -Force
+  }
+  Write-Host ( "Copied {0} recorded golden(s) -> {1}" -f $sourceItems.Count, $GoldenTarget )
 } finally {
   Pop-Location
 }

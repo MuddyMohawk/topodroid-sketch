@@ -83,6 +83,13 @@ public class VisualGoldenInstrumentedTest
     mSupport.confirmAlertOk();
     mSupport.relaunchMainWindow();
 
+    // The in-app delete flow normally clears the DB row synchronously, but if
+    // anything races (dialog dismiss, activity teardown, etc.) the survey row
+    // can still be present when the import runs, and the ZIP importer then
+    // bails with "Failed: duplicate survey name". Nuke it defensively here
+    // before invoking the picker so the import always sees a clean slate.
+    mSupport.forceDeleteSurveyByName( SURVEY_ZIP );
+
     mSupport.openMainImportDialogFromToolbar();
     mSupport.tapView( R.id.button_ok );
     mSupport.pickDocumentByFileName( importZip.getName() );
@@ -165,22 +172,48 @@ public class VisualGoldenInstrumentedTest
   {
     mSupport.enterDrawMode();
 
-    mSupport.tapProfileButton( R.id.button_profile_1 );
-    mSupport.clickRecentLineButton( 1 );
-    mSupport.drawStrokeNormalized( 0.16, 0.20, 0.42, 0.22, 40 );
+    // Exercise every combination of {profile 1, profile 2} x
+    // {user-fine, user-standard, user-thick} so the golden screenshot locks in
+    // all six line appearances. Strokes:
+    //   - live in the left half of the canvas (x in [0.08, 0.48]) to stay
+    //     clear of the station markers for shots 1->2, 2->3, 2->4 (which
+    //     cluster on the right);
+    //   - are stacked in a compact band (y in [0.13, 0.73]) so nothing falls
+    //     off the bottom of the drawing surface on the emulator;
+    //   - are drawn as quadratic-bezier CURVES with alternating arc direction
+    //     rather than straight swipes. Profile 1 (segment=1) preserves the
+    //     curve shape sample-by-sample; profile 2 (segment=10) smooths it
+    //     heavily. Straight swipes render identically under both profiles,
+    //     which defeats the whole point of testing both.
+    //
+    // Previous iterations of this routine tapped recent-line indices 0, 1, 2
+    // directly, which on a default TopoDroid palette lands on walls, section,
+    // and only then user-fine. That made two of the strokes draw section
+    // lines (triggering the cross-section dialog) and never exercised
+    // user-standard or user-thick at all.
+    drawUserLineCurve( R.id.button_profile_1, SketchLineSymbolManager.LEGACY_TH_NAME_FINE,
+      0.08, 0.14, 0.48, 0.14,  0.04 );
+    drawUserLineCurve( R.id.button_profile_2, SketchLineSymbolManager.LEGACY_TH_NAME_FINE,
+      0.08, 0.26, 0.48, 0.26, -0.04 );
 
-    mSupport.tapProfileButton( R.id.button_profile_2 );
-    mSupport.clickRecentLineButton( 1 );
-    mSupport.drawStrokeNormalized( 0.56, 0.22, 0.84, 0.28, 40 );
+    drawUserLineCurve( R.id.button_profile_1, SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD,
+      0.08, 0.38, 0.48, 0.38,  0.05 );
+    drawUserLineCurve( R.id.button_profile_2, SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD,
+      0.08, 0.50, 0.48, 0.50, -0.05 );
 
-    mSupport.tapProfileButton( R.id.button_profile_1 );
-    mSupport.clickRecentLineButton( 0 );
-    mSupport.drawStrokeNormalized( 0.14, 0.44, 0.36, 0.52, 36 );
+    drawUserLineCurve( R.id.button_profile_1, SketchLineSymbolManager.LEGACY_TH_NAME_THICK,
+      0.08, 0.62, 0.48, 0.62,  0.06 );
+    drawUserLineCurve( R.id.button_profile_2, SketchLineSymbolManager.LEGACY_TH_NAME_THICK,
+      0.08, 0.74, 0.48, 0.74, -0.06 );
+  }
 
-    mSupport.clickRecentLineButton( 1 );
-    mSupport.drawStrokeNormalized( 0.46, 0.46, 0.78, 0.60, 38 );
-
-    mSupport.clickRecentLineButton( 2 );
-    mSupport.drawStrokeNormalized( 0.22, 0.72, 0.80, 0.76, 44 );
+  private void drawUserLineCurve( int profileButtonId, String lineThName,
+    double startX, double startY, double endX, double endY, double curveOffset )
+  {
+    mSupport.tapProfileButton( profileButtonId );
+    mSupport.clickRecentLineByThName( lineThName );
+    // 30 samples along the path, 6 interpolation steps between each pair, for
+    // a reasonably smooth but not-too-slow gesture.
+    mSupport.drawCurveStrokeNormalized( startX, startY, endX, endY, curveOffset, 30, 6 );
   }
 }

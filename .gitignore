@@ -1,1 +1,36 @@
-/.gradle-test-home/caches/
+# Gradle / Android build outputs
+/build/
+/app/build/
+/.gradle/
+/app/.gradle/
+
+# Gradle homes used by the PS1 test scripts
+/.gradle-test-home/
+/.gradle-test-home/
+/.gradle-check-home/
+/.gradle-home/
+
+# IDE / machine-local config (local.properties contains a user-specific SDK path)
+/local.properties
+/studio/local.properties
+/.idea/
+/studio/.idea/
+/studio/.gradle/
+*.iml
+
+# Test run artifacts produced by scripts/test-*.ps1 and refresh-visual-baselines.ps1
+/tmp-test-artifacts/
+/tmp-test-artifacts-latest*/
+/tmp-recorded-latest/
+/tmp-baseline-pull/
+
+# Ad-hoc dumps (emulator screenshots + uiautomator XML captured during debugging)
+/tmp-*.png
+/tmp-*.xml
+
+# JVM crash dumps
+/hs_err_pid*.log
+/replay_pid*.log
+
+# Misc
+/test-fixtures/

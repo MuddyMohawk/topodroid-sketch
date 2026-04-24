@@ -25,6 +25,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Point;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.os.SystemClock;
@@ -41,9 +42,11 @@ import androidx.test.espresso.PerformException;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.BySelector;
-import androidx.test.uiautomator.StaleObjectException;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
+import androidx.test.uiautomator.UiObjectNotFoundException;
+import androidx.test.uiautomator.UiScrollable;
+import androidx.test.uiautomator.UiSelector;
 import androidx.test.uiautomator.Until;
 
 import com.topodroid.prefs.TDSetting;
@@ -133,6 +136,12 @@ final class VisualTestSupport
     adoptShellPermissions();
     closeScenario();
     clearCaseArtifacts();
+    // Wipe every known survey (from this run, prior runs, or dev work) so the
+    // main list is empty when the test starts. Without this, the list grows
+    // across runs and UiScrollable has to fling through dozens of rows to find
+    // our target survey. Named-survey cleanup is kept as a belt-and-suspenders
+    // pass in case the DB handle wasn't ready when wipeAllSurveys ran.
+    wipeAllSurveys();
     cleanupNamedSurveysInDatabase( surveyNames );
     cleanupNamedSurveyArtifacts( surveyNames );
     resetSelectedSurveyState();
@@ -140,6 +149,72 @@ final class VisualTestSupport
     configureStableRuntimeState();
     disableDialogRExit();
     waitForIdle();
+  }
+
+  private void wipeAllSurveys()
+  {
+    // Database: delete every survey row regardless of name. Snapshot the list
+    // first — doDeleteSurvey mutates the table we just iterated on some
+    // branches, and we'd rather not trust the implementation here.
+    List< String > allNames = null;
+    if ( TopoDroidApp.mData != null ) {
+      allNames = TopoDroidApp.mData.selectAllSurveys();
+      if ( allNames != null ) {
+        for ( String name : allNames ) {
+          long sid = TopoDroidApp.mData.getSurveyId( name );
+          if ( sid > 0L ) TopoDroidApp.mData.doDeleteSurvey( sid );
+        }
+      }
+    }
+
+    // Filesystem: the public root (/Documents/TDX/TopoDroid) also hosts
+    // distox14.sqlite — TopoDroid's main DB. Deleting the whole tree yanks the
+    // DB file out from under the live SQLite handle and every subsequent query
+    // fails with SQLITE_IOERR_FSTAT. Instead, delete per-survey subdirectories
+    // we know about (from both the DB and whatever's on disk) plus the export
+    // folders, and leave distox14.sqlite* alone.
+    File root = getPublicRoot();
+    if ( root.isDirectory() ) {
+      if ( allNames != null ) {
+        for ( String name : allNames ) deleteRecursively( new File( root, name ) );
+      }
+      // Catch any survey dirs left over from prior runs whose DB rows were
+      // already gone (e.g. pm-clear wiped the DB but the public dir persisted).
+      File[] children = root.listFiles();
+      if ( children != null ) {
+        for ( File child : children ) {
+          String name = child.getName();
+          if ( ! child.isDirectory() ) continue;
+          if ( name.equals( "zip" ) || name.equals( "tmp" )
+            || name.equals( "thconfig" ) || name.equals( "c3export" ) ) continue;
+          deleteRecursively( child );
+        }
+      }
+      // Wipe the zip/ folder contents so stale exports don't survive, but keep
+      // the folder itself — TopoDroid expects it to exist.
+      File zipDir = new File( root, "zip" );
+      if ( zipDir.isDirectory() ) {
+        File[] zipKids = zipDir.listFiles();
+        if ( zipKids != null ) {
+          for ( File z : zipKids ) deleteRecursively( z );
+        }
+      }
+    }
+
+    // /Downloads copies made by the ZIP-import round-trip test.
+    File downloads = Environment.getExternalStoragePublicDirectory( Environment.DIRECTORY_DOWNLOADS );
+    if ( downloads != null && downloads.isDirectory() ) {
+      File[] children = downloads.listFiles();
+      if ( children != null ) {
+        for ( File child : children ) {
+          String n = child.getName();
+          if ( n.startsWith( "visual_" ) && n.endsWith( ".zip" ) ) {
+            //noinspection ResultOfMethodCallIgnored
+            child.delete();
+          }
+        }
+      }
+    }
   }
 
   void launchMainWindow() throws Exception
@@ -279,8 +354,52 @@ final class VisualTestSupport
 
   void enterDrawMode()
   {
+    // The DrawingWindow toolbar's index-0 button is a mode toggle: in MOVE it
+    // enters DRAW, in DRAW it returns to MOVE. If two callers both "defensively"
+    // invoke this (e.g. open-sketch setup and the draw helper), the second call
+    // flips the mode back to MOVE and every subsequent swipe pans the canvas
+    // instead of drawing. Make this idempotent by checking the action-bar title.
+    if ( isInDrawMode() ) return;
     tapToolbarChild( "listview", 0 );
     waitForIdle();
+    long deadline = SystemClock.uptimeMillis() + UI_TIMEOUT_MS;
+    while ( SystemClock.uptimeMillis() < deadline ) {
+      if ( isInDrawMode() ) return;
+      SystemClock.sleep( 100 );
+    }
+    fail( "Failed to enter DRAW mode; last title=" + getDrawingWindowTitleText() );
+  }
+
+  private boolean isInDrawMode()
+  {
+    String title = getDrawingWindowTitleText();
+    if ( title == null ) return false;
+    // See DrawingWindow#setTheTitle: draw-mode titles are "<plot>: LINE <name>",
+    // "<plot>: POINT <name>", "<plot>: AREA <name>". Move-mode is "<plot>: Moving".
+    return title.contains( ": LINE " )
+        || title.contains( ": POINT " )
+        || title.contains( ": AREA " );
+  }
+
+  private String getDrawingWindowTitleText()
+  {
+    // Pull the title straight off the currently-resumed DrawingWindow. This is
+    // more reliable than UI scraping since the ActionBar TextView has no stable
+    // resource id on AppCompat themes and the plot-name prefix varies.
+    final String[] out = new String[1];
+    mInstrumentation.runOnMainSync( () -> {
+      java.util.Collection< android.app.Activity > resumed =
+        androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+          .getActivitiesInStage( androidx.test.runner.lifecycle.Stage.RESUMED );
+      for ( android.app.Activity a : resumed ) {
+        if ( a instanceof DrawingWindow ) {
+          CharSequence title = a.getTitle();
+          out[0] = ( title != null ) ? title.toString() : null;
+          return;
+        }
+      }
+    } );
+    return out[0];
   }
 
   void tapToolbarChild( String containerResName, int childIndex )
@@ -293,6 +412,48 @@ final class VisualTestSupport
   void clickRecentLineButton( int childIndex )
   {
     tapChildInContainer( R.id.layout_tool_l, childIndex, "layout_tool_l" );
+  }
+
+  /** Tap the recent-line toolbar button for a specific symbol, identified by
+   * its therion name (e.g. "u:user-fine"). The position of each symbol in the
+   * recent-line palette is not stable across installs — out of the box,
+   * TopoDroid sits walls at index 0 and section at index 1, pushing the user
+   * sketch lines further right. Hard-coded indices in tests were hitting walls
+   * / section by mistake, which in turn opened the cross-section dialog. Look
+   * the symbol up at runtime instead so we always click the right button.
+   */
+  void clickRecentLineByThName( String thName )
+  {
+    int index = resolveRecentLineIndex( thName );
+    assertTrue( "User sketch line not present in recent-line palette: " + thName + "; "
+      + "current=" + describeRecentLinePalette(), index >= 0 );
+    clickRecentLineButton( index );
+  }
+
+  private int resolveRecentLineIndex( String thName )
+  {
+    String target = Symbol.deprefix_u( thName );
+    for ( int k = 0; k < ItemDrawer.NR_RECENT; ++k ) {
+      Symbol symbol = ItemDrawer.mRecentLine[k];
+      if ( symbol == null ) continue;
+      String full = symbol.getFullThName();
+      if ( full == null ) continue;
+      if ( full.equals( thName ) ) return k;
+      if ( target != null && target.equals( Symbol.deprefix_u( full ) ) ) return k;
+    }
+    return -1;
+  }
+
+  private String describeRecentLinePalette()
+  {
+    StringBuilder sb = new StringBuilder( "[" );
+    for ( int k = 0; k < ItemDrawer.NR_RECENT; ++k ) {
+      if ( k > 0 ) sb.append( "," );
+      Symbol symbol = ItemDrawer.mRecentLine[k];
+      sb.append( symbol == null ? "null" : symbol.getFullThName() );
+    }
+    sb.append( "]" );
+    return sb.toString();
   }
 
   void tapProfileButton( int viewId )
@@ -449,7 +610,15 @@ final class VisualTestSupport
     waitForMainWindow();
   }
 
-  void drawStrokeNormalized( double startX, double startY, double endX, double endY, int steps )
+  /** Draw a curved stroke on the sketch surface. The path is a quadratic
+   * bezier sampled at `samples` points; the control point sits `curveOffset`
+   * (in normalized canvas units) perpendicular to the start->end chord. A
+   * curved input is required to visually distinguish profile 1 (tight,
+   * segment-1 rendering) from profile 2 (smoothed, segment-10 rendering); a
+   * straight swipe renders identically under both profiles.
+   */
+  void drawCurveStrokeNormalized( double startX, double startY, double endX, double endY,
+                                  double curveOffset, int samples, int segmentSteps )
   {
     UiObject2 surface = waitForObject( By.res( PACKAGE_NAME, "drawingSurface" ) );
     assertNotNull( "Missing drawing surface", surface );
@@ -457,11 +626,30 @@ final class VisualTestSupport
     int top    = surface.getVisibleBounds().top;
     int width  = surface.getVisibleBounds().width();
     int height = surface.getVisibleBounds().height();
-    int x0 = left + (int)Math.round( width  * startX );
-    int y0 = top  + (int)Math.round( height * startY );
-    int x1 = left + (int)Math.round( width  * endX );
-    int y1 = top  + (int)Math.round( height * endY );
-    mDevice.swipe( x0, y0, x1, y1, steps );
+
+    double midX  = 0.5 * ( startX + endX );
+    double midY  = 0.5 * ( startY + endY );
+    double dx    = endX - startX;
+    double dy    = endY - startY;
+    double len   = Math.sqrt( dx * dx + dy * dy );
+    double perpX = ( len == 0 ) ? 0.0 : ( -dy / len );
+    double perpY = ( len == 0 ) ? 0.0 : (  dx / len );
+    double ctrlX = midX + perpX * curveOffset;
+    double ctrlY = midY + perpY * curveOffset;
+
+    int n = Math.max( 3, samples );
+    Point[] path = new Point[ n ];
+    for ( int i = 0; i < n; ++i ) {
+      double t = (double)i / (double)( n - 1 );
+      double u = 1.0 - t;
+      double x = u * u * startX + 2.0 * u * t * ctrlX + t * t * endX;
+      double y = u * u * startY + 2.0 * u * t * ctrlY + t * t * endY;
+      path[i] = new Point(
+        left + (int)Math.round( width  * x ),
+        top  + (int)Math.round( height * y )
+      );
+    }
+    mDevice.swipe( path, Math.max( 1, segmentSteps ) );
     SystemClock.sleep( 500 );
     waitForIdle();
   }
@@ -469,7 +657,9 @@ final class VisualTestSupport
   void setCanonicalToolbarState()
   {
     tapProfileButton( R.id.button_profile_1 );
-    clickRecentLineButton( 2 );
+    // Resolve by th_name so the "active line" highlight sits on user-fine
+    // regardless of where it lives in the recent-line palette on this install.
+    clickRecentLineByThName( SketchLineSymbolManager.LEGACY_TH_NAME_FINE );
   }
 
   File getPublicRoot()
@@ -1039,6 +1229,22 @@ final class VisualTestSupport
     waitForIdle();
   }
 
+  /** Force-delete a survey by name from the database and its filesystem
+   * directory. Used by round-trip import tests to guarantee a clean slate
+   * before re-importing the ZIP, even if the in-app "Delete" menu/dialog flow
+   * didn't fully commit — otherwise the ZIP importer hits the duplicate-
+   * survey-name guard and surfaces a "Failed: duplicate survey name" toast.
+   */
+  void forceDeleteSurveyByName( String surveyName )
+  {
+    if ( surveyName == null ) return;
+    if ( TopoDroidApp.mData != null ) {
+      long sid = TopoDroidApp.mData.getSurveyId( surveyName );
+      if ( sid > 0L ) TopoDroidApp.mData.doDeleteSurvey( sid );
+    }
+    deleteRecursively( getSurveyDir( surveyName ) );
+  }
+
   private void cleanupNamedSurveyArtifacts( List< String > surveyNames )
   {
     if ( surveyNames == null ) return;
@@ -1165,65 +1371,24 @@ final class VisualTestSupport
   private UiObject2 findSurveyOnMainList( String surveyName )
   {
     waitForMainWindow();
-    UiObject2 list = waitForObject( By.res( PACKAGE_NAME, "td_list" ) );
-
+    // Most callers just created the survey — check the current viewport first.
     UiObject2 row = mDevice.findObject( By.text( surveyName ) );
     if ( row != null ) return row;
 
-    scrollListToBoundary( list, false );
-    row = mDevice.findObject( By.text( surveyName ) );
-    if ( row != null ) return row;
-
-    String previousSignature = getVisibleListSignature( list );
-    for ( int i = 0; i < 128; ++i ) {
-      swipeObjectVertically( list, true );
-      row = mDevice.findObject( By.text( surveyName ) );
-      if ( row != null ) return row;
-
-      String currentSignature = getVisibleListSignature( list );
-      if ( currentSignature.equals( previousSignature ) ) break;
-      previousSignature = currentSignature;
+    // Let UiScrollable fling through the list in both directions (fast; uses
+    // fling momentum instead of the drag-sized swipes this used to do).
+    try {
+      UiScrollable scrollable = new UiScrollable(
+        new UiSelector().resourceId( PACKAGE_NAME + ":id/td_list" ) );
+      scrollable.setAsVerticalList();
+      scrollable.setMaxSearchSwipes( 60 );
+      if ( scrollable.scrollIntoView( new UiSelector().text( surveyName ) ) ) {
+        return mDevice.findObject( By.text( surveyName ) );
+      }
+    } catch ( UiObjectNotFoundException e ) {
+      // fall through — let the caller treat "not found" as a miss
     }
     return null;
-  }
-
-  private void scrollListToBoundary( UiObject2 list, boolean towardEnd )
-  {
-    String previousSignature = getVisibleListSignature( list );
-    for ( int i = 0; i < 64; ++i ) {
-      swipeObjectVertically( list, towardEnd );
-      String currentSignature = getVisibleListSignature( list );
-      if ( currentSignature.equals( previousSignature ) ) return;
-      previousSignature = currentSignature;
-    }
-  }
-
-  private String getVisibleListSignature( UiObject2 list )
-  {
-    try {
-      return buildVisibleListSignature( list );
-    } catch ( StaleObjectException e ) {
-      UiObject2 freshList = mDevice.findObject( By.res( PACKAGE_NAME, "td_list" ) );
-      if ( freshList == null ) return "<stale>";
-      return buildVisibleListSignature( freshList );
-    }
-  }
-
-  private String buildVisibleListSignature( UiObject2 list )
-  {
-    List< UiObject2 > children = list.getChildren();
-    if ( children == null || children.isEmpty() ) return "<empty>";
-
-    StringBuilder builder = new StringBuilder();
-    builder.append( children.size() );
-    for ( UiObject2 child : children ) {
-      if ( child == null ) continue;
-      builder.append( '|' );
-      builder.append( child.getText() );
-      builder.append( '@' );
-      builder.append( child.getVisibleBounds().top );
-    }
-    return builder.toString();
   }
 
   private UiObject2 requireSurveyOnMainList( String surveyName )
@@ -1232,21 +1397,6 @@ final class VisualTestSupport
     UiObject2 row = findSurveyOnMainList( surveyName );
     assertNotNull( "Survey not visible on the main list: " + surveyName, row );
     return row;
-  }
-
-  private void swipeObjectVertically( UiObject2 object, boolean towardEnd )
-  {
-    assertNotNull( "Cannot swipe a null object", object );
-    int left = object.getVisibleBounds().left;
-    int top = object.getVisibleBounds().top;
-    int width = object.getVisibleBounds().width();
-    int height = object.getVisibleBounds().height();
-    int centerX = left + width / 2;
-    int startY = top + ( towardEnd ? (int)( height * 0.82f ) : (int)( height * 0.18f ) );
-    int endY = top + ( towardEnd ? (int)( height * 0.18f ) : (int)( height * 0.82f ) );
-    mDevice.swipe( centerX, startY, centerX, endY, 24 );
-    waitForIdle();
-    SystemClock.sleep( 250 );
   }
 
   private void clickObject( UiObject2 object )

@@ -19,6 +19,7 @@ This was written in English; other translations are likely not working
 - Change defaults for Active Key. Double tap to go back?
 - Add support for binding actions to the volume buttons
 - Performance check for large sketches
+- Extend the visual regression suite to cover S Pen button, Active Key, and action-binding flows (undo/redo, palette toggle, profile toggle, back, erase/sketch toggle). Current coverage only exercises taps on the drawing surface and toolbars.
 
 #### TODO bugs:
 - There's some weird differences in the back key via S Pen stylus vs Active Key
@@ -70,9 +71,9 @@ This was written in English; other translations are likely not working
   - Better alerting and information for bad backsights?
   - automatically label them as going from the `to` station to the `from` station (eg, from A1->A0)
 - Tweak bad backsight orange line to be a little more subtle
-- Sound alerts/noises for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
+- Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 
-### TopoDroid Sketch v1.15.5 Changelog:
+### TopoDroid Sketch v1.16 Changelog:
 
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob.
 
@@ -116,10 +117,41 @@ This was written in English; other translations are likely not working
 - The output can be scaled from 0.25 to 4.0. The default of 1.00 is great for handing to a cartographer, but the files it produces are too large to really view on the tablet. I recommend 0.25 scale for that.
 - The default filename is `<survey_name>_<sketch_name>_<sketch_type (eg plan, profile)>_YYYY-MM-DD.png`. Example: `F-Survey_toob_plan_2026-04-15.png`. 
 
+**Testing**
+- Added tests for the three new user sketch lines, the drawing presets/profiles, ZIP export/import, and compass export. 
+
 **misc UI**
 - Added a new, more capable color picker widget
 - Added sketch grid appearance settings for both grid width and grid color
 - Added the new 1 foot sketch-grid unit alongside the existing 2 feet, yard, meter, and 10 cm options
+
+### Testing
+
+Instrumentation tests live under `app/src/androidTest/`. They drive a running emulator with real taps and swipes (Espresso + UIAutomator), export files to `/sdcard/...`, and compare screenshots and text exports to golden fixtures. They're probably a bit brittle outside of the particular environment they were created in.
+
+**Requirements**
+- An emulator running at **2560 × 1600, 320 dpi, font scale 1.0, English locale**. The tests asserts this profile on startup and will fail fast on a mismatch. Goldens are matched to this profile.
+- Android SDK platform-tools on `PATH`, or `local.properties` pointing at `sdk.dir` (the scripts will read it either way, probably).
+- JDK 21
+
+**Scripts** (PowerShell, under `scripts/`)
+- `scripts\test-fast.ps1` — sketch-draw + Compass-export only.
+- `scripts\test-full.ps1` — all four tests including the ZIP round-trip (import via DocumentsUI) and PNG export.
+- `scripts\refresh-visual-baselines.ps1` — re-runs in record mode and copies the new PNG/`.dat` fixtures into `app/src/androidTest/assets/goldens/emulator_2560x1600_320dpi_font1.0/`. Run this after any intentional UI or rendering change that invalidates the existing goldens.
+
+Each script defaults to `-Serial emulator-5554`. Pass `-Serial <id>` to target a different device.
+
+**What's covered**
+1. Create a survey, enter shots, open a plan sketch, draw with P1/P2 profiles and the three user-line widths (fine/standard/thick), screenshot-diff against golden .PNG files.
+2. Export to ZIP with symbols on, validate `lines.zip` inside contains `user-fine`/`user-standard`/`user-thick`, delete the survey, re-import the ZIP through the system document picker, re-open the plot, screenshot-diff.
+3. Export to PNG, pixel-exact compare against golden .pngs
+4. Export to Compass `.dat`, normalize the dynamic `SURVEY DATE:` line (this is fine, right?), compare against golden.
+
+**Where output lands**
+- `tmp-test-artifacts/<testCaseName>/`: Actual screenshots, exported files, and on failure also `expected-<name>` and `diff-<name>` PNGs for visual diagnosis.
+- `tmp-recorded-latest/recorded-goldens/...`: Only written by `refresh-visual-baselines.ps1`; the script copies from here into the tracked goldens directory.
+
+Both `tmp-*` dirs are gitignored and are regenerated on every run.
 
 # topodroid
 
