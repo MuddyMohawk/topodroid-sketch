@@ -46,6 +46,12 @@ public class Scrap
   public int mScrapIdx;
   private RectF mBBox;   // this scrap bbox
   public String mScrapOptions = null; // TH2EDIT
+  private final Path mReferenceOutlinePath = new Path();
+  private final Path mReferenceStemPath = new Path();
+  private final Path mReferenceHandlePath = new Path();
+  private final Path mReferenceCurrentPath = new Path();
+  private final PointF mReferenceTmpPoint0 = new PointF();
+  private final PointF mReferenceTmpPoint1 = new PointF();
 
   /** cstr
    * @param idx       scrap index (in the plot)
@@ -765,15 +771,15 @@ public class Scrap
                 eraseCmd.addAction( EraseAction.ERASE_MODIFY, path );
                 doRemoveLinePoint( area, pt.mPoint, pt );
                 area.retracePath();
-                }
               }
-            } else if ( path.isPoint() ) { // path  instanceof DrawingPointPath
-              if ( erase_mode == Drawing.FILTER_ALL || erase_mode == Drawing.FILTER_POINT ) {
-                // ret = 1;
-                eraseCmd.addAction( EraseAction.ERASE_REMOVE, path );
-                mCurrentStack.remove( path );
-                synchronized ( TDPath.mSelectionLock ) {
-                  mSelection.removePath( path );
+            }
+          } else if ( path.isPoint() ) { // path  instanceof DrawingPointPath
+            if ( erase_mode == Drawing.FILTER_ALL || erase_mode == Drawing.FILTER_POINT ) {
+              // ret = 1;
+              eraseCmd.addAction( EraseAction.ERASE_REMOVE, path );
+              mCurrentStack.remove( path );
+              synchronized ( TDPath.mSelectionLock ) {
+                mSelection.removePath( path );
               }
             }
           }
@@ -920,7 +926,11 @@ public class Scrap
     //   LinePoint lp = line.mFirst;
     //   // TDLog.v("CMD add path. size " + line.size() + " start " + lp.x + " " + lp.y );
     // }
-    
+
+    if ( path instanceof DrawingReferencePath ) {
+      // Decode once when the path enters the sketch so the first visible draw is not doing file I/O.
+      ((DrawingReferencePath)path).primeBitmap();
+    }
     synchronized( TDPath.mCommandsLock ) {
       mCurrentStack.add( path );
     }
@@ -3447,40 +3457,40 @@ public class Scrap
 
   private void drawReferenceSelection( Canvas canvas, Matrix matrix, float zoom, DrawingReferencePath path, SelectionPoint hot )
   {
-    Path outline = path.getOutlinePath();
-    outline.transform( matrix );
-    canvas.drawPath( outline, BrushManager.fixedYellowPaint );
+    path.copyOutlinePath( mReferenceOutlinePath );
+    mReferenceOutlinePath.transform( matrix );
+    canvas.drawPath( mReferenceOutlinePath, BrushManager.fixedYellowPaint );
 
     drawReferenceHandle( canvas, matrix, path, ReferencePointHelper.HANDLE_SCALE_NW, -0.5f, -0.5f, hot, zoom );
     drawReferenceHandle( canvas, matrix, path, ReferencePointHelper.HANDLE_SCALE_NE,  0.5f, -0.5f, hot, zoom );
     drawReferenceHandle( canvas, matrix, path, ReferencePointHelper.HANDLE_SCALE_SE,  0.5f,  0.5f, hot, zoom );
     drawReferenceHandle( canvas, matrix, path, ReferencePointHelper.HANDLE_SCALE_SW, -0.5f,  0.5f, hot, zoom );
 
-    PointF top = ReferencePointHelper.getSelectionPoint( path, ReferencePointHelper.HANDLE_MOVE, 0.0f, -0.5f );
-    PointF rotate = ReferencePointHelper.getSelectionPoint( path, ReferencePointHelper.HANDLE_ROTATE, 0.0f, 0.0f );
-    Path stem = new Path();
-    stem.moveTo( top.x, top.y );
-    stem.lineTo( rotate.x, rotate.y );
-    stem.transform( matrix );
-    canvas.drawPath( stem, BrushManager.fixedYellowPaint );
+    ReferencePointHelper.getSelectionPoint( path, ReferencePointHelper.HANDLE_MOVE, 0.0f, -0.5f, mReferenceTmpPoint0 );
+    ReferencePointHelper.getSelectionPoint( path, ReferencePointHelper.HANDLE_ROTATE, 0.0f, 0.0f, mReferenceTmpPoint1 );
+    mReferenceStemPath.rewind();
+    mReferenceStemPath.moveTo( mReferenceTmpPoint0.x, mReferenceTmpPoint0.y );
+    mReferenceStemPath.lineTo( mReferenceTmpPoint1.x, mReferenceTmpPoint1.y );
+    mReferenceStemPath.transform( matrix );
+    canvas.drawPath( mReferenceStemPath, BrushManager.fixedYellowPaint );
     drawReferenceHandle( canvas, matrix, path, ReferencePointHelper.HANDLE_ROTATE, 0.0f, 0.0f, hot, zoom );
 
     if ( hot != null && hot.mPoint != null ) {
-      Path current = new Path();
-      current.addCircle( hot.mPoint.x, hot.mPoint.y, 6.0f * TDSetting.mDotRadius / zoom, Path.Direction.CCW );
-      current.transform( matrix );
-      canvas.drawPath( current, BrushManager.fixedOrangePaint );
+      mReferenceCurrentPath.rewind();
+      mReferenceCurrentPath.addCircle( hot.mPoint.x, hot.mPoint.y, 6.0f * TDSetting.mDotRadius / zoom, Path.Direction.CCW );
+      mReferenceCurrentPath.transform( matrix );
+      canvas.drawPath( mReferenceCurrentPath, BrushManager.fixedOrangePaint );
     }
   }
 
   private void drawReferenceHandle( Canvas canvas, Matrix matrix, DrawingReferencePath path, int role, float u, float v, SelectionPoint hot, float zoom )
   {
-    PointF point = ReferencePointHelper.getSelectionPoint( path, role, u, v );
-    Path handle = new Path();
-    handle.addCircle( point.x, point.y, 4.0f * TDSetting.mDotRadius / zoom, Path.Direction.CCW );
-    handle.transform( matrix );
+    ReferencePointHelper.getSelectionPoint( path, role, u, v, mReferenceTmpPoint0 );
+    mReferenceHandlePath.rewind();
+    mReferenceHandlePath.addCircle( mReferenceTmpPoint0.x, mReferenceTmpPoint0.y, 4.0f * TDSetting.mDotRadius / zoom, Path.Direction.CCW );
+    mReferenceHandlePath.transform( matrix );
     boolean is_hot = hot != null && hot.getHandleRole() == role;
-    canvas.drawPath( handle, is_hot ? BrushManager.fixedOrangePaint : BrushManager.highlightPaint2 );
+    canvas.drawPath( mReferenceHandlePath, is_hot ? BrushManager.fixedOrangePaint : BrushManager.highlightPaint2 );
   }
 
   void drawReferenceUnderlays( Canvas canvas, Matrix matrix, RectF bbox )

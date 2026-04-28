@@ -28,6 +28,9 @@ class DrawingReferencePath extends DrawingPointPath
 {
   private static final int MAX_BITMAP_DIM = 4096;
 
+  private final Matrix mImageMatrix = new Matrix();
+  private final Paint mBitmapPaint = new Paint( Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG );
+  private final PointF[] mCorners = new PointF[] { new PointF(), new PointF(), new PointF(), new PointF() };
   private Bitmap mBitmap = null;
   private String mBitmapSource = null;
 
@@ -104,7 +107,7 @@ class DrawingReferencePath extends DrawingPointPath
 
   RectF getReferenceBounds()
   {
-    return ReferencePointHelper.getSceneBounds( this );
+    return new RectF( left, top, right, bottom );
   }
 
   boolean intersectsEraseDisk( float x, float y, float radius )
@@ -128,16 +131,16 @@ class DrawingReferencePath extends DrawingPointPath
     return outside_x * outside_x + outside_y * outside_y <= radius * radius;
   }
 
-  Path getOutlinePath()
+  void copyOutlinePath( Path outline )
   {
-    PointF[] corners = ReferencePointHelper.getCorners( cx, cy, getSceneWidth(), getSceneHeight(), mOrientation );
-    Path outline = new Path();
-    outline.moveTo( corners[0].x, corners[0].y );
-    outline.lineTo( corners[1].x, corners[1].y );
-    outline.lineTo( corners[2].x, corners[2].y );
-    outline.lineTo( corners[3].x, corners[3].y );
+    if ( outline == null ) return;
+    ReferencePointHelper.getCorners( cx, cy, getSceneWidth(), getSceneHeight(), mOrientation, mCorners );
+    outline.rewind();
+    outline.moveTo( mCorners[0].x, mCorners[0].y );
+    outline.lineTo( mCorners[1].x, mCorners[1].y );
+    outline.lineTo( mCorners[2].x, mCorners[2].y );
+    outline.lineTo( mCorners[3].x, mCorners[3].y );
     outline.close();
-    return outline;
   }
 
   @Override
@@ -198,8 +201,7 @@ class DrawingReferencePath extends DrawingPointPath
   @Override
   public void computeBounds( RectF bound, boolean b )
   {
-    RectF ref = getReferenceBounds();
-    bound.set( ref );
+    bound.set( left, top, right, bottom );
   }
 
   @Override
@@ -217,8 +219,7 @@ class DrawingReferencePath extends DrawingPointPath
   void drawUnderlay( Canvas canvas, Matrix matrix, RectF bbox )
   {
     if ( canvas == null || matrix == null || ! isReferenceVisible() ) return;
-    RectF ref_bounds = getReferenceBounds();
-    if ( bbox != null && ! RectF.intersects( bbox, ref_bounds ) ) return;
+    if ( bbox != null && ( right < bbox.left || left > bbox.right || bottom < bbox.top || top > bbox.bottom ) ) return;
 
     Bitmap bitmap = getBitmap();
     if ( bitmap == null ) return;
@@ -227,16 +228,15 @@ class DrawingReferencePath extends DrawingPointPath
     float height = getSceneHeight();
     if ( width <= 0.0f || height <= 0.0f ) return;
 
-    Matrix image = new Matrix();
-    image.postScale( width / bitmap.getWidth(), height / bitmap.getHeight() );
-    image.postTranslate( - width / 2.0f, - height / 2.0f );
-    image.postRotate( (float)mOrientation );
-    image.postTranslate( cx, cy );
-    image.postConcat( matrix );
+    mImageMatrix.reset();
+    mImageMatrix.postScale( width / bitmap.getWidth(), height / bitmap.getHeight() );
+    mImageMatrix.postTranslate( - width / 2.0f, - height / 2.0f );
+    mImageMatrix.postRotate( (float)mOrientation );
+    mImageMatrix.postTranslate( cx, cy );
+    mImageMatrix.postConcat( matrix );
 
-    Paint paint = new Paint( Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG );
-    paint.setAlpha( Math.round( 255.0f * getAlpha() ) );
-    canvas.drawBitmap( bitmap, image, paint );
+    mBitmapPaint.setAlpha( Math.round( 255.0f * getAlpha() ) );
+    canvas.drawBitmap( bitmap, mImageMatrix, mBitmapPaint );
   }
 
   void applyHandleDrag( SelectionPoint handle, float dx, float dy )
@@ -264,27 +264,32 @@ class DrawingReferencePath extends DrawingPointPath
   @Override
   String toTherion()
   {
+    // Reference images are screen-only underlays and intentionally skip structured exports.
     return null;
   }
 
   @Override
   void toTCsurvey( PrintWriter pw, String survey, String cave, String branch, String bind )
   {
+    // Reference images are screen-only underlays and intentionally skip structured exports.
   }
 
   @Override
   void toTCsurvey( PrintWriter pw, String survey, String cave, String branch, String bind, String extra, PlotInfo section )
   {
+    // Reference images are screen-only underlays and intentionally skip structured exports.
   }
 
   @Override
   void toCave3D( PrintWriter pw, int type, DrawingCommandManager cmd, com.topodroid.num.TDNum num )
   {
+    // Reference images are screen-only underlays and intentionally skip structured exports.
   }
 
   @Override
   void toCave3D( PrintWriter pw, int type, com.topodroid.math.TDVector V1, com.topodroid.math.TDVector V2 )
   {
+    // Reference images are screen-only underlays and intentionally skip structured exports.
   }
 
   void deleteOwnedAsset()
@@ -292,13 +297,22 @@ class DrawingReferencePath extends DrawingPointPath
     ReferencePointHelper.deleteOwnedAsset( this );
   }
 
+  void primeBitmap()
+  {
+    getBitmap();
+  }
+
   private void refreshBounds()
   {
-    RectF bounds = getReferenceBounds();
-    left = bounds.left;
-    right = bounds.right;
-    top = bounds.top;
-    bottom = bounds.bottom;
+    ReferencePointHelper.getCorners( cx, cy, getSceneWidth(), getSceneHeight(), mOrientation, mCorners );
+    left = right = mCorners[0].x;
+    top = bottom = mCorners[0].y;
+    for ( int k = 1; k < mCorners.length; ++k ) {
+      if ( mCorners[k].x < left ) left = mCorners[k].x;
+      if ( mCorners[k].x > right ) right = mCorners[k].x;
+      if ( mCorners[k].y < top ) top = mCorners[k].y;
+      if ( mCorners[k].y > bottom ) bottom = mCorners[k].y;
+    }
   }
 
   private void scaleFromCorner( SelectionPoint handle, float dx, float dy )

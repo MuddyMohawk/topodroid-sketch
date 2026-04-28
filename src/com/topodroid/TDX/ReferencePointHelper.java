@@ -157,25 +157,47 @@ class ReferencePointHelper
 
   static PointF[] getCorners( float cx, float cy, float width, float height, double angle )
   {
+    PointF[] corners = new PointF[4];
+    corners[0] = new PointF();
+    corners[1] = new PointF();
+    corners[2] = new PointF();
+    corners[3] = new PointF();
+    getCorners( cx, cy, width, height, angle, corners );
+    return corners;
+  }
+
+  static void getCorners( float cx, float cy, float width, float height, double angle, PointF[] corners )
+  {
+    if ( corners == null || corners.length < 4 ) return;
+    for ( int k = 0; k < 4; ++k ) {
+      if ( corners[k] == null ) corners[k] = new PointF();
+    }
     float half_w = width / 2.0f;
     float half_h = height / 2.0f;
-    PointF[] corners = new PointF[4];
-    corners[0] = getLocalPoint( cx, cy, -half_w, -half_h, angle );
-    corners[1] = getLocalPoint( cx, cy,  half_w, -half_h, angle );
-    corners[2] = getLocalPoint( cx, cy,  half_w,  half_h, angle );
-    corners[3] = getLocalPoint( cx, cy, -half_w,  half_h, angle );
-    return corners;
+    setLocalPoint( corners[0], cx, cy, -half_w, -half_h, angle );
+    setLocalPoint( corners[1], cx, cy,  half_w, -half_h, angle );
+    setLocalPoint( corners[2], cx, cy,  half_w,  half_h, angle );
+    setLocalPoint( corners[3], cx, cy, -half_w,  half_h, angle );
   }
 
   static PointF getSelectionPoint( DrawingReferencePath path, int role, float u, float v )
   {
+    PointF point = new PointF();
+    getSelectionPoint( path, role, u, v, point );
+    return point;
+  }
+
+  static void getSelectionPoint( DrawingReferencePath path, int role, float u, float v, PointF point )
+  {
+    if ( point == null ) return;
     if ( role == HANDLE_ROTATE ) {
       float local_y = - path.getSceneHeight() / 2.0f - ROTATE_HANDLE_GAP;
-      return getLocalPoint( path.cx, path.cy, 0.0f, local_y, path.mOrientation );
+      setLocalPoint( point, path.cx, path.cy, 0.0f, local_y, path.mOrientation );
+      return;
     }
     float local_x = u * path.getSceneWidth();
     float local_y = v * path.getSceneHeight();
-    return getLocalPoint( path.cx, path.cy, local_x, local_y, path.mOrientation );
+    setLocalPoint( point, path.cx, path.cy, local_x, local_y, path.mOrientation );
   }
 
   static PointF fitSceneSize( int pixel_width, int pixel_height, float max_width, float max_height )
@@ -262,7 +284,7 @@ class ReferencePointHelper
     String lower = source_name.toLowerCase( Locale.US );
     if ( lower.endsWith( ".png" ) ) return TDPath.getSurveyPngFile( TDInstance.survey, source_name.substring( 0, source_name.length() - 4 ) );
     if ( lower.endsWith( ".jpg" ) ) return TDPath.getSurveyJpgFile( TDInstance.survey, source_name.substring( 0, source_name.length() - 4 ) );
-    return TDPath.getSurveyPhotoDir( TDInstance.survey ) + "/" + source_name;
+    return null;
   }
 
   private static float getOptionFloat( DrawingPointPath point, String key, float def_value )
@@ -284,11 +306,19 @@ class ReferencePointHelper
 
   private static PointF getLocalPoint( float cx, float cy, float local_x, float local_y, double angle )
   {
+    PointF point = new PointF();
+    setLocalPoint( point, cx, cy, local_x, local_y, angle );
+    return point;
+  }
+
+  private static void setLocalPoint( PointF point, float cx, float cy, float local_x, float local_y, double angle )
+  {
+    if ( point == null ) return;
     double rad = angle * Math.PI / 180.0;
     float cos = (float)Math.cos( rad );
     float sin = (float)Math.sin( rad );
-    return new PointF( cx + local_x * cos - local_y * sin,
-                       cy + local_x * sin + local_y * cos );
+    point.x = cx + local_x * cos - local_y * sin;
+    point.y = cy + local_x * sin + local_y * cos;
   }
 
   private static String normalizeImageExtension( Uri uri )

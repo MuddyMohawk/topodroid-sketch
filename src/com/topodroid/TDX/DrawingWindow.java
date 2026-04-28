@@ -518,6 +518,7 @@ public class DrawingWindow extends ItemDrawer
   private float mPendingReferenceX = 0.0f;
   private float mPendingReferenceY = 0.0f;
   private int mPendingReferenceScrap = -1;
+  // TODO save/restore pending reference picker state if activity recreation during picker flows becomes a real issue.
   private DrawingReferencePath mPendingReferenceReplace = null;
 
   // private static boolean mRecentToolsForward = true;
