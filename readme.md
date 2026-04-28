@@ -17,9 +17,11 @@ This was written in English; other translations are likely not working
 - An actual build pipeline?
 - Rename the drawing "profiles" to something else to avoid confusion with the extended profile view. Presets?
 - Change defaults for Active Key. Double tap to go back?
-- Add support for binding actions to the volume buttons
 - Performance check for large sketches
+- Allow smaller downsizing on PNG export (right now capped at 0.25, which still produces large images)
+- Option for rearranging render order (eg, survey station designations on top)
 - Extend the visual regression suite to cover S Pen button, Active Key, and action-binding flows (undo/redo, palette toggle, profile toggle, back, erase/sketch toggle). Current coverage only exercises taps on the drawing surface and toolbars.
+- Make the reference image thingy a default symbol in the palette 
 
 #### TODO bugs:
 - There's some weird differences in the back key via S Pen stylus vs Active Key
@@ -27,6 +29,8 @@ This was written in English; other translations are likely not working
 - Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch 
   - station designation font size does not affect export size 
   - actually all the sketch settings might be respected (eg leg line size)?
+- Taking screenshot with volume-up doesn't work (vanilla bug)
+- Emulator test suite should probably test if the emulator is actually running lol
 
 #### Future Possible Features / Brainstorming
 - Sketch line collision to prevent sketching through another line
@@ -73,7 +77,7 @@ This was written in English; other translations are likely not working
 - Tweak bad backsight orange line to be a little more subtle
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 
-### TopoDroid Sketch v1.16 Changelog:
+### TopoDroid Sketch v1.17.5 Changelog:
 
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob.
 
@@ -92,13 +96,16 @@ This was written in English; other translations are likely not working
 - Display of sketch references for cross-sections (legs, splays, etc) can be toggled by selecting the cross-section in edit mode
 - Not currently supported for station cross-sections
 
+**Reference Image**
+- Added the ability to place a reference image on a sketch (eg, a photo for a cross-section). The image can be scaled, moved, rotated, and its opacity and visibility can be changed. The reference image is included with the PNG export
+
 **Line Presets**
 - Added two drawing "profiles" to the sketch screen, which appear as "P1" and "P2". These are intended to allow a sketcher to switch between drawing thin, detailed lines, and smooth, straight lines
   - Profile 1's defaults are a line style of `fine` and a line point spacing of 1
   - Profile 2's defaults are a line style of `bezier` and a line point spacing of 20 (todo: switch to 15)
 - Added a "profiles" menu to the sketch settings screen to allow customization of each profile
 
-**S Pen  and Active Key Support**
+**S Pen, Active Key, and Volume Button Support**
 - Added support for the S Pen button for single click, double click, and long click inputs
     - *Note that this is only tested with the IP68 S pen that has no bluetooth and no battery. It may not work with other pens. Additionally, the pen must be held close to the screen in order for the button to work*
 - Added the following actions:
@@ -110,6 +117,7 @@ This was written in English; other translations are likely not working
   - Toggle erase/sketch: Toggles between the erase sketch mode and the drawing sketch mode
 - Added the ability to bind actions to S Pen button inputs in the *TopoDroid main settings -> Devices -> Action Key Bindings* menu
 - Added the ability to bind actions to the Samsung Active key in the *TopoDroid main settings -> Devices -> Action Key Bindings* menu
+- Added the ability to bind actions to the Volume Up and Volume Down keys (single / long / double press each) in the same *Action Key Bindings* menu. Default binding for all six is `none`. If an action is bound, it overwrites the ability to change volume with that key while the app is open. This also overrides the busted volume-up screenshot action present in vanilla topodroid
 
 **PNG Sketch Export**
 - Added a PNG export option for sketches

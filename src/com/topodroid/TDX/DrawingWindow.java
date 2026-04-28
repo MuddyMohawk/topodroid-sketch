@@ -515,6 +515,10 @@ public class DrawingWindow extends ItemDrawer
   private DrawingPointPath mSectionPt = null;
   private DrawingPointPath mPendingSectionPlacementPoint = null;
   private String mPendingSectionOverlayRefreshName = null;
+  private float mPendingReferenceX = 0.0f;
+  private float mPendingReferenceY = 0.0f;
+  private int mPendingReferenceScrap = -1;
+  private DrawingReferencePath mPendingReferenceReplace = null;
 
   // private static boolean mRecentToolsForward = true;
 
@@ -2179,7 +2183,7 @@ public class DrawingWindow extends ItemDrawer
           mActivity.setTitle( title + " " + BrushManager.getPointName( ((DrawingPointPath)mHotPath).mPointType ) );
           hasPointActions = true;
 	  deletable = true;
-          if ( mHotPath instanceof DrawingPointPath ) {
+          if ( mHotPath instanceof DrawingPointPath && ! ( mHotPath instanceof DrawingReferencePath ) ) {
             setScaleToolbar( (DrawingPointPath)mHotPath );
           } else {
             setScaleToolbar( null );
@@ -4377,6 +4381,8 @@ public class DrawingWindow extends ItemDrawer
     } else if ( point instanceof DrawingAudioPath ) { 
       DrawingAudioPath audio = (DrawingAudioPath)point;
       audio.destructor();
+    } else if ( point instanceof DrawingReferencePath ) {
+      ((DrawingReferencePath)point).deleteOwnedAsset();
     // } else if ( point instanceof DrawingSensorPath ) { 
     //   DrawingSensorPath sensor = (DrawingSensorPath)point;
     //   mApp_mData.deleteSensorRecord( TDInstance.sid, sensor.mId );
@@ -4984,6 +4990,7 @@ public class DrawingWindow extends ItemDrawer
       float x_shift = xc - mSaveX; // compute shift
       float y_shift = yc - mSaveY;
       if ( mMode == MODE_DRAW ) {
+        boolean defer_modified = false;
         float squared_shift = x_shift*x_shift + y_shift*y_shift;
 
         if ( mSymbol == SymbolType.LINE || mSymbol == SymbolType.AREA ) {
@@ -5298,6 +5305,13 @@ public class DrawingWindow extends ItemDrawer
 	        } else {
                   TDToast.makeWarn( R.string.no_feature_audio );
                 }
+              } else if ( BrushManager.isPointReference( mCurrentPoint ) ) {
+                if ( mLandscape ) {
+                  beginReferenceInsertion( -ys, xs, mDrawingSurface.scrapIndex() );
+                } else {
+                  beginReferenceInsertion( xs, ys, mDrawingSurface.scrapIndex() );
+                }
+                defer_modified = true;
               } else {
     	        if ( mLandscape ) {
                   DrawingPointPath point = new DrawingPointPath( mCurrentPoint, -ys, xs, mPointScale, mDrawingSurface.scrapIndex() );
@@ -5329,7 +5343,7 @@ public class DrawingWindow extends ItemDrawer
           }
         }
         mPointerDown = false;
-        modified();
+        if ( ! defer_modified ) modified();
         applyPendingSketchProfileSelection();
       } else if ( mMode == MODE_PLACE_SECTION ) {
         if ( Math.abs(mSaveX - xc) < TDSetting.mPointingRadius
@@ -5618,6 +5632,8 @@ public class DrawingWindow extends ItemDrawer
                   } else {
                     TDToast.makeWarn( R.string.no_feature_audio );
                   }
+                } else if ( BrushManager.isPointReference( mCurrentPoint ) ) {
+                  // Reference underlays are inserted only after the image picker returns.
                 } else {
                   if ( mLandscape ) {
                     DrawingPointPath point = new DrawingPointPath( mCurrentPoint, -ys, xs, mPointScale, mDrawingSurface.scrapIndex() );
@@ -6517,6 +6533,122 @@ public class DrawingWindow extends ItemDrawer
     SectionPointHelper.setPlacedReferences( point, show_refs );
     if ( SectionPointHelper.isPlaced( point ) ) refreshSectionOverlay( point );
     modified();
+  }
+
+  private void clearPendingReferenceInsert()
+  {
+    mPendingReferenceX = 0.0f;
+    mPendingReferenceY = 0.0f;
+    mPendingReferenceScrap = -1;
+  }
+
+  private void clearPendingReferenceReplace()
+  {
+    mPendingReferenceReplace = null;
+  }
+
+  private void selectReferenceImage()
+  {
+    Intent intent = new Intent( Intent.ACTION_OPEN_DOCUMENT );
+    intent.setType( "image/*" );
+    intent.addCategory( Intent.CATEGORY_OPENABLE );
+    intent.putExtra( Intent.EXTRA_MIME_TYPES, new String[] { "image/png", "image/jpeg" } );
+    intent.addFlags( Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION );
+    startActivityForResult( Intent.createChooser( intent, getResources().getString( R.string.title_import_reference ) ),
+                            TDRequest.REQUEST_GET_REFERENCE_IMAGE );
+  }
+
+  private PointF getReferenceDefaultSceneSize()
+  {
+    float zoom = ( mZoom > 0.0f ) ? mZoom : 1.0f;
+    float width_px = mDrawingSurface.getMeasuredWidth();
+    float height_px = mDrawingSurface.getMeasuredHeight();
+    if ( width_px <= 0.0f ) width_px = TopoDroidApp.mDisplayWidth;
+    if ( height_px <= 0.0f ) height_px = TopoDroidApp.mDisplayHeight;
+    float max_width = Math.max( ReferencePointHelper.MIN_SIZE, width_px / zoom * 0.60f );
+    float max_height = Math.max( ReferencePointHelper.MIN_SIZE, height_px / zoom * 0.60f );
+    return new PointF( max_width, max_height );
+  }
+
+  private void beginReferenceInsertion( float x, float y, int scrap )
+  {
+    mPendingReferenceX = x;
+    mPendingReferenceY = y;
+    mPendingReferenceScrap = scrap;
+    clearPendingReferenceReplace();
+    selectReferenceImage();
+  }
+
+  void replaceReferencePoint( DrawingReferencePath point )
+  {
+    if ( point == null ) return;
+    clearPendingReferenceInsert();
+    mPendingReferenceReplace = point;
+    selectReferenceImage();
+  }
+
+  void notifyReferencePointChanged( DrawingReferencePath point )
+  {
+    if ( point == null ) return;
+    mDrawingSurface.refreshReferencePath( point );
+    modified();
+  }
+
+  private void handleReferenceImageResult( Uri uri )
+  {
+    if ( uri == null ) {
+      TDToast.makeBad( R.string.reference_invalid_image );
+      clearPendingReferenceInsert();
+      clearPendingReferenceReplace();
+      return;
+    }
+
+    ReferencePointHelper.ImportedImage imported = ReferencePointHelper.importImage( uri );
+    if ( imported == null ) {
+      TDToast.makeBad( R.string.reference_import_failed );
+      clearPendingReferenceInsert();
+      clearPendingReferenceReplace();
+      return;
+    }
+
+    DrawingReferencePath replace = mPendingReferenceReplace;
+    if ( replace != null ) {
+      String old_source = replace.getSourceName();
+      float max_width = replace.getSceneWidth();
+      float max_height = replace.getSceneHeight();
+      if ( max_width <= 0.0f || max_height <= 0.0f ) {
+        PointF size = getReferenceDefaultSceneSize();
+        max_width = size.x;
+        max_height = size.y;
+      }
+      replace.replaceSource( imported.mSourceName, imported.mPixelWidth, imported.mPixelHeight, max_width, max_height );
+      if ( old_source != null && ! old_source.equals( imported.mSourceName ) ) {
+        ReferencePointHelper.deleteAssetByName( old_source );
+      }
+      notifyReferencePointChanged( replace );
+      clearPendingReferenceInsert();
+      clearPendingReferenceReplace();
+      return;
+    }
+
+    if ( mPendingReferenceScrap < 0 ) {
+      ReferencePointHelper.deleteAssetByName( imported.mSourceName );
+      clearPendingReferenceInsert();
+      clearPendingReferenceReplace();
+      return;
+    }
+
+    DrawingReferencePath point = new DrawingReferencePath( BrushManager.getPointReferenceIndex(),
+                                                           mPendingReferenceX, mPendingReferenceY,
+                                                           PointScale.SCALE_M, mPendingReferenceScrap );
+    PointF size = getReferenceDefaultSceneSize();
+    point.replaceSource( imported.mSourceName, imported.mPixelWidth, imported.mPixelHeight, size.x, size.y );
+    point.setReferenceAlpha( ReferencePointHelper.DEFAULT_ALPHA );
+    point.setReferenceVisible( true );
+    mDrawingSurface.addDrawingPath( point );
+    modified();
+    clearPendingReferenceInsert();
+    clearPendingReferenceReplace();
   }
 
   void refreshSectionOverlay( DrawingPointPath point )
@@ -7861,6 +7993,8 @@ public class DrawingWindow extends ItemDrawer
                 }
               } else if ( BrushManager.isPointSection( point.mPointType ) ) {
                 new DrawingPointSectionDialog( mActivity, this, point ).show();
+              } else if ( point instanceof DrawingReferencePath ) {
+                new DrawingReferenceDialog( mActivity, this, (DrawingReferencePath)point ).show();
               } else {
                 new DrawingPointDialog( mActivity, this, point ).show();
               }
@@ -10045,6 +10179,21 @@ public class DrawingWindow extends ItemDrawer
           doRecover( filename, type );
         }
         break;
+      case TDRequest.REQUEST_GET_REFERENCE_IMAGE:
+        if ( resCode == Activity.RESULT_OK && intent != null ) {
+          Uri uri = intent.getData();
+          if ( uri != null ) {
+            handleReferenceImageResult( uri );
+          } else {
+            TDToast.makeBad( R.string.reference_invalid_image );
+            clearPendingReferenceInsert();
+            clearPendingReferenceReplace();
+          }
+        } else {
+          clearPendingReferenceInsert();
+          clearPendingReferenceReplace();
+        }
+        break;
       // APP_OUT_DIR
       // case TDRequest.REQUEST_GET_EXPORT:
       //   if ( /* TDSetting.mExportUri && */ resCode == Activity.RESULT_OK ) {
@@ -10378,12 +10527,23 @@ public class DrawingWindow extends ItemDrawer
 
     float dx = point.cx - DrawingUtil.CENTER_X;
     float dy = point.cy - DrawingUtil.CENTER_Y;
-    ArrayList< DrawingPath > sketch = DrawingIO.loadDataStreamPaths( TDPath.getTdrFileWithExt( full_name ), TDInstance.survey, dx, dy );
+    ArrayList< DrawingPath > loaded = DrawingIO.loadDataStreamPaths( TDPath.getTdrFileWithExt( full_name ), TDInstance.survey, dx, dy );
+    ArrayList< DrawingReferencePath > underlays = new ArrayList<>();
+    ArrayList< DrawingPath > sketch = new ArrayList<>();
+    if ( loaded != null ) {
+      for ( DrawingPath path : loaded ) {
+        if ( path instanceof DrawingReferencePath ) {
+          underlays.add( (DrawingReferencePath)path );
+        } else {
+          sketch.add( path );
+        }
+      }
+    }
     ArrayList< DrawingPath > refs = SectionPointHelper.hasPlacedReferences( point )
                                   ? makePlacedSectionReferences( point, plot, getXSectionShots( plot.type, plot.start, plot.view ) )
                                   : null;
     RectF box = SectionPointHelper.getBox( point );
-    return new DrawingOutlinePath( full_name, point, box, sketch, refs, point.mScrap );
+    return new DrawingOutlinePath( full_name, point, box, underlays, sketch, refs, point.mScrap );
   }
 
   /** build the detached reference layer for a placed leg x-section
@@ -10895,7 +11055,7 @@ public class DrawingWindow extends ItemDrawer
    */
   private void setScaleToolbar( DrawingPointPath path )
   {
-    if ( path != null ) {
+    if ( path != null && ! ( path instanceof DrawingReferencePath ) ) {
       int progress = 20 + 35 * ( 2 + path.getScale() );
       mScaleBar.setProgress( progress );
       // TDLog.v("set scale bar - progress " + progress + " scale " + path.getScale() + " visible " );
@@ -10922,6 +11082,8 @@ public class DrawingWindow extends ItemDrawer
       DrawingPicturePath picture = (DrawingPicturePath)mHotPath;
       float scale = 1 + 0.001f * (progress - 100);
       picture.scalePhotoSize( scale );
+      return true;
+    } else if ( mHotPath instanceof DrawingReferencePath ) {
       return true;
     } else if ( mHotPath instanceof DrawingPointPath ) {
       int scale = (int)((progress-1)/ 40) - 2;

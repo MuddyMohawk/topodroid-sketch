@@ -1200,6 +1200,19 @@ public class DrawingCommandManager
     mCurrentScrap.eraseAt(x, y, zoom, eraseCmd, erase_mode, erase_size ); 
   }
 
+  void refreshReferencePath( DrawingReferencePath path )
+  {
+    if ( path == null ) return;
+    synchronized( mSyncScrap ) {
+      for ( Scrap scrap : mScraps ) {
+        if ( scrap.mScrapIdx == path.mScrap ) {
+          scrap.refreshReferencePath( path );
+          break;
+        }
+      }
+    }
+  }
+
   /** split a line at a point
    * @param line   line
    * @param lp     line point where to split
@@ -1594,6 +1607,19 @@ public class DrawingCommandManager
   private void drawExportScene( Canvas canvas, Matrix matrix, float scale, RectF bbox,
                                 DrawingStationSplay station_splay, SketchPngExportOptions options )
   {
+    if ( mCurrentScrap != null ) {
+      synchronized( mSyncScrap ) {
+        mCurrentScrap.drawReferenceUnderlays( canvas, matrix, bbox );
+      }
+    }
+    if ( mMode < DrawingSurface.DRAWING_SECTION && mXSectionOutlines != null && mXSectionOutlines.size() > 0 && mCurrentScrap != null ) {
+      synchronized( TDPath.mXSectionsLock ) {
+        for ( DrawingOutlinePath path : mXSectionOutlines ) {
+          if ( path.isScrapId( mCurrentScrap.mScrapIdx ) ) path.drawUnderlay( canvas, matrix, bbox );
+        }
+      }
+    }
+
     synchronized( TDPath.mGridsLock ) {
       if ( options.includeGrid && mGridStack1 != null ) {
         if ( scale < 1 ) {
@@ -2013,6 +2039,23 @@ public class DrawingCommandManager
 
     if ( sidebars && TDSetting.mSideDrag ) {
       drawSideDrag( canvas );
+    }
+
+    if ( mCurrentScrap != null ) {
+      synchronized( mSyncScrap ) {
+        mCurrentScrap.drawReferenceUnderlays( canvas, mm, bbox );
+      }
+    }
+    if ( mMode < DrawingSurface.DRAWING_SECTION && mCurrentScrap != null ) {
+      if ( mXSectionOutlines != null && mXSectionOutlines.size() > 0 ) {
+        synchronized( TDPath.mXSectionsLock )  {
+          for ( DrawingOutlinePath path : mXSectionOutlines ) {
+            if ( path.isScrapId( mCurrentScrap.mScrapIdx ) ) {
+              path.drawUnderlay( canvas, mm, bbox );
+            }
+          }
+        }
+      }
     }
 
     synchronized( TDPath.mGridsLock ) {

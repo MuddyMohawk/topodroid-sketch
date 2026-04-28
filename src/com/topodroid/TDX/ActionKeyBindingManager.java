@@ -3,7 +3,7 @@
  * @author MuddyMohawk
  * @date apr 2026
  *
- * @brief Central dispatcher for Samsung Active Key bindings
+ * @brief Central dispatcher for Samsung Active Key and volume-button bindings
  * --------------------------------------------------------
  *  Copyright This software is distributed under GPL-3.0 or later
  *  See the file COPYING.
@@ -35,6 +35,12 @@ public class ActionKeyBindingManager
   private static final int SOURCE_DIRECT = 1;
   private static final int SOURCE_BROADCAST = 2;
 
+  // Identifies which physical key produced an action so dispatchTrigger can
+  // look up the right TDSetting field.
+  private static final int KEY_ID_ACTIVE      = 0;
+  private static final int KEY_ID_VOLUME_UP   = 1;
+  private static final int KEY_ID_VOLUME_DOWN = 2;
+
   private static final ActionKeyBindingManager mInstance = new ActionKeyBindingManager();
 
   private final ActiveKeyGestureHelper mGestureHelper = new ActiveKeyGestureHelper(
@@ -42,7 +48,48 @@ public class ActionKeyBindingManager
       @Override
       public void onActiveKeyTrigger( int trigger )
       {
-        dispatchTrigger( trigger );
+        dispatchTrigger( KEY_ID_ACTIVE, trigger );
+      }
+    },
+    new ActiveKeyGestureHelper.DoublePressBindingProvider() {
+      @Override
+      public boolean hasDoublePressBinding()
+      {
+        return TDSetting.mActiveKeyDoublePressAction != TDSetting.SPEN_ACTION_NONE;
+      }
+    }
+  );
+
+  private final ActiveKeyGestureHelper mVolumeUpHelper = new ActiveKeyGestureHelper(
+    new ActiveKeyGestureHelper.TriggerListener() {
+      @Override
+      public void onActiveKeyTrigger( int trigger )
+      {
+        dispatchTrigger( KEY_ID_VOLUME_UP, trigger );
+      }
+    },
+    new ActiveKeyGestureHelper.DoublePressBindingProvider() {
+      @Override
+      public boolean hasDoublePressBinding()
+      {
+        return TDSetting.mVolumeUpDoublePressAction != TDSetting.SPEN_ACTION_NONE;
+      }
+    }
+  );
+
+  private final ActiveKeyGestureHelper mVolumeDownHelper = new ActiveKeyGestureHelper(
+    new ActiveKeyGestureHelper.TriggerListener() {
+      @Override
+      public void onActiveKeyTrigger( int trigger )
+      {
+        dispatchTrigger( KEY_ID_VOLUME_DOWN, trigger );
+      }
+    },
+    new ActiveKeyGestureHelper.DoublePressBindingProvider() {
+      @Override
+      public boolean hasDoublePressBinding()
+      {
+        return TDSetting.mVolumeDownDoublePressAction != TDSetting.SPEN_ACTION_NONE;
       }
     }
   );
@@ -85,6 +132,8 @@ public class ActionKeyBindingManager
   {
     if ( mHost != host ) {
       mGestureHelper.cancel();
+      mVolumeUpHelper.cancel();
+      mVolumeDownHelper.cancel();
     }
     mHost = host;
   }
@@ -94,6 +143,8 @@ public class ActionKeyBindingManager
     if ( mHost == host ) {
       mHost = null;
       mGestureHelper.cancel();
+      mVolumeUpHelper.cancel();
+      mVolumeDownHelper.cancel();
     }
   }
 
@@ -130,18 +181,33 @@ public class ActionKeyBindingManager
     mPreferredSourceUntil = when + SOURCE_PRIORITY_WINDOW;
   }
 
-  private void dispatchTrigger( int trigger )
+  private void dispatchTrigger( int keyId, int trigger )
   {
     int action = TDSetting.SPEN_ACTION_NONE;
-    switch ( trigger ) {
-      case ActiveKeyGestureHelper.TRIGGER_SINGLE_PRESS:
-        action = TDSetting.mActiveKeySinglePressAction;
+    switch ( keyId ) {
+      case KEY_ID_ACTIVE:
+        switch ( trigger ) {
+          case ActiveKeyGestureHelper.TRIGGER_SINGLE_PRESS: action = TDSetting.mActiveKeySinglePressAction; break;
+          case ActiveKeyGestureHelper.TRIGGER_LONG_PRESS:   action = TDSetting.mActiveKeyLongPressAction;   break;
+          case ActiveKeyGestureHelper.TRIGGER_DOUBLE_PRESS: action = TDSetting.mActiveKeyDoublePressAction; break;
+          default: break;
+        }
         break;
-      case ActiveKeyGestureHelper.TRIGGER_LONG_PRESS:
-        action = TDSetting.mActiveKeyLongPressAction;
+      case KEY_ID_VOLUME_UP:
+        switch ( trigger ) {
+          case ActiveKeyGestureHelper.TRIGGER_SINGLE_PRESS: action = TDSetting.mVolumeUpSinglePressAction; break;
+          case ActiveKeyGestureHelper.TRIGGER_LONG_PRESS:   action = TDSetting.mVolumeUpLongPressAction;   break;
+          case ActiveKeyGestureHelper.TRIGGER_DOUBLE_PRESS: action = TDSetting.mVolumeUpDoublePressAction; break;
+          default: break;
+        }
         break;
-      case ActiveKeyGestureHelper.TRIGGER_DOUBLE_PRESS:
-        action = TDSetting.mActiveKeyDoublePressAction;
+      case KEY_ID_VOLUME_DOWN:
+        switch ( trigger ) {
+          case ActiveKeyGestureHelper.TRIGGER_SINGLE_PRESS: action = TDSetting.mVolumeDownSinglePressAction; break;
+          case ActiveKeyGestureHelper.TRIGGER_LONG_PRESS:   action = TDSetting.mVolumeDownLongPressAction;   break;
+          case ActiveKeyGestureHelper.TRIGGER_DOUBLE_PRESS: action = TDSetting.mVolumeDownDoublePressAction; break;
+          default: break;
+        }
         break;
       default:
         break;
@@ -157,31 +223,75 @@ public class ActionKeyBindingManager
     }
   }
 
+  private static boolean hasAnyVolumeUpBinding()
+  {
+    return TDSetting.mVolumeUpSinglePressAction != TDSetting.SPEN_ACTION_NONE
+        || TDSetting.mVolumeUpLongPressAction   != TDSetting.SPEN_ACTION_NONE
+        || TDSetting.mVolumeUpDoublePressAction != TDSetting.SPEN_ACTION_NONE;
+  }
+
+  private static boolean hasAnyVolumeDownBinding()
+  {
+    return TDSetting.mVolumeDownSinglePressAction != TDSetting.SPEN_ACTION_NONE
+        || TDSetting.mVolumeDownLongPressAction   != TDSetting.SPEN_ACTION_NONE
+        || TDSetting.mVolumeDownDoublePressAction != TDSetting.SPEN_ACTION_NONE;
+  }
+
   private boolean doOnKeyDown( int code, KeyEvent event )
   {
-    if ( code != KEYCODE_PTT ) return false;
-    long now = ( event != null ) ? event.getEventTime() : SystemClock.uptimeMillis();
-    if ( ! hasHost() ) return false;
-    if ( event != null && event.getRepeatCount() > 0 ) return true;
-    if ( ignoreOtherSource( SOURCE_DIRECT, now ) ) return true;
-    if ( isDuplicateEdge( SOURCE_DIRECT, KEY_ACTION_DOWN, now ) ) return true;
-    preferSource( SOURCE_DIRECT, now );
-    recordEdge( SOURCE_DIRECT, KEY_ACTION_DOWN, now );
-    mGestureHelper.onKeyDown( now );
-    return true;
+    if ( code == KEYCODE_PTT ) {
+      long now = ( event != null ) ? event.getEventTime() : SystemClock.uptimeMillis();
+      if ( ! hasHost() ) return false;
+      if ( event != null && event.getRepeatCount() > 0 ) return true;
+      if ( ignoreOtherSource( SOURCE_DIRECT, now ) ) return true;
+      if ( isDuplicateEdge( SOURCE_DIRECT, KEY_ACTION_DOWN, now ) ) return true;
+      preferSource( SOURCE_DIRECT, now );
+      recordEdge( SOURCE_DIRECT, KEY_ACTION_DOWN, now );
+      mGestureHelper.onKeyDown( now );
+      return true;
+    }
+    if ( code == KeyEvent.KEYCODE_VOLUME_UP ) {
+      if ( ! hasHost() || ! hasAnyVolumeUpBinding() ) return false;
+      long now = ( event != null ) ? event.getEventTime() : SystemClock.uptimeMillis();
+      if ( event != null && event.getRepeatCount() > 0 ) return true;
+      mVolumeUpHelper.onKeyDown( now );
+      return true;
+    }
+    if ( code == KeyEvent.KEYCODE_VOLUME_DOWN ) {
+      if ( ! hasHost() || ! hasAnyVolumeDownBinding() ) return false;
+      long now = ( event != null ) ? event.getEventTime() : SystemClock.uptimeMillis();
+      if ( event != null && event.getRepeatCount() > 0 ) return true;
+      mVolumeDownHelper.onKeyDown( now );
+      return true;
+    }
+    return false;
   }
 
   private boolean doOnKeyUp( int code, KeyEvent event )
   {
-    if ( code != KEYCODE_PTT ) return false;
-    long now = ( event != null ) ? event.getEventTime() : SystemClock.uptimeMillis();
-    if ( ! hasHost() ) return false;
-    if ( ignoreOtherSource( SOURCE_DIRECT, now ) ) return true;
-    if ( isDuplicateEdge( SOURCE_DIRECT, KEY_ACTION_UP, now ) ) return true;
-    preferSource( SOURCE_DIRECT, now );
-    recordEdge( SOURCE_DIRECT, KEY_ACTION_UP, now );
-    mGestureHelper.onKeyUp( now );
-    return true;
+    if ( code == KEYCODE_PTT ) {
+      long now = ( event != null ) ? event.getEventTime() : SystemClock.uptimeMillis();
+      if ( ! hasHost() ) return false;
+      if ( ignoreOtherSource( SOURCE_DIRECT, now ) ) return true;
+      if ( isDuplicateEdge( SOURCE_DIRECT, KEY_ACTION_UP, now ) ) return true;
+      preferSource( SOURCE_DIRECT, now );
+      recordEdge( SOURCE_DIRECT, KEY_ACTION_UP, now );
+      mGestureHelper.onKeyUp( now );
+      return true;
+    }
+    if ( code == KeyEvent.KEYCODE_VOLUME_UP ) {
+      if ( ! hasHost() || ! hasAnyVolumeUpBinding() ) return false;
+      long now = ( event != null ) ? event.getEventTime() : SystemClock.uptimeMillis();
+      mVolumeUpHelper.onKeyUp( now );
+      return true;
+    }
+    if ( code == KeyEvent.KEYCODE_VOLUME_DOWN ) {
+      if ( ! hasHost() || ! hasAnyVolumeDownBinding() ) return false;
+      long now = ( event != null ) ? event.getEventTime() : SystemClock.uptimeMillis();
+      mVolumeDownHelper.onKeyUp( now );
+      return true;
+    }
+    return false;
   }
 
   private void doOnBroadcastIntent( Intent intent )

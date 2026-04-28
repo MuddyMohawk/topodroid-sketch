@@ -814,6 +814,7 @@ public class DrawingDxf
           else if ( path.mType == DrawingPath.DRAWING_PATH_POINT )
           {
             DrawingPointPath point = (DrawingPointPath) path;
+            if ( BrushManager.isPointReference( point.mPointType ) ) continue;
 	        String name = point.getThName();
 	        String th_name = replaceColon( point.getThName() );
             // int idx = 1 + point.mPointType;

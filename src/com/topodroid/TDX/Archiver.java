@@ -813,11 +813,11 @@ public class Archiver
             pathname = TDPath.getSurveyAudioDir( mManifestSurveyname );
             TDFile.makeTopoDroidDir( pathname );
             pathname = TDPath.getSurveyAudioFile( mManifestSurveyname, ze.getName() );
-          } else if ( ze.getName().endsWith( ".jpg" ) ) { // PHOTOS
+          } else if ( ze.getName().endsWith( ".jpg" ) || ze.getName().endsWith( ".png" ) ) { // PHOTOS
             // FIXME need survey dir
             pathname = TDPath.getSurveyPhotoDir( mManifestSurveyname );
             TDFile.makeTopoDroidDir( pathname );
-            pathname = TDPath.getSurveyJpgFile( mManifestSurveyname, ze.getName() );
+            pathname = TDPath.getSurveyPhotoFile( mManifestSurveyname, ze.getName() );
           } else if ( ze.getName().equals( "points.zip" ) ) { // POINTS
             if ( uncompressSymbols( zin, TDPath.getSymbolPointDirname(), "p_", false, false ) ) {
               BrushManager.reloadPointLibrary( app, app.getResources() );
@@ -971,9 +971,9 @@ public class Archiver
           } else if ( ze.getName().endsWith( ".wav" ) ) { // AUDIOS
             // TDFile.makeTopoDroidDir( pathname );
             pathname = TDPath.getAudioFile( ze.getName() );
-          } else if ( ze.getName().endsWith( ".jpg" ) ) { // PHOTOS
+          } else if ( ze.getName().endsWith( ".jpg" ) || ze.getName().endsWith( ".png" ) ) { // PHOTOS
             // TDFile.makeTopoDroidDir( pathname );
-            pathname = TDPath.getJpgFile( ze.getName() );
+            pathname = ze.getName().endsWith( ".png" ) ? TDPath.getPngFile( ze.getName() ) : TDPath.getJpgFile( ze.getName() );
           } else if ( ze.getName().equals( "points.zip" ) ) { // POINTS
             if ( uncompressSymbols( zin, TDPath.getSymbolPointDirname(), "p_", false, false ) ) {
               BrushManager.reloadPointLibrary( app, app.getResources() );

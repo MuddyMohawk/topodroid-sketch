@@ -679,7 +679,8 @@ class TDPrefKey
   static TDPrefKey[] mErase = {
     new TDPrefKey( B, LONG,  UI, "DISTOX_CLOSENESS",  R.string.pref_closeness_title, R.string.pref_closeness_message,TDString.TWENTYFOUR ),
     new TDPrefKey( B, LONG,  UI, "DISTOX_ERASENESS",  R.string.pref_eraseness_title, R.string.pref_eraseness_message,"36" ),
-    new TDPrefKey( E, LONG,  UI, "DISTOX_POINTING",   R.string.pref_pointing_title,  R.string.pref_pointing_message, TDString.TWENTYFOUR )
+    new TDPrefKey( E, LONG,  UI, "DISTOX_POINTING",   R.string.pref_pointing_title,  R.string.pref_pointing_message, TDString.TWENTYFOUR ),
+    new TDPrefKey( B, BOOL,  UI, "DISTOX_ERASE_REFERENCE", R.string.pref_erase_reference_title, R.string.pref_erase_reference_summary, FALSE )
   };
 
   /** edit settings
@@ -952,7 +953,13 @@ class TDPrefKey
     new TDPrefKey( B, UI, "DISTOX_SPEN_DOUBLE_CLICK", R.string.pref_spen_double_click_title, R.string.pref_spen_double_click_summary, "5",           R.array.spenActions, R.array.spenActionsValue ),
     new TDPrefKey( B, UI, "DISTOX_ACTIVE_KEY_SINGLE_PRESS", R.string.pref_active_key_single_press_title, R.string.pref_active_key_single_press_summary, TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
     new TDPrefKey( B, UI, "DISTOX_ACTIVE_KEY_LONG_PRESS",   R.string.pref_active_key_long_press_title,   R.string.pref_active_key_long_press_summary,   TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
-    new TDPrefKey( B, UI, "DISTOX_ACTIVE_KEY_DOUBLE_PRESS", R.string.pref_active_key_double_press_title, R.string.pref_active_key_double_press_summary, TDString.ZERO, R.array.spenActions, R.array.spenActionsValue )
+    new TDPrefKey( B, UI, "DISTOX_ACTIVE_KEY_DOUBLE_PRESS", R.string.pref_active_key_double_press_title, R.string.pref_active_key_double_press_summary, TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
+    new TDPrefKey( B, UI, "DISTOX_VOLUME_UP_SINGLE_PRESS",   R.string.pref_volume_up_single_press_title,   R.string.pref_volume_up_single_press_summary,   TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
+    new TDPrefKey( B, UI, "DISTOX_VOLUME_UP_LONG_PRESS",     R.string.pref_volume_up_long_press_title,     R.string.pref_volume_up_long_press_summary,     TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
+    new TDPrefKey( B, UI, "DISTOX_VOLUME_UP_DOUBLE_PRESS",   R.string.pref_volume_up_double_press_title,   R.string.pref_volume_up_double_press_summary,   TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
+    new TDPrefKey( B, UI, "DISTOX_VOLUME_DOWN_SINGLE_PRESS", R.string.pref_volume_down_single_press_title, R.string.pref_volume_down_single_press_summary, TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
+    new TDPrefKey( B, UI, "DISTOX_VOLUME_DOWN_LONG_PRESS",   R.string.pref_volume_down_long_press_title,   R.string.pref_volume_down_long_press_summary,   TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
+    new TDPrefKey( B, UI, "DISTOX_VOLUME_DOWN_DOUBLE_PRESS", R.string.pref_volume_down_double_press_title, R.string.pref_volume_down_double_press_summary, TDString.ZERO, R.array.spenActions, R.array.spenActionsValue )
   };
 
   // the order must follow category index in TDPrefCat
@@ -1141,7 +1148,7 @@ class TDPrefKey
         || ( j ==  3 && k > 5 )  // mCalib : not repeated but not to export
         || ( j == 11 && k < 7 )  // mLine
         || ( j == 12 && k < 3 )  // mPoint
-        || ( j == 14 )           // mErase
+        || ( j == 14 && k < 3 )  // mErase
         || ( j == 15 )           // mEdit
         || ( j == 29 && k < 2 )  // mExportSvx
         || ( j == 32 && k < 1 ); // mExportCsx

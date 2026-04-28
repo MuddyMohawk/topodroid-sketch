@@ -655,7 +655,7 @@ public class Scrap
     SelectionSet sel = new SelectionSet();
     float erase_radius = TDSetting.mCloseCutoff + erase_size / zoom;
     synchronized ( TDPath.mSelectionLock ) {
-      mSelection.selectAt( sel, x, y, erase_radius, Drawing.FILTER_ALL, false, false, false, null );
+      mSelection.selectAtForErase( sel, x, y, erase_radius, erase_mode );
     }
     // int ret = 0;
     if ( sel.size() > 0 ) {
@@ -765,16 +765,39 @@ public class Scrap
                 eraseCmd.addAction( EraseAction.ERASE_MODIFY, path );
                 doRemoveLinePoint( area, pt.mPoint, pt );
                 area.retracePath();
+                }
+              }
+            } else if ( path.isPoint() ) { // path  instanceof DrawingPointPath
+              if ( erase_mode == Drawing.FILTER_ALL || erase_mode == Drawing.FILTER_POINT ) {
+                // ret = 1;
+                eraseCmd.addAction( EraseAction.ERASE_REMOVE, path );
+                mCurrentStack.remove( path );
+                synchronized ( TDPath.mSelectionLock ) {
+                  mSelection.removePath( path );
               }
             }
-          } else if ( path.isPoint() ) { // path  instanceof DrawingPointPath
-            if ( erase_mode == Drawing.FILTER_ALL || erase_mode == Drawing.FILTER_POINT ) {
-              // ret = 1;
-              eraseCmd.addAction( EraseAction.ERASE_REMOVE, path );
-              mCurrentStack.remove( path );
-              synchronized ( TDPath.mSelectionLock ) {
-                mSelection.removePath( path );
-              }
+          }
+        }
+      }
+    }
+
+    if ( TDSetting.mEraseReferenceImages && ( erase_mode == Drawing.FILTER_ALL || erase_mode == Drawing.FILTER_POINT ) ) {
+      ArrayList< DrawingReferencePath > refs_to_erase = null;
+      synchronized( TDPath.mCommandsLock ) {
+        for ( ICanvasCommand cmd : mCurrentStack ) {
+          if ( ! ( cmd instanceof DrawingReferencePath ) ) continue;
+          DrawingReferencePath ref = (DrawingReferencePath)cmd;
+          if ( ref.intersectsEraseDisk( x, y, erase_radius ) ) {
+            if ( refs_to_erase == null ) refs_to_erase = new ArrayList<>();
+            refs_to_erase.add( ref );
+          }
+        }
+        if ( refs_to_erase != null ) {
+          for ( DrawingReferencePath ref : refs_to_erase ) {
+            eraseCmd.addAction( EraseAction.ERASE_REMOVE, ref );
+            mCurrentStack.remove( ref );
+            synchronized ( TDPath.mSelectionLock ) {
+              mSelection.removePath( ref );
             }
           }
         }
@@ -939,6 +962,7 @@ public class Scrap
     if( mCurrentStack != null ){
       synchronized( TDPath.mCommandsLock ) {
         for ( ICanvasCommand cmd : mCurrentStack ) {
+          if ( cmd instanceof DrawingReferencePath && ! ((DrawingReferencePath)cmd).isReferenceVisible() ) continue;
           cmd.computeBounds( b, true );
           // TDLog.v("command bounds X " + b.left + " " + b.right + " Y " + b.top + " " + b.bottom );
           // bounds.union( b );
@@ -2670,6 +2694,10 @@ public class Scrap
       SelectionPoint sp = mSelected.shiftHotItem( dx, dy );
       if ( sp != null ) {
         DrawingPath path = sp.mItem;
+        if ( path instanceof DrawingReferencePath ) {
+          mSelection.updateReferencePath( (DrawingReferencePath)path );
+          return;
+        }
         if ( path.isPoint() ) { // path instanceof DrawingPointPath
           DrawingPointPath pt = (DrawingPointPath)path;
           if ( BrushManager.isPointSection( pt.mPointType )  ) {
@@ -3302,6 +3330,10 @@ public class Scrap
       Path path;
       SelectionPoint sp = mSelected.mHotItem;
       if ( sp != null ) {
+        if ( sp.mItem instanceof DrawingReferencePath ) {
+          drawReferenceSelection( canvas, matrix, zoom, (DrawingReferencePath)sp.mItem, sp );
+          return;
+        }
         float x, y;
         LinePoint lp = sp.mPoint;
         DrawingPath item = sp.mItem;
@@ -3410,6 +3442,64 @@ public class Scrap
         path.transform( matrix );
         canvas.drawPath( path, BrushManager.highlightPaint );
       }
+    }
+  }
+
+  private void drawReferenceSelection( Canvas canvas, Matrix matrix, float zoom, DrawingReferencePath path, SelectionPoint hot )
+  {
+    Path outline = path.getOutlinePath();
+    outline.transform( matrix );
+    canvas.drawPath( outline, BrushManager.fixedYellowPaint );
+
+    drawReferenceHandle( canvas, matrix, path, ReferencePointHelper.HANDLE_SCALE_NW, -0.5f, -0.5f, hot, zoom );
+    drawReferenceHandle( canvas, matrix, path, ReferencePointHelper.HANDLE_SCALE_NE,  0.5f, -0.5f, hot, zoom );
+    drawReferenceHandle( canvas, matrix, path, ReferencePointHelper.HANDLE_SCALE_SE,  0.5f,  0.5f, hot, zoom );
+    drawReferenceHandle( canvas, matrix, path, ReferencePointHelper.HANDLE_SCALE_SW, -0.5f,  0.5f, hot, zoom );
+
+    PointF top = ReferencePointHelper.getSelectionPoint( path, ReferencePointHelper.HANDLE_MOVE, 0.0f, -0.5f );
+    PointF rotate = ReferencePointHelper.getSelectionPoint( path, ReferencePointHelper.HANDLE_ROTATE, 0.0f, 0.0f );
+    Path stem = new Path();
+    stem.moveTo( top.x, top.y );
+    stem.lineTo( rotate.x, rotate.y );
+    stem.transform( matrix );
+    canvas.drawPath( stem, BrushManager.fixedYellowPaint );
+    drawReferenceHandle( canvas, matrix, path, ReferencePointHelper.HANDLE_ROTATE, 0.0f, 0.0f, hot, zoom );
+
+    if ( hot != null && hot.mPoint != null ) {
+      Path current = new Path();
+      current.addCircle( hot.mPoint.x, hot.mPoint.y, 6.0f * TDSetting.mDotRadius / zoom, Path.Direction.CCW );
+      current.transform( matrix );
+      canvas.drawPath( current, BrushManager.fixedOrangePaint );
+    }
+  }
+
+  private void drawReferenceHandle( Canvas canvas, Matrix matrix, DrawingReferencePath path, int role, float u, float v, SelectionPoint hot, float zoom )
+  {
+    PointF point = ReferencePointHelper.getSelectionPoint( path, role, u, v );
+    Path handle = new Path();
+    handle.addCircle( point.x, point.y, 4.0f * TDSetting.mDotRadius / zoom, Path.Direction.CCW );
+    handle.transform( matrix );
+    boolean is_hot = hot != null && hot.getHandleRole() == role;
+    canvas.drawPath( handle, is_hot ? BrushManager.fixedOrangePaint : BrushManager.highlightPaint2 );
+  }
+
+  void drawReferenceUnderlays( Canvas canvas, Matrix matrix, RectF bbox )
+  {
+    if ( mCurrentStack == null ) return;
+    synchronized( TDPath.mCommandsLock ) {
+      for ( ICanvasCommand cmd : mCurrentStack ) {
+        if ( cmd instanceof DrawingReferencePath ) {
+          ((DrawingReferencePath)cmd).drawUnderlay( canvas, matrix, bbox );
+        }
+      }
+    }
+  }
+
+  void refreshReferencePath( DrawingReferencePath path )
+  {
+    if ( path == null ) return;
+    synchronized( TDPath.mSelectionLock ) {
+      mSelection.updateReferencePath( path );
     }
   }
 

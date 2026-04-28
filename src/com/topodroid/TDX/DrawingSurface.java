@@ -1116,6 +1116,8 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   // void shiftHotItem( float dx, float dy, float range ) { commandManager.shiftHotItem( dx, dy, range ); }
   void shiftHotItem( float dx, float dy ) { commandManager.shiftHotItem( dx, dy ); }
 
+  void refreshReferencePath( DrawingReferencePath path ) { commandManager.refreshReferencePath( path ); }
+
   /** rotate the hot item 
    * @param dy   amount of rotation [degrees]
    */

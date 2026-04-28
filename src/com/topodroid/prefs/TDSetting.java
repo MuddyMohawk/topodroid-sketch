@@ -610,6 +610,7 @@ public class TDSetting
 
   public static float mSelectness = 24f;            // selection radius
   public static float mEraseness = 36f;             // eraser radius
+  public static boolean mEraseReferenceImages = false; // whether the eraser can delete reference-image underlays
   public static int mMinShift = 60;                 // shift sensitivity
   public static int mPointingRadius = 24;
   public static boolean mStylusOnly = false;        // stylus only sketching - false by default
@@ -627,6 +628,12 @@ public class TDSetting
   public static int mActiveKeySinglePressAction = SPEN_ACTION_NONE;
   public static int mActiveKeyLongPressAction   = SPEN_ACTION_NONE;
   public static int mActiveKeyDoublePressAction = SPEN_ACTION_NONE;
+  public static int mVolumeUpSinglePressAction   = SPEN_ACTION_NONE;
+  public static int mVolumeUpLongPressAction     = SPEN_ACTION_NONE;
+  public static int mVolumeUpDoublePressAction   = SPEN_ACTION_NONE;
+  public static int mVolumeDownSinglePressAction = SPEN_ACTION_NONE;
+  public static int mVolumeDownLongPressAction   = SPEN_ACTION_NONE;
+  public static int mVolumeDownDoublePressAction = SPEN_ACTION_NONE;
 
   // public static final String LINE_SHIFT = "20.0";
 
@@ -1262,6 +1269,12 @@ public class TDSetting
     mActiveKeySinglePressAction = normalizeSPenAction( tryInt( prefs, key[3].key, key[3].dflt ) );
     mActiveKeyLongPressAction   = normalizeSPenAction( tryInt( prefs, key[4].key, key[4].dflt ) );
     mActiveKeyDoublePressAction = normalizeSPenAction( tryInt( prefs, key[5].key, key[5].dflt ) );
+    mVolumeUpSinglePressAction   = normalizeSPenAction( tryInt( prefs, key[ 6].key, key[ 6].dflt ) );
+    mVolumeUpLongPressAction     = normalizeSPenAction( tryInt( prefs, key[ 7].key, key[ 7].dflt ) );
+    mVolumeUpDoublePressAction   = normalizeSPenAction( tryInt( prefs, key[ 8].key, key[ 8].dflt ) );
+    mVolumeDownSinglePressAction = normalizeSPenAction( tryInt( prefs, key[ 9].key, key[ 9].dflt ) );
+    mVolumeDownLongPressAction   = normalizeSPenAction( tryInt( prefs, key[10].key, key[10].dflt ) );
+    mVolumeDownDoublePressAction = normalizeSPenAction( tryInt( prefs, key[11].key, key[11].dflt ) );
 
     key = TDPrefKey.mGeekDevice;
     mUnnamedDevice  = prefs.getBoolean( key[ 1].key, bool(key[ 1].dflt)  ); // DISTOX_UNNAMED_DEVICE BT_NONAME
@@ -1502,15 +1515,18 @@ public class TDSetting
     mLegOnlyUpdate  = prefs.getBoolean( key[ 6].key, bool(key[ 6].dflt) ); // DISTOX_LEGONLY_UPDATE
     mFullAffine     = prefs.getBoolean( key[ 7].key, bool(key[ 7].dflt) ); // DISTOX_FULL_UPDATE
     mWithLevels     = tryInt( prefs,    key[ 8].key,      key[ 8].dflt );   // DISTOX_WITH_LEVELS
-    mGraphPaperScale = tryInt( prefs,   key[ 9].key,      key[ 9].dflt );  // DISTOX_GRAPH_PAPER_SCALE
-    mSlantXSection  = prefs.getBoolean( key[10].key, bool(key[10].dflt) ); // DISTOX_SLANT_XSECTION
-    mObliqueMax     = tryInt( prefs,    key[11].key,      key[11].dflt );  // DISTOX_OBLIQUE_PROJECTED
-    mToolbarUpdate  = tryInt( prefs,    key[12].key,      key[12].dflt );  // DISTOX_TOOLBAR_UPDATE
-    // mZoomLowerBound = tryFloat( prefs, key[13].key,      key[13].dflt );  // DISTOX_ZOOM_LOWER_BOUND
-    // TDLog.v("SETTING load secondary GEEK plot done");
+      mGraphPaperScale = tryInt( prefs,   key[ 9].key,      key[ 9].dflt );  // DISTOX_GRAPH_PAPER_SCALE
+      mSlantXSection  = prefs.getBoolean( key[10].key, bool(key[10].dflt) ); // DISTOX_SLANT_XSECTION
+      mObliqueMax     = tryInt( prefs,    key[11].key,      key[11].dflt );  // DISTOX_OBLIQUE_PROJECTED
+      mToolbarUpdate  = tryInt( prefs,    key[12].key,      key[12].dflt );  // DISTOX_TOOLBAR_UPDATE
+      // mZoomLowerBound = tryFloat( prefs, key[13].key,      key[13].dflt );  // DISTOX_ZOOM_LOWER_BOUND
+      // TDLog.v("SETTING load secondary GEEK plot done");
 
-    key = TDPrefKey.mGeekSplay;
-    mSplayClasses  = prefs.getBoolean( key[ 0].key, bool(key[ 0].dflt) ); // DISTOX_SPLAY_CLASSES
+      key = TDPrefKey.mErase;
+      mEraseReferenceImages = prefs.getBoolean( key[3].key, bool(key[3].dflt) ); // DISTOX_ERASE_REFERENCE
+
+      key = TDPrefKey.mGeekSplay;
+      mSplayClasses  = prefs.getBoolean( key[ 0].key, bool(key[ 0].dflt) ); // DISTOX_SPLAY_CLASSES
     // mSplayColor = prefs.getBoolean( key[ 1].key, bool(key[ 1].dflt) ); // DISTOX_SPLAY_COLOR
     mDiscreteColors = tryInt( prefs,   key[ 1].key,      key[ 1].dflt );  // DISTOX_DISCRETE_COLORS
     mSplayColor = (mDiscreteColors > 0);
@@ -2020,6 +2036,30 @@ public class TDSetting
       action = tryIntValue( hlp, k, v, key[5].dflt );
       mActiveKeyDoublePressAction = normalizeSPenAction( action );
       if ( mActiveKeyDoublePressAction != action ) ret = Integer.toString( mActiveKeyDoublePressAction );
+    } else if ( k.equals( key[6].key ) ) {
+      action = tryIntValue( hlp, k, v, key[6].dflt );
+      mVolumeUpSinglePressAction = normalizeSPenAction( action );
+      if ( mVolumeUpSinglePressAction != action ) ret = Integer.toString( mVolumeUpSinglePressAction );
+    } else if ( k.equals( key[7].key ) ) {
+      action = tryIntValue( hlp, k, v, key[7].dflt );
+      mVolumeUpLongPressAction = normalizeSPenAction( action );
+      if ( mVolumeUpLongPressAction != action ) ret = Integer.toString( mVolumeUpLongPressAction );
+    } else if ( k.equals( key[8].key ) ) {
+      action = tryIntValue( hlp, k, v, key[8].dflt );
+      mVolumeUpDoublePressAction = normalizeSPenAction( action );
+      if ( mVolumeUpDoublePressAction != action ) ret = Integer.toString( mVolumeUpDoublePressAction );
+    } else if ( k.equals( key[9].key ) ) {
+      action = tryIntValue( hlp, k, v, key[9].dflt );
+      mVolumeDownSinglePressAction = normalizeSPenAction( action );
+      if ( mVolumeDownSinglePressAction != action ) ret = Integer.toString( mVolumeDownSinglePressAction );
+    } else if ( k.equals( key[10].key ) ) {
+      action = tryIntValue( hlp, k, v, key[10].dflt );
+      mVolumeDownLongPressAction = normalizeSPenAction( action );
+      if ( mVolumeDownLongPressAction != action ) ret = Integer.toString( mVolumeDownLongPressAction );
+    } else if ( k.equals( key[11].key ) ) {
+      action = tryIntValue( hlp, k, v, key[11].dflt );
+      mVolumeDownDoublePressAction = normalizeSPenAction( action );
+      if ( mVolumeDownDoublePressAction != action ) ret = Integer.toString( mVolumeDownDoublePressAction );
     } else {
       TDLog.e("missing SPEN key: " + k );
     }
@@ -3229,6 +3269,8 @@ public class TDSetting
       ret = setEraseness( tryFloatValue( hlp, k, v, key[1].dflt ) );
     } else if ( k.equals( key[ 2 ].key ) ) { // DISTOX_POINTING
       ret = setPointingRadius( tryIntValue(   hlp, k, v, key[2].dflt ) );
+    } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_ERASE_REFERENCE
+      mEraseReferenceImages = tryBooleanValue( hlp, k, v, bool(key[3].dflt) );
     } else {
       TDLog.e("missing ERASE key: " + k );
     }
@@ -4263,6 +4305,12 @@ B DISTOX_SAP5_BIT16_BUG true
       k="DISTOX_ACTIVE_KEY_SINGLE_PRESS"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mActiveKeySinglePressAction );
       k="DISTOX_ACTIVE_KEY_LONG_PRESS";   if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mActiveKeyLongPressAction );
       k="DISTOX_ACTIVE_KEY_DOUBLE_PRESS"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mActiveKeyDoublePressAction );
+      k="DISTOX_VOLUME_UP_SINGLE_PRESS";   if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mVolumeUpSinglePressAction );
+      k="DISTOX_VOLUME_UP_LONG_PRESS";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mVolumeUpLongPressAction );
+      k="DISTOX_VOLUME_UP_DOUBLE_PRESS";   if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mVolumeUpDoublePressAction );
+      k="DISTOX_VOLUME_DOWN_SINGLE_PRESS"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mVolumeDownSinglePressAction );
+      k="DISTOX_VOLUME_DOWN_LONG_PRESS";   if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mVolumeDownLongPressAction );
+      k="DISTOX_VOLUME_DOWN_DOUBLE_PRESS"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mVolumeDownDoublePressAction );
       k="DISTOX_SLANT_XSECTION";        if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mSlantXSection) );
       k="DISTOX_OBLIQUE_PROJECTED";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mObliqueMax );
       k="DISTOX_DRAWING_UNIT";          if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mUnitIcons );
@@ -4287,10 +4335,11 @@ B DISTOX_SAP5_BIT16_BUG true
       k="DISTOX_POINTING";              if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mPointingRadius );
       k="DISTOX_MIN_SHIFT";             if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mMinShift );
       k="DISTOX_DOT_RADIUS";            if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mDotRadius );
-      k="DISTOX_PATH_MULTISELECT";      if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mPathMultiselect) );
-      k="DISTOX_ERASENESS";             if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mEraseness );
-      // k="DISTOX_PICKER_TYPE";        if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mPickerType );
-      k="DISTOX_UNSCALED_POINTS";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mUnscaledPoints) ); 
+        k="DISTOX_PATH_MULTISELECT";      if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mPathMultiselect) );
+        k="DISTOX_ERASENESS";             if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mEraseness );
+        k="DISTOX_ERASE_REFERENCE";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mEraseReferenceImages) );
+        // k="DISTOX_PICKER_TYPE";        if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mPickerType );
+        k="DISTOX_UNSCALED_POINTS";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mUnscaledPoints) ); 
       k="DISTOX_LINE_STYLE";            if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mLineStyle );
       k="DISTOX_LINE_SEGMENT";          if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mLineSegment );
       // k="DISTOX_LINE_CONTINUE";      if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mContinueLine );
@@ -4549,6 +4598,24 @@ B DISTOX_SAP5_BIT16_BUG true
             case "DISTOX_ACTIVE_KEY_DOUBLE_PRESS":
               mActiveKeyDoublePressAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mActiveKeyDoublePressAction );
               break;
+            case "DISTOX_VOLUME_UP_SINGLE_PRESS":
+              mVolumeUpSinglePressAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mVolumeUpSinglePressAction );
+              break;
+            case "DISTOX_VOLUME_UP_LONG_PRESS":
+              mVolumeUpLongPressAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mVolumeUpLongPressAction );
+              break;
+            case "DISTOX_VOLUME_UP_DOUBLE_PRESS":
+              mVolumeUpDoublePressAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mVolumeUpDoublePressAction );
+              break;
+            case "DISTOX_VOLUME_DOWN_SINGLE_PRESS":
+              mVolumeDownSinglePressAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mVolumeDownSinglePressAction );
+              break;
+            case "DISTOX_VOLUME_DOWN_LONG_PRESS":
+              mVolumeDownLongPressAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mVolumeDownLongPressAction );
+              break;
+            case "DISTOX_VOLUME_DOWN_DOUBLE_PRESS":
+              mVolumeDownDoublePressAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mVolumeDownDoublePressAction );
+              break;
             case "DISTOX_SPEN_LONG_CLICK_HOLD_ERASE":
               // Legacy S Pen erase-hold setting: kept as a no-op so older imports remain readable.
               break;
@@ -4628,6 +4695,9 @@ B DISTOX_SAP5_BIT16_BUG true
               break;
             case "DISTOX_ERASENESS":
               mEraseness = Float.parseFloat( value ); setPreference( editor, kay, mEraseness );
+              break;
+            case "DISTOX_ERASE_REFERENCE":
+              mEraseReferenceImages = Boolean.parseBoolean( value ); setPreference( editor, kay, mEraseReferenceImages );
               break;
             // case "DISTOX_PICKER_TYPE":
             //   mPickerType = Integer.parseInt( value ); setPreference( editor, kay, mPickerType );

@@ -39,6 +39,7 @@ public class SymbolPointLibrary extends SymbolLibrary
   int mPointLabelIndex;
   int mPointPhotoIndex;
   int mPointPictureIndex;
+  int mPointReferenceIndex;
   int mPointAudioIndex;
   // int mPointDangerIndex;
   int mPointSectionIndex;
@@ -52,6 +53,7 @@ public class SymbolPointLibrary extends SymbolLibrary
     mPointLabelIndex  = -1;
     mPointPhotoIndex  = -1;
     mPointPictureIndex = -1;
+    mPointReferenceIndex = -1;
     mPointAudioIndex  = -1;
     // mPointDangerIndex = -1;
     mPointSectionIndex = -1;
@@ -69,6 +71,7 @@ public class SymbolPointLibrary extends SymbolLibrary
     mPointLabelIndex  = -1;
     mPointPhotoIndex  = -1;
     mPointPictureIndex = -1;
+    mPointReferenceIndex = -1;
     mPointAudioIndex  = -1;
     // mPointDangerIndex = -1;
     mPointSectionIndex = -1;
@@ -126,9 +129,7 @@ public class SymbolPointLibrary extends SymbolLibrary
    * @param k    point index
    */
   Path getPointPath( int k ) { 
-  {
     return ( k < 0 || k >= size() )? null : ((SymbolPoint)mSymbols.get(k)).getPath( ); }
-  }
 
   /** @return the original drawing path of a point
    * @param k    point index
@@ -145,6 +146,7 @@ public class SymbolPointLibrary extends SymbolLibrary
   static final private String p_user    = "addCircle 0 0 6";                                 // "o" shape
   static final private String p_section = "moveTo -2 0 lineTo 2 0 moveTo 0 -2 lineTo 0 2";   // small cross
   static final private String p_picture = "moveTo -5 -5 lineTo -5 5 lineTo 5 5 lineTo 5 -5 lineTo -5 -5 lineTo 5 5"; // square with diagonal
+  static final private String p_reference = "moveTo -6 -4 lineTo 6 -4 lineTo 6 4 lineTo -6 4 lineTo -6 -4 moveTo -2 -1 lineTo 1 -1 lineTo 3 1 lineTo 4 -2 lineTo 6 2";
 
   /** load the system points, "user", "label", "section"
    * @param res   resources
@@ -172,6 +174,10 @@ public class SymbolPointLibrary extends SymbolLibrary
     mPointPictureIndex = mSymbols.size();
     // String section = res.getString( R.string.p_section );
     symbol = new SymbolPoint( res.getString(R.string.thp_picture), PICTURE, null, PICTURE, 0xffcccccc, p_picture, false, 0, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SYM );
+    addSymbol( symbol );
+
+    mPointReferenceIndex = mSymbols.size();
+    symbol = new SymbolPoint( res.getString(R.string.thp_reference), REFERENCE, null, REFERENCE, 0xffcccccc, p_reference, false, 0, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SYM );
     addSymbol( symbol );
 
     // TDLog.v("PointLibrary user " + mPointUserIndex + " label " + mPointLabelIndex + " section " + mPointSectionIndex );

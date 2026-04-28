@@ -27,6 +27,7 @@ class DrawingOutlinePath
   private int mScrapId;       // scrap index of the outline (non-negative)
   private DrawingPointPath mPoint;
   private RectF mBox;
+  private List< DrawingReferencePath > mUnderlayPaths;
   private List< DrawingPath > mSketchPaths;
   private List< DrawingPath > mRefPaths;
 
@@ -42,6 +43,7 @@ class DrawingOutlinePath
     mScrapId = scrap_id;
     mPoint = null;
     mBox = null;
+    mUnderlayPaths = null;
     mSketchPaths = null;
     mRefPaths = null;
   }
@@ -55,13 +57,14 @@ class DrawingOutlinePath
    * @param scrap_id    scrap index of the section point
    */
   DrawingOutlinePath( String name, DrawingPointPath point, RectF box,
-                      List< DrawingPath > sketch, List< DrawingPath > refs, int scrap_id )
+                      List< DrawingReferencePath > underlays, List< DrawingPath > sketch, List< DrawingPath > refs, int scrap_id )
   {
     mScrapName = name;
     mPath  = null;
     mScrapId = scrap_id;
     mPoint = point;
     mBox = box;
+    mUnderlayPaths = underlays;
     mSketchPaths = sketch;
     mRefPaths = refs;
   }
@@ -92,6 +95,7 @@ class DrawingOutlinePath
   void shiftBy( float dx, float dy )
   {
     if ( isPlaced() ) {
+      if ( mUnderlayPaths != null ) for ( DrawingReferencePath path : mUnderlayPaths ) shiftPath( path, dx, dy );
       if ( mSketchPaths != null ) for ( DrawingPath path : mSketchPaths ) shiftPath( path, dx, dy );
       if ( mRefPaths != null ) for ( DrawingPath path : mRefPaths ) shiftPath( path, dx, dy );
       if ( mBox != null ) mBox.offset( dx, dy );
@@ -136,13 +140,13 @@ class DrawingOutlinePath
     matrix.mapRect( clip );
     canvas.clipRect( clip );
 
-    if ( mRefPaths != null ) {
-      for ( DrawingPath path : mRefPaths ) {
+    if ( mSketchPaths != null ) {
+      for ( DrawingPath path : mSketchPaths ) {
         if ( path != null ) path.draw( canvas, matrix, scale, mBox );
       }
     }
-    if ( mSketchPaths != null ) {
-      for ( DrawingPath path : mSketchPaths ) {
+    if ( mRefPaths != null ) {
+      for ( DrawingPath path : mRefPaths ) {
         if ( path != null ) path.draw( canvas, matrix, scale, mBox );
       }
     }
@@ -154,6 +158,21 @@ class DrawingOutlinePath
       box.transform( matrix );
       canvas.drawPath( box, BrushManager.fixedYellowPaint );
     }
+  }
+
+  void drawUnderlay( Canvas canvas, Matrix matrix, RectF bbox )
+  {
+    if ( ! isPlaced() || mBox == null || mUnderlayPaths == null || mUnderlayPaths.size() == 0 ) return;
+    if ( bbox != null && ! RectF.intersects( bbox, mBox ) ) return;
+
+    int save = canvas.save();
+    RectF clip = new RectF( mBox );
+    matrix.mapRect( clip );
+    canvas.clipRect( clip );
+    for ( DrawingReferencePath path : mUnderlayPaths ) {
+      if ( path != null ) path.drawUnderlay( canvas, matrix, mBox );
+    }
+    canvas.restoreToCount( save );
   }
 
 }

@@ -528,6 +528,11 @@ public class TDPath
    */
   static public String getJpgFile( String name ) { return APP_PHOTO_PATH + "/" + name; }
 
+  /** @return the current survey photo file full pathname
+   * @param name photo filename, ie, <index>.png
+   */
+  static public String getPngFile( String name ) { return APP_PHOTO_PATH + "/" + name; }
+
   /** @return the current survey audio file full pathname
    * @param name audio filename, ie, <index>.wav
    * @note used only by Archiver

@@ -433,6 +433,7 @@ public class DrawingSvgBase
     float scale = point.getScaleValue();
     String name = point.getFullThNameEscapedColon( );
     // TDLog.v( "SVG point " + name + " at " + point.cx + " " + point.cy );
+    if ( BrushManager.isPointReference( idx ) ) return;
     pw.format("<!-- point %s -->\n", name );
     if ( name.equals( SymbolLibrary.LABEL ) ) {
       // assert( point instanceof DrawingLabelPath );
@@ -618,6 +619,7 @@ public class DrawingSvgBase
       switch ( path.mType ) {
         case DrawingPath.DRAWING_PATH_POINT:
           DrawingPointPath point = (DrawingPointPath)path;
+          if ( BrushManager.isPointReference( point.mPointType ) ) break;
           if ( BrushManager.isPointSection( point.mPointType ) ) {
             groupedPaths.xsectionsPoints.add( point );
           } else {

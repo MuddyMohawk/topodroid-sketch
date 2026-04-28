@@ -32,6 +32,9 @@ public class SelectionPoint
 
   private float mDistance; // distance from input (X,Y)
   private int mMin;        // whether to shift the point (0) or a CP (1 or 2)
+  private int mHandleRole = ReferencePointHelper.HANDLE_NONE;
+  private float mHandleX = 0.0f;
+  private float mHandleY = 0.0f;
 
   SelectionRange mRange;
 
@@ -58,6 +61,21 @@ public class SelectionPoint
   boolean isReferenceType() { return DrawingPath.isReferenceType( mItem.mType ); }
 
   boolean isDrawingType() { return DrawingPath.isDrawingType( mItem.mType ); }
+
+  boolean isReferenceHandle() { return mHandleRole != ReferencePointHelper.HANDLE_NONE; }
+
+  int getHandleRole() { return mHandleRole; }
+
+  float getHandleX() { return mHandleX; }
+
+  float getHandleY() { return mHandleY; }
+
+  void setHandleRole( int role, float handle_x, float handle_y )
+  {
+    mHandleRole = role;
+    mHandleX = handle_x;
+    mHandleY = handle_y;
+  }
 
   SelectionPoint( DrawingPath it, LinePoint pt, SelectionBucket bucket )
   {
@@ -124,6 +142,7 @@ public class SelectionPoint
 
   boolean rotateBy( float dy )
   {
+    if ( mItem instanceof DrawingReferencePath ) return false;
     return ( mItem.mType == DrawingPath.DRAWING_PATH_POINT ) && mItem.rotateBy( dy );
   }
 
@@ -131,6 +150,10 @@ public class SelectionPoint
   // void shiftBy( float dx, float dy, float range )
   void shiftBy( float dx, float dy )
   {
+    if ( mItem instanceof DrawingReferencePath && isReferenceHandle() ) {
+      ((DrawingReferencePath)mItem).applyHandleDrag( this, dx, dy );
+      return;
+    }
     if ( mItem.mType == DrawingPath.DRAWING_PATH_POINT ) {
       mItem.shiftBy( dx, dy );
     } else if ( mPoint != null ) {

@@ -214,7 +214,9 @@ public class DrawingPointPath extends DrawingPath
       //   scrapname = scrapname.replace( mApp.mSurvey + "-", "" ); // remove survey name from options
       //   option = TDString.OPTION_SCRAP + " " + scrapname;
       // }
-      DrawingPointPath ret = new DrawingPointPath( type, ccx, ccy, scale, text, options, scrap );
+      DrawingPointPath ret = BrushManager.isPointReference( type )
+                           ? new DrawingReferencePath( type, ccx, ccy, scale, text, options, scrap )
+                           : new DrawingPointPath( type, ccx, ccy, scale, text, options, scrap );
       ret.mLevel = level;
       ret.setOrientation( orientation );
       return ret;

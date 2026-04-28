@@ -17,6 +17,8 @@ import java.util.ArrayList;
 
 class SelectionSet
 {
+  private static final float DISTANCE_EPS = 0.01f;
+
   private int mIndex;   // index of the "hot" item
   SelectionPoint mHotItem; 
   ArrayList< SelectionPoint > mPoints;
@@ -107,7 +109,7 @@ class SelectionSet
         for ( int k2 = k1+1; k2 < size; ++k2 ) {
           SelectionPoint p1 = mPoints.get(k1);
           SelectionPoint p2 = mPoints.get(k2);
-          if ( p1.getDistance() > p2.getDistance() ) {
+          if ( compareSelectionPoints( p1, p2 ) > 0 ) {
             mPoints.set( k1, p2 ); 
             mPoints.set( k2, p1 );
           }
@@ -118,6 +120,37 @@ class SelectionSet
     } else {
       mHotItem = null;
       mIndex = -1;
+    }
+  }
+
+  private int compareSelectionPoints( SelectionPoint p1, SelectionPoint p2 )
+  {
+    float d1 = p1.getDistance();
+    float d2 = p2.getDistance();
+    if ( d1 + DISTANCE_EPS < d2 ) return -1;
+    if ( d2 + DISTANCE_EPS < d1 ) return 1;
+
+    int priority1 = getReferenceHandlePriority( p1 );
+    int priority2 = getReferenceHandlePriority( p2 );
+    if ( priority1 != priority2 ) return priority2 - priority1;
+    return 0;
+  }
+
+  private int getReferenceHandlePriority( SelectionPoint point )
+  {
+    if ( point == null || ! point.isReferenceHandle() ) return 0;
+    switch ( point.getHandleRole() ) {
+      case ReferencePointHelper.HANDLE_ROTATE:
+        return 3;
+      case ReferencePointHelper.HANDLE_SCALE_NW:
+      case ReferencePointHelper.HANDLE_SCALE_NE:
+      case ReferencePointHelper.HANDLE_SCALE_SE:
+      case ReferencePointHelper.HANDLE_SCALE_SW:
+        return 2;
+      case ReferencePointHelper.HANDLE_MOVE:
+        return 1;
+      default:
+        return 0;
     }
   }
 

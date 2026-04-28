@@ -3,7 +3,8 @@
  * @author MuddyMohawk
  * @date apr 2026
  *
- * @brief Shared recognizer for Samsung Active Key single/long/double press gestures
+ * @brief Shared recognizer for hardware-key single/long/double press gestures
+ *        (Samsung Active Key, volume rocker, etc.)
  * --------------------------------------------------------
  *  Copyright This software is distributed under GPL-3.0 or later
  *  See the file COPYING.
@@ -28,10 +29,19 @@ public class ActiveKeyGestureHelper
     void onActiveKeyTrigger( int trigger );
   }
 
+  /** Lets the recognizer skip the double-tap delay when the host has no
+   *  double-press binding configured for the key it owns.
+   */
+  public interface DoublePressBindingProvider
+  {
+    boolean hasDoublePressBinding();
+  }
+
   private final Handler mHandler = new Handler( Looper.getMainLooper() );
   private final int mLongPressTimeout = ViewConfiguration.getLongPressTimeout();
   private final int mDoubleTapTimeout = ViewConfiguration.getDoubleTapTimeout();
   private final TriggerListener mListener;
+  private final DoublePressBindingProvider mDoublePressProvider;
 
   private boolean mButtonDown = false;
   private boolean mLongPressTriggered = false;
@@ -59,7 +69,19 @@ public class ActiveKeyGestureHelper
 
   public ActiveKeyGestureHelper( TriggerListener listener )
   {
+    this( listener, new DoublePressBindingProvider() {
+      @Override
+      public boolean hasDoublePressBinding()
+      {
+        return TDSetting.mActiveKeyDoublePressAction != TDSetting.SPEN_ACTION_NONE;
+      }
+    } );
+  }
+
+  public ActiveKeyGestureHelper( TriggerListener listener, DoublePressBindingProvider provider )
+  {
     mListener = listener;
+    mDoublePressProvider = provider;
   }
 
   private void dispatchTrigger( int trigger )
@@ -96,7 +118,7 @@ public class ActiveKeyGestureHelper
 
   private void scheduleSinglePress( long eventTime )
   {
-    if ( TDSetting.mActiveKeyDoublePressAction == TDSetting.SPEN_ACTION_NONE ) {
+    if ( mDoublePressProvider == null || ! mDoublePressProvider.hasDoublePressBinding() ) {
       dispatchTrigger( TRIGGER_SINGLE_PRESS );
       return;
     }

@@ -113,6 +113,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="thp_label">label</string>
     <string name="thp_section">section</string>
     <string name="thp_picture">picture</string>
+    <string name="thp_reference">reference</string>
     <string name="thp_station" copyable="fr">station</string>
     <!-- UNUSED string name="thp_danger">danger</string -->
     <string name="thl_user">user</string>
@@ -350,6 +351,12 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="photo_not_ready">Photo not ready. Wait &#8230;</string>
     <string name="photo_max_captures">Reached maximum capture limit</string>
     <string name="photo_many_pictures">Too many pictures</string>
+    <string name="title_reference_underlay">Reference underlay</string>
+    <string name="reference_source">Source image</string>
+    <string name="reference_visible">Visible in sketch</string>
+    <string name="reference_opacity">Opacity</string>
+    <string name="reference_import_failed">Failed to import reference image</string>
+    <string name="reference_invalid_image">Invalid reference image</string>
     <string name="label_title">Label</string>
     <string name="label_text">Enter the label text</string>
     <!-- UNUSED string name="altitude">Alt. </string -->
@@ -1528,6 +1535,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="title_import_shot">Survey import</string>
     <string name="title_import_gps">GPS point import</string>
     <string name="title_import_th2" copyable="all">Therion th2 file</string>
+    <string name="title_import_reference">Reference image</string>
     <string name="title_infos">Surveys geo-points</string>
     <string name="title_graph_paper">Graph paper 1:100 scale</string>
     <string name="graph_paper_scale">Adjust the line to be 5 cm long</string>
@@ -1811,6 +1819,8 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_closeness_message">Sketch item selection radius</string>
   <string name="pref_eraseness_title">Eraser size</string>
   <string name="pref_eraseness_message">Sketch item erasing radius</string>
+  <string name="pref_erase_reference_title">Erase reference images</string>
+  <string name="pref_erase_reference_summary">Allow the eraser tool to delete reference-image underlays</string>
   <string name="pref_min_shift_title">Shift sensitivity</string>
   <string name="pref_min_shift_message">Maximum shift speed [pxl/step]</string>
   <string name="pref_pointing_title">Pointing tolerance</string>
@@ -2023,6 +2033,18 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_active_key_long_press_summary">Action when the Active Key is long-pressed. TopoDroid must be mapped to the Samsung Active key in system settings.</string>
   <string name="pref_active_key_double_press_title">Active Key double press</string>
   <string name="pref_active_key_double_press_summary">Action when the Active Key is double-pressed. TopoDroid must be mapped to the Samsung Active key in system settings.</string>
+  <string name="pref_volume_up_single_press_title">Volume Up single press</string>
+  <string name="pref_volume_up_single_press_summary">Action when the volume-up key is pressed. The system volume will only change if no action is bound to any volume-up press.</string>
+  <string name="pref_volume_up_long_press_title">Volume Up long press</string>
+  <string name="pref_volume_up_long_press_summary">Action when the volume-up key is long-pressed.</string>
+  <string name="pref_volume_up_double_press_title">Volume Up double press</string>
+  <string name="pref_volume_up_double_press_summary">Action when the volume-up key is double-pressed. Adds a short delay before single-press fires.</string>
+  <string name="pref_volume_down_single_press_title">Volume Down single press</string>
+  <string name="pref_volume_down_single_press_summary">Action when the volume-down key is pressed. The system volume will only change if no action is bound to any volume-down press.</string>
+  <string name="pref_volume_down_long_press_title">Volume Down long press</string>
+  <string name="pref_volume_down_long_press_summary">Action when the volume-down key is long-pressed.</string>
+  <string name="pref_volume_down_double_press_title">Volume Down double press</string>
+  <string name="pref_volume_down_double_press_summary">Action when the volume-down key is double-pressed. Adds a short delay before single-press fires.</string>
   <string name="pref_line_ends_title">Line ends cut</string>
   <string name="pref_line_ends_summary">Number of line-points to drop from the ends [0]</string>
   <!-- UNUSED string name="pref_zoom_lower_bound_title">Zoom bound</string -->

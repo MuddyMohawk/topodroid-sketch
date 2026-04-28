@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 import android.graphics.Matrix;
+import android.graphics.PointF;
 
 class Selection
 {
@@ -57,11 +58,20 @@ class Selection
    */
   void shiftSelectionBy( float x, float y )  // synchronized by CommandManager
   {
+    ArrayList< DrawingReferencePath > references = new ArrayList<>();
     for ( SelectionPoint sp : mPoints ) {
       int t = sp.type();
       if ( t == DrawingPath.DRAWING_PATH_POINT
         || t == DrawingPath.DRAWING_PATH_LINE
         || t == DrawingPath.DRAWING_PATH_AREA ) {
+        if ( sp.mItem instanceof DrawingReferencePath ) {
+          DrawingReferencePath reference = (DrawingReferencePath)sp.mItem;
+          if ( ! references.contains( reference ) ) {
+            reference.shiftBy( x, y );
+            references.add( reference );
+          }
+          continue;
+        }
         sp.shiftSelectionBy(x, y);
         float x1 = sp.X();
         float y1 = sp.Y();
@@ -74,6 +84,9 @@ class Selection
         }
       }
     }
+    for ( DrawingReferencePath reference : references ) {
+      updateReferencePath( reference );
+    }
   }
 
   /** scale selection
@@ -82,11 +95,20 @@ class Selection
    */
   void scaleSelectionBy( float z, Matrix m ) // synchronized by CommandManager
   {
+    ArrayList< DrawingReferencePath > references = new ArrayList<>();
     for ( SelectionPoint sp : mPoints ) {
       int t = sp.type();
       if ( t == DrawingPath.DRAWING_PATH_POINT
         || t == DrawingPath.DRAWING_PATH_LINE
         || t == DrawingPath.DRAWING_PATH_AREA ) {
+        if ( sp.mItem instanceof DrawingReferencePath ) {
+          DrawingReferencePath reference = (DrawingReferencePath)sp.mItem;
+          if ( ! references.contains( reference ) ) {
+            reference.scaleBy( z, m );
+            references.add( reference );
+          }
+          continue;
+        }
         sp.scaleSelectionBy( z, m );
         float x1 = sp.X();
         float y1 = sp.Y();
@@ -99,6 +121,9 @@ class Selection
         }
       }
     }
+    for ( DrawingReferencePath reference : references ) {
+      updateReferencePath( reference );
+    }
   }
 
   /** affine transform selection
@@ -107,11 +132,20 @@ class Selection
    */
   void affineTransformSelectionBy( float[] mm, Matrix m ) // synchronized by CommandManager
   {
+    ArrayList< DrawingReferencePath > references = new ArrayList<>();
     for ( SelectionPoint sp : mPoints ) {
       int t = sp.type();
       if ( t == DrawingPath.DRAWING_PATH_POINT
         || t == DrawingPath.DRAWING_PATH_LINE
         || t == DrawingPath.DRAWING_PATH_AREA ) {
+        if ( sp.mItem instanceof DrawingReferencePath ) {
+          DrawingReferencePath reference = (DrawingReferencePath)sp.mItem;
+          if ( ! references.contains( reference ) ) {
+            reference.affineTransformBy( mm, m );
+            references.add( reference );
+          }
+          continue;
+        }
         sp.affineTransformSelectionBy( mm, m );
         float x1 = sp.X();
         float y1 = sp.Y();
@@ -123,6 +157,9 @@ class Selection
           sp.setBucket( getBucket( x1, y1 ) );
         }
       }
+    }
+    for ( DrawingReferencePath reference : references ) {
+      updateReferencePath( reference );
     }
   }
 
@@ -219,7 +256,11 @@ class Selection
         // insertItem( path, null );
         // break;
       case DrawingPath.DRAWING_PATH_POINT:
-        insertItem( path, null );
+        if ( path instanceof DrawingReferencePath ) {
+          insertReferencePath( (DrawingReferencePath)path );
+        } else {
+          insertItem( path, null );
+        }
         break;
       case DrawingPath.DRAWING_PATH_LINE:
         DrawingLinePath lp = (DrawingLinePath)path;
@@ -305,6 +346,13 @@ class Selection
     SelectionPoint sp = new SelectionPoint( path, new LinePoint( x, y, null ), null );
     mPoints.add( sp );
     sp.setBucket( getBucket( x, y ) );
+    return sp;
+  }
+
+  SelectionPoint insertPseudoPoint( DrawingPath path, float x, float y, int role, float handle_x, float handle_y )
+  {
+    SelectionPoint sp = insertPseudoPoint( path, x, y );
+    sp.setHandleRole( role, handle_x, handle_y );
     return sp;
   }
 
@@ -505,6 +553,55 @@ class Selection
         removePoint( sp );
       }
     }
+  }
+
+  void updateReferencePath( DrawingReferencePath path )
+  {
+    if ( path == null ) return;
+    for ( SelectionPoint sp : mPoints ) {
+      if ( sp.mItem != path || sp.mPoint == null ) continue;
+      PointF point = ReferencePointHelper.getSelectionPoint( path, sp.getHandleRole(), sp.getHandleX(), sp.getHandleY() );
+      sp.mPoint.x = point.x;
+      sp.mPoint.y = point.y;
+      SelectionBucket sb = sp.mBucket;
+      if ( sb == null || ! sb.contains( point.x, point.y ) ) {
+        sp.setBucket( getBucket( point.x, point.y ) );
+      }
+    }
+  }
+
+  private void insertReferencePath( DrawingReferencePath path )
+  {
+    float width = path.getSceneWidth();
+    float height = path.getSceneHeight();
+    int nx = Math.max( 2, (int)Math.ceil( width / 80.0f ) );
+    int ny = Math.max( 2, (int)Math.ceil( height / 80.0f ) );
+    for ( int ix = 0; ix <= nx; ++ix ) {
+      float u = -0.5f + ix / (float)nx;
+      for ( int iy = 0; iy <= ny; ++iy ) {
+        if ( isReferenceCorner( ix, iy, nx, ny ) ) continue;
+        float v = -0.5f + iy / (float)ny;
+        PointF point = ReferencePointHelper.getSelectionPoint( path, ReferencePointHelper.HANDLE_MOVE, u, v );
+        insertPseudoPoint( path, point.x, point.y, ReferencePointHelper.HANDLE_MOVE, u, v );
+      }
+    }
+    addReferenceHandle( path, ReferencePointHelper.HANDLE_SCALE_NW, -0.5f, -0.5f );
+    addReferenceHandle( path, ReferencePointHelper.HANDLE_SCALE_NE,  0.5f, -0.5f );
+    addReferenceHandle( path, ReferencePointHelper.HANDLE_SCALE_SE,  0.5f,  0.5f );
+    addReferenceHandle( path, ReferencePointHelper.HANDLE_SCALE_SW, -0.5f,  0.5f );
+    PointF rotate = ReferencePointHelper.getSelectionPoint( path, ReferencePointHelper.HANDLE_ROTATE, 0.0f, 0.0f );
+    insertPseudoPoint( path, rotate.x, rotate.y, ReferencePointHelper.HANDLE_ROTATE, 0.0f, 0.0f );
+  }
+
+  private void addReferenceHandle( DrawingReferencePath path, int role, float u, float v )
+  {
+    PointF point = ReferencePointHelper.getSelectionPoint( path, role, u, v );
+    insertPseudoPoint( path, point.x, point.y, role, u, v );
+  }
+
+  private boolean isReferenceCorner( int ix, int iy, int nx, int ny )
+  {
+    return ( ix == 0 || ix == nx ) && ( iy == 0 || iy == ny );
   }
 
   /** remove a point-line point
@@ -734,6 +831,35 @@ class Selection
   {
     // TDLog.v("Selection select [2] at " + x + " " + y );
     bucketSelectAt( x, y, radius, mode, sel, legs, splays, stations, station_splay );
+  }
+
+  void selectAtForErase( SelectionSet sel, float x, float y, float radius, int erase_mode )
+  {
+    for ( SelectionBucket bucket : mBuckets ) {
+      if ( ! bucket.contains( x, y, radius, radius ) ) continue;
+      for ( SelectionPoint sp : bucket.mPoints ) {
+        DrawingPath item = sp.mItem;
+        if ( item instanceof DrawingReferencePath ) continue;
+        int type = sp.type();
+        if ( type == DrawingPath.DRAWING_PATH_LINE ) {
+          if ( erase_mode != Drawing.FILTER_ALL && erase_mode != Drawing.FILTER_LINE ) continue;
+        } else if ( type == DrawingPath.DRAWING_PATH_AREA ) {
+          if ( erase_mode != Drawing.FILTER_ALL && erase_mode != Drawing.FILTER_AREA ) continue;
+        } else if ( type == DrawingPath.DRAWING_PATH_POINT ) {
+          if ( erase_mode != Drawing.FILTER_ALL && erase_mode != Drawing.FILTER_POINT ) continue;
+        } else {
+          continue;
+        }
+
+        if ( TDSetting.mWithLevels == 0 ) {
+          if ( ! DrawingLevel.isLevelVisibleOrAnyLevelNoVisible( item ) ) continue;
+        } else {
+          if ( ! DrawingLevel.isLevelVisible( item ) ) continue;
+        }
+
+        if ( sp.distance( x, y ) < radius ) sel.addPoint( sp );
+      }
+    }
   }
 
   /** @return the bucket containing (x,y)

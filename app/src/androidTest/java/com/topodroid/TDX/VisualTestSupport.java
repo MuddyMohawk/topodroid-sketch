@@ -26,6 +26,8 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Point;
+import android.graphics.PointF;
+import android.net.Uri;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
 import android.os.SystemClock;
@@ -47,6 +49,7 @@ import androidx.test.uiautomator.UiObject2;
 import androidx.test.uiautomator.UiObjectNotFoundException;
 import androidx.test.uiautomator.UiScrollable;
 import androidx.test.uiautomator.UiSelector;
+import androidx.test.uiautomator.StaleObjectException;
 import androidx.test.uiautomator.Until;
 
 import com.topodroid.prefs.TDSetting;
@@ -62,6 +65,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -80,6 +85,27 @@ final class VisualTestSupport
   interface TextNormalizer
   {
     String normalize( String text );
+  }
+
+  static final class ReferenceSnapshot
+  {
+    final String sourceName;
+    final float sceneWidth;
+    final float sceneHeight;
+    final double orientation;
+    final int alphaPercent;
+    final boolean visible;
+
+    ReferenceSnapshot( String source_name, float scene_width, float scene_height,
+                       double orientation_degrees, int alpha_percent, boolean is_visible )
+    {
+      sourceName = source_name;
+      sceneWidth = scene_width;
+      sceneHeight = scene_height;
+      orientation = orientation_degrees;
+      alphaPercent = alpha_percent;
+      visible = is_visible;
+    }
   }
 
   static final String PACKAGE_NAME = "com.topodroid.TDX";
@@ -388,18 +414,115 @@ final class VisualTestSupport
     // resource id on AppCompat themes and the plot-name prefix varies.
     final String[] out = new String[1];
     mInstrumentation.runOnMainSync( () -> {
-      java.util.Collection< android.app.Activity > resumed =
-        androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
-          .getActivitiesInStage( androidx.test.runner.lifecycle.Stage.RESUMED );
-      for ( android.app.Activity a : resumed ) {
-        if ( a instanceof DrawingWindow ) {
-          CharSequence title = a.getTitle();
-          out[0] = ( title != null ) ? title.toString() : null;
-          return;
-        }
-      }
+      DrawingWindow window = findCurrentDrawingWindow();
+      if ( window == null ) return;
+      CharSequence title = window.getTitle();
+      out[0] = ( title != null ) ? title.toString() : null;
     } );
     return out[0];
+  }
+
+  private DrawingWindow requireCurrentDrawingWindow()
+  {
+    DrawingWindow window = findCurrentDrawingWindow();
+    if ( window != null ) return window;
+    fail( "No active DrawingWindow found; currentPackage=" + mDevice.getCurrentPackageName() );
+    return null;
+  }
+
+  private DrawingWindow findCurrentDrawingWindow()
+  {
+    DrawingWindow window = findDrawingWindowInStage( androidx.test.runner.lifecycle.Stage.RESUMED );
+    if ( window != null ) return window;
+    window = findDrawingWindowInStage( androidx.test.runner.lifecycle.Stage.STARTED );
+    if ( window != null ) return window;
+    window = findDrawingWindowInStage( androidx.test.runner.lifecycle.Stage.PAUSED );
+    if ( window != null ) return window;
+    return TopoDroidApp.mDrawingWindow;
+  }
+
+  private DrawingWindow findDrawingWindowInStage( androidx.test.runner.lifecycle.Stage stage )
+  {
+    java.util.Collection< android.app.Activity > activities =
+      androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+        .getActivitiesInStage( stage );
+    for ( android.app.Activity activity : activities ) {
+      if ( activity instanceof DrawingWindow ) return (DrawingWindow)activity;
+    }
+    return null;
+  }
+
+  private Object getPrivateField( Object target, String name ) throws Exception
+  {
+    Field field = target.getClass().getDeclaredField( name );
+    field.setAccessible( true );
+    return field.get( target );
+  }
+
+  private float getPrivateFloat( Object target, String name ) throws Exception
+  {
+    Field field = target.getClass().getDeclaredField( name );
+    field.setAccessible( true );
+    return field.getFloat( target );
+  }
+
+  private void setPrivateField( Object target, String name, Object value ) throws Exception
+  {
+    Field field = target.getClass().getDeclaredField( name );
+    field.setAccessible( true );
+    field.set( target, value );
+  }
+
+  private DrawingSurface requireCurrentDrawingSurface( DrawingWindow window )
+  {
+    try {
+      DrawingSurface surface = (DrawingSurface)getPrivateField( window, "mDrawingSurface" );
+      assertNotNull( "DrawingWindow surface is null", surface );
+      return surface;
+    } catch ( Exception e ) {
+      throw new AssertionFailedError( "Unable to access DrawingWindow surface: " + e.getMessage() );
+    }
+  }
+
+  private DrawingCommandManager requireCurrentDrawingManager( DrawingWindow window )
+  {
+    DrawingSurface surface = requireCurrentDrawingSurface( window );
+    DrawingCommandManager manager = surface.getManager( window.getPlotType() );
+    assertNotNull( "Drawing manager is null for plot type " + window.getPlotType(), manager );
+    return manager;
+  }
+
+  private DrawingReferencePath requireFirstReferencePoint( DrawingWindow window )
+  {
+    DrawingCommandManager manager = requireCurrentDrawingManager( window );
+    for ( Scrap scrap : manager.getScraps() ) {
+      synchronized ( TDPath.mCommandsLock ) {
+        for ( ICanvasCommand command : scrap.mCurrentStack ) {
+          if ( command instanceof DrawingReferencePath ) return (DrawingReferencePath)command;
+        }
+      }
+    }
+    fail( "No reference point found in current drawing" );
+    return null;
+  }
+
+  private PointF getReferenceHandlePoint( DrawingReferencePath reference, int handleRole )
+  {
+    switch ( handleRole ) {
+      case ReferencePointHelper.HANDLE_SCALE_NW:
+        return ReferencePointHelper.getSelectionPoint( reference, handleRole, -0.5f, -0.5f );
+      case ReferencePointHelper.HANDLE_SCALE_NE:
+        return ReferencePointHelper.getSelectionPoint( reference, handleRole, 0.5f, -0.5f );
+      case ReferencePointHelper.HANDLE_SCALE_SE:
+        return ReferencePointHelper.getSelectionPoint( reference, handleRole, 0.5f, 0.5f );
+      case ReferencePointHelper.HANDLE_SCALE_SW:
+        return ReferencePointHelper.getSelectionPoint( reference, handleRole, -0.5f, 0.5f );
+      case ReferencePointHelper.HANDLE_ROTATE:
+        return ReferencePointHelper.getSelectionPoint( reference, handleRole, 0.0f, 0.0f );
+      default:
+        fail( "Unsupported reference handle role " + handleRole );
+        return new PointF( reference.cx, reference.cy );
+    }
   }
 
   void tapToolbarChild( String containerResName, int childIndex )
@@ -461,6 +584,236 @@ final class VisualTestSupport
     tapViewCenter( viewId, "profile button" );
   }
 
+  void selectReferencePointTool()
+  {
+    mInstrumentation.runOnMainSync( () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      window.pointSelected( BrushManager.getPointReferenceIndex(), true );
+    } );
+    waitForIdle();
+  }
+
+  void tapDrawingSurfaceNormalized( double x, double y )
+  {
+    UiObject2 surface = waitForObject( By.res( PACKAGE_NAME, "drawingSurface" ) );
+    assertNotNull( "Missing drawing surface", surface );
+    int tapX = surface.getVisibleBounds().left + (int)Math.round( surface.getVisibleBounds().width() * x );
+    int tapY = surface.getVisibleBounds().top + (int)Math.round( surface.getVisibleBounds().height() * y );
+    mDevice.swipe( tapX, tapY, tapX, tapY, 120 );
+    waitForIdle();
+  }
+
+  void insertReferenceFromFile( File sourceFile, double x, double y ) throws Exception
+  {
+    assertNotNull( "Reference source file is null", sourceFile );
+    assertTrue( "Reference source file does not exist: " + sourceFile.getAbsolutePath(), sourceFile.exists() );
+    int before = countReferencePoints();
+    final Throwable[] error = new Throwable[1];
+    final Uri sourceUri = Uri.fromFile( sourceFile );
+    final float normalizedX = (float)x;
+    final float normalizedY = (float)y;
+    waitForDrawingWindow();
+    mInstrumentation.runOnMainSync( () -> {
+      try {
+        DrawingWindow window = requireCurrentDrawingWindow();
+        DrawingSurface surface = requireCurrentDrawingSurface( window );
+        int scrap = surface.scrapIndex();
+        assertTrue( "Invalid current scrap index", scrap >= 0 );
+
+        float zoom = getPrivateFloat( window, "mZoom" );
+        PointF offset = (PointF)getPrivateField( window, "mOffset" );
+        assertNotNull( "DrawingWindow offset is null", offset );
+
+        float xCanvas = surface.getWidth() * normalizedX;
+        float yCanvas = surface.getHeight() * normalizedY;
+        setPrivateField( window, "mPendingReferenceX", xCanvas / zoom - offset.x );
+        setPrivateField( window, "mPendingReferenceY", yCanvas / zoom - offset.y );
+        setPrivateField( window, "mPendingReferenceScrap", scrap );
+        setPrivateField( window, "mPendingReferenceReplace", null );
+
+        Method method = DrawingWindow.class.getDeclaredMethod( "handleReferenceImageResult", Uri.class );
+        method.setAccessible( true );
+        method.invoke( window, sourceUri );
+      } catch ( Throwable t ) {
+        error[0] = t;
+      }
+    } );
+    if ( error[0] != null ) {
+      Throwable cause = error[0].getCause();
+      if ( cause != null ) error[0] = cause;
+      throw new AssertionFailedError( "Unable to insert reference image: " + error[0].getMessage() );
+    }
+    waitForReferenceCount( before + 1 );
+  }
+
+  void transformFirstReference( float scaleFactor, double rotationDelta,
+                                float alpha, boolean visible, float shiftX, float shiftY )
+  {
+    mInstrumentation.runOnMainSync( () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      DrawingReferencePath reference = requireFirstReferencePoint( window );
+      if ( shiftX != 0.0f || shiftY != 0.0f ) {
+        reference.shiftBy( shiftX, shiftY );
+      }
+      if ( scaleFactor != 1.0f ) {
+        reference.setSceneSize( reference.getSceneWidth() * scaleFactor,
+                                reference.getSceneHeight() * scaleFactor );
+      }
+      if ( rotationDelta != 0.0 ) {
+        reference.setOrientation( reference.mOrientation + rotationDelta );
+      }
+      reference.setReferenceAlpha( alpha );
+      reference.setReferenceVisible( visible );
+      window.notifyReferencePointChanged( reference );
+    } );
+    waitForIdle();
+  }
+
+  void dragFirstReferenceHandle( int handleRole, float dx, float dy )
+  {
+    final Throwable[] error = new Throwable[1];
+    mInstrumentation.runOnMainSync( () -> {
+      try {
+        DrawingWindow window = requireCurrentDrawingWindow();
+        DrawingCommandManager manager = requireCurrentDrawingManager( window );
+        DrawingReferencePath reference = requireFirstReferencePoint( window );
+        PointF handlePoint = getReferenceHandlePoint( reference, handleRole );
+        float zoom = getPrivateFloat( window, "mZoom" );
+
+        SelectionSet selection = manager.getItemsAt( handlePoint.x, handlePoint.y, zoom, Drawing.FILTER_POINT, 40.0f, 
+null );
+        assertNotNull( "Selection set is null for reference handle drag", selection );
+        assertNotNull( "Reference handle drag did not select a hot item", selection.mHotItem );
+        assertEquals( "Unexpected handle role selected for reference drag", handleRole, 
+selection.mHotItem.getHandleRole() );
+
+        manager.shiftHotItem( dx, dy );
+        window.notifyReferencePointChanged( reference );
+      } catch ( Throwable t ) {
+        error[0] = t;
+      }
+    } );
+    if ( error[0] != null ) {
+      throw new AssertionFailedError( "Unable to drag reference handle: " + error[0].getMessage() );
+    }
+    waitForIdle();
+  }
+
+  ReferenceSnapshot getFirstReferenceSnapshot()
+  {
+    final ReferenceSnapshot[] snapshot = new ReferenceSnapshot[1];
+    mInstrumentation.runOnMainSync( () -> {
+      DrawingReferencePath reference = requireFirstReferencePoint( requireCurrentDrawingWindow() );
+      snapshot[0] = new ReferenceSnapshot(
+        reference.getSourceName(),
+        reference.getSceneWidth(),
+        reference.getSceneHeight(),
+        reference.mOrientation,
+        reference.getAlphaPercent(),
+        reference.isReferenceVisible()
+      );
+    } );
+    return snapshot[0];
+  }
+
+  int countReferencePoints()
+  {
+    final int[] count = new int[1];
+    mInstrumentation.runOnMainSync( () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      DrawingCommandManager manager = requireCurrentDrawingManager( window );
+      int total = 0;
+      if ( manager != null ) {
+        for ( Scrap scrap : manager.getScraps() ) {
+          synchronized ( TDPath.mCommandsLock ) {
+            for ( ICanvasCommand command : scrap.mCurrentStack ) {
+              if ( command instanceof DrawingReferencePath ) ++ total;
+            }
+          }
+        }
+      }
+      count[0] = total;
+    } );
+    return count[0];
+  }
+
+  int countSketchLinePaths()
+  {
+    final int[] count = new int[1];
+    mInstrumentation.runOnMainSync( () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      DrawingCommandManager manager = requireCurrentDrawingManager( window );
+      int total = 0;
+      if ( manager != null ) {
+        for ( Scrap scrap : manager.getScraps() ) {
+          synchronized ( TDPath.mCommandsLock ) {
+            for ( ICanvasCommand command : scrap.mCurrentStack ) {
+              if ( command instanceof DrawingLinePath && ! BrushManager.isLineSection( ((DrawingLinePath)command).mLineType ) ) {
+                ++ total;
+              }
+            }
+          }
+        }
+      }
+      count[0] = total;
+    } );
+    return count[0];
+  }
+
+  void waitForReferenceCount( int expected )
+  {
+    long deadline = SystemClock.uptimeMillis() + FILE_TIMEOUT_MS;
+    while ( SystemClock.uptimeMillis() < deadline ) {
+      if ( countReferencePoints() == expected ) return;
+      SystemClock.sleep( 200 );
+    }
+    fail( "Timed out waiting for reference count " + expected + "; actual=" + countReferencePoints() );
+  }
+
+  void addStraightLineAcrossFirstReference()
+  {
+    mInstrumentation.runOnMainSync( () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      DrawingSurface surface = requireCurrentDrawingSurface( window );
+      DrawingReferencePath reference = requireFirstReferencePoint( window );
+      float halfWidth = reference.getSceneWidth() * 0.35f;
+
+      DrawingLinePath line = new DrawingLinePath( BrushManager.getLineWallIndex(), surface.scrapIndex() );
+      line.addStartPoint( reference.cx - halfWidth, reference.cy );
+      line.addPoint( reference.cx, reference.cy );
+      line.addPoint( reference.cx + halfWidth, reference.cy );
+      line.computeUnitNormal();
+      surface.addDrawingPath( line );
+    } );
+    waitForIdle();
+  }
+
+  void eraseAtFirstReferenceCenter( int eraseMode, float eraseSize )
+  {
+    final Throwable[] error = new Throwable[1];
+    mInstrumentation.runOnMainSync( () -> {
+      try {
+        DrawingWindow window = requireCurrentDrawingWindow();
+        DrawingSurface surface = requireCurrentDrawingSurface( window );
+        DrawingReferencePath reference = requireFirstReferencePoint( window );
+        float zoom = getPrivateFloat( window, "mZoom" );
+
+        EraseCommand command = new EraseCommand();
+        surface.eraseAt( reference.cx, reference.cy, zoom, command, eraseMode, eraseSize );
+        if ( command.size() > 0 ) {
+          command.completeCommand();
+          surface.addEraseCommand( command );
+        }
+      } catch ( Throwable t ) {
+        error[0] = t;
+      }
+    } );
+    if ( error[0] != null ) {
+      throw new AssertionFailedError( "Unable to erase at reference center: " + error[0].getMessage() );
+    }
+    waitForIdle();
+  }
+
   void replaceTextInField( int viewId, String value )
   {
     onView( withId( viewId ) ).perform( replaceText( value ) );
@@ -500,6 +853,16 @@ final class VisualTestSupport
     editor.apply();
     TDPrefHelper.update( "DISTOX_ZIP_WITH_SYMBOLS", enabled );
     TDSetting.mZipWithSymbols = enabled;
+  }
+
+  void setReferenceEraseEnabled( boolean enabled )
+  {
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences( mTargetContext );
+    SharedPreferences.Editor editor = prefs.edit();
+    editor.putBoolean( "DISTOX_ERASE_REFERENCE", enabled );
+    editor.apply();
+    TDPrefHelper.update( "DISTOX_ERASE_REFERENCE", enabled );
+    TDSetting.mEraseReferenceImages = enabled;
   }
 
   void tapText( String text )
@@ -687,6 +1050,40 @@ final class VisualTestSupport
     return new File( Environment.getExternalStoragePublicDirectory( Environment.DIRECTORY_DOWNLOADS ), filename );
   }
 
+  File getSurveyPhotoFile( String surveyName, String sourceName )
+  {
+    return new File( new File( getSurveyDir( surveyName ), "photo" ), sourceName );
+  }
+
+  File createReferenceFixtureInDownloads( String filename, boolean jpeg ) throws Exception
+  {
+    File target = getDownloadFile( filename );
+    ensureParentDir( target );
+    Bitmap bitmap = Bitmap.createBitmap( 160, 100, Bitmap.Config.ARGB_8888 );
+    for ( int y = 0; y < bitmap.getHeight(); ++y ) {
+      for ( int x = 0; x < bitmap.getWidth(); ++x ) {
+        int color;
+        if ( y < 50 ) {
+          color = ( x < 80 ) ? 0xffff00ff : 0xff00ffff;
+        } else {
+          color = ( x < 80 ) ? 0xffffff00 : 0xffff8800;
+        }
+        bitmap.setPixel( x, y, color );
+      }
+    }
+    FileOutputStream output = new FileOutputStream( target );
+    try {
+      Bitmap.CompressFormat format = jpeg ? Bitmap.CompressFormat.JPEG : Bitmap.CompressFormat.PNG;
+      int quality = jpeg ? 95 : 100;
+      assertTrue( "Failed to write reference fixture " + target.getAbsolutePath(),
+        bitmap.compress( format, quality, output ) );
+    } finally {
+      output.close();
+      bitmap.recycle();
+    }
+    return target;
+  }
+
   File getCompassExportFile( String surveyName )
   {
     return new File( getSurveyOutDir( surveyName ), surveyName + ".dat" );
@@ -773,6 +1170,14 @@ final class VisualTestSupport
     compareBitmapFileToGolden( actualFile, assetName, SCREEN_MAX_DIFF_RATIO, SCREEN_MAX_CHANNEL_DELTA );
   }
 
+  File captureScreen( String assetName ) throws Exception
+  {
+    enableDemoMode();
+    File actualFile = new File( getCaseArtifactsDir(), assetName );
+    assertTrue( "Failed to capture screenshot", takeScreenshotWithRetry( actualFile ) );
+    return actualFile;
+  }
+
   void assertPngFileMatchesGolden( File actualFile, String assetName ) throws Exception
   {
     File artifactCopy = new File( getCaseArtifactsDir(), assetName );
@@ -782,6 +1187,67 @@ final class VisualTestSupport
       return;
     }
     compareBitmapFileToGolden( actualFile, assetName, 0.0, 0 );
+  }
+
+  void assertBitmapContainsColor( File actualFile, int expectedColor, int tolerance, int minCount )
+  {
+    Bitmap bitmap = BitmapFactory.decodeFile( actualFile.getAbsolutePath() );
+    assertNotNull( "Unable to decode bitmap " + actualFile.getAbsolutePath(), bitmap );
+    int matches = 0;
+    int er = ( expectedColor >> 16 ) & 0xff;
+    int eg = ( expectedColor >> 8 ) & 0xff;
+    int eb = expectedColor & 0xff;
+    try {
+      for ( int y = 0; y < bitmap.getHeight(); ++y ) {
+        for ( int x = 0; x < bitmap.getWidth(); ++x ) {
+          int pixel = bitmap.getPixel( x, y );
+          int pr = ( pixel >> 16 ) & 0xff;
+          int pg = ( pixel >> 8 ) & 0xff;
+          int pb = pixel & 0xff;
+          if ( Math.abs( pr - er ) <= tolerance
+            && Math.abs( pg - eg ) <= tolerance
+            && Math.abs( pb - eb ) <= tolerance ) {
+            ++ matches;
+            if ( matches >= minCount ) return;
+          }
+        }
+      }
+    } finally {
+      bitmap.recycle();
+    }
+    fail( "Bitmap " + actualFile.getAbsolutePath() + " does not contain color 0x"
+      + Integer.toHexString( expectedColor ) + " at least " + minCount + " times; found " + matches );
+  }
+
+  void assertBitmapDoesNotContainColor( File actualFile, int expectedColor, int tolerance, int maxCount )
+  {
+    Bitmap bitmap = BitmapFactory.decodeFile( actualFile.getAbsolutePath() );
+    assertNotNull( "Unable to decode bitmap " + actualFile.getAbsolutePath(), bitmap );
+    int matches = 0;
+    int er = ( expectedColor >> 16 ) & 0xff;
+    int eg = ( expectedColor >> 8 ) & 0xff;
+    int eb = expectedColor & 0xff;
+    try {
+      for ( int y = 0; y < bitmap.getHeight(); ++y ) {
+        for ( int x = 0; x < bitmap.getWidth(); ++x ) {
+          int pixel = bitmap.getPixel( x, y );
+          int pr = ( pixel >> 16 ) & 0xff;
+          int pg = ( pixel >> 8 ) & 0xff;
+          int pb = pixel & 0xff;
+          if ( Math.abs( pr - er ) <= tolerance
+            && Math.abs( pg - eg ) <= tolerance
+            && Math.abs( pb - eb ) <= tolerance ) {
+            ++ matches;
+            if ( matches > maxCount ) {
+              fail( "Bitmap " + actualFile.getAbsolutePath() + " unexpectedly contains color 0x"
+                + Integer.toHexString( expectedColor ) + " more than " + maxCount + " times" );
+            }
+          }
+        }
+      }
+    } finally {
+      bitmap.recycle();
+    }
   }
 
   void assertTextFileMatchesGolden( File actualFile, String assetName, TextNormalizer normalizer ) throws Exception
@@ -804,20 +1270,20 @@ final class VisualTestSupport
     resolveDocumentPickerChooserIfPresent();
     String documentsUiPackage = waitForDocumentsUi();
 
-    if ( tryPickVisibleDocument( fileName, documentsUiPackage, 3000 ) ) return;
+    if ( tryPickVisibleDocument( fileName, documentsUiPackage, 5000 ) ) return;
 
-    UiObject2 showRootsButton = findAnyObject( 2000,
+    UiObject2 showRootsButton = findAnyObject( 3000,
       By.descContains( "Show roots" ),
       By.descContains( "Open roots" )
     );
-    if ( showRootsButton != null ) {
-      clickObject( showRootsButton );
-      if ( tryTapDocumentText( "Downloads", 3000 ) ) {
-        if ( tryPickVisibleDocument( fileName, documentsUiPackage, 3000 ) ) return;
-      } else if ( tryTapDocumentText( "sdk_gphone64_x86_64", 1500 )
-        || tryTapDocumentText( "SDCARD", 1500 ) ) {
+    if ( showRootsButton != null && tryClickObject( showRootsButton ) ) {
+      if ( tryTapDocumentText( "Downloads", 5000 ) || tryTapDocumentText( "Download", 3000 ) ) {
+        if ( tryPickVisibleDocument( fileName, documentsUiPackage, 5000 ) ) return;
+      } else if ( tryTapDocumentText( "sdk_gphone64_x86_64", 3000 )
+        || tryTapDocumentText( "SDCARD", 3000 )
+        || tryTapDocumentText( "Internal storage", 3000 ) ) {
         openDocumentsUiPath( "Download" );
-        if ( tryPickVisibleDocument( fileName, documentsUiPackage, 3000 ) ) return;
+        if ( tryPickVisibleDocument( fileName, documentsUiPackage, 5000 ) ) return;
       }
     }
 
@@ -826,31 +1292,52 @@ final class VisualTestSupport
 
   private boolean tryPickVisibleDocument( String fileName, String documentsUiPackage, long waitMs )
   {
-    UiObject2 row = mDevice.wait( Until.findObject( By.text( fileName ) ), waitMs );
-    if ( row == null ) return false;
+    long deadline = SystemClock.uptimeMillis() + waitMs;
+    boolean scrolled = false;
+    while ( SystemClock.uptimeMillis() < deadline ) {
+      UiObject2 row = findDocumentObject( fileName, 500 );
+      if ( row != null && tryClickObject( row ) ) {
+        if ( waitForDocumentsUiToClose( 1500 ) ) return true;
 
-    clickObject( row );
+        UiObject2 openButton = findAnyObject( 1500,
+          By.res( documentsUiPackage, "action_menu_select" ),
+          By.text( "Open" ),
+          By.textContains( "Open" ),
+          By.text( "Select" ),
+          By.descContains( "Open" ),
+          By.descContains( "Select" )
+        );
+        if ( openButton != null && tryClickObject( openButton ) ) {
+          if ( waitForDocumentsUiToClose( 5000 ) ) return true;
+        }
+      }
 
-    UiObject2 openButton = findAnyObject( 1500,
-      By.res( documentsUiPackage, "action_menu_select" ),
-      By.text( "Open" ),
-      By.textContains( "Open" ),
-      By.text( "Select" ),
-      By.descContains( "Open" ),
-      By.descContains( "Select" )
-    );
-    if ( openButton != null ) {
-      clickObject( openButton );
+      if ( ! scrolled ) {
+        scrolled = scrollDocumentsListToText( fileName );
+        continue;
+      }
+
+      SystemClock.sleep( 200 );
     }
-    return waitForDocumentsUiToClose( 5000 );
+    return false;
   }
 
   private boolean tryTapDocumentText( String text, long timeoutMs )
   {
-    UiObject2 object = mDevice.wait( Until.findObject( By.textContains( text ) ), timeoutMs );
-    if ( object == null ) return false;
-    clickObject( object );
-    return true;
+    long deadline = SystemClock.uptimeMillis() + timeoutMs;
+    boolean scrolled = false;
+    while ( SystemClock.uptimeMillis() < deadline ) {
+      UiObject2 object = findDocumentObject( text, 500 );
+      if ( object != null && tryClickObject( object ) ) return true;
+
+      if ( ! scrolled ) {
+        scrolled = scrollDocumentsListToText( text );
+        continue;
+      }
+
+      SystemClock.sleep( 200 );
+    }
+    return false;
   }
 
   private void openDocumentsUiPath( String... pathSegments )
@@ -858,10 +1345,51 @@ final class VisualTestSupport
     if ( pathSegments == null ) return;
     for ( String segment : pathSegments ) {
       if ( segment == null || segment.length() == 0 ) continue;
-      UiObject2 row = waitForObject( By.text( segment ) );
-      clickObject( row );
+      assertTrue( "DocumentsUI path segment not found: " + segment,
+        tryTapDocumentText( segment, UI_TIMEOUT_MS ) );
       SystemClock.sleep( 400 );
     }
+  }
+
+  private UiObject2 findDocumentObject( String text, long timeoutMs )
+  {
+    if ( text == null || text.length() == 0 ) return null;
+    long deadline = SystemClock.uptimeMillis() + timeoutMs;
+    while ( SystemClock.uptimeMillis() < deadline ) {
+      UiObject2 object = mDevice.findObject( By.text( text ) );
+      if ( object != null ) return object;
+      object = mDevice.findObject( By.textContains( text ) );
+      if ( object != null ) return object;
+      object = mDevice.findObject( By.desc( text ) );
+      if ( object != null ) return object;
+      object = mDevice.findObject( By.descContains( text ) );
+      if ( object != null ) return object;
+      SystemClock.sleep( 150 );
+    }
+    return null;
+  }
+
+  private boolean scrollDocumentsListToText( String text )
+  {
+    try {
+      UiScrollable scrollable = new UiScrollable( new UiSelector().scrollable( true ).instance( 0 ) );
+      scrollable.setAsVerticalList();
+      scrollable.setMaxSearchSwipes( 20 );
+      if ( scrollable.scrollIntoView( new UiSelector().text( text ) ) ) return true;
+    } catch ( UiObjectNotFoundException e ) {
+      // fall through and try a contains-based scroll below
+    }
+
+    try {
+      UiScrollable scrollable = new UiScrollable( new UiSelector().scrollable( true ).instance( 0 ) );
+      scrollable.setAsVerticalList();
+      scrollable.setMaxSearchSwipes( 20 );
+      if ( scrollable.scrollIntoView( new UiSelector().textContains( text ) ) ) return true;
+    } catch ( UiObjectNotFoundException e ) {
+      // fall through to the direct lookup below
+    }
+
+    return mDevice.findObject( By.text( text ) ) != null || mDevice.findObject( By.textContains( text ) ) != null;
   }
 
   private boolean waitForDocumentsUiToClose( long timeoutMs )
@@ -1200,12 +1728,14 @@ final class VisualTestSupport
     editor.putString( "DISTOX_PROFILE_2_LINE_STYLE", "0" );
     editor.putString( "DISTOX_PROFILE_2_LINE_SEGMENT", "10" );
     editor.putString( "DISTOX_ACTIVE_SKETCH_PROFILE", "1" );
+    editor.putBoolean( "DISTOX_ERASE_REFERENCE", false );
     editor.apply();
   }
 
   private void configureStableRuntimeState()
   {
     TDSetting.mSingleBack = true;
+    TDSetting.mEraseReferenceImages = false;
     Context appContext = mTargetContext.getApplicationContext();
     if ( appContext instanceof TopoDroidApp ) {
       TopoDroidApp app = (TopoDroidApp)appContext;
@@ -1401,10 +1931,7 @@ final class VisualTestSupport
 
   private void clickObject( UiObject2 object )
   {
-    assertNotNull( "Cannot click a null object", object );
-    UiObject2 target = getInteractiveObject( object );
-    target.click();
-    waitForIdle();
+    assertTrue( "Failed to click object", tryClickObject( object ) );
   }
 
   private boolean takeScreenshotWithRetry( File file ) throws Exception
@@ -1419,22 +1946,63 @@ final class VisualTestSupport
 
   private void longClickObject( UiObject2 object )
   {
-    assertNotNull( "Cannot long-click a null object", object );
-    UiObject2 target = getInteractiveObject( object );
-    int centerX = target.getVisibleBounds().centerX();
-    int centerY = target.getVisibleBounds().centerY();
-    mDevice.swipe( centerX, centerY, centerX, centerY, 120 );
-    waitForIdle();
+    assertTrue( "Failed to long-click object", tryLongClickObject( object ) );
   }
 
   private UiObject2 getInteractiveObject( UiObject2 object )
   {
     UiObject2 current = object;
     while ( current != null ) {
-      if ( current.isClickable() || current.isLongClickable() ) return current;
-      current = current.getParent();
+      try {
+        if ( current.isClickable() || current.isLongClickable() ) return current;
+        current = current.getParent();
+      } catch ( StaleObjectException e ) {
+        return null;
+      }
     }
     return object;
+  }
+
+  private boolean tryClickObject( UiObject2 object )
+  {
+    assertNotNull( "Cannot click a null object", object );
+    for ( int attempt = 0; attempt < 3; ++attempt ) {
+      try {
+        UiObject2 target = getInteractiveObject( object );
+        if ( target == null ) {
+          SystemClock.sleep( 150 );
+          continue;
+        }
+        target.click();
+        waitForIdle();
+        return true;
+      } catch ( StaleObjectException e ) {
+        SystemClock.sleep( 150 );
+      }
+    }
+    return false;
+  }
+
+  private boolean tryLongClickObject( UiObject2 object )
+  {
+    assertNotNull( "Cannot long-click a null object", object );
+    for ( int attempt = 0; attempt < 3; ++attempt ) {
+      try {
+        UiObject2 target = getInteractiveObject( object );
+        if ( target == null ) {
+          SystemClock.sleep( 150 );
+          continue;
+        }
+        int centerX = target.getVisibleBounds().centerX();
+        int centerY = target.getVisibleBounds().centerY();
+        mDevice.swipe( centerX, centerY, centerX, centerY, 120 );
+        waitForIdle();
+        return true;
+      } catch ( StaleObjectException e ) {
+        SystemClock.sleep( 150 );
+      }
+    }
+    return false;
   }
 
   private String runShellCommand( String command ) throws Exception
