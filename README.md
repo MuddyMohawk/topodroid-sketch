@@ -14,11 +14,9 @@ This was written in English; other translations are likely not working
 - Add safety warnings when importing vanilla TopoDroid stuff
 - Switch the defaults for profile 2 to a line-point spacing of 15 instead of 20
 - Add a 4th sketch line. I love sketch lines.
-- An actual build pipeline?
 - Rename the drawing "profiles" to something else to avoid confusion with the extended profile view. Presets?
 - Change defaults for Active Key. Double tap to go back?
 - Performance check for large sketches
-- Allow smaller downsizing on PNG export (right now capped at 0.25, which still produces large images)
 - Option for rearranging render order (eg, survey station designations on top)
 - Extend the visual regression suite to cover S Pen button, Active Key, and action-binding flows (undo/redo, palette toggle, profile toggle, back, erase/sketch toggle). Current coverage only exercises taps on the drawing surface and toolbars.
 - Make the reference image thingy a default symbol in the palette 
@@ -76,7 +74,7 @@ This was written in English; other translations are likely not working
 - Tweak bad backsight orange line to be a little more subtle
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 
-### TopoDroid Sketch v1.19.3 Changelog:
+### TopoDroid Sketch v1.19.4 Changelog:
 
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob.
 
@@ -121,7 +119,7 @@ This was written in English; other translations are likely not working
 **PNG Sketch Export**
 - Added a PNG export option for sketches
 - Stations, legs, splays, grid, scale bar (kinda meh), north direction, and background transparency are all toggleable options
-- The output can be scaled from 0.25 to 4.0. The default of 1.00 is great for handing to a cartographer, but the files it produces are too large to really view on the tablet. I recommend 0.25 scale for that.
+- The output can be scaled from 0.05 to 4.0. The default of 1.00 is great for handing to a cartographer, but the files it produces are too large to really view on the tablet. I recommend 0.25 scale for that.
 - The default filename is `<survey_name>_<sketch_name>_<sketch_type (eg plan, profile)>_YYYY-MM-DD.png`. Example: `F-Survey_toob_plan_2026-04-15.png`. 
 
 **Testing**

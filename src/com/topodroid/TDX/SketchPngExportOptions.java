@@ -14,7 +14,7 @@ package com.topodroid.TDX;
 class SketchPngExportOptions
 {
   private static final float DEFAULT_BITMAP_SCALE_FACTOR = 1.0f;
-  private static final float MIN_BITMAP_SCALE_FACTOR = 0.25f;
+  private static final float MIN_BITMAP_SCALE_FACTOR = 0.05f;
   private static final float MAX_BITMAP_SCALE_FACTOR = 4.0f;
 
   final boolean includeStations;
