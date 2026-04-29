@@ -3082,10 +3082,32 @@ public class Scrap
   {
     if ( mCurrentStack == null ) return;
     synchronized( TDPath.mCommandsLock ) {
+      if ( TDSetting.mAreaOverlapDarken ) {
+        int areaLayer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
+        if ( TDSetting.mWithLevels == 0 ) {
+          for ( ICanvasCommand cmd : mCurrentStack  ) {
+            if ( cmd.commandType() == 0 ) {
+              DrawingPath path = (DrawingPath)cmd;
+              if ( path.isArea() ) cmd.draw( canvas, matrix, scale, bbox, xor_color );
+            }
+          }
+        } else {
+          for ( ICanvasCommand cmd : mCurrentStack  ) {
+            if ( cmd.commandType() == 0 ) {
+              DrawingPath path = (DrawingPath)cmd;
+              if ( path.isArea() && DrawingLevel.isLevelVisible( path ) ) {
+                cmd.draw( canvas, matrix, scale, bbox, xor_color );
+              }
+            }
+          }
+        }
+        canvas.restoreToCount( areaLayer );
+      }
       if ( TDSetting.mWithLevels == 0 ) { // treat no-levels case by itself
         for ( ICanvasCommand cmd : mCurrentStack  ) {
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
+            if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
             cmd.draw( canvas, matrix, scale, bbox, xor_color );
             if ( path.isLine() ) { // path instanceof DrawingLinePath
               DrawingLinePath line = (DrawingLinePath)path;
@@ -3109,6 +3131,7 @@ public class Scrap
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
             if ( DrawingLevel.isLevelVisible( (DrawingPath)cmd ) ) {
+              if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
               cmd.draw( canvas, matrix, scale, bbox, xor_color );
               if ( path.isLine() ) { // path instanceof DrawingLinePath
                 DrawingLinePath line = (DrawingLinePath)path;
@@ -3159,10 +3182,32 @@ public class Scrap
   {
     if ( mCurrentStack == null ) return;
     synchronized( TDPath.mCommandsLock ) {
+      if ( TDSetting.mAreaOverlapDarken ) {
+        int areaLayer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
+        if ( TDSetting.mWithLevels == 0 ) {
+          for ( ICanvasCommand cmd : mCurrentStack  ) {
+            if ( cmd.commandType() == 0 ) {
+              DrawingPath path = (DrawingPath)cmd;
+              if ( path.isArea() ) cmd.draw( canvas, matrix, scale, bbox );
+            }
+          }
+        } else {
+          for ( ICanvasCommand cmd : mCurrentStack  ) {
+            if ( cmd.commandType() == 0 ) {
+              DrawingPath path = (DrawingPath)cmd;
+              if ( path.isArea() && DrawingLevel.isLevelVisible( path ) ) {
+                cmd.draw( canvas, matrix, scale, bbox );
+              }
+            }
+          }
+        }
+        canvas.restoreToCount( areaLayer );
+      }
       if ( TDSetting.mWithLevels == 0 ) { // treat no-levels case by itself
         for ( ICanvasCommand cmd : mCurrentStack  ) {
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
+            if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
             cmd.draw( canvas, matrix, scale, bbox );
             if ( path.isLine() ) { // path instanceof DrawingLinePath
               DrawingLinePath line = (DrawingLinePath)path;
@@ -3180,6 +3225,7 @@ public class Scrap
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
             if ( DrawingLevel.isLevelVisible( (DrawingPath)cmd ) ) {
+              if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
               cmd.draw( canvas, matrix, scale, bbox );
               if ( path.isLine() ) { // path instanceof DrawingLinePath
                 DrawingLinePath line = (DrawingLinePath)path;

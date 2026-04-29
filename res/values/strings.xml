@@ -2055,6 +2055,8 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_sketch_grid_width_summary">Width of the background sketch grid lines</string>
   <string name="pref_sketch_grid_color_title">Sketch grid color</string>
   <string name="pref_sketch_grid_color_summary">Color of the background sketch grid</string>
+  <string name="pref_area_overlap_darken_title">Darken overlapping areas</string>
+  <string name="pref_area_overlap_darken_summary">When enabled, overlapping area fills darken instead of lighten. This may not appear correct on a black background color. Change the background to a light color or just export with a transparent background to see the effect</string>
   <!-- UNUSED string name="pref_device_title">Device</string -->
   <!-- UNUSED string name="pref_device_summary">Surveying device address name</string -->
   <string name="pref_checkBT_title" copyable="all">Bluetooth</string>

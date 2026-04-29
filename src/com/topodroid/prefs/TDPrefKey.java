@@ -563,6 +563,7 @@ class TDPrefKey
     new TDPrefKey( B, FLT,  UI, "DISTOX_FIXED_THICKNESS", R.string.pref_fixed_thickness_title,R.string.pref_fixed_thickness_summary,TDString.ONE ),
     new TDPrefKey( B, FLT,  UI, "DISTOX_SKETCH_GRID_WIDTH", R.string.pref_sketch_grid_width_title, R.string.pref_sketch_grid_width_summary, TDString.ONE ),
     new TDPrefKey( B, COL,  UI, "DISTOX_SKETCH_GRID_COLOR", R.string.pref_sketch_grid_color_title, R.string.pref_sketch_grid_color_summary, "10066329" ),
+    new TDPrefKey( B, BOOL, UI, "DISTOX_AREA_OVERLAP_DARKEN", R.string.pref_area_overlap_darken_title, R.string.pref_area_overlap_darken_summary, TRUE ),
     new TDPrefKey( B, FLT,  UI, "DISTOX_STATION_SIZE",    R.string.pref_station_size_title,   R.string.pref_station_size_summary,   TDString.TWENTY ),
     new TDPrefKey( N, FLT,  UI, "DISTOX_DOT_RADIUS",      R.string.pref_dot_radius_title,     R.string.pref_dot_radius_message,     TDString.FIVE ), 
     new TDPrefKey( B, LONG, UI, "DISTOX_CLOSENESS",       R.string.pref_closeness_title,      R.string.pref_closeness_message,      TDString.TWENTYFOUR ),

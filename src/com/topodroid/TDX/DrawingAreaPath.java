@@ -17,7 +17,7 @@ package com.topodroid.TDX;
 import com.topodroid.util.TDLog;
 import com.topodroid.util.TDMath;
 import com.topodroid.math.TDVector;
-// import com.topodroid.prefs.TDSetting;
+import com.topodroid.prefs.TDSetting;
 
 import com.topodroid.num.TDNum;
 
@@ -25,6 +25,8 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Matrix;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 // import android.graphics.Bitmap;
 // import android.graphics.BitmapShader;
 import android.graphics.Shader;
@@ -44,6 +46,11 @@ import java.util.Locale;
  */
 public class DrawingAreaPath extends DrawingPointLinePath
 {
+  private static final PorterDuffXfermode AREA_FILL_EMPTY_XFERMODE =
+      new PorterDuffXfermode( PorterDuff.Mode.DST_OVER );
+  private static final PorterDuffXfermode AREA_OVERLAP_DARKEN_XFERMODE =
+      new PorterDuffXfermode( PorterDuff.Mode.SRC_ATOP );
+
   // private static int area_id_cnt = 0;
   // private static String makeId()
   // {
@@ -365,13 +372,34 @@ public class DrawingAreaPath extends DrawingPointLinePath
     }
   }
 
+  private static Paint makeAreaFillPaint( Paint paint )
+  {
+    Paint fill = new Paint( paint );
+    fill.setXfermode( AREA_FILL_EMPTY_XFERMODE );
+    return fill;
+  }
+
+  private static Paint makeAreaOverlapDarkenPaint( Paint paint )
+  {
+    Paint darken = new Paint();
+    darken.setColor( 0xff000000 );
+    darken.setAlpha( paint.getAlpha() );
+    darken.setXfermode( AREA_OVERLAP_DARKEN_XFERMODE );
+    return darken;
+  }
+
   @Override
   void drawPath( Path path, Canvas canvas )
   {
     if ( mPaint != null ) {
       canvas.save();
       canvas.clipPath( path );
-      canvas.drawPaint( mPaint );
+      if ( TDSetting.mAreaOverlapDarken ) {
+        canvas.drawPaint( makeAreaOverlapDarkenPaint( mPaint ) );
+        canvas.drawPaint( makeAreaFillPaint( mPaint ) );
+      } else {
+        canvas.drawPaint( mPaint );
+      }
       if ( isVisible() ) canvas.drawPath( path, BrushManager.borderPaint ); // ??? NullPointerException reported here`
       canvas.restore();
     }
@@ -381,9 +409,15 @@ public class DrawingAreaPath extends DrawingPointLinePath
   void drawPath( Path path, Canvas canvas, int xor_color )
   {
     if ( mPaint != null ) {
+      Paint paint = xorPaint( mPaint, xor_color );
       canvas.save();
       canvas.clipPath( path );
-      canvas.drawPaint( xorPaint( mPaint, xor_color ) );
+      if ( TDSetting.mAreaOverlapDarken ) {
+        canvas.drawPaint( makeAreaOverlapDarkenPaint( paint ) );
+        canvas.drawPaint( makeAreaFillPaint( paint ) );
+      } else {
+        canvas.drawPaint( paint );
+      }
       if ( isVisible() ) canvas.drawPath( path, BrushManager.borderPaint ); // ??? NullPointerException reported here`
       canvas.restore();
     }
@@ -560,4 +594,3 @@ public class DrawingAreaPath extends DrawingPointLinePath
   }
 
 }
-

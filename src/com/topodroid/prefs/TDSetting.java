@@ -702,6 +702,7 @@ public class TDSetting
   public static final int   DEFAULT_SKETCH_GRID_COLOR = TDColor.MID_GRAY & 0x00ffffff;
   public static float mSketchGridWidth = DEFAULT_SKETCH_GRID_WIDTH;
   public static int   mSketchGridColor = DEFAULT_SKETCH_GRID_COLOR;
+  public static boolean mAreaOverlapDarken = true;
   public static float mLineThickness   = 1;    // width of drawing lines
   public static final float DEFAULT_USER_LINE_FINE_WIDTH     = 1.0f;
   public static final float DEFAULT_USER_LINE_STANDARD_WIDTH = 2.0f;
@@ -1602,13 +1603,14 @@ public class TDSetting
     mFixedThickness = tryFloat( prefs, key[ 0].key, key[ 0].dflt );  // DISTOX_FIXED_THICKNESS
     mSketchGridWidth = positiveOrDefault( tryFloat( prefs, key[ 1].key, key[ 1].dflt ), DEFAULT_SKETCH_GRID_WIDTH );
     mSketchGridColor = tryColor( prefs, key[ 2].key, key[ 2].dflt ) & 0x00ffffff;
-    mStationSize    = tryFloat( prefs, key[ 3].key, key[ 3].dflt );  // DISTOX_STATION_SIZE
-    mDotRadius      = tryFloat( prefs, key[ 4].key, key[ 4].dflt );  // DISTOX_DOT_RADIUS
-    mSelectness     = tryFloat( prefs, key[ 5].key, key[ 5].dflt );  // DISTOX_CLOSENESS
-    mEraseness      = tryFloat( prefs, key[ 6].key, key[ 6].dflt );  // DISTOX_ERASENESS
-    mMinShift       = tryInt(   prefs, key[ 7].key, key[ 7].dflt );  // DISTOX_MIN_SHIFT
-    mPointingRadius = tryInt(   prefs, key[ 8].key, key[ 8].dflt );  // DISTOX_POINTING
-    mSplayAlpha     = tryInt(   prefs, key[ 9].key, key[ 9].dflt );  // DISTOX_SPLAY_ALPHA
+    mAreaOverlapDarken = prefs.getBoolean( key[ 3].key, bool(key[ 3].dflt ) ); // DISTOX_AREA_OVERLAP_DARKEN
+    mStationSize    = tryFloat( prefs, key[ 4].key, key[ 4].dflt );  // DISTOX_STATION_SIZE
+    mDotRadius      = tryFloat( prefs, key[ 5].key, key[ 5].dflt );  // DISTOX_DOT_RADIUS
+    mSelectness     = tryFloat( prefs, key[ 6].key, key[ 6].dflt );  // DISTOX_CLOSENESS
+    mEraseness      = tryFloat( prefs, key[ 7].key, key[ 7].dflt );  // DISTOX_ERASENESS
+    mMinShift       = tryInt(   prefs, key[ 8].key, key[ 8].dflt );  // DISTOX_MIN_SHIFT
+    mPointingRadius = tryInt(   prefs, key[ 9].key, key[ 9].dflt );  // DISTOX_POINTING
+    mSplayAlpha     = tryInt(   prefs, key[10].key, key[10].dflt );  // DISTOX_SPLAY_ALPHA
     BrushManager.setGridPaints();
     BrushManager.setSplayAlpha( mSplayAlpha );
 
@@ -3001,25 +3003,27 @@ public class TDSetting
       ret = setSketchGridWidth( tryStringValue( hlp, k, v, key[1].dflt ) );
     } else if ( k.equals( key[ 2 ].key ) ) { // DISTOX_SKETCH_GRID_COLOR
       ret = setSketchGridColor( tryColorValue( hlp, k, v, key[2].dflt ) );
-    } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_STATION_SIZE
+    } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_AREA_OVERLAP_DARKEN
+      mAreaOverlapDarken = tryBooleanValue( hlp, k, v, bool(key[3].dflt) );
+    } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_STATION_SIZE
       try {
-        setStationSize( Float.parseFloat( tryStringValue( hlp, k, v, key[3].dflt ) ), true );
+        setStationSize( Float.parseFloat( tryStringValue( hlp, k, v, key[4].dflt ) ), true );
       } catch ( NumberFormatException e ) {
         TDLog.e( e.getMessage() );
       }
       ret = String.format(Locale.US, "%.2f", mStationSize );
-    } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_DOT_RADIUS
-      ret = setDotRadius( tryFloatValue( hlp, k, v, key[4].dflt ) );
-    } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_CLOSENESS
-      ret = setSelectness( tryFloatValue( hlp, k, v, key[5].dflt ) );
-    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_ERASENESS
-      ret = setEraseness( tryFloatValue( hlp, k, v, key[6].dflt ) );
-    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_MIN_SHIFT
-      ret = setMinShift( tryIntValue(  hlp, k, v, key[7].dflt ) );
-    } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_POINTING
-      ret = setPointingRadius( tryIntValue( hlp, k, v, key[8].dflt ) );
-    } else if ( k.equals( key[ 9 ].key ) ) { // DISTOX_SPLAY_ALPHA
-      mSplayAlpha = tryIntValue( hlp, k, v, key[ 9].dflt ); 
+    } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_DOT_RADIUS
+      ret = setDotRadius( tryFloatValue( hlp, k, v, key[5].dflt ) );
+    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_CLOSENESS
+      ret = setSelectness( tryFloatValue( hlp, k, v, key[6].dflt ) );
+    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_ERASENESS
+      ret = setEraseness( tryFloatValue( hlp, k, v, key[7].dflt ) );
+    } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_MIN_SHIFT
+      ret = setMinShift( tryIntValue(  hlp, k, v, key[8].dflt ) );
+    } else if ( k.equals( key[ 9 ].key ) ) { // DISTOX_POINTING
+      ret = setPointingRadius( tryIntValue( hlp, k, v, key[9].dflt ) );
+    } else if ( k.equals( key[10].key ) ) { // DISTOX_SPLAY_ALPHA
+      mSplayAlpha = tryIntValue( hlp, k, v, key[10].dflt );
       if ( mSplayAlpha < 0 ) { mSplayAlpha = 0; ret = Float.toString( mSplayAlpha ); }
       if ( mSplayAlpha > 100 ) { mSplayAlpha = 100; ret = Float.toString( mSplayAlpha ); }
       BrushManager.setSplayAlpha( mSplayAlpha );
@@ -4322,6 +4326,7 @@ B DISTOX_SAP5_BIT16_BUG true
       k="DISTOX_FIXED_THICKNESS";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mFixedThickness );
       k="DISTOX_SKETCH_GRID_WIDTH";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mSketchGridWidth );
       k="DISTOX_SKETCH_GRID_COLOR";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mSketchGridColor );
+      k="DISTOX_AREA_OVERLAP_DARKEN";   if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mAreaOverlapDarken) );
       k="DISTOX_LINE_THICKNESS";        if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mLineThickness );
       k="DISTOX_USER_LINE_FINE_WIDTH";  if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mUserLineFineWidth );
       k="DISTOX_USER_LINE_FINE_COLOR";  if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mUserLineFineColor );
@@ -4650,6 +4655,9 @@ B DISTOX_SAP5_BIT16_BUG true
               break;
             case "DISTOX_SKETCH_GRID_COLOR":
               setSketchGridColor( value ); setPreference( editor, kay, mSketchGridColor );
+              break;
+            case "DISTOX_AREA_OVERLAP_DARKEN":
+              mAreaOverlapDarken = Boolean.parseBoolean( value ); setPreference( editor, kay, mAreaOverlapDarken );
               break;
             case "DISTOX_LINE_THICKNESS":
               setLineThickness( value ); setPreference( editor, kay, mLineThickness );

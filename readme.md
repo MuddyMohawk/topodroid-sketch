@@ -54,7 +54,6 @@ This was written in English; other translations are likely not working
   - switch between profile and plan (and cross-sections?)
 - Pie in the sky: Advanced GPS/gnss tools. RTK when.
 - Inventory/Rope Audit/Vandalism tracking tools
-- Change the blend mode of the areas so overlapping areas get darker, not brighter. Mostly to create water pools
 - Investigate and enhance the point symbols. They could be good. They need to be aligned with the NSS conventional symbols
   - Better, finer, sand symbol
   - Mud symbol in alignment with the NSS symbol
@@ -77,7 +76,7 @@ This was written in English; other translations are likely not working
 - Tweak bad backsight orange line to be a little more subtle
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 
-### TopoDroid Sketch v1.17.5 Changelog:
+### TopoDroid Sketch v1.19.3 Changelog:
 
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob.
 
@@ -132,6 +131,7 @@ This was written in English; other translations are likely not working
 - Added a new, more capable color picker widget
 - Added sketch grid appearance settings for both grid width and grid color
 - Added the new 1 foot sketch-grid unit alongside the existing 2 feet, yard, meter, and 10 cm options
+- Added an option (on by default) for overlapping areas (eg water) to darken instead of lighten. This is mostly for drawing deeper water pools
 
 ### Testing
 
