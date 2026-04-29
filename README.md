@@ -15,7 +15,6 @@ This was written in English; other translations are likely not working
 - Switch the defaults for profile 2 to a line-point spacing of 15 instead of 20
 - Add a 4th sketch line. I love sketch lines.
 - Rename the drawing "profiles" to something else to avoid confusion with the extended profile view. Presets?
-- Change defaults for Active Key. Double tap to go back?
 - Performance check for large sketches
 - Option for rearranging render order (eg, survey station designations on top)
 - Extend the visual regression suite to cover S Pen button, Active Key, and action-binding flows (undo/redo, palette toggle, profile toggle, back, erase/sketch toggle). Current coverage only exercises taps on the drawing surface and toolbars.
@@ -113,7 +112,9 @@ This was written in English; other translations are likely not working
   - Back: Goes back a screen (eg exit sketch page to shot list, or goes back one screen in the settings)
   - Toggle erase/sketch: Toggles between the erase sketch mode and the drawing sketch mode
 - Added the ability to bind actions to S Pen button inputs in the *TopoDroid main settings -> Devices -> Action Key Bindings* menu
+  - Default S Pen key bindings are `undo` for single click, `back` on double click, and `toggle profile` on long-click
 - Added the ability to bind actions to the Samsung Active key in the *TopoDroid main settings -> Devices -> Action Key Bindings* menu
+  - Default Active Key bindings are `toggle erase/sketch` on single press, `back` on double press, and `toggle profile` on long press
 - Added the ability to bind actions to the Volume Up and Volume Down keys (single / long / double press each) in the same *Action Key Bindings* menu. Default binding for all six is `none`. If an action is bound, it overwrites the ability to change volume with that key while the app is open. This also overrides the busted volume-up screenshot action present in vanilla topodroid
 
 **PNG Sketch Export**

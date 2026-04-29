@@ -625,9 +625,9 @@ public class TDSetting
   public static int mSPenSingleClickAction = SPEN_ACTION_UNDO;
   public static int mSPenLongClickAction   = SPEN_ACTION_TOGGLE_PROFILE;
   public static int mSPenDoubleClickAction = SPEN_ACTION_BACK;
-  public static int mActiveKeySinglePressAction = SPEN_ACTION_NONE;
-  public static int mActiveKeyLongPressAction   = SPEN_ACTION_NONE;
-  public static int mActiveKeyDoublePressAction = SPEN_ACTION_NONE;
+  public static int mActiveKeySinglePressAction = SPEN_ACTION_TOGGLE_ERASE;
+  public static int mActiveKeyLongPressAction   = SPEN_ACTION_TOGGLE_PROFILE;
+  public static int mActiveKeyDoublePressAction = SPEN_ACTION_BACK;
   public static int mVolumeUpSinglePressAction   = SPEN_ACTION_NONE;
   public static int mVolumeUpLongPressAction     = SPEN_ACTION_NONE;
   public static int mVolumeUpDoublePressAction   = SPEN_ACTION_NONE;
