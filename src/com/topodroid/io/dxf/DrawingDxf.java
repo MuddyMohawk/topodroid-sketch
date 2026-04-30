@@ -419,7 +419,7 @@ public class DrawingDxf
       SymbolLineLibrary line_lib   = BrushManager.getLineLib();
       SymbolAreaLibrary area_lib   = BrushManager.getAreaLib();
       // header
-      DXF.writeComment( out, "DXF created by TopoDroid v. " + TDVersion.string() 
+      DXF.writeComment( out, "DXF created by " + TDVersion.APP_NAME + " v. " + TDVersion.string()
         + " " + TDSetting.mAcadVersion + " " + (TDSetting.mAutoStations? "T ":"F ") + (TDSetting.mAutoXSections? "T ":"F ") + TDSetting.getBezierStep() );
 
       xmin -= 2;  xmax += 2;
@@ -1243,5 +1243,3 @@ public class DrawingDxf
   }
 
 }
-
-

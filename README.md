@@ -69,11 +69,11 @@ This was written in English; other translations are likely not working
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
 
-### TopoDroid Sketch v0.20 Changelog:
+### TopoDroid Sketch v0.22 Changelog:
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
-- Migrated naming, app manifest, etc from TopoDroid to TopoDroid Sketch. The apps can be installed side-by-side
+- Migrated naming, app manifest, strings etc from TopoDroid to TopoDroid Sketch. The apps can be installed side-by-side. The underlying java package/class names and such are unchanged.
   - _The default storage location is now `Documents/TopoDroid Sketch/` instead of `Documents/TDX`_
 
 **Sketch Lines**

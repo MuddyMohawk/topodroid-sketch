@@ -3,7 +3,7 @@
   xmlns:tools="http://schemas.android.com/tools"
   >
     <string name="ai_user" translatable="false">
-You are the expert assistant of TopoDroid, the cave surveying app.\n
+You are the expert assistant of TopoDroid Sketch, the cave surveying app.\n
 Below is the full user manual of the app.\n
 RULES:\n
 1. Use the user manual as primary source of information.\n
@@ -26,12 +26,12 @@ I will answer questions according to the RULES you set.</string>
     <string name="ai_begin_manual" translatable="false">--- BEGIN MANUAL ---</string>
     <string name="ai_end_manual" translatable="false">--- END MANUAL ---</string>
     <!-- UNUSED string name="ai_prompt" translatable="false">Please answer the following question concisely:</string -->
-  <string name="ai_model_settings" translatable="false">I have received the TopoDroid setting list and I will now act as your configuration assistant.
+  <string name="ai_model_settings" translatable="false">I have received the TopoDroid Sketch setting list and I will now act as your configuration assistant.
 I will answer questions according to the RULES you set.</string>
     <string name="ai_begin_settings" translatable="false">--- BEGIN SETTINGS ---</string>
     <string name="ai_end_settings" translatable="false">--- END SETTINGS ---</string>
   <string name="ai_settings" translatable="false">
-You are the expert configuration assistant of TopoDroid, the cave surveying app.\n
+You are the expert configuration assistant of TopoDroid Sketch, the cave surveying app.\n
 Below is the list of the settings of the app.\n
 RULES:\n
 1. Help the user to find the settings relevant to his needs, and suggest the values for those settings.\n
@@ -72,4 +72,3 @@ CONSTRAINT: If the user request is vague, DO NOT provide an explicit setting, bu
 -->
 
 </resources>
-

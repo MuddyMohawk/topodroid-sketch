@@ -4033,7 +4033,7 @@ public class TDSetting
       //     continue; // Skip unknown types
       //   }
       // }
-      pw.printf(Locale.US, "TopoDroid v. %s %d flag %d\n", TDVersion.string(), TDVersion.code(), flag );
+      pw.printf(Locale.US, "%s v. %s %d flag %d\n", TDVersion.APP_NAME, TDVersion.string(), TDVersion.code(), flag );
       // int cnt = 0;
       int n1 = TDPrefKey.nrKeySets();
       for ( int j = 0; j < n1; ++ j ) {

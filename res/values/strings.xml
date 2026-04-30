@@ -25,7 +25,7 @@
     <!-- UNUSED string name="string_false">false</string -->
     <!-- UNUSED string name="string_true">true</string -->
 
-    <string name="tdx_stale" translatable="false">TopoDroid cannot access its old folder.\nClose the app and grant FILES ACCESS using the Settings app.\n\nSee http://marcocorvi.altervista.org/HowtoGrantStorageAccess.pdf</string>
+    <string name="tdx_stale" translatable="false">TopoDroid Sketch cannot access its old folder.\nClose the app and grant FILES ACCESS using the Settings app.\n\nSee http://marcocorvi.altervista.org/HowtoGrantStorageAccess.pdf</string>
     <!-- UNUSED string name="target_sdk" translatable="false">TopoDroid official app is on http://marcocorvi.altervista.com/TopoDroid.html\nFinish ?</string -->
     <!-- UNUSED string name="target_sdk_stale" translatable="false">TopoDroid official app is on http://marcocorvi.altervista.com/TopoDroid.html\nThis version cannot access the old folder and must stop.\nSee http://marcocorvi.altervista.org/TopoDroidAndAndroid11.html.</string -->
 
@@ -41,15 +41,15 @@
   <!-- UNUSED string name="r_dialog_1">
 On Android-11+ storage access must be granted to TopoDroid.\nYou can do this with the PC program "adb".\nOn Android: enable developer settings and usb-debug.\nConnect Android to the PC with a USB cable.\nOn the PC type "adb shell appops set com.topodroid.TDX MANAGE_EXTERNAL_STORAGE allow".
   </string -->
-  <string name="r_dialog">With Android-13 TopoDroid must store surveys in the app private folder under "Android/data". Beware that this folder is usually deleted when the app is uninstalled. To confirm type\n"%1$s"\nin the field below and tap the button.</string>
+  <string name="r_dialog">With Android-13 TopoDroid Sketch must store surveys in the app private folder under "Android/data". Beware that this folder is usually deleted when the app is uninstalled. To confirm type\n"%1$s"\nin the field below and tap the button.</string>
   <!-- UNUSED string name="r_checkboxes">You must confirm the checkbox to continue.</string -->
   <string name="r_i_understood" translatable="false">I UNDERSTOOD</string> <!-- FIXME FIXME FIXME -->
   <!-- UNUSED string name="r_disclaimer">I agree that the app author(s) are not liable for any damage or loss of data.</string -->
   <string name="r_continue">CONTINUE</string>
   <string name="r_quit">QUIT</string>
 
-    <string name="app_name" translatable="false">TopoDroid-X</string>
-    <string name="tdm_title" copyable="all">TopoDroid Manager</string>
+    <string name="app_name" translatable="false">TopoDroid Sketch</string>
+    <string name="tdm_title" copyable="all">TopoDroid Sketch Manager</string>
     <string name="tdm_config_project" copyable="all">project.tdconfig</string>
     <string name="double_back">Click BACK again to exit</string>
 
@@ -64,10 +64,10 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <!-- UNUSED string name="version_check_latest">Version already at latest</string -->
     <string name="version_check_newer">Newer version available: %1$d</string>
 
-    <string name="setup_textsize_title">TopoDroid setup. Text size</string>
-    <string name="setup_buttonsize_title">TopoDroid setup. Button size</string>
-    <string name="setup_drawingunit_title">TopoDroid setup. Icons size</string>
-    <string name="setup_done_title">TopoDroid setup. Done</string>
+    <string name="setup_textsize_title">TopoDroid Sketch setup. Text size</string>
+    <string name="setup_buttonsize_title">TopoDroid Sketch setup. Button size</string>
+    <string name="setup_drawingunit_title">TopoDroid Sketch setup. Icons size</string>
+    <string name="setup_done_title">TopoDroid Sketch setup. Done</string>
     <string name="setup_buttonsample">Button sample</string>
 
     <string name="setup_textsize">Set the text size.\nYou can always change this later through the main window settings.</string>
@@ -316,7 +316,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="MT_bad_file">Bad MobileTopographer file</string>
     <string name="bad_manifest">Bad manifest file [%1$d]</string>
     <string name="bad_manifest_zip">Failed: zip read error</string>
-    <string name="bad_manifest_td">Failed: TopoDroid version too old</string>
+    <string name="bad_manifest_td">Failed: survey archive version too old</string>
     <string name="bad_manifest_db_old">Failed: database version too old</string>
     <string name="bad_manifest_db_new">Failed: database version too new</string>
     <!-- UNUSED string name="bad_manifest_name">Failed: survey name differ from zip name</string -->
@@ -464,7 +464,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="painted">painted</string>
 
     <!-- UNUSED string name="cbd_title">Base directory</string -->
-    <string name="cwd">TopoDroid project directory</string>
+    <string name="cwd">TopoDroid Sketch project directory</string>
     <string name="empty_cwd">Empty project name</string>
     <!-- UNUSED string name="bad_cbd">Base directory non-existent or not writable</string -->
     <string name="bad_cwd">Project name cannot be path</string>
@@ -814,7 +814,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="unzip_fail_sqlite">Failed SQL: delete survey and retry</string>
     <string name="unzip_fail_survey">Failed: survey name mismatch</string>
     <string name="unzip_fail_db">Failed: database version mismatch</string>
-    <string name="unzip_fail_td">Failed: TopoDroid version mismatch</string>
+    <string name="unzip_fail_td">Failed: survey archive version mismatch</string>
     <!-- UNUSED string name="zoom_in_out">Zoom in/out</string -->
     <string name="screenshot_saved">Saved screenshot %1$s</string>
     <string name="screenshot_failed">Failed taking screenshot</string>
@@ -896,7 +896,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="distox_err_headtail_eof">DistoX memory EOF error</string>
     <string name="distox_err_connected">Device already connected</string>
 
-    <string name="ask_close_app">Close TopoDroid?</string>
+    <string name="ask_close_app">Close TopoDroid Sketch?</string>
     <!-- UNUSED string name="ask_reset">Reset DistoX memory?</string -->
     <!-- UNUSED string name="ask_close_survey">Close survey?</string -->
     <string name="ask_gps_service">Set GPS service?</string>
@@ -1199,7 +1199,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="help_prefs">Preferences</string>
     <!-- UNUSED string name="help_log">Logging preferences</string -->
     <!-- UNUSED string name="help_join_survey">Joint surveying</string -->
-    <string name="help_info_topodroid" copyable="fr">TopoDroid info</string>
+    <string name="help_info_topodroid" copyable="fr">TopoDroid Sketch info</string>
     <string name="help_download">Data download</string>
     <!-- UNUSED string name="help_splay">Assign stations to splays automatically</string -->
     <string name="help_display">Display mode</string>
@@ -1460,10 +1460,10 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="select_size" translatable="false">  &lt;&lt; %1$d &gt;&gt;</string>
     <string name="setting" >setting</string>
 
-    <string name="title_settings_main">TopoDroid main settings</string>
-    <string name="title_settings_export">TopoDroid import/export settings</string>
+    <string name="title_settings_main">TopoDroid Sketch main settings</string>
+    <string name="title_settings_export">TopoDroid Sketch import/export settings</string>
     <string name="title_settings_export_enable">Data export enable settings</string>
-    <string name="title_settings_import">TopoDroid import settings</string>
+    <string name="title_settings_import">TopoDroid Sketch import settings</string>
     <string name="title_settings_csv">CSV export settings</string>
     <string name="title_settings_svx">Survex export settings</string>
     <string name="title_settings_th">Therion export settings</string>
@@ -2028,11 +2028,11 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_spen_double_click_title">S Pen double-click</string>
   <string name="pref_spen_double_click_summary">Action for a double S Pen button click while hovering</string>
   <string name="pref_active_key_single_press_title">Active Key single press</string>
-  <string name="pref_active_key_single_press_summary">Action when the Active Key is pressed. TopoDroid must be mapped to the Samsung Active key in system settings.</string>
+  <string name="pref_active_key_single_press_summary">Action when the Active Key is pressed. TopoDroid Sketch must be mapped to the Samsung Active key in system settings.</string>
   <string name="pref_active_key_long_press_title">Active Key long press</string>
-  <string name="pref_active_key_long_press_summary">Action when the Active Key is long-pressed. TopoDroid must be mapped to the Samsung Active key in system settings.</string>
+  <string name="pref_active_key_long_press_summary">Action when the Active Key is long-pressed. TopoDroid Sketch must be mapped to the Samsung Active key in system settings.</string>
   <string name="pref_active_key_double_press_title">Active Key double press</string>
-  <string name="pref_active_key_double_press_summary">Action when the Active Key is double-pressed. TopoDroid must be mapped to the Samsung Active key in system settings.</string>
+  <string name="pref_active_key_double_press_summary">Action when the Active Key is double-pressed. TopoDroid Sketch must be mapped to the Samsung Active key in system settings.</string>
   <string name="pref_volume_up_single_press_title">Volume Up single press</string>
   <string name="pref_volume_up_single_press_summary">Action when the volume-up key is pressed. The system volume will only change if no action is bound to any volume-up press.</string>
   <string name="pref_volume_up_long_press_title">Volume Up long press</string>
@@ -2239,23 +2239,20 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <!-- UNUSED string name="alt_ortho">orthometric</string -->
   <!-- UNUSED string name="splay_extend">estimate splay extend</string -->
 
-    <string name="perms_mandatory">TopoDroid cannot run without these permissions:</string>
+    <string name="perms_mandatory">TopoDroid Sketch cannot run without these permissions:</string>
     <string name="perms_optional">Some functions are disabled without these permissions:</string>
     <string name="perm_location">\nLocation</string>
     <string name="perm_camera">\nCamera</string>
     <string name="perm_microphone" copyable="fr">\nMicrophone</string>
 
     <string name="welcome_db_version">Database v. %1$d, %2$d</string>
-    <string name="welcome_title" translatable="false">TopoDroid %1$s</string>
+    <string name="welcome_title" translatable="false">TopoDroid Sketch %1$s</string>
     <string name="welcome_text">
-\nThank you for choosing TopoDroid.
-\n\nTopoDroid is an Open Source Android app for surveying caves with DistoX, BRIC, SAP, and Cavway.
+\nThank you for choosing TopoDroid Sketch.
+\n\nTopoDroid Sketch is an Open Source Android app for surveying caves with DistoX, BRIC, SAP, and Cavway, with added support for freehand sketch workflows.
 \n\nNo warranty: by using it you agree that the author is not responsible for any loss of data you might incur or damage whatsoever.
 \n\nHelp: menu "HELP"
 \nMan pages: Book icon in the Help dialog
-\nDocs: http://sites.google.com/site/speleoapps
-\nDownload: http://marcocorvi.altervista.org/caving/speleoapps/speleoapks/TopoDroidApks.html
-\nComments, bug reports, feature requests: marco.corvi@gmail.com
 \n
     </string>
 

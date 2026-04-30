@@ -62,7 +62,7 @@ public class CalibExport
       BufferedWriter bw = new BufferedWriter( new FileWriter( TDPath.getCcsvFile( calib_name + ".csv" ) ) );
       PrintWriter pw = new PrintWriter( bw );
 
-      pw.format("# %s created by TopoDroid v %s\n\n", TDUtil.getDateString("yyyy.MM.dd"), TDVersion.string() );
+      pw.format("# %s created by %s v %s\n\n", TDUtil.getDateString("yyyy.MM.dd"), TDVersion.APP_NAME, TDVersion.string() );
 
       pw.format("# %s\n", ci.name );
       pw.format("# %s\n", ci.date );
@@ -150,6 +150,22 @@ public class CalibExport
     return line.substring( pos );
   }
 
+  static private String getTopoDroidCsvVersion( String line )
+  {
+    if ( line == null ) return null;
+    String[] markers = {
+      TDVersion.APP_NAME + " v ",
+      TDVersion.APP_NAME + " v. ",
+      TDVersion.APP_NAME_LEGACY + " v ",
+      TDVersion.APP_NAME_LEGACY + " v. "
+    };
+    for ( String marker : markers ) {
+      int pos = line.indexOf( marker );
+      if ( pos >= 0 ) return line.substring( pos + marker.length() ).trim();
+    }
+    return null;
+  }
+
   /** import calibration from a file
    * @param data database
    * @param file calibration file (private storage)
@@ -183,12 +199,10 @@ public class CalibExport
       BufferedReader br = new BufferedReader( fr );
     
       String line = br.readLine();
-      if ( line == null || ! line.contains("TopoDroid") ) {
+      String v_str = getTopoDroidCsvVersion( line );
+      if ( v_str == null ) {
         ret = -1; // NOT TOPODROID CSV
       } else {
-        line.trim();
-        int pos = line.indexOf("TopoDroid v" );
-        String v_str = line.substring( pos+12 );
         String[] vals = v_str.split("\\.");
         // TDLog.v("<" + line + "> pos " + pos + " " + v_str + " " + vals.length );
         int v1 = Integer.parseInt( vals[0] );

@@ -87,7 +87,7 @@ public class Archiver
   private final static String[] mManifestError = {
      "ok",
      "IO error",
-     "TopoDroid version mismatch",
+     "survey archive version mismatch",
      "database version mismatch: manifest_DB_version < min_DB_version",
      "database version mismatch: manifest_DB_version > current DB_version",
      "survey name does not match filename",
@@ -707,7 +707,7 @@ public class Archiver
              || ( major == TDVersion.MAJOR_MIN && minor < TDVersion.MINOR_MIN )
              || ( major == TDVersion.MAJOR_MIN && minor == TDVersion.MINOR_MIN && sub < TDVersion.SUB_MIN ) 
           ) {
-          TDLog.e( "TopoDroid version mismatch: " + version_line + " < " + TDVersion.MAJOR_MIN + "." + TDVersion.MINOR_MIN + "." + TDVersion.SUB_MIN );
+          TDLog.e( "survey archive version mismatch: " + version_line + " < " + TDVersion.MAJOR_MIN + "." + TDVersion.MINOR_MIN + "." + TDVersion.SUB_MIN );
           return ERR_TD_OLD;
         }
         if (    ( major > TDVersion.MAJOR ) 
@@ -728,7 +728,7 @@ public class Archiver
         try {
           version_code = Integer.parseInt( ver[0] );
           if ( version_code < TDVersion.CODE_MIN ) {
-            TDLog.e( "TopoDroid version mismatch: " + version_line + " < " + TDVersion.CODE_MIN );
+            TDLog.e( "survey archive version mismatch: " + version_line + " < " + TDVersion.CODE_MIN );
             return ERR_TD_OLD;
           }
         } catch ( NumberFormatException e ) {

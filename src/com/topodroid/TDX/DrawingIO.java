@@ -1453,7 +1453,7 @@ public class DrawingIO
         scale*(xoff+bb.xmin), scale*(yoff-bb.ymax), name ); // this is fine is sketch origin is first station
     }
     pw.format("\n");
-    pw.format("# %s created by TopoDroid v. %s\n\n", TDUtil.currentDate(), TDVersion.string() );
+    pw.format("# %s created by %s v. %s\n\n", TDUtil.currentDate(), TDVersion.APP_NAME, TDVersion.string() );
     out.write( sw.getBuffer().toString() );
   }
 
