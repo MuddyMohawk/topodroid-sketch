@@ -372,7 +372,7 @@ public class Archiver
     if ( ! force && ! (TDLevel.overExpert && TDSetting.mZipWithSymbols ) ) return false;
     boolean ret = false;
     // TDLog.v( "ZIP-uncompress symbol type " + type + " prefix " + prefix );
-    File tempfile = TDFile.getExternalFile( null, "tmp.zip" );
+    File tempfile = TDPath.getTmpFile( "tmp.zip" );
     FileOutputStream fout; // = null;
     int c;
     byte[] sbuffer = new byte[4096];

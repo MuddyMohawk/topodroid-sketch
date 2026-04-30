@@ -17,7 +17,8 @@ android {
     compileSdk 36
 
     defaultConfig {
-        applicationId 'com.topodroid.TDX'
+        applicationId 'com.topodroid.TDX.sketch'
+        testApplicationId 'com.topodroid.TDX.sketch.test'
         minSdk 21
         targetSdk 36
         versionCode 604027

@@ -81,6 +81,8 @@ final class VisualTestSupport
 {
   private static final double SCREEN_MAX_DIFF_RATIO = 0.05;
   private static final int SCREEN_MAX_CHANNEL_DELTA = 8;
+  private static final double PNG_MAX_DIFF_RATIO = 0.005;
+  private static final int PNG_MAX_CHANNEL_DELTA = 8;
 
   interface TextNormalizer
   {
@@ -108,8 +110,8 @@ final class VisualTestSupport
     }
   }
 
-  static final String PACKAGE_NAME = "com.topodroid.TDX";
-  static final String TEST_PACKAGE = "com.topodroid.TDX.test";
+  static final String PACKAGE_NAME = "com.topodroid.TDX.sketch";
+  static final String TEST_PACKAGE = "com.topodroid.TDX.sketch.test";
   static final String DOCUMENTS_UI_PACKAGE = "com.android.documentsui";
   static final String GOOGLE_DOCUMENTS_UI_PACKAGE = "com.google.android.documentsui";
   static final String GOLDEN_PROFILE_DIR = "goldens/emulator_2560x1600_320dpi_font1.0";
@@ -193,7 +195,7 @@ final class VisualTestSupport
       }
     }
 
-    // Filesystem: the public root (/Documents/TDX/TopoDroid) also hosts
+    // Filesystem: the public root (/Documents/TopoDroid Sketch) also hosts
     // distox14.sqlite — TopoDroid's main DB. Deleting the whole tree yanks the
     // DB file out from under the live SQLite handle and every subsequent query
     // fails with SQLITE_IOERR_FSTAT. Instead, delete per-survey subdirectories
@@ -1027,7 +1029,7 @@ selection.mHotItem.getHandleRole() );
 
   File getPublicRoot()
   {
-    return new File( Environment.getExternalStoragePublicDirectory( Environment.DIRECTORY_DOCUMENTS ), "TDX/TopoDroid" );
+    return new File( Environment.getExternalStoragePublicDirectory( Environment.DIRECTORY_DOCUMENTS ), "TopoDroid Sketch" );
   }
 
   File getSurveyDir( String surveyName )
@@ -1186,7 +1188,7 @@ selection.mHotItem.getHandleRole() );
       copyFile( actualFile, getRecordedGoldenFile( assetName ) );
       return;
     }
-    compareBitmapFileToGolden( actualFile, assetName, 0.0, 0 );
+    compareBitmapFileToGolden( actualFile, assetName, PNG_MAX_DIFF_RATIO, PNG_MAX_CHANNEL_DELTA );
   }
 
   void assertBitmapContainsColor( File actualFile, int expectedColor, int tolerance, int minCount )

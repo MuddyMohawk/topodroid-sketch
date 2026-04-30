@@ -11,11 +11,11 @@ $Gradle = Join-Path $RepoRoot "gradlew.bat"
 $GradleUserHome = Join-Path $RepoRoot ".gradle-test-home"
 $LocalProperties = Join-Path $RepoRoot "local.properties"
 $ArtifactsLocal = Join-Path $RepoRoot "tmp-test-artifacts"
-$ArtifactsRemote = "/sdcard/Android/data/com.topodroid.TDX/files/test-artifacts"
-$AppPackage = "com.topodroid.TDX"
-$TestPackage = "com.topodroid.TDX.test"
+$ArtifactsRemote = "/sdcard/Android/data/com.topodroid.TDX.sketch/files/test-artifacts"
+$AppPackage = "com.topodroid.TDX.sketch"
+$TestPackage = "com.topodroid.TDX.sketch.test"
 $Runner = "$TestPackage/androidx.test.runner.AndroidJUnitRunner"
-$FastTests = "com.topodroid.TDX.VisualGoldenInstrumentedTest#createSurvey_addShots_createSketch_drawProfilesAndSketchLines_matchesGolden,com.topodroid.TDX.VisualGoldenInstrumentedTest#exportCompass_matchesFixture"
+$FastTests = "com.topodroid.TDX.VisualGoldenInstrumentedTest#createSurvey_addShots_createSketch_drawPresetsAndSketchLines_matchesGolden,com.topodroid.TDX.VisualGoldenInstrumentedTest#exportCompass_matchesFixture"
 
 function Get-SdkPath {
   if ($env:ANDROID_SDK_ROOT) { return $env:ANDROID_SDK_ROOT }
@@ -51,6 +51,36 @@ function Get-JavaHome {
 function Invoke-Adb {
   param([string[]]$Arguments)
   & $Adb -s $Serial @Arguments
+}
+
+function Invoke-Instrumentation {
+  param([string[]]$Arguments)
+
+  $previousPreference = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    $output = & $Adb -s $Serial @Arguments 2>&1
+    $exitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousPreference
+  }
+
+  $output | ForEach-Object { Write-Host $_ }
+
+  if ($exitCode -ne 0) {
+    throw "Instrumentation command failed with exit code $exitCode."
+  }
+
+  $text = $output -join "`n"
+  if ($text -match "FAILURES!!!" -or $text -match "INSTRUMENTATION_STATUS: Error" -or $text -match "INSTRUMENTATION_FAILED") {
+    return $false
+  }
+
+  if ($text -notmatch "OK \(\d+ tests?\)") {
+    return $false
+  }
+
+  return $true
 }
 
 function Grant-Permissions {
@@ -100,12 +130,16 @@ try {
   Invoke-Adb @("shell", "pm", "clear", $TestPackage) | Out-Null
   Grant-Permissions
 
-  Invoke-Adb @("shell", "am", "instrument", "-w", "-e", "class", $FastTests, $Runner)
+  $instrumentationOk = Invoke-Instrumentation @("shell", "am", "instrument", "-w", "-e", "class", $FastTests, $Runner)
 
   if (Test-Path $ArtifactsLocal) {
     Remove-Item -LiteralPath $ArtifactsLocal -Recurse -Force
   }
   Invoke-Adb @("pull", $ArtifactsRemote, $ArtifactsLocal) | Out-Null
+
+  if (-not $instrumentationOk) {
+    throw "Instrumentation reported test failures."
+  }
 } finally {
   Pop-Location
 }

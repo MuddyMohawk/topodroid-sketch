@@ -282,8 +282,8 @@ public class TDFile
     
 
   // INTERNAL FILES --------------------------------------------------------------
-  // context.getFilesDir --> /data/user/0/com.topodroid.TDX/files
-  // context.getExternalFilesDir --> /storage/emulated/0/Android/data/com.topodroid.TDX/files
+  // context.getFilesDir --> /data/user/0/com.topodroid.TDX.sketch/files
+  // context.getExternalFilesDir --> /storage/emulated/0/Android/data/com.topodroid.TDX.sketch/files
 
   /** @return the file of the private base folder
    */
@@ -377,7 +377,7 @@ public class TDFile
 
   // APP-SPECIFIC EXTERNAL FILES --------------------------------------------------------------
 
-  /** @return the current base directory
+  /** @return the public Documents base directory or a work folder below it
    * @param type ...
    * @param create whether to create the directory if it does not exist
    */
@@ -390,11 +390,8 @@ public class TDFile
     } else {
       // String documents = ( TDandroid.BELOW_API_19 )? "Documents" : Environment.DIRECTORY_DOCUMENTS;
       String documents = Environment.DIRECTORY_DOCUMENTS;
-      if ( type == null ) {
-        ret = new File( Environment.getExternalStoragePublicDirectory( documents ), "TDX" );
-      } else {
-        ret = new File( Environment.getExternalStoragePublicDirectory( documents ), "TDX/" + type );
-      } 
+      File documentsDir = Environment.getExternalStoragePublicDirectory( documents );
+      ret = ( type == null ) ? documentsDir : new File( documentsDir, type );
     }
     if ( create && ret != null && ! ret.exists() ) {
       // TDLog.v( "mkdirs " + ret.getAbsolutePath() + " type: " + ((type == null)? "null" : type) + " create: " + create );
@@ -418,8 +415,8 @@ public class TDFile
    */
   public static File getExternalDir( String type ) { return getCBD( type, true ); }
 
-  /** @return an external file, under the current work directory
-   * @param type   subfolder name (null for base folder TDX)
+  /** @return an external file under Documents or a Documents work folder
+   * @param type   subfolder name (null for Documents)
    * @param name   file name
    */
   public static File getExternalFile( String type, String name ) 
@@ -479,7 +476,7 @@ public class TDFile
    * @param name   file name
    * @return temporary file
    */
-  public static File getExternalTempFile( String name ) { return getExternalFile( "tmp", name ); }
+  public static File getExternalTempFile( String name ) { return TDPath.getTmpFile( name ); }
 
   /** clear stale files in the external temporary folder, in the current work directory
    * @param before  timestamp
@@ -488,7 +485,7 @@ public class TDFile
   {
     long now  = System.currentTimeMillis();
     long time = now - before; // clean the cache "before" minutes before now
-    File dir = getExternalDir( "tmp" );
+    File dir = TDPath.getTmpDirFile();
     File[] files = dir.listFiles();
     if ( files != null ) for ( File f : files ) {
       if ( f.lastModified() < time ) {

@@ -399,7 +399,7 @@
       <!-- MyFileProvider used by zip-sharing -->
       <provider 
         android:name="com.topodroid.util.MyFileProvider" 
-        android:authorities="com.topodroid.fileprovider" 
+        android:authorities="${applicationId}.fileprovider"
         android:exported="false" 
         android:grantUriPermissions="true"> 
         <meta-data 

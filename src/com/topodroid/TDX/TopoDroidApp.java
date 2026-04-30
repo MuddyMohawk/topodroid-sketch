@@ -27,6 +27,7 @@ import com.topodroid.util.TDString;
 import com.topodroid.util.TDUtil;
 import com.topodroid.util.MyFileProvider;
 import com.topodroid.util.Region;
+import com.topodroid.util.CWDfolder;
 // import com.topodroid.util.TDStatus;
 import com.topodroid.ui.MyHorizontalListView;
 import com.topodroid.ui.MyDialog;
@@ -1263,7 +1264,7 @@ public class TopoDroidApp extends Application
     TDPrefHelper prefHlp = new TDPrefHelper( thisApp );
 
     // TDLog.Profile("TDApp cwd");
-    TDInstance.cwd = prefHlp.getString( "DISTOX_CWD", "TopoDroid" );
+    TDInstance.cwd = prefHlp.getString( "DISTOX_CWD", CWDfolder.DEFAULT_FOLDER );
     TDInstance.cbd = TDPath.getCurrentBaseDir();
 
     // TDLog.Profile("TDApp paths");

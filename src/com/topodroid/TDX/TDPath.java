@@ -107,7 +107,7 @@ public class TDPath
   // if BUILD
   // If PATH_CB_DIR is left null the path is set in the method setPaths():
   //    this works with Android-10 but the data are erased when TopoDroid is uninstalled
-  //    because the path is Android/data/com.topodroid.TDX/files
+  //    because the path is Android/data/com.topodroid.TDX.sketch/files
   // With "/sdcard" they remain
   /*
   private static final String EXTERNAL_STORAGE_PATH_10 = Environment.getExternalStorageDirectory().getAbsolutePath();
@@ -124,8 +124,8 @@ public class TDPath
   // private static String PATH_CB_DIR  = EXTERNAL_STORAGE_PATH;
   // FIXME PRIVATE_STORAGE
   private static String PATH_CB_DIR   = TDandroid.PRIVATE_STORAGE ? TDFile.getPrivateDir( null ).getAbsolutePath() : TDFile.getExternalDir(null).getPath(); // fullpath (< 33) or null (for 33+)
-  private static String PATH_CW_DIR   = PATH_CB_DIR + "/TopoDroid";     // fullpath 
-  private static String ROOT_CW_DIR   = TDandroid.PRIVATE_STORAGE ? "TopoDroid" : PATH_CW_DIR;
+  private static String PATH_CW_DIR   = PATH_CB_DIR + "/" + CWDfolder.DEFAULT_FOLDER;     // fullpath
+  private static String ROOT_CW_DIR   = TDandroid.PRIVATE_STORAGE ? CWDfolder.DEFAULT_FOLDER : PATH_CW_DIR;
 
   private static String ROOT_ZIP      = ROOT_CW_DIR + "/zip";
   private static String ROOT_TMP      = ROOT_CW_DIR + "/tmp";
@@ -200,7 +200,7 @@ public class TDPath
   // public static String getPacketDatabase() { return PATH_DEFAULT + "packet10.sqlite"; }
   
   /** @return true if the base-directory can be used
-   * @param name   base-directory name relative to "TDX"
+   * @param name   base-directory name relative to Documents
    * @note when this is called basedir exists and is writable
    */
   static boolean checkBasePath( String name )
@@ -243,7 +243,7 @@ public class TDPath
   }
  
   /** set the Current Work Directory
-   * @param name   current work directory name, eg, "TopoDroid"
+   * @param name   current work directory name, eg, "TopoDroid Sketch"
    * @return true if the folder as been created
    * FIXME FIXME FIXME allow cwd change in private folder
    * @note used only by TopoDroidApp
@@ -463,10 +463,23 @@ public class TDPath
    */
   public static String getZipFile( String name ) { return ROOT_ZIP     + "/" + name; }
 
-  // /** @return full pathname of a temporary file, in the tmp folder
-  //  * @param name   temp-file name
-  //  */
-  // public static String getTmpFile( String name ) { return ROOT_TMP     + "/" + name; }
+  /** @return the tmp folder as a file
+   */
+  public static File getTmpDirFile()
+  {
+    if ( TDandroid.PRIVATE_STORAGE ) return TDFile.getPrivateDir( ROOT_TMP );
+    checkFilesystemDirs( ROOT_TMP );
+    return TDFile.getTopoDroidFile( ROOT_TMP );
+  }
+
+  /** @return temporary file in the tmp folder
+   * @param name   temp-file name
+   */
+  public static File getTmpFile( String name )
+  {
+    if ( name == null ) return null;
+    return TDFile.getTopoDroidFile( getPathname( ROOT_TMP, name ) );
+  }
 
   /** @return full pathname of a tdr file, in the tdr folder
    * @param name   tdr-file name
@@ -735,7 +748,7 @@ public class TDPath
 
 
   // these are used to get the folders when the survey does not exist yet (on import)
-  static String getSurveyDir( String survey ) { return PATH_CW_DIR + "/" + survey; } // : /.../emulated/0/Documents/TDX/TopoDroid/survey
+  static String getSurveyDir( String survey ) { return PATH_CW_DIR + "/" + survey; } // : /.../emulated/0/Documents/TopoDroid Sketch/survey
 
   /** @return the full pathname of the survey photo folder
    * @param survey     survey name
@@ -1262,7 +1275,7 @@ public class TDPath
   //     // if ( tv != null) tv.setText("failed to create TopoDroid subfolder");
   //     return;
   //   }
-  //   // if ( tv != null ) tv.setText("moving project files to sdcard + "/Documents/TDX/TopoDroid");
+  //   // if ( tv != null ) tv.setText("moving project files to sdcard + "/Documents/TopoDroid Sketch");
   //   f = TDFile.getTopoDroidFile( sdcard + "/Documents/TopoDroid/distox14.sqlite" );
   //   File f2 = new File( cwd, "distox14.sqlite" );
   //   copyFile( f, f2, dry_run );
@@ -1276,7 +1289,7 @@ public class TDPath
   //   List<String> surveys = db.selectAllSurveys( );
   //   for ( String survey : surveys ) {
   //     // if ( tv != null ) tv.setText("moving survey " + survey );
-  //     File tdr = TDFile.getTopoDroidFile( sdcard + "/Documents/TDX/TopoDroid/" + survey + "/tdr" );
+  //     File tdr = TDFile.getTopoDroidFile( sdcard + "/Documents/TopoDroid Sketch/" + survey + "/tdr" );
   //     tdr.mkdirs();
   //     // TDInstance.takePersistentPermissions( Uri.fromFile( tdr ) ); // FIXME_PERSISTENT
   //     // move all tdr files of the survey
@@ -1288,17 +1301,17 @@ public class TDPath
   //     }
   //     File audio1 = TDFile.getTopoDroidFile( sdcard + "/Documents/TopoDroid/audio/" + survey );
   //     if ( audio1.exists() ) {
-  //       File audio2 = TDFile.getTopoDroidFile( sdcard + "/Documents/TDX/TopoDroid/" + survey + "/audio" );
+  //       File audio2 = TDFile.getTopoDroidFile( sdcard + "/Documents/TopoDroid Sketch/" + survey + "/audio" );
   //       copyDir( audio1, audio2, dry_run );
   //     }
   //     File photo1 = TDFile.getTopoDroidFile( sdcard + "/Documents/TopoDroid/photo/" + survey );
   //     if ( photo1.exists() ) {
-  //       File photo2 = TDFile.getTopoDroidFile( sdcard + "/Documents/TDX/TopoDroid/" + survey + "/photo" );
+  //       File photo2 = TDFile.getTopoDroidFile( sdcard + "/Documents/TopoDroid Sketch/" + survey + "/photo" );
   //       copyDir( photo1, photo2, dry_run );
   //     }
   //     File note1 = TDFile.getTopoDroidFile( sdcard + "/Documents/TopoDroid/note/" + survey + ".txt" );
   //     if ( note1.exists() ) {
-  //       File note2 = TDFile.getTopoDroidFile( sdcard + "/Documents/TDX/TopoDroid/" + survey + ".txt" );
+  //       File note2 = TDFile.getTopoDroidFile( sdcard + "/Documents/TopoDroid Sketch/" + survey + ".txt" );
   //       copyFile( note1, note2, dry_run );
   //     }
   //   }

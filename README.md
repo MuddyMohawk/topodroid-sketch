@@ -27,6 +27,7 @@ This was written in English; other translations are likely not working
   - actually all the sketch settings might be respected (eg leg line size)?
 - Taking screenshot with volume-up doesn't work (vanilla bug)
 - Emulator test suite should probably test if the emulator is actually running lol
+- On the startup screens, the L icon size isn't displayed as default even though it is
 
 #### Future Possible Features / Brainstorming
 - Sketch line collision to prevent sketching through another line
@@ -68,9 +69,12 @@ This was written in English; other translations are likely not working
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
 
-### TopoDroid Sketch v1.19.4 Changelog:
+### TopoDroid Sketch v0.20 Changelog:
 
-- Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob.
+**Architecture**
+- Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
+- Migrated naming, app manifest, etc from TopoDroid to TopoDroid Sketch. The apps can be installed side-by-side
+  - _The default storage location is now `Documents/TopoDroid Sketch/` instead of `Documents/TDX`_
 
 **Sketch Lines**
 - Added three new "sketch lines", which are based on the existing `user` lines 
