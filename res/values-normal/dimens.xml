@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="default_textsize" translatable="false">22</string>
-  <string name="default_buttonsize" translatable="false">3</string>
+  <string name="default_buttonsize" translatable="false">4</string>
 
 <!-- MATERIAL
   <dimen name="activity_horizontal_margin">16dp</dimen>

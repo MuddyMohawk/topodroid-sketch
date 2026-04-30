@@ -34,17 +34,12 @@ This was written in English; other translations are likely not working
 - Version control - file/edit/shot/survey history. Scroll back and pick versions. Check the existing backup feature?
 - Better PDF export
 - At-station cross-section viewport support
-- Draw cross-sections by tracing over a picture
 - Use the new color picker to support more color settings everywhere
-- Palm detection? This might already be a thing
 - Press-and-hold the stylus button while hovering to erase
 - Option for double row/larger recents palette
 - Side-by-side installation with vanilla TopoDroid
-- Set button size to large by default
 - Set usage profile to expert by default
 - Per-screen action bindings (eg double tab the Active Key from the survey page to enter the last sketch. Double tap it in the sketch page works as the back action)
-- Additional inputs using volume buttons, active key
-  - Note that currently volume-down opens the menu/help page for the current screen
 - Always more actions. Some thoughts:
   - Take a shot
   - Download data via bluetooth from device (multi-device?)
@@ -93,12 +88,12 @@ This was written in English; other translations are likely not working
 - Not currently supported for station cross-sections
 
 **Reference Image**
-- Added the ability to place a reference image on a sketch (eg, a photo for a cross-section). The image can be scaled, moved, rotated, and its opacity and visibility can be changed. The reference image is included with the PNG export
+- Added the ability to place a reference image on a sketch (eg, a photo for a cross-section). The image can be scaled, moved, rotated, and its opacity and visibility can be changed. The reference image is included with the PNG export if it's visible
 
 **Line Presets**
 - Added two drawing "profiles" to the sketch screen, which appear as "P1" and "P2". These are intended to allow a sketcher to switch between drawing thin, detailed lines, and smooth, straight lines
   - Profile 1's defaults are a line style of `fine` and a line point spacing of 1
-  - Profile 2's defaults are a line style of `bezier` and a line point spacing of 20 (todo: switch to 15)
+  - Profile 2's defaults are a line style of `bezier` and a line point spacing of 10 (todo: switch to 15?)
 - Added a "profiles" menu to the sketch settings screen to allow customization of each profile
 
 **S Pen, Active Key, and Volume Button Support**
@@ -131,6 +126,7 @@ This was written in English; other translations are likely not working
 - Added sketch grid appearance settings for both grid width and grid color
 - Added the new 1 foot sketch-grid unit alongside the existing 2 feet, yard, meter, and 10 cm options
 - Added an option (on by default) for overlapping areas (eg water) to darken instead of lighten. This is mostly for drawing deeper water pools
+- Made the default icon size large
 
 ### Testing
 

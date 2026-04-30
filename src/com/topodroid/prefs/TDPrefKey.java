@@ -145,7 +145,7 @@ class TDPrefKey
   static TDPrefKey[] mMain = {
     new TDPrefKey( B,       GEN, "DISTOX_EXTRA_BUTTONS",   R.string.pref_extra_buttons_title,R.string.pref_extra_buttons_summary, TDString.ONE, R.array.extraButtons, R.array.extraButtonsValue ),
     new TDPrefKey( B, LONG, UI,  "DISTOX_TEXT_SIZE",       R.string.pref_text_size_title,    R.string.pref_text_size_summary,     TDString.TWENTY ),
-    new TDPrefKey( B,       UI,  "DISTOX_SIZE_BUTTONS",    R.string.pref_size_buttons_title, R.string.pref_size_buttons_summary,  TDString.ONE, R.array.sizeButtons, R.array.sizeButtonsValue ),
+    new TDPrefKey( B,       UI,  "DISTOX_SIZE_BUTTONS",    R.string.pref_size_buttons_title, R.string.pref_size_buttons_summary,  TDString.FOUR, R.array.sizeButtons, R.array.sizeButtonsValue ),
     new TDPrefKey( B, FLT,  UI,  "DISTOX_SYMBOL_SIZE",     R.string.pref_symbol_size_title,  R.string.pref_symbol_size_summary,   "1.8"           ),  
     new TDPrefKey( N, BOOL, UI,  "DISTOX_HIDE_NAVBAR",     R.string.pref_hide_navbar_title,  R.string.pref_hide_navbar_summary,   FALSE ),
     new TDPrefKey( T,       UI,  "DISTOX_ORIENTATION",     R.string.pref_orientation_title,  R.string.pref_orientation_summary,   TDString.ZERO,  R.array.orientation, R.array.orientationValue ),

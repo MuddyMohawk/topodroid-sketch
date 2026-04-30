@@ -80,7 +80,7 @@ public class TDSetting
   public static final boolean WITH_IMMUTABLE = false;
 
   private static String defaultTextSize   = "16";
-  private static String defaultButtonSize = TDString.THREE;
+  private static String defaultButtonSize = TDString.FOUR;
   private static String defaultSymbolSize = "1.8";
 
   public static int mToolbarUpdate = 0; // how to update toolbars symbols
