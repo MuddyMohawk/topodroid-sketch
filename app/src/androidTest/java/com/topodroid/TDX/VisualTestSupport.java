@@ -1728,49 +1728,8 @@ selection.mHotItem.getHandleRole() );
     editor.putString( "DISTOX_PRESET_2_LINE_STYLE", "0" );
     editor.putString( "DISTOX_PRESET_2_LINE_SEGMENT", "10" );
     editor.putString( "DISTOX_ACTIVE_SKETCH_PRESET", "1" );
-    editor.remove( "DISTOX_PROFILE_1_LINE_STYLE" );
-    editor.remove( "DISTOX_PROFILE_1_LINE_SEGMENT" );
-    editor.remove( "DISTOX_PROFILE_2_LINE_STYLE" );
-    editor.remove( "DISTOX_PROFILE_2_LINE_SEGMENT" );
-    editor.remove( "DISTOX_ACTIVE_SKETCH_PROFILE" );
     editor.putBoolean( "DISTOX_ERASE_REFERENCE", false );
     editor.apply();
-  }
-
-  void seedLegacySketchProfilePreferences( String preset1Style, String preset1Segment,
-                                           String preset2Style, String preset2Segment,
-                                           String activePreset )
-  {
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences( mTargetContext );
-    SharedPreferences.Editor editor = prefs.edit();
-    editor.remove( "DISTOX_PRESET_1_LINE_STYLE" );
-    editor.remove( "DISTOX_PRESET_1_LINE_SEGMENT" );
-    editor.remove( "DISTOX_PRESET_2_LINE_STYLE" );
-    editor.remove( "DISTOX_PRESET_2_LINE_SEGMENT" );
-    editor.remove( "DISTOX_ACTIVE_SKETCH_PRESET" );
-    editor.putString( "DISTOX_PROFILE_1_LINE_STYLE", preset1Style );
-    editor.putString( "DISTOX_PROFILE_1_LINE_SEGMENT", preset1Segment );
-    editor.putString( "DISTOX_PROFILE_2_LINE_STYLE", preset2Style );
-    editor.putString( "DISTOX_PROFILE_2_LINE_SEGMENT", preset2Segment );
-    editor.putString( "DISTOX_ACTIVE_SKETCH_PROFILE", activePreset );
-    editor.apply();
-  }
-
-  void assertLegacySketchProfileMigratedToPresets( String preset1Style, String preset1Segment,
-                                                   String preset2Style, String preset2Segment,
-                                                   String activePreset )
-  {
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences( mTargetContext );
-    assertEquals( preset1Style, prefs.getString( "DISTOX_PRESET_1_LINE_STYLE", null ) );
-    assertEquals( preset1Segment, prefs.getString( "DISTOX_PRESET_1_LINE_SEGMENT", null ) );
-    assertEquals( preset2Style, prefs.getString( "DISTOX_PRESET_2_LINE_STYLE", null ) );
-    assertEquals( preset2Segment, prefs.getString( "DISTOX_PRESET_2_LINE_SEGMENT", null ) );
-    assertEquals( activePreset, prefs.getString( "DISTOX_ACTIVE_SKETCH_PRESET", null ) );
-    assertFalse( prefs.contains( "DISTOX_PROFILE_1_LINE_STYLE" ) );
-    assertFalse( prefs.contains( "DISTOX_PROFILE_1_LINE_SEGMENT" ) );
-    assertFalse( prefs.contains( "DISTOX_PROFILE_2_LINE_STYLE" ) );
-    assertFalse( prefs.contains( "DISTOX_PROFILE_2_LINE_SEGMENT" ) );
-    assertFalse( prefs.contains( "DISTOX_ACTIVE_SKETCH_PROFILE" ) );
   }
 
   private void configureStableRuntimeState()

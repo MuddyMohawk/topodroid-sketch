@@ -666,11 +666,6 @@ public class TDSetting
   private static final String PRESET_1_LINE_SEGMENT_KEY  = "DISTOX_PRESET_1_LINE_SEGMENT";
   private static final String PRESET_2_LINE_STYLE_KEY    = "DISTOX_PRESET_2_LINE_STYLE";
   private static final String PRESET_2_LINE_SEGMENT_KEY  = "DISTOX_PRESET_2_LINE_SEGMENT";
-  private static final String LEGACY_ACTIVE_SKETCH_PROFILE_KEY   = "DISTOX_ACTIVE_SKETCH_PROFILE";
-  private static final String LEGACY_PROFILE_1_LINE_STYLE_KEY    = "DISTOX_PROFILE_1_LINE_STYLE";
-  private static final String LEGACY_PROFILE_1_LINE_SEGMENT_KEY  = "DISTOX_PROFILE_1_LINE_SEGMENT";
-  private static final String LEGACY_PROFILE_2_LINE_STYLE_KEY    = "DISTOX_PROFILE_2_LINE_STYLE";
-  private static final String LEGACY_PROFILE_2_LINE_SEGMENT_KEY  = "DISTOX_PROFILE_2_LINE_SEGMENT";
   // private static final String LINE_STYLE     = TDString.TWO;     // LINE_STYLE_TWO NORMAL
   public static int   mLineStyle = LINE_STYLE_ONE;    
   public static int   mLineType;        // line type:  1       1     2    3
@@ -1640,18 +1635,17 @@ public class TDSetting
     boolean hasPreset2Style   = prefs.contains( PRESET_2_LINE_STYLE_KEY );
     boolean hasPreset2Segment = prefs.contains( PRESET_2_LINE_SEGMENT_KEY );
     boolean hasActivePreset   = prefs.contains( ACTIVE_SKETCH_PRESET_KEY );
-    boolean hasLegacySketchProfiles = hasLegacySketchProfileKeys( prefs );
-    mSketchPreset1LineStyle   = ( hasPreset1Style || prefs.contains( LEGACY_PROFILE_1_LINE_STYLE_KEY ) )
-                               ? parseLineStylePreferenceValue( getSketchPresetString( prefs, PRESET_1_LINE_STYLE_KEY, LEGACY_PROFILE_1_LINE_STYLE_KEY, TDString.ONE ) )
+    mSketchPreset1LineStyle   = hasPreset1Style
+                               ? parseLineStylePreferenceValue( prefs.getString( PRESET_1_LINE_STYLE_KEY, TDString.ONE ) )
                                : mLineStyle;
-    mSketchPreset1LineSegment = ( hasPreset1Segment || prefs.contains( LEGACY_PROFILE_1_LINE_SEGMENT_KEY ) )
-                               ? normalizeLineSegmentValue( getSketchPresetInt( prefs, PRESET_1_LINE_SEGMENT_KEY, LEGACY_PROFILE_1_LINE_SEGMENT_KEY, TDString.ONE ) )
+    mSketchPreset1LineSegment = hasPreset1Segment
+                               ? normalizeLineSegmentValue( tryInt( prefs, PRESET_1_LINE_SEGMENT_KEY, TDString.ONE ) )
                                : mLineSegment;
-    mSketchPreset2LineStyle   = parseLineStylePreferenceValue( getSketchPresetString( prefs, PRESET_2_LINE_STYLE_KEY, LEGACY_PROFILE_2_LINE_STYLE_KEY, TDString.ZERO ) );
-    mSketchPreset2LineSegment = normalizeLineSegmentValue( getSketchPresetInt( prefs, PRESET_2_LINE_SEGMENT_KEY, LEGACY_PROFILE_2_LINE_SEGMENT_KEY, "10" ) );
-    mActiveSketchPreset       = normalizeSketchPreset( getSketchPresetInt( prefs, ACTIVE_SKETCH_PRESET_KEY, LEGACY_ACTIVE_SKETCH_PROFILE_KEY, TDString.ONE ) );
+    mSketchPreset2LineStyle   = parseLineStylePreferenceValue( prefs.getString( PRESET_2_LINE_STYLE_KEY, TDString.ZERO ) );
+    mSketchPreset2LineSegment = normalizeLineSegmentValue( tryInt( prefs, PRESET_2_LINE_SEGMENT_KEY, "10" ) );
+    mActiveSketchPreset       = normalizeSketchPreset( tryInt( prefs, ACTIVE_SKETCH_PRESET_KEY, TDString.ONE ) );
     applySketchPreset( mActiveSketchPreset );
-    if ( ! hasPreset1Style || ! hasPreset1Segment || ! hasPreset2Style || ! hasPreset2Segment || ! hasActivePreset || hasLegacySketchProfiles ) {
+    if ( ! hasPreset1Style || ! hasPreset1Segment || ! hasPreset2Style || ! hasPreset2Segment || ! hasActivePreset ) {
       persistSketchPresetState( prefs );
     }
     // mContinueLine  = tryInt(   prefs,  key[7].key,      key[7].dflt );   // DISTOX_LINE_CONTINUE
@@ -3510,7 +3504,6 @@ public class TDSetting
     storeSketchPresetDefinition( editor, SKETCH_PRESET_2 );
     setPreference( editor, ACTIVE_SKETCH_PRESET_KEY, mActiveSketchPreset );
     storeLiveLinePreferences( editor );
-    removeLegacySketchProfileState( editor );
   }
 
   private static void persistSketchPresetState( SharedPreferences prefs )
@@ -3533,56 +3526,13 @@ public class TDSetting
     return commitEditor( editor );
   }
 
-  private static boolean hasLegacySketchProfileKeys( SharedPreferences prefs )
-  {
-    return prefs.contains( LEGACY_ACTIVE_SKETCH_PROFILE_KEY )
-        || prefs.contains( LEGACY_PROFILE_1_LINE_STYLE_KEY )
-        || prefs.contains( LEGACY_PROFILE_1_LINE_SEGMENT_KEY )
-        || prefs.contains( LEGACY_PROFILE_2_LINE_STYLE_KEY )
-        || prefs.contains( LEGACY_PROFILE_2_LINE_SEGMENT_KEY );
-  }
-
-  private static String getSketchPresetString( SharedPreferences prefs, String key, String legacyKey, String dflt )
-  {
-    return prefs.getString( prefs.contains( key ) ? key : legacyKey, dflt );
-  }
-
-  private static int getSketchPresetInt( SharedPreferences prefs, String key, String legacyKey, String dflt )
-  {
-    return tryInt( prefs, prefs.contains( key ) ? key : legacyKey, dflt );
-  }
-
-  private static void removeLegacySketchProfileState( Editor editor )
-  {
-    editor.remove( LEGACY_ACTIVE_SKETCH_PROFILE_KEY );
-    editor.remove( LEGACY_PROFILE_1_LINE_STYLE_KEY );
-    editor.remove( LEGACY_PROFILE_1_LINE_SEGMENT_KEY );
-    editor.remove( LEGACY_PROFILE_2_LINE_STYLE_KEY );
-    editor.remove( LEGACY_PROFILE_2_LINE_SEGMENT_KEY );
-  }
-
   private static boolean isSketchPresetImportKey( String key )
   {
     return ACTIVE_SKETCH_PRESET_KEY.equals( key )
         || PRESET_1_LINE_STYLE_KEY.equals( key )
         || PRESET_1_LINE_SEGMENT_KEY.equals( key )
         || PRESET_2_LINE_STYLE_KEY.equals( key )
-        || PRESET_2_LINE_SEGMENT_KEY.equals( key )
-        || LEGACY_ACTIVE_SKETCH_PROFILE_KEY.equals( key )
-        || LEGACY_PROFILE_1_LINE_STYLE_KEY.equals( key )
-        || LEGACY_PROFILE_1_LINE_SEGMENT_KEY.equals( key )
-        || LEGACY_PROFILE_2_LINE_STYLE_KEY.equals( key )
-        || LEGACY_PROFILE_2_LINE_SEGMENT_KEY.equals( key );
-  }
-
-  private static String canonicalSketchPresetKey( String key )
-  {
-    if ( LEGACY_ACTIVE_SKETCH_PROFILE_KEY.equals( key ) ) return ACTIVE_SKETCH_PRESET_KEY;
-    if ( LEGACY_PROFILE_1_LINE_STYLE_KEY.equals( key ) ) return PRESET_1_LINE_STYLE_KEY;
-    if ( LEGACY_PROFILE_1_LINE_SEGMENT_KEY.equals( key ) ) return PRESET_1_LINE_SEGMENT_KEY;
-    if ( LEGACY_PROFILE_2_LINE_STYLE_KEY.equals( key ) ) return PRESET_2_LINE_STYLE_KEY;
-    if ( LEGACY_PROFILE_2_LINE_SEGMENT_KEY.equals( key ) ) return PRESET_2_LINE_SEGMENT_KEY;
-    return key;
+        || PRESET_2_LINE_SEGMENT_KEY.equals( key );
   }
 
   public static boolean isLineStyleComplex() 
@@ -4573,7 +4523,6 @@ B DISTOX_SAP5_BIT16_BUG true
                            ? ( ( flag & (1 << TDPrefKey.DR) ) != 0 )
                            : TDPrefKey.checkKeyGroup( kay, flag );
         if ( allowImport ) {
-          kay = canonicalSketchPresetKey( kay );
           switch ( kay ) {
             case "DISTOX_SIZE_BUTTONS":
               size = Integer.parseInt( value );

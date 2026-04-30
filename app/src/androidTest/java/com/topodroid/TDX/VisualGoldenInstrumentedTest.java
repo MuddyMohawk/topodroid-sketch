@@ -56,17 +56,6 @@ public class VisualGoldenInstrumentedTest
   }
 
   @Test
-  public void launchMainWindow_migratesLegacySketchProfilesToPresets() throws Exception
-  {
-    mSupport.prepareForCase(
-      VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS )
-    );
-    mSupport.seedLegacySketchProfilePreferences( "4", "7", "2", "15", "2" );
-    mSupport.launchMainWindow();
-    mSupport.assertLegacySketchProfileMigratedToPresets( "4", "7", "2", "15", "2" );
-  }
-
-  @Test
   public void exportZip_includesSketchLineSymbols_and_importRoundTripsThroughPicker() throws Exception
   {
     mSupport.prepareForCase(
