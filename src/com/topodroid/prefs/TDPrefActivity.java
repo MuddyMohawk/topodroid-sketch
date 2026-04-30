@@ -360,9 +360,9 @@ public class TDPrefActivity extends Activity
     "EXPORT_CSV",
     "EXPORT_WALLS",
     "EXPORT_POLYGON",
-    "PROFILES",
-    "PROFILE_1",
-    "PROFILE_2",
+    "PRESETS",
+    "PRESET_1",
+    "PRESET_2",
     "SPEN",
     // R.string.title_settings_log       // 43
   };
@@ -443,7 +443,7 @@ public class TDPrefActivity extends Activity
       case TDPrefCat.PREF_CATEGORY_ALL:       mPrefs = TDPref.makeMainPrefs(     this, hlp ); break;
       case TDPrefCat.PREF_CATEGORY_SURVEY:    mPrefs = TDPref.makeSurveyPrefs(   this, hlp ); break;
       case TDPrefCat.PREF_CATEGORY_PLOT:      mPrefs = TDPref.makePlotPrefs(     this, hlp ); break;
-      case TDPrefCat.PREF_TOOL_PROFILE:       mPrefs = TDPref.makeToolProfilePrefs( this, hlp ); break;
+      case TDPrefCat.PREF_TOOL_PRESET:       mPrefs = TDPref.makeToolPresetPrefs( this, hlp ); break;
       case TDPrefCat.PREF_CATEGORY_SPEN:      mPrefs = TDPref.makeSPenPrefs( this, hlp ); break;
       case TDPrefCat.PREF_CATEGORY_CALIB:     mPrefs = TDPref.makeCalibPrefs(    this, hlp ); break;
       case TDPrefCat.PREF_CATEGORY_DEVICE:    mPrefs = TDPref.makeDevicePrefs(   this, hlp ); break;
@@ -472,8 +472,8 @@ public class TDPrefActivity extends Activity
       case TDPrefCat.PREF_PLOT_SCREEN:        mPrefs = TDPref.makeScreenPrefs(   this, hlp ); break;
       case TDPrefCat.PREF_TOOL_LINE:          mPrefs = TDPref.makeLinePrefs(     this, hlp ); break;
       case TDPrefCat.PREF_TOOL_POINT:         mPrefs = TDPref.makePointPrefs(    this, hlp ); break;
-      case TDPrefCat.PREF_PROFILE_1:          mPrefs = TDPref.makeProfile1Prefs( this, hlp ); break;
-      case TDPrefCat.PREF_PROFILE_2:          mPrefs = TDPref.makeProfile2Prefs( this, hlp ); break;
+      case TDPrefCat.PREF_PRESET_1:          mPrefs = TDPref.makePreset1Prefs( this, hlp ); break;
+      case TDPrefCat.PREF_PRESET_2:          mPrefs = TDPref.makePreset2Prefs( this, hlp ); break;
       // case TDPrefCat.PREF_PLOT_WALLS:         mPrefs = TDPref.makeWallsPrefs(    this, hlp ); break; // AUTOWALLS
       case TDPrefCat.PREF_PLOT_DRAW:          mPrefs = TDPref.makeDrawPrefs(     this, hlp ); break;
       case TDPrefCat.PREF_PLOT_ERASE:         mPrefs = TDPref.makeErasePrefs(    this, hlp ); break;
@@ -576,10 +576,10 @@ public class TDPrefActivity extends Activity
       linkPreference( "DISTOX_PLOT_SCREEN",         TDPrefCat.PREF_PLOT_SCREEN );
       linkPreference( "DISTOX_TOOL_LINE",           TDPrefCat.PREF_TOOL_LINE );
       linkPreference( "DISTOX_TOOL_POINT",          TDPrefCat.PREF_TOOL_POINT );
-      linkPreference( "DISTOX_TOOL_PROFILE",        TDPrefCat.PREF_TOOL_PROFILE );
-    } else if (mPrefCategory == TDPrefCat.PREF_TOOL_PROFILE ) {
-      linkPreference( "DISTOX_PROFILE_1_SCREEN",    TDPrefCat.PREF_PROFILE_1 );
-      linkPreference( "DISTOX_PROFILE_2_SCREEN",    TDPrefCat.PREF_PROFILE_2 );
+      linkPreference( "DISTOX_TOOL_PRESET",        TDPrefCat.PREF_TOOL_PRESET );
+    } else if (mPrefCategory == TDPrefCat.PREF_TOOL_PRESET ) {
+      linkPreference( "DISTOX_PRESET_1_SCREEN",    TDPrefCat.PREF_PRESET_1 );
+      linkPreference( "DISTOX_PRESET_2_SCREEN",    TDPrefCat.PREF_PRESET_2 );
     } else if (mPrefCategory == TDPrefCat.PREF_CATEGORY_DEVICE ) {
       linkPreference( "DISTOX_SPEN_PREF",           TDPrefCat.PREF_CATEGORY_SPEN );
       linkPreference( "DISTOX_CALIB_PREF",          TDPrefCat.PREF_CATEGORY_CALIB );

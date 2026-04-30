@@ -34,8 +34,8 @@
     <!-- UNUSED string name="desc_lines">Lines</string -->
     <!-- UNUSED string name="desc_areas">Areas</string -->
     <string name="desc_menu" copyable="fr es it pt sk">Menu</string>
-    <string name="desc_profile_1">Sketch profile 1</string>
-    <string name="desc_profile_2">Sketch profile 2</string>
+    <string name="desc_preset_1">Sketch preset 1</string>
+    <string name="desc_preset_2">Sketch preset 2</string>
 
   <string name="r_title">Android-13+ WARNING</string>
   <!-- UNUSED string name="r_dialog_1">
@@ -1490,9 +1490,9 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="title_settings_screen">Sketch canvas settings</string>
     <string name="title_settings_point">Sketch points settings</string>
     <string name="title_settings_line">Sketch lines settings</string>
-    <string name="title_settings_profiles">Sketch profiles settings</string>
-    <string name="title_settings_profile_1">Sketch profile 1 settings</string>
-    <string name="title_settings_profile_2">Sketch profile 2 settings</string>
+    <string name="title_settings_presets">Sketch presets settings</string>
+    <string name="title_settings_preset_1">Sketch preset 1 settings</string>
+    <string name="title_settings_preset_2">Sketch preset 2 settings</string>
    <string name="title_settings_spen">ACTION KEY BINDINGS</string>
     <!-- UNUSED string name="title_settings_walls">Sketch autowalls settings</string -->
     <string name="title_settings_draw">Sketch draw settings</string>
@@ -1798,9 +1798,9 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_plot_screen_title">SKETCH</string>
   <string name="pref_tool_line_title">LINES</string>
   <string name="pref_tool_point_title" copyable="fr">POINTS</string>
-  <string name="pref_tool_profile_title">PROFILES</string>
-  <string name="pref_profile_1_title">PROFILE 1</string>
-  <string name="pref_profile_2_title">PROFILE 2</string>
+  <string name="pref_tool_preset_title">PRESETS</string>
+  <string name="pref_preset_1_title">PRESET 1</string>
+  <string name="pref_preset_2_title">PRESET 2</string>
   <string name="pref_location_title">LOCATION</string>
   <string name="pref_accuracy_title">ACCURACY</string>
   <string name="pref_shot_data_title">SHOT DATA</string>
@@ -1941,8 +1941,8 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_segment_message">Minimum distance between points on a line</string>
   <string name="pref_linestyle_title">Line style</string>
   <string name="pref_linestyle_summary">Line drawing style</string>
-  <string name="profile_1_short" translatable="false">P1</string>
-  <string name="profile_2_short" translatable="false">P2</string>
+  <string name="preset_1_short" translatable="false">P1</string>
+  <string name="preset_2_short" translatable="false">P2</string>
   <!-- UNUSED string name="pref_linecontinue_title">Line continue</string -->
   <!-- UNUSED string name="pref_linecontinue_summary">Line default continue-mode</string -->
   <string name="pref_lineacc_title">Interpolation accuracy</string>

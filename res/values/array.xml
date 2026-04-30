@@ -113,7 +113,7 @@
      <item name="none">none</item>
      <item name="undo">undo</item>
      <item name="redo">redo</item>
-     <item name="toggle_profile">toggle profile</item>
+     <item name="toggle_preset">toggle preset</item>
      <item name="toggle_palette">toggle palette</item>
      <item name="back">back</item>
      <item name="toggle_erase">toggle erase/sketch</item>
@@ -122,7 +122,7 @@
      <item name="none">0</item>
      <item name="undo">1</item>
      <item name="redo">2</item>
-     <item name="toggle_profile">3</item>
+     <item name="toggle_preset">3</item>
      <item name="toggle_palette">4</item>
      <item name="back">5</item>
      <item name="toggle_erase">6</item>

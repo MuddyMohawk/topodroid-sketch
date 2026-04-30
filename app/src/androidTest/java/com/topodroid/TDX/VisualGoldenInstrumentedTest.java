@@ -43,7 +43,7 @@ public class VisualGoldenInstrumentedTest
   }
 
   @Test
-  public void createSurvey_addShots_createSketch_drawProfilesAndSketchLines_matchesGolden() throws Exception
+  public void createSurvey_addShots_createSketch_drawPresetsAndSketchLines_matchesGolden() throws Exception
   {
     mSupport.prepareForCase(
       VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS )
@@ -53,6 +53,17 @@ public class VisualGoldenInstrumentedTest
     drawCanonicalSketch();
     mSupport.setCanonicalToolbarState();
     mSupport.captureAndAssertScreen( "sketch_screen.png" );
+  }
+
+  @Test
+  public void launchMainWindow_migratesLegacySketchProfilesToPresets() throws Exception
+  {
+    mSupport.prepareForCase(
+      VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS )
+    );
+    mSupport.seedLegacySketchProfilePreferences( "4", "7", "2", "15", "2" );
+    mSupport.launchMainWindow();
+    mSupport.assertLegacySketchProfileMigratedToPresets( "4", "7", "2", "15", "2" );
   }
 
   @Test
@@ -172,7 +183,7 @@ public class VisualGoldenInstrumentedTest
   {
     mSupport.enterDrawMode();
 
-    // Exercise every combination of {profile 1, profile 2} x
+    // Exercise every combination of {preset 1, preset 2} x
     // {user-fine, user-standard, user-thick} so the golden screenshot locks in
     // all six line appearances. Strokes:
     //   - live in the left half of the canvas (x in [0.08, 0.48]) to stay
@@ -181,9 +192,9 @@ public class VisualGoldenInstrumentedTest
     //   - are stacked in a compact band (y in [0.13, 0.73]) so nothing falls
     //     off the bottom of the drawing surface on the emulator;
     //   - are drawn as quadratic-bezier CURVES with alternating arc direction
-    //     rather than straight swipes. Profile 1 (segment=1) preserves the
-    //     curve shape sample-by-sample; profile 2 (segment=10) smooths it
-    //     heavily. Straight swipes render identically under both profiles,
+    //     rather than straight swipes. Preset 1 (segment=1) preserves the
+    //     curve shape sample-by-sample; preset 2 (segment=10) smooths it
+    //     heavily. Straight swipes render identically under both presets,
     //     which defeats the whole point of testing both.
     //
     // Previous iterations of this routine tapped recent-line indices 0, 1, 2
@@ -191,26 +202,26 @@ public class VisualGoldenInstrumentedTest
     // and only then user-fine. That made two of the strokes draw section
     // lines (triggering the cross-section dialog) and never exercised
     // user-standard or user-thick at all.
-    drawUserLineCurve( R.id.button_profile_1, SketchLineSymbolManager.LEGACY_TH_NAME_FINE,
+    drawUserLineCurve( R.id.button_preset_1, SketchLineSymbolManager.LEGACY_TH_NAME_FINE,
       0.08, 0.14, 0.48, 0.14,  0.04 );
-    drawUserLineCurve( R.id.button_profile_2, SketchLineSymbolManager.LEGACY_TH_NAME_FINE,
+    drawUserLineCurve( R.id.button_preset_2, SketchLineSymbolManager.LEGACY_TH_NAME_FINE,
       0.08, 0.26, 0.48, 0.26, -0.04 );
 
-    drawUserLineCurve( R.id.button_profile_1, SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD,
+    drawUserLineCurve( R.id.button_preset_1, SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD,
       0.08, 0.38, 0.48, 0.38,  0.05 );
-    drawUserLineCurve( R.id.button_profile_2, SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD,
+    drawUserLineCurve( R.id.button_preset_2, SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD,
       0.08, 0.50, 0.48, 0.50, -0.05 );
 
-    drawUserLineCurve( R.id.button_profile_1, SketchLineSymbolManager.LEGACY_TH_NAME_THICK,
+    drawUserLineCurve( R.id.button_preset_1, SketchLineSymbolManager.LEGACY_TH_NAME_THICK,
       0.08, 0.62, 0.48, 0.62,  0.06 );
-    drawUserLineCurve( R.id.button_profile_2, SketchLineSymbolManager.LEGACY_TH_NAME_THICK,
+    drawUserLineCurve( R.id.button_preset_2, SketchLineSymbolManager.LEGACY_TH_NAME_THICK,
       0.08, 0.74, 0.48, 0.74, -0.06 );
   }
 
-  private void drawUserLineCurve( int profileButtonId, String lineThName,
+  private void drawUserLineCurve( int presetButtonId, String lineThName,
     double startX, double startY, double endX, double endY, double curveOffset )
   {
-    mSupport.tapProfileButton( profileButtonId );
+    mSupport.tapPresetButton( presetButtonId );
     mSupport.clickRecentLineByThName( lineThName );
     // 30 samples along the path, 6 interpolation steps between each pair, for
     // a reasonably smooth but not-too-slow gesture.

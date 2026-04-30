@@ -777,7 +777,7 @@ public class TDPref implements AdapterView.OnItemSelectedListener
   static TDPref[] makeMainPrefs( Context ctx, TDPrefHelper hlp )   { return makePrefs( TDPrefKey.mMain, ctx, hlp ); }
   static TDPref[] makeSurveyPrefs( Context ctx, TDPrefHelper hlp ) { return makePrefs( TDPrefKey.mSurvey, ctx, hlp ); }
   static TDPref[] makePlotPrefs( Context ctx, TDPrefHelper hlp )   { return makePrefs( TDPrefKey.mPlot, ctx, hlp ); }
-  static TDPref[] makeToolProfilePrefs( Context ctx, TDPrefHelper hlp ) { return makePrefs( TDPrefKey.mToolProfile, ctx, hlp ); }
+  static TDPref[] makeToolPresetPrefs( Context ctx, TDPrefHelper hlp ) { return makePrefs( TDPrefKey.mToolPreset, ctx, hlp ); }
   static TDPref[] makeCalibPrefs( Context ctx, TDPrefHelper hlp )  { return makePrefs( TDPrefKey.mCalib, ctx, hlp ); }
   static TDPref[] makeDevicePrefs( Context ctx, TDPrefHelper hlp ) { return makePrefs( TDPrefKey.mDevice, ctx, hlp ); }
   static TDPref[] makeExportPrefs( Context ctx, TDPrefHelper hlp ) { return makePrefs( TDPrefKey.mExport, ctx, hlp ); }
@@ -805,8 +805,8 @@ public class TDPref implements AdapterView.OnItemSelectedListener
   static TDPref[] makeLinePrefs( Context ctx, TDPrefHelper hlp )         { return makePrefs( TDPrefKey.mLine, ctx, hlp ); }
   static TDPref[] makePointPrefs( Context ctx, TDPrefHelper hlp )        { return makePrefs( TDPrefKey.mPoint, ctx, hlp ); }
   static TDPref[] makeDrawPrefs( Context ctx, TDPrefHelper hlp )         { return makePrefs( TDPrefKey.mDraw, ctx, hlp ); }
-  static TDPref[] makeProfile1Prefs( Context ctx, TDPrefHelper hlp )     { return makePrefs( TDPrefKey.mProfile1, ctx, hlp ); }
-  static TDPref[] makeProfile2Prefs( Context ctx, TDPrefHelper hlp )     { return makePrefs( TDPrefKey.mProfile2, ctx, hlp ); }
+  static TDPref[] makePreset1Prefs( Context ctx, TDPrefHelper hlp )     { return makePrefs( TDPrefKey.mPreset1, ctx, hlp ); }
+  static TDPref[] makePreset2Prefs( Context ctx, TDPrefHelper hlp )     { return makePrefs( TDPrefKey.mPreset2, ctx, hlp ); }
   static TDPref[] makeSPenPrefs( Context ctx, TDPrefHelper hlp )         { return makePrefs( TDPrefKey.mSPen, ctx, hlp ); }
   static TDPref[] makeErasePrefs( Context ctx, TDPrefHelper hlp )        { return makePrefs( TDPrefKey.mErase, ctx, hlp ); }
   static TDPref[] makeEditPrefs( Context ctx, TDPrefHelper hlp )         { return makePrefs( TDPrefKey.mEdit, ctx, hlp ); }

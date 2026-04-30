@@ -97,25 +97,25 @@
       android:orientation="horizontal"
       android:background="#666666"
     />
-    <LinearLayout android:id="@+id/layout_tool_profile"
+    <LinearLayout android:id="@+id/layout_tool_preset"
       android:layout_width="match_parent"
       android:layout_height="16dp"
       android:orientation="horizontal"
       android:background="#666666"
       >
-      <Button android:id="@+id/button_profile_1"
+      <Button android:id="@+id/button_preset_1"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
-        android:text="@string/profile_1_short"
-        android:contentDescription="@string/desc_profile_1"
+        android:text="@string/preset_1_short"
+        android:contentDescription="@string/desc_preset_1"
         />
-      <Button android:id="@+id/button_profile_2"
+      <Button android:id="@+id/button_preset_2"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1"
-        android:text="@string/profile_2_short"
-        android:contentDescription="@string/desc_profile_2"
+        android:text="@string/preset_2_short"
+        android:contentDescription="@string/desc_preset_2"
         />
     </LinearLayout>
     <LinearLayout android:id="@+id/layout_scale"
