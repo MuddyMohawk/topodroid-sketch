@@ -1,7 +1,7 @@
 # TopoDroid Sketch
 
 This is a fork of the main TopoDroid repository. It is focused on adding features to better support a paper-style free hand sketching style instead of using symbols.
-The intended workflow is to create beautiful sketches on the sketching screen and export those as images (right now, done via system screenshot)
+The intended workflow is to create beautiful sketches on the sketching screen and export those as images for the cartographer.
 
 This was essentially entirely vibe-coded with Codex.
 
@@ -10,18 +10,17 @@ Testing and development was done with a Cavway X1 and an Active Tab 3.
 This was written in English; other translations are likely not working
 
 #### TODO
-- Change branding, name, versioning, etc to TopoDroid Sketch
 - Add safety warnings when importing vanilla TopoDroid stuff
 - Switch the defaults for preset 2 to a line-point spacing of 15 instead of 20
 - Add a 4th sketch line. I love sketch lines.
 - Performance check for large sketches
 - Option for rearranging render order (eg, survey station designations on top)
 - Extend the visual regression suite to cover S Pen button, Active Key, and action-binding flows (undo/redo, palette toggle, preset toggle, back, erase/sketch toggle). Current coverage only exercises taps on the drawing surface and toolbars.
-- Make the reference image thingy a default symbol in the palette 
 - Tweak the Sketch icon a bit, it's too zoomed in
 - Add an option to disable all drawing except that from the stylus pen
 
 #### TODO bugs:
+- Post-install splash screen needs some proofreading
 - There's some weird differences in the back key via S Pen stylus vs Active Key
 - Exporting to PNG with Grid lines on and transparent background off results in a pure black background. The grid lines aren't being preserved.
 - Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch 
@@ -30,9 +29,14 @@ This was written in English; other translations are likely not working
 - Taking screenshot with volume-up doesn't work (vanilla bug)
 - Emulator test suite should probably test if the emulator is actually running lol
 - On the startup screens, the L icon size isn't displayed as default even though it is
+- The `undo` action seems weird over many actions. Potentialy vanilla bug
 
 #### Future Possible Features / Brainstorming
+- Ceiling height objects
+- Fix the text
 - Sketch line collision to prevent sketching through another line
+- Change the user-lines to wall-lines?
+- in-app generic symbol editor?
 - Add a straight line option to compliment bezier
 - Version control - file/edit/shot/survey history. Scroll back and pick versions. Check the existing backup feature?
 - Better PDF export
@@ -47,6 +51,8 @@ This was written in English; other translations are likely not working
   - Take a shot
   - Download data via bluetooth from device (multi-device?)
   - switch between profile and plan (and cross-sections?)
+  - press-and-hold to pan like Krita does
+  - 2,3,4... finger tap and finger drag actions
 - Pie in the sky: Advanced GPS/gnss tools. RTK when.
 - Inventory/Rope Audit/Vandalism tracking tools
 - Investigate and enhance the point symbols. They could be good. They need to be aligned with the NSS conventional symbols
@@ -81,7 +87,7 @@ This was written in English; other translations are likely not working
   - The versioning was changed from vanilla TopoDroid. See the section `Versioning` for the details. Not well tested. 
 
 **Sketch Lines**
-- Added three new "sketch lines", which are based on the existing `user` lines 
+- Added three new "sketch lines", which are programmatically generated custom line symbols based on the existing `user` lines 
 - The sketch lines has three variants: Thin, Standard, and Thick (user-fine, user-standard, user-thick).
 - Added per-variant width settings for new sketching lines, with defaults of 1.0x, 2.0x, and 5.0x.
 - Added color options to the new sketch lines
@@ -176,6 +182,7 @@ Both `tmp-*` dirs are gitignored and are regenerated on every run.
 - Export provenance may say TopoDroid Sketch v 0.22.1, but compatibility gates should still use 604027 until the file format baseline changes.
 - Dev note: Only bump the compatibility version after merging/testing against a newer vanilla TopoDroid baseline.
 - Dev mote: Do not bump database, symbol, or compatibility versions merely for normal Sketch app releases.
+- - Dev note: Until 1.0, group all changelog items together, don't split out by 0.23, 0.24, etc
 
 # topodroid
 
