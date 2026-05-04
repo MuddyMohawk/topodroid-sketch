@@ -23,6 +23,7 @@
 /tmp-test-artifacts-latest*/
 /tmp-recorded-latest/
 /tmp-baseline-pull/
+/dist/
 
 # Ad-hoc dumps (emulator screenshots + uiautomator XML captured during debugging)
 /tmp-*.png

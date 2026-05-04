@@ -11,6 +11,8 @@
  */
 package com.topodroid.util;
 
+import com.topodroid.TDX.BuildConfig;
+
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 // import android.content.res.Resources;
@@ -59,6 +61,11 @@ public class TDVersion
   public static int SUB   = 0;
   public static char VCH  = ' ';
 
+  // TopoDroid file/protocol compatibility baseline. This is intentionally
+  // separate from the Android app version of TopoDroid Sketch.
+  public static final String COMPAT_VERSION = BuildConfig.TOPODROID_COMPAT_VERSION_NAME;
+  public static final int COMPAT_VERSION_CODE = BuildConfig.TOPODROID_COMPAT_VERSION_CODE;
+
   // minimum compatible TopoDroid version
   public static final int MAJOR_MIN = 2;
   public static final int MINOR_MIN = 1;
@@ -68,6 +75,8 @@ public class TDVersion
   public static String string()     { return VERSION; }
   public static String fullString() { return VERSION + "-" + TARGET_SDK; }
   public static int    code()       { return VERSION_CODE; }
+  public static String compatString() { return COMPAT_VERSION; }
+  public static int    compatCode()   { return COMPAT_VERSION_CODE; }
   public static String symbols()    { return SYMBOL_VERSION; }
   public static int    targetSdk()  { return TARGET_SDK; }
 

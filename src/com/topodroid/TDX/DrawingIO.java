@@ -1243,7 +1243,7 @@ public class DrawingIO
   {
     try { 
       dos.write( 'V' ); // version
-      dos.writeInt( TDVersion.code() );
+      dos.writeInt( TDVersion.compatCode() );
       dos.write( 'S' ); // scrap
       dos.writeUTF( scrap_name );
       dos.writeInt( type );
@@ -1338,7 +1338,7 @@ public class DrawingIO
     // TDLog.v( "cstack size " + cstack.size() );
     try { 
       dos.write( 'V' ); // version
-      dos.writeInt( TDVersion.code() );
+      dos.writeInt( TDVersion.compatCode() );
       dos.write( 'S' ); // scrap
       dos.writeUTF( scrap_name );
       dos.writeInt( type );

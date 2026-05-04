@@ -1559,7 +1559,7 @@ public class TopoDroidApp extends Application
       // TDPath.checkPath( filename );
       FileWriter fw = TDFile.getFileWriter( filename );
       PrintWriter pw = new PrintWriter( fw );
-      pw.format( "%s %d\n",  TDVersion.string(), TDVersion.code() );
+      pw.format( "%s %d\n",  TDVersion.string(), TDVersion.compatCode() );
       pw.format( "%s\n", TDVersion.DB_VERSION );
       pw.format( "%s\n", survey_info.name );
       pw.format("%s\n", TDUtil.currentDate() );

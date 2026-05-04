@@ -18,6 +18,8 @@ This was written in English; other translations are likely not working
 - Option for rearranging render order (eg, survey station designations on top)
 - Extend the visual regression suite to cover S Pen button, Active Key, and action-binding flows (undo/redo, palette toggle, preset toggle, back, erase/sketch toggle). Current coverage only exercises taps on the drawing surface and toolbars.
 - Make the reference image thingy a default symbol in the palette 
+- Tweak the Sketch icon a bit, it's too zoomed in
+- Add an option to disable all drawing except that from the stylus pen
 
 #### TODO bugs:
 - There's some weird differences in the back key via S Pen stylus vs Active Key
@@ -31,6 +33,7 @@ This was written in English; other translations are likely not working
 
 #### Future Possible Features / Brainstorming
 - Sketch line collision to prevent sketching through another line
+- Add a straight line option to compliment bezier
 - Version control - file/edit/shot/survey history. Scroll back and pick versions. Check the existing backup feature?
 - Better PDF export
 - At-station cross-section viewport support
@@ -69,12 +72,13 @@ This was written in English; other translations are likely not working
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
 
-### TopoDroid Sketch v0.22 Changelog:
+### TopoDroid Sketch v0.23 Changelog:
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
 - Migrated naming, app manifest, strings etc from TopoDroid to TopoDroid Sketch. The apps can be installed side-by-side. The underlying java package/class names and such are unchanged.
   - _The default storage location is now `Documents/TopoDroid Sketch/` instead of `Documents/TDX`_
+  - The versioning was changed from vanilla TopoDroid. See the section `Versioning` for the details. Not well tested. 
 
 **Sketch Lines**
 - Added three new "sketch lines", which are based on the existing `user` lines 
@@ -159,6 +163,19 @@ Each script defaults to `-Serial emulator-5554`. Pass `-Serial <id>` to target a
 - `tmp-recorded-latest/recorded-goldens/...`: Only written by `refresh-visual-baselines.ps1`; the script copies from here into the tracked goldens directory.
 
 Both `tmp-*` dirs are gitignored and are regenerated on every run.
+
+### Versioning
+- TopoDroid Sketch uses SemVer for the app version: MAJOR.MINOR.PATCH, currently 0.22.1.
+- Android versionName is the human app version shown by Android and in app UI.
+- Android versionCode is a monotonically increasing integer used by Android to allow upgrades. For Sketch it is derived from the SemVer parts with a Sketch epoch, currently 722010
+- Git SHA is not included in versionName; it is only added to QA APK filenames for traceability.
+- QA debug APKs can be built with packageQaDebug, producing names like TopoDroid-Sketch-v0.22.1-722010-<sha>-debug.apk.
+- TopoDroid file compatibility is versioned separately from the Android app version.
+- TOPODROID_COMPAT_VERSION_NAME / TOPODROID_COMPAT_VERSION_CODE describe the vanilla TopoDroid file/protocol baseline Sketch currently exports as compatible with, currently 6.4.27 / 604027.
+- ZIP manifests, TDR/sketch streams, and parser-sensitive import/export paths use the compatibility version, not Sketch’s Android versionCode.
+- Export provenance may say TopoDroid Sketch v 0.22.1, but compatibility gates should still use 604027 until the file format baseline changes.
+- Dev note: Only bump the compatibility version after merging/testing against a newer vanilla TopoDroid baseline.
+- Dev mote: Do not bump database, symbol, or compatibility versions merely for normal Sketch app releases.
 
 # topodroid
 

@@ -8,6 +8,67 @@ def possibleJniDirs = ['../libs', '../lib', '../jniLibs', 'libs', 'lib', 'jniLib
     .unique()
 def libjarsDir = file('../libjars')
 
+def requiredStringProperty = { String name ->
+    def value = providers.gradleProperty(name).getOrNull()
+    if (value == null || value.trim().isEmpty()) {
+        throw new GradleException("Missing required Gradle property '${name}'")
+    }
+    return value.trim()
+}
+
+def requiredIntProperty = { String name ->
+    def value = requiredStringProperty(name)
+    try {
+        return Integer.parseInt(value)
+    } catch (NumberFormatException ignored) {
+        throw new GradleException("Gradle property '${name}' must be an integer, got '${value}'")
+    }
+}
+
+def sketchVersionMajor = requiredIntProperty('SKETCH_VERSION_MAJOR')
+def sketchVersionMinor = requiredIntProperty('SKETCH_VERSION_MINOR')
+def sketchVersionPatch = requiredIntProperty('SKETCH_VERSION_PATCH')
+def sketchVersionCodeEpoch = requiredIntProperty('SKETCH_VERSION_CODE_EPOCH')
+def topodroidCompatVersionName = requiredStringProperty('TOPODROID_COMPAT_VERSION_NAME')
+def topodroidCompatVersionCode = requiredIntProperty('TOPODROID_COMPAT_VERSION_CODE')
+
+if (sketchVersionMajor < 0 || sketchVersionMinor < 0 || sketchVersionMinor > 99 || sketchVersionPatch < 0 || sketchVersionPatch > 99 || sketchVersionCodeEpoch < 0) {
+    throw new GradleException('Sketch version parts must be non-negative; minor and patch must be 0..99')
+}
+
+def sketchVersionName = "${sketchVersionMajor}.${sketchVersionMinor}.${sketchVersionPatch}"
+def sketchVersionCode = (sketchVersionCodeEpoch + sketchVersionMajor) * 100000 + sketchVersionMinor * 1000 + sketchVersionPatch * 10
+
+def shortGitSha = {
+    def gitPath = rootProject.file('.git')
+    if (gitPath.isFile()) {
+        def marker = gitPath.text.trim()
+        if (marker.startsWith('gitdir:')) {
+            gitPath = rootProject.file(marker.substring('gitdir:'.length()).trim())
+        }
+    }
+    def head = new File(gitPath, 'HEAD')
+    if (!head.isFile()) return 'nogit'
+
+    def value = head.text.trim()
+    if (value.startsWith('ref:')) {
+        def ref = value.substring('ref:'.length()).trim()
+        def refFile = new File(gitPath, ref)
+        if (refFile.isFile()) {
+            value = refFile.text.trim()
+        } else {
+            def packedRefs = new File(gitPath, 'packed-refs')
+            if (packedRefs.isFile()) {
+                def match = packedRefs.readLines().find { line ->
+                    !line.startsWith('#') && line.endsWith(" ${ref}")
+                }
+                value = match == null ? '' : match.split(' ')[0]
+            }
+        }
+    }
+    return value.length() >= 9 ? value.substring(0, 9) : 'nogit'
+}
+
 if (possibleJniDirs.isEmpty()) {
     logger.lifecycle('No JNI libs directory found. Native libraries such as libnativename.so must be present under libs/<abi>, lib/<abi>, or jniLibs/<abi> before packaging.')
 }
@@ -16,13 +77,19 @@ android {
     namespace 'com.topodroid.TDX'
     compileSdk 36
 
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId 'com.topodroid.TDX.sketch'
         testApplicationId 'com.topodroid.TDX.sketch.test'
         minSdk 21
         targetSdk 36
-        versionCode 604027
-        versionName '6.4.27'
+        versionCode sketchVersionCode
+        versionName sketchVersionName
+        buildConfigField 'String', 'TOPODROID_COMPAT_VERSION_NAME', "\"${topodroidCompatVersionName}\""
+        buildConfigField 'int', 'TOPODROID_COMPAT_VERSION_CODE', "${topodroidCompatVersionCode}"
         multiDexEnabled true
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
@@ -78,4 +145,14 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
     androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.3.0'
+}
+
+tasks.register('packageQaDebug', Copy) {
+    dependsOn 'assembleDebug'
+    outputs.upToDateWhen { false }
+    from(layout.buildDirectory.file('outputs/apk/debug/app-debug.apk'))
+    into(rootProject.layout.projectDirectory.dir('dist'))
+    rename { String filename ->
+        "TopoDroid-Sketch-v${sketchVersionName}-${sketchVersionCode}-${shortGitSha()}-debug.apk"
+    }
 }

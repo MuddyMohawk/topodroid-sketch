@@ -710,18 +710,11 @@ public class Archiver
           TDLog.e( "survey archive version mismatch: " + version_line + " < " + TDVersion.MAJOR_MIN + "." + TDVersion.MINOR_MIN + "." + TDVersion.SUB_MIN );
           return ERR_TD_OLD;
         }
-        if (    ( major > TDVersion.MAJOR ) 
-             || ( major == TDVersion.MAJOR && minor > TDVersion.MINOR )
-             || ( major == TDVersion.MAJOR && minor == TDVersion.MINOR && sub > TDVersion.SUB ) ) {
+        version_code = major * 100000 + minor * 1000 + sub;
+        if ( version_code > TDVersion.compatCode() ) {
           ret = 1; 
-        } else if ( major == TDVersion.MAJOR && minor == TDVersion.MINOR && sub == TDVersion.SUB && vch > ' ' ) {
-          if ( TDVersion.VCH == ' ' ) { 
-            ret = 1;
-          } else if ( TDVersion.VCH <= 'Z' && ( vch >= 'a' || vch < TDVersion.VCH ) ) { // a-z or vch(A-Z) < VCH
-            ret = 1;
-          } else if ( TDVersion.VCH >= 'a' && vch < TDVersion.VCH ) { // A-Z < a-z 
-            ret = 1;
-          }
+        } else if ( version_code == TDVersion.compatCode() && vch > ' ' ) {
+          ret = 1;
         }
 
       } else { // version code
@@ -735,10 +728,10 @@ public class Archiver
           TDLog.e( "parse error: version code " + ver[0] + " " + e.getMessage() );
           return ERR_NUMBER;
         }
-        if ( version_code > TDVersion.VERSION_CODE ) ret = 1;
+        if ( version_code > TDVersion.compatCode() ) ret = 1;
       }
     } else {
-      if ( version_code > TDVersion.VERSION_CODE ) ret = 1;
+      if ( version_code > TDVersion.compatCode() ) ret = 1;
     }
     // TDLog.v("ZIP check version return " + ret );
     return ret;

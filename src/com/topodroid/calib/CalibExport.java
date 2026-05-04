@@ -62,7 +62,7 @@ public class CalibExport
       BufferedWriter bw = new BufferedWriter( new FileWriter( TDPath.getCcsvFile( calib_name + ".csv" ) ) );
       PrintWriter pw = new PrintWriter( bw );
 
-      pw.format("# %s created by %s v %s\n\n", TDUtil.getDateString("yyyy.MM.dd"), TDVersion.APP_NAME, TDVersion.string() );
+      pw.format("# %s created by %s v %s compat %s code %d\n\n", TDUtil.getDateString("yyyy.MM.dd"), TDVersion.APP_NAME, TDVersion.string(), TDVersion.compatString(), TDVersion.compatCode() );
 
       pw.format("# %s\n", ci.name );
       pw.format("# %s\n", ci.date );
@@ -166,6 +166,62 @@ public class CalibExport
     return null;
   }
 
+  static private int parsePositiveInteger( String value )
+  {
+    if ( value == null || value.length() == 0 ) return 0;
+    for ( int k = 0; k < value.length(); ++k ) {
+      char ch = value.charAt( k );
+      if ( ch < '0' || ch > '9' ) return 0;
+    }
+    try {
+      return Integer.parseInt( value );
+    } catch ( NumberFormatException e ) {
+      return 0;
+    }
+  }
+
+  static private int parseLeadingInteger( String value )
+  {
+    if ( value == null || value.length() == 0 ) return 0;
+    int len = 0;
+    while ( len < value.length() ) {
+      char ch = value.charAt( len );
+      if ( ch < '0' || ch > '9' ) break;
+      ++len;
+    }
+    if ( len == 0 ) return 0;
+    try {
+      return Integer.parseInt( value.substring( 0, len ) );
+    } catch ( NumberFormatException e ) {
+      return 0;
+    }
+  }
+
+  static private int getTopoDroidCsvVersionCode( String line )
+  {
+    String v_str = getTopoDroidCsvVersion( line );
+    if ( v_str == null ) return -1;
+
+    String[] tokens = v_str.split("[\\s,;()]+");
+    for ( int k = 0; k < tokens.length - 1; ++k ) {
+      if ( tokens[k].equalsIgnoreCase( "code" ) ) {
+        int version = parsePositiveInteger( tokens[k+1] );
+        if ( version > 0 ) return version;
+      }
+    }
+
+    String[] vals = v_str.split("\\.");
+    if ( vals.length < 3 ) return 0;
+    int v1 = parseLeadingInteger( vals[0] );
+    int v2 = parseLeadingInteger( vals[1] );
+    int v3 = parseLeadingInteger( vals[2] );
+    int version = v1 * 100000 + v2 * 1000 + v3;
+    if ( line.indexOf( TDVersion.APP_NAME ) >= 0 && version < TDVersion.CODE_MIN ) {
+      return TDVersion.compatCode();
+    }
+    return version;
+  }
+
   /** import calibration from a file
    * @param data database
    * @param file calibration file (private storage)
@@ -199,16 +255,11 @@ public class CalibExport
       BufferedReader br = new BufferedReader( fr );
     
       String line = br.readLine();
-      String v_str = getTopoDroidCsvVersion( line );
-      if ( v_str == null ) {
+      version = getTopoDroidCsvVersionCode( line );
+      if ( version <= 0 ) {
         ret = -1; // NOT TOPODROID CSV
       } else {
-        String[] vals = v_str.split("\\.");
-        // TDLog.v("<" + line + "> pos " + pos + " " + v_str + " " + vals.length );
-        int v1 = Integer.parseInt( vals[0] );
-        int v2 = Integer.parseInt( vals[1] );
-        int v3 = Integer.parseInt( vals[2] );
-        version = v1 * 100000 + v2 * 1000 + v3;
+        String[] vals;
         TDLog.v("CSV version " + version );
  
         br.readLine(); // skip empty line
