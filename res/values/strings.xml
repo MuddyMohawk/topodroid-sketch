@@ -1987,6 +1987,8 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_dot_radius_message">Size of the green dots</string>
   <string name="pref_line_thickness_title">Line width</string>
   <string name="pref_line_thickness_summary">Drawing line width</string>
+  <string name="pref_fixed_line_patterns_title">Fixed line pattern density</string>
+  <string name="pref_fixed_line_patterns_summary">Keep dashed and decorated line symbols anchored to the sketch while zooming</string>
   <string name="pref_sketch_line_fine_width_title">Fine sketch line width</string>
   <string name="pref_sketch_line_fine_width_summary">Width multiplier for the fine sketch line</string>
   <string name="pref_sketch_line_fine_color_title">Fine sketch line color</string>

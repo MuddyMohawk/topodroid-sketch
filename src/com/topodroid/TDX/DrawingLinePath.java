@@ -410,6 +410,95 @@ public class DrawingLinePath extends DrawingPointLinePath
    */
   public String getFullThNameEscapedColon() { return  BrushManager.getLineFullThNameEscapedColon( mLineType ); }
 
+  private boolean useFixedPatternDensity()
+  {
+    return TDSetting.mFixedLinePatterns && BrushManager.hasLinePathEffect( mLineType );
+  }
+
+  private void drawFixedPatternDensity( Canvas canvas, Matrix matrix )
+  {
+    int save = canvas.save();
+    Paint paint = mPaint;
+    mPaint = BrushManager.getLineFixedPaint( mLineType, mReversed );
+    try {
+      canvas.concat( matrix );
+      drawPath( mPath, canvas );
+    } finally {
+      mPaint = paint;
+      canvas.restoreToCount( save );
+    }
+  }
+
+  private void drawFixedPatternDensity( Canvas canvas, Matrix matrix, int xor_color )
+  {
+    int save = canvas.save();
+    Paint paint = mPaint;
+    mPaint = BrushManager.getLineFixedPaint( mLineType, mReversed );
+    try {
+      canvas.concat( matrix );
+      drawPath( mPath, canvas, xor_color );
+    } finally {
+      mPaint = paint;
+      canvas.restoreToCount( save );
+    }
+  }
+
+  /** draw the line path on a canvas
+   * @param canvas   canvas - N.B. canvas is guaranteed not null
+   * @param matrix   transform matrix
+   * @param bbox     clipping rectangle
+   */
+  @Override
+  public void draw( Canvas canvas, Matrix matrix, RectF bbox )
+  {
+    if ( useFixedPatternDensity() ) {
+      if ( intersects( bbox ) ) drawFixedPatternDensity( canvas, matrix );
+    } else {
+      super.draw( canvas, matrix, bbox );
+    }
+  }
+
+  /** draw the line path on a canvas
+   * @param canvas   canvas - N.B. canvas is guaranteed not null
+   * @param matrix   transform matrix
+   * @param bbox     clipping rectangle
+   * @param xor_color xoring color
+   */
+  @Override
+  public void draw( Canvas canvas, Matrix matrix, RectF bbox, int xor_color )
+  {
+    if ( useFixedPatternDensity() ) {
+      if ( intersects( bbox ) ) drawFixedPatternDensity( canvas, matrix, xor_color );
+    } else {
+      super.draw( canvas, matrix, bbox, xor_color );
+    }
+  }
+
+  /** draw the line path on a canvas
+   * @param canvas   canvas - N.B. canvas is guaranteed not null
+   * @param matrix   transform matrix
+   * @param scale    rescaling factor - used only for point items
+   * @param bbox     clipping rectangle
+   */
+  @Override
+  public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox )
+  {
+    draw( canvas, matrix, bbox );
+  }
+
+  /** draw the line path on a canvas
+   * @param canvas   canvas - N.B. canvas is guaranteed not null
+   * @param matrix   transform matrix
+   * @param scale    rescaling factor - used only for point items
+   * @param bbox     clipping rectangle
+   * @param xor_color xoring color
+   */
+  @Override
+  public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox, int xor_color )
+  {
+    draw( canvas, matrix, bbox, xor_color );
+  }
+
   /** draw the line with the specified paint
    * @param canvas   canvas
    * @param matrix   transform matrix
@@ -615,4 +704,3 @@ public class DrawingLinePath extends DrawingPointLinePath
   }
 
 }
-

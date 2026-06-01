@@ -29,14 +29,17 @@ This was written in English; other translations are likely not working
 - Taking screenshot with volume-up doesn't work (vanilla bug)
 - Emulator test suite should probably test if the emulator is actually running lol
 - On the startup screens, the L icon size isn't displayed as default even though it is
-- The `undo` action seems weird over many actions. Potentialy vanilla bug
+- The `undo` action seems weird over many actions. Potentially vanilla bug
 
 #### Future Possible Features / Brainstorming
-- Ceiling height objects
-- Fix the text
+- Change the recent items bar to be a fixed selection. Make it two rows and maybe have a setting for how many items are in it
+- Measure distance between two points on the 2D sketch screen
+- Ceiling height text objects
+- Fix the text box/text input scaling. Fonts / Architects Daughter?
 - Sketch line collision to prevent sketching through another line
 - Change the user-lines to wall-lines?
 - in-app generic symbol editor?
+  - this could be quite good for things like colors
 - Add a straight line option to compliment bezier
 - Version control - file/edit/shot/survey history. Scroll back and pick versions. Check the existing backup feature?
 - Better PDF export
@@ -78,7 +81,7 @@ This was written in English; other translations are likely not working
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
 
-### TopoDroid Sketch v0.23 Changelog:
+### TopoDroid Sketch v0.24.1 Changelog:
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
@@ -94,6 +97,9 @@ This was written in English; other translations are likely not working
 - Made the three sketch lines default in the recent-line toolbar
 - If exported and imported into the `TopoDroidX-6.4.25-36`, the new sketch lines fall back into the `user` line type. It'll be ugly, but still compatible.
 - If exported with the personal line box checked, it can be imported into another copy of TopoDroid Sketch and the lines are preserved
+
+**Lines**
+- Added a setting, "Fixed line pattern density", which disables the auto-scaling of lines (most notable with dashed lines, eg pits and ceiling ledges)
 
 **Cross-Section Viewports**
 - Added the ability to place cross-sections directly on the plan sketch in a viewport style experience. These can be moved around and edited by selecting them in edit mode (may require TopoDroid to be in Expert mode in the main settings)

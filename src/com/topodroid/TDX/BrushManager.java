@@ -197,6 +197,7 @@ public class BrushManager
   static Paint getPointPaint( int idx ) { return (mPointLib == null)? errorPaint : mPointLib.getSymbolPaint( idx ); }
   static Paint getLinePaint(  int idx ) { return (mLineLib  == null)? errorPaint : mLineLib.getSymbolPaint( idx ); }
   static Paint getLinePaint(  int idx, boolean reversed ) { return (mLineLib  == null)? errorPaint : mLineLib.getLinePaint( idx, reversed ); }
+  static Paint getLineFixedPaint( int idx, boolean reversed ) { return (mLineLib == null)? errorPaint : mLineLib.getLineFixedPaint( idx, reversed ); }
   static Paint getAreaPaint(  int idx ) { return (mAreaLib  == null)? errorPaint : mAreaLib.getSymbolPaint( idx ); }
 
   static int getPointColor(  int idx ) { return (mPointLib  == null)? 0xffffffff : mPointLib.getSymbolPaint( idx ).getColor(); }
@@ -208,6 +209,7 @@ public class BrushManager
   public static int getAreaLibSize()  { return ( mAreaLib  == null )? 0 : mAreaLib.size(); }
 
   public static boolean hasLineEffect( int index ) { return mLineLib != null && mLineLib.hasEffect( index ); }
+  public static boolean hasLinePathEffect( int index ) { return mLineLib != null && mLineLib.hasPathEffect( index ); }
   static int getLineStyleX( int index ) { return (mLineLib == null)? 1 : mLineLib.getStyleX( index ); }
 
   static boolean isAreaCloseHorizontal( int index ) { return mAreaLib != null && mAreaLib.isCloseHorizontal( index ); }

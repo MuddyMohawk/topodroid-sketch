@@ -69,11 +69,25 @@ public class SymbolLineLibrary extends SymbolLibrary
 
   boolean hasEffect( int k ) { return k >= 0  && k < size() && ((SymbolLine)mSymbols.get(k)).mHasEffect; }
 
+  boolean hasPathEffect( int k )
+  {
+    if ( k < 0 || k >= size() ) return false;
+    SymbolLine symbol = (SymbolLine)mSymbols.get(k);
+    return symbol.mPaint.getPathEffect() != null || symbol.mRevPaint.getPathEffect() != null;
+  }
+
   Paint getLinePaint( int k, boolean reversed )
   {
     if ( k < 0 || k >= size() ) return BrushManager.errorPaint;
     SymbolLine s = (SymbolLine)mSymbols.get(k);
     return reversed ? s.mRevPaint : s.mPaint;
+  }
+
+  Paint getLineFixedPaint( int k, boolean reversed )
+  {
+    if ( k < 0 || k >= size() ) return BrushManager.errorPaint;
+    SymbolLine s = (SymbolLine)mSymbols.get(k);
+    return s.getFixedPaint( reversed );
   }
 
   // ========================================================================
@@ -93,8 +107,12 @@ public class SymbolLineLibrary extends SymbolLibrary
     x[0] = 5;
     x[1] = 10;
     DashPathEffect dash = new DashPathEffect( x, 0 );
+    float[] fixed_x = new float[2];
+    fixed_x[0] = x[0] * SymbolLine.FIXED_PATTERN_SCALE;
+    fixed_x[1] = x[1] * SymbolLine.FIXED_PATTERN_SCALE;
+    DashPathEffect fixed_dash = new DashPathEffect( fixed_x, 0 );
     // String section = res.getString ( R.string.p_section );
-    symbol = new SymbolLine( res.getString( R.string.thl_section ), SECTION, null, SECTION, 0xffcccccc, 1, dash, dash, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SHP );
+    symbol = new SymbolLine( res.getString( R.string.thl_section ), SECTION, null, SECTION, 0xffcccccc, 1, dash, dash, fixed_dash, fixed_dash, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SHP );
     addSymbol( symbol );
 
     // mSymbolNr = mSymbols.size();

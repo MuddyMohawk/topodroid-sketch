@@ -30,13 +30,17 @@ import android.graphics.ComposePathEffect;
 import android.graphics.DashPathEffect;
 import android.graphics.PathDashPathEffect;
 // import android.graphics.PathDashPathEffect.Style;
-// import android.graphics.Matrix;
+import android.graphics.Matrix;
 
 public class SymbolLine extends Symbol
 {
+  static final float FIXED_PATTERN_SCALE = 0.4f;
+
   String mName;       // local name
   Paint  mPaint;      // forward paint
   Paint  mRevPaint;   // reverse paint
+  Paint  mFixedPaint; // forward fixed-density paint
+  Paint  mRevFixedPaint; // reverse fixed-density paint
   boolean mHasEffect; // whether the line paint has path-effect
   Path mPath;
   boolean mStyleStraight;
@@ -47,6 +51,12 @@ public class SymbolLine extends Symbol
   // @Override public String getThName( ) { return mThName; } // same as in Symbol.java
 
   @Override public Paint  getPaint() { return mPaint; }
+
+  Paint getFixedPaint( boolean reversed )
+  {
+    Paint paint = reversed ? mRevFixedPaint : mFixedPaint;
+    return ( paint != null )? paint : ( reversed ? mRevPaint : mPaint );
+  }
 
   // /** @return the line color - default to black = use Symbol::getColor
   //  */
@@ -84,10 +94,18 @@ public class SymbolLine extends Symbol
 
   SymbolLine( String name, String th_name, String group, String fname, int color, float width, PathEffect effect_dir, PathEffect effect_rev, int level, int rt )
   {
+    this( name, th_name, group, fname, color, width, effect_dir, effect_rev, effect_dir, effect_rev, level, rt );
+  }
+
+  SymbolLine( String name, String th_name, String group, String fname, int color, float width,
+              PathEffect effect_dir, PathEffect effect_rev, PathEffect fixed_effect_dir, PathEffect fixed_effect_rev,
+              int level, int rt )
+  {
     super( Symbol.TYPE_LINE, th_name, group, fname, rt );
     init( name, color, width );
     mPaint.setPathEffect( effect_dir );
     mRevPaint.setPathEffect( effect_rev );
+    setFixedPatternPaints( fixed_effect_dir, fixed_effect_rev );
     mHasEffect = true;
     makeLinePath();
     mLevel = level;
@@ -104,6 +122,8 @@ public class SymbolLine extends Symbol
     mPaint.setStrokeCap(Paint.Cap.ROUND);
     mPaint.setStrokeWidth( width * TDSetting.mLineThickness );
     mRevPaint = new Paint (mPaint );
+    mFixedPaint = null;
+    mRevFixedPaint = null;
     mHasEffect = false;
     mStyleStraight = false;
     mClosed = false;
@@ -129,6 +149,25 @@ public class SymbolLine extends Symbol
 
 
   private int k_val; // index in array vals[]
+
+  private void setFixedPatternPaints( PathEffect effect_dir, PathEffect effect_rev )
+  {
+    mFixedPaint = new Paint( mPaint );
+    mFixedPaint.setStrokeWidth( mPaint.getStrokeWidth() * FIXED_PATTERN_SCALE );
+    mFixedPaint.setPathEffect( effect_dir );
+    mRevFixedPaint = new Paint( mRevPaint );
+    mRevFixedPaint.setStrokeWidth( mRevPaint.getStrokeWidth() * FIXED_PATTERN_SCALE );
+    mRevFixedPaint.setPathEffect( effect_rev );
+  }
+
+  private Path scaledPath( Path path )
+  {
+    Path ret = new Path( path );
+    Matrix matrix = new Matrix();
+    matrix.setScale( FIXED_PATTERN_SCALE, FIXED_PATTERN_SCALE );
+    ret.transform( matrix );
+    return ret;
+  }
 
   private float nextFloat( String[] vals, int s, float unit ) throws NumberFormatException
   {
@@ -181,8 +220,11 @@ public class SymbolLine extends Symbol
     Path path_dir = null;
     Path path_rev = null;
     DashPathEffect dash = null;
+    DashPathEffect fixed_dash = null;
     PathDashPathEffect effect = null;
     PathDashPathEffect rev_effect = null;
+    PathDashPathEffect fixed_effect = null;
+    PathDashPathEffect fixed_rev_effect = null;
     float xmin=0, xmax=0;
     float ymin=0, ymax=0;
     String options = null;
@@ -308,14 +350,18 @@ public class SymbolLine extends Symbol
                 if ( n_dash > 0 ) {
                   try {
                     float[] x = new float[n_dash];
+                    float[] fixed_x = new float[n_dash];
   	            x[0] = Float.parseFloat( vals[k] ) * unit;
+                    fixed_x[0] = x[0] * FIXED_PATTERN_SCALE;
                     k_val = k;
                     for (int n=1; n<n_dash; ++n ) {
   	              x[n] = nextFloat( vals, s, unit );
+                      fixed_x[n] = x[n] * FIXED_PATTERN_SCALE;
                       // ++k; while ( k < s && vals[k].length() == 0 ) ++k;
   	              // x[n] = Float.parseFloat( vals[k] ) * unit;
                     }  
                     dash = new DashPathEffect( x, 0 );
+                    fixed_dash = new DashPathEffect( fixed_x, 0 );
                   } catch ( NumberFormatException e ) {
                    TDLog.e( filename + " parse dash error: " + line );
                   }
@@ -472,6 +518,8 @@ public class SymbolLine extends Symbol
                     // path_rev.close();
                     effect     = new PathDashPathEffect( path_dir, (xmax-xmin), 0, PathDashPathEffect.Style.MORPH );
                     rev_effect = new PathDashPathEffect( path_rev, (xmax-xmin), 0, PathDashPathEffect.Style.MORPH );
+                    fixed_effect     = new PathDashPathEffect( scaledPath( path_dir ), (xmax-xmin) * FIXED_PATTERN_SCALE, 0, PathDashPathEffect.Style.MORPH );
+                    fixed_rev_effect = new PathDashPathEffect( scaledPath( path_rev ), (xmax-xmin) * FIXED_PATTERN_SCALE, 0, PathDashPathEffect.Style.MORPH );
                     break;
                   }
                 }
@@ -512,6 +560,18 @@ public class SymbolLine extends Symbol
 	        float dy = ymax - ymin + 1;
                 mPaint.setStrokeWidth( dy * width * TDSetting.mLineThickness );
                 mRevPaint.setStrokeWidth( dy * width * TDSetting.mLineThickness );
+                if ( mPaint.getPathEffect() != null ) {
+                  if ( fixed_effect != null ) {
+                    if ( fixed_dash != null ) {
+                      setFixedPatternPaints( new ComposePathEffect( fixed_effect, fixed_dash ),
+                                             new ComposePathEffect( fixed_rev_effect, fixed_dash ) );
+                    } else {
+                      setFixedPatternPaints( fixed_effect, fixed_rev_effect );
+                    }
+                  } else if ( fixed_dash != null ) {
+                    setFixedPatternPaints( fixed_dash, fixed_dash );
+                  }
+                }
   	      }
               in_symbol = false;
             }
