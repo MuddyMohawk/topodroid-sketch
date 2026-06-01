@@ -70,7 +70,7 @@ This was written in English; other translations are likely not working
 - Sketch layers
 - Opacity? that would be useful for doing fade-in-fade-out overlapping layers
 - Display Cavway line features on the sketch (is this a thing already?)
-- Sort shots by their ordering, not their shot ID
+- Sort shots by their ordering, not their shot ID (is this a skill issue)
 - Bulk reassign splays?
 - Setting to automatically detect if there hasn't been any successful wifi or data connections in the last N minutes, and then toggle airplane mode to save battery
 - Long-press erase mode for the S pen. Attempted once, was bugged and didn't work.
@@ -84,7 +84,7 @@ This was written in English; other translations are likely not working
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
 
-### TopoDroid Sketch v0.26.0 Changelog:
+### TopoDroid Sketch v0.27.3 Changelog:
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
@@ -104,6 +104,7 @@ This was written in English; other translations are likely not working
 **Lines**
 - Added a setting, "Fixed line pattern density", which disables the auto-scaling of lines (most notable with dashed lines, eg pits and ceiling ledges)
 - Added a "straight" line option in addition to the existing Fine, Normal, Coarse, Bezier, and Simplified lines styles
+- Changed the vanilla morphing of line-symbols from warp-to-fit to a rigid-stamping that prevents the ugly morphing of things like ceiling ledges
 
 **Cross-Section Viewports**
 - Added the ability to place cross-sections directly on the plan sketch in a viewport style experience. These can be moved around and edited by selecting them in edit mode (may require TopoDroid to be in Expert mode in the main settings)

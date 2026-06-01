@@ -69,6 +69,12 @@ public class SymbolLineLibrary extends SymbolLibrary
 
   boolean hasEffect( int k ) { return k >= 0  && k < size() && ((SymbolLine)mSymbols.get(k)).mHasEffect; }
 
+  LineSymbolEffect getLineEffect( int k )
+  {
+    if ( k < 0 || k >= size() ) return null;
+    return ((SymbolLine)mSymbols.get(k)).mLineEffect;
+  }
+
   boolean hasPathEffect( int k )
   {
     if ( k < 0 || k >= size() ) return false;

@@ -45,6 +45,7 @@ public class SymbolLine extends Symbol
   Paint  mPreviewPaint; // preview paint independent of line-style scale
   Paint  mRevPreviewPaint; // reverse preview paint independent of line-style scale
   boolean mHasEffect; // whether the line paint has path-effect
+  LineSymbolEffect mLineEffect;
   Path mPath;
   boolean mStyleStraight;
   boolean mClosed;
@@ -135,6 +136,7 @@ public class SymbolLine extends Symbol
     mPreviewPaint = null;
     mRevPreviewPaint = null;
     mHasEffect = false;
+    mLineEffect = null;
     mStyleStraight = false;
     mClosed = false;
     mStyleX = 1;
@@ -243,6 +245,7 @@ public class SymbolLine extends Symbol
     DashPathEffect dash = null;
     DashPathEffect fixed_dash = null;
     DashPathEffect preview_dash = null;
+    float[] dash_values = null;
     PathDashPathEffect effect = null;
     PathDashPathEffect rev_effect = null;
     PathDashPathEffect fixed_effect = null;
@@ -390,6 +393,7 @@ public class SymbolLine extends Symbol
                     dash = new DashPathEffect( x, 0 );
                     fixed_dash = new DashPathEffect( fixed_x, 0 );
                     preview_dash = new DashPathEffect( preview_x, 0 );
+                    dash_values = x;
                   } catch ( NumberFormatException e ) {
                    TDLog.e( filename + " parse dash error: " + line );
                   }
@@ -550,6 +554,7 @@ public class SymbolLine extends Symbol
                     fixed_rev_effect = new PathDashPathEffect( scaledPath( path_rev, FIXED_PATTERN_SCALE ), (xmax-xmin) * FIXED_PATTERN_SCALE, 0, PathDashPathEffect.Style.MORPH );
                     preview_effect     = new PathDashPathEffect( scaledPath( path_dir, preview_scale ), (xmax-xmin) * preview_scale, 0, PathDashPathEffect.Style.MORPH );
                     preview_rev_effect = new PathDashPathEffect( scaledPath( path_rev, preview_scale ), (xmax-xmin) * preview_scale, 0, PathDashPathEffect.Style.MORPH );
+                    mLineEffect = new LineSymbolEffect( path_dir, path_rev, xmax - xmin, dash_values );
                     break;
                   }
                 }

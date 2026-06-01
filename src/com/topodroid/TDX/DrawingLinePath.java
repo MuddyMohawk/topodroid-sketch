@@ -443,6 +443,43 @@ public class DrawingLinePath extends DrawingPointLinePath
     }
   }
 
+  private boolean drawPathUsesPaintOverride( boolean with_xor )
+  {
+    if ( mBlock == null ) return false;
+    if ( mType == DRAWING_PATH_SPLAY ) {
+      if ( ! TDSetting.mSplayColor ) return false;
+      if ( mBlock.isRecent() ) return true;
+      return TDLevel.overExpert && mBlock.getPaint() != null;
+    }
+    return ! with_xor && mBlock.isCommented();
+  }
+
+  private boolean drawLineEffect( Canvas canvas, Matrix matrix, int xor_color, boolean with_xor )
+  {
+    LineSymbolEffect effect = BrushManager.getLineEffect( mLineType );
+    if ( effect == null || drawPathUsesPaintOverride( with_xor ) ) return false;
+
+    boolean fixed_density = useFixedPatternDensity();
+    Paint paint = fixed_density ? BrushManager.getLineFixedPaint( mLineType, mReversed ) : mPaint;
+    if ( paint == null ) return false;
+    if ( with_xor ) paint = DrawingPath.xorPaint( paint, xor_color );
+
+    if ( fixed_density ) {
+      int save = canvas.save();
+      try {
+        canvas.concat( matrix );
+        effect.draw( canvas, mPath, paint, mReversed, true );
+      } finally {
+        canvas.restoreToCount( save );
+      }
+    } else {
+      mTransformedPath = new Path( mPath );
+      mTransformedPath.transform( matrix );
+      effect.draw( canvas, mTransformedPath, paint, mReversed, false );
+    }
+    return true;
+  }
+
   /** draw the line path on a canvas
    * @param canvas   canvas - N.B. canvas is guaranteed not null
    * @param matrix   transform matrix
@@ -451,8 +488,10 @@ public class DrawingLinePath extends DrawingPointLinePath
   @Override
   public void draw( Canvas canvas, Matrix matrix, RectF bbox )
   {
+    if ( ! intersects( bbox ) ) return;
+    if ( drawLineEffect( canvas, matrix, 0, false ) ) return;
     if ( useFixedPatternDensity() ) {
-      if ( intersects( bbox ) ) drawFixedPatternDensity( canvas, matrix );
+      drawFixedPatternDensity( canvas, matrix );
     } else {
       super.draw( canvas, matrix, bbox );
     }
@@ -467,8 +506,10 @@ public class DrawingLinePath extends DrawingPointLinePath
   @Override
   public void draw( Canvas canvas, Matrix matrix, RectF bbox, int xor_color )
   {
+    if ( ! intersects( bbox ) ) return;
+    if ( drawLineEffect( canvas, matrix, xor_color, true ) ) return;
     if ( useFixedPatternDensity() ) {
-      if ( intersects( bbox ) ) drawFixedPatternDensity( canvas, matrix, xor_color );
+      drawFixedPatternDensity( canvas, matrix, xor_color );
     } else {
       super.draw( canvas, matrix, bbox, xor_color );
     }
