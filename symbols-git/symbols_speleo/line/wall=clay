@@ -28,4 +28,14 @@ effect
   lineTo 9 9
   lineTo 0 9
 endeffect
+sketch_effect 1
+  carrier 0 1
+  stamp
+    moveTo 0 8
+    lineTo 9 8
+    lineTo 9 9
+    lineTo 0 9
+    lineTo 0 8
+  endstamp
+endsketch_effect
 endsymbol

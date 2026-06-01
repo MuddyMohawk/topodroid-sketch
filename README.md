@@ -34,6 +34,7 @@ This was written in English; other translations are likely not working
 - There was a potential data-destruction bug when updating the app? Needs investigation.
 - Morphing of lines causes warping in tight turns. Vanilla bug.
 - Seems like the scaling of dashed line is odd, like it has a minimum size? Vanilla bug.
+- Water displayed in a cross-section viewport is not showing up in the main sketch screen
 
 #### Future Possible Features / Brainstorming
 - Change the recent items bar to be a fixed selection. Make it two rows and maybe have a setting for how many items are in it
@@ -84,7 +85,7 @@ This was written in English; other translations are likely not working
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
 
-### TopoDroid Sketch v0.27.3 Changelog:
+### TopoDroid Sketch v0.27.4 Changelog:
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
@@ -92,7 +93,15 @@ This was written in English; other translations are likely not working
   - _The default storage location is now `Documents/TopoDroid Sketch/` instead of `Documents/TDX`_
   - The versioning was changed from vanilla TopoDroid. See the section `Versioning` for the details. Not well tested. 
 
-**Sketch Lines**
+**Lines**
+
+
+- Added a setting, "Fixed line pattern density", which disables the auto-scaling of lines (most notable with dashed lines, eg pits and ceiling ledges)
+- Added a "straight" line option in addition to the existing Fine, Normal, Coarse, Bezier, and Simplified lines styles
+- Changed the vanilla morphing of line-symbols from warp-to-fit to a rigid-stamping that prevents the ugly morphing of things like ceiling ledges
+- Extended the line symbols with additional terms; sketch_effect, carriers, rigid stamps, dash-on segments, and advance. These are used to make prettier curved brush lines. This bumped the TDVersion.SYMBOL_VERSION from 44 to 45. However, this is still compatible with vanilla TopoDroid. Probably.
+
+*Sketch Lines*
 - Added three new "sketch lines", which are programmatically generated custom line symbols based on the existing `user` lines 
 - The sketch lines has three variants: Thin, Standard, and Thick (user-fine, user-standard, user-thick).
 - Added per-variant width settings for new sketching lines, with defaults of 1.0x, 2.0x, and 5.0x.
@@ -101,10 +110,6 @@ This was written in English; other translations are likely not working
 - If exported and imported into the `TopoDroidX-6.4.25-36`, the new sketch lines fall back into the `user` line type. It'll be ugly, but still compatible.
 - If exported with the personal line box checked, it can be imported into another copy of TopoDroid Sketch and the lines are preserved
 
-**Lines**
-- Added a setting, "Fixed line pattern density", which disables the auto-scaling of lines (most notable with dashed lines, eg pits and ceiling ledges)
-- Added a "straight" line option in addition to the existing Fine, Normal, Coarse, Bezier, and Simplified lines styles
-- Changed the vanilla morphing of line-symbols from warp-to-fit to a rigid-stamping that prevents the ugly morphing of things like ceiling ledges
 
 **Cross-Section Viewports**
 - Added the ability to place cross-sections directly on the plan sketch in a viewport style experience. These can be moved around and edited by selecting them in edit mode (may require TopoDroid to be in Expert mode in the main settings)

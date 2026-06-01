@@ -21,6 +21,7 @@ import java.io.InputStreamReader;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 
 
 import android.graphics.Path;
@@ -213,6 +214,84 @@ public class SymbolLine extends Symbol
     throw new NumberFormatException();
   }
 
+  private static class SketchEffectData
+  {
+    final Path path_dir = new Path();
+    final Path path_rev = new Path();
+    final ArrayList< LineSymbolEffect.Carrier > carriers = new ArrayList<>();
+  }
+
+  private SketchEffectData readSketchEffect( BufferedReader br, String filename, float unit ) throws IOException
+  {
+    SketchEffectData data = new SketchEffectData();
+    boolean in_stamp = false;
+    String line;
+    while ( (line = br.readLine()) != null ) {
+      line = line.trim();
+      String[] vals = line.split(" ");
+      int s = vals.length;
+      int k = 0;
+      while ( k < s && vals[k].length() == 0 ) ++k;
+      if ( k >= s || vals[k].startsWith( "#" ) ) continue;
+
+      if ( vals[k].equals("stamp") ) {
+        in_stamp = true;
+      } else if ( vals[k].equals("endstamp") ) {
+        in_stamp = false;
+      } else if ( vals[k].equals("endsketch_effect") ) {
+        break;
+      } else if ( vals[k].equals("carrier") ) {
+        try {
+          k_val = k;
+          float y0 = nextFloat( vals, s, unit );
+          float y1 = nextFloat( vals, s, unit );
+          data.carriers.add( new LineSymbolEffect.Carrier( y0, y1 ) );
+        } catch ( NumberFormatException e ) {
+          TDLog.e( filename + " parse sketch carrier error: " + line );
+        }
+      } else if ( in_stamp ) {
+        readSketchEffectPathCommand( filename, line, vals, s, k, data.path_dir, data.path_rev, unit );
+      }
+    }
+    return data;
+  }
+
+  private void readSketchEffectPathCommand( String filename, String line, String[] vals, int s, int k,
+                                            Path path_dir, Path path_rev, float unit )
+  {
+    try {
+      k_val = k;
+      if ( vals[k].equals("moveTo") ) {
+        float x = nextFloat( vals, s, unit );
+        float y = nextFloat( vals, s, unit );
+        path_dir.moveTo( x, y );
+        path_rev.moveTo( x, -y );
+      } else if ( vals[k].equals("lineTo") ) {
+        float x = nextFloat( vals, s, unit );
+        float y = nextFloat( vals, s, unit );
+        path_dir.lineTo( x, y );
+        path_rev.lineTo( x, -y );
+      } else if ( vals[k].equals("cubicTo") ) {
+        float x1 = nextFloat( vals, s, unit );
+        float y1 = nextFloat( vals, s, unit );
+        float x2 = nextFloat( vals, s, unit );
+        float y2 = nextFloat( vals, s, unit );
+        float x3 = nextFloat( vals, s, unit );
+        float y3 = nextFloat( vals, s, unit );
+        path_dir.cubicTo( x1,  y1, x2,  y2, x3,  y3 );
+        path_rev.cubicTo( x1, -y1, x2, -y2, x3, -y3 );
+      } else if ( vals[k].equals("addCircle") ) {
+        float x = nextFloat( vals, s, unit );
+        float y = nextFloat( vals, s, unit );
+        float r = nextFloat( vals, s, unit );
+        path_dir.addCircle( x,  y, r, Path.Direction.CCW );
+        path_rev.addCircle( x, -y, r, Path.Direction.CCW );
+      }
+    } catch ( NumberFormatException e ) {
+      TDLog.e( filename + " parse sketch stamp error: " + line );
+    }
+  }
+
   /** create a symbol reading it from a file
    *  The file syntax is 
    *      symbol line
@@ -226,6 +305,12 @@ public class SymbolLine extends Symbol
    *      effect
    *        command: moveTo lineTo cubicTo addCircle
    *      endeffect
+   *      sketch_effect 1
+   *        carrier Y0 Y1
+   *        stamp
+   *          command: moveTo lineTo cubicTo addCircle
+   *        endstamp
+   *      endsketch_effect
    *      endsymbol
    */
   private void readFile( String filename, String locale, String iso )
@@ -242,6 +327,7 @@ public class SymbolLine extends Symbol
     float width  = 1;
     Path path_dir = null;
     Path path_rev = null;
+    SketchEffectData sketch_effect = null;
     DashPathEffect dash = null;
     DashPathEffect fixed_dash = null;
     DashPathEffect preview_dash = null;
@@ -555,9 +641,17 @@ public class SymbolLine extends Symbol
                     preview_effect     = new PathDashPathEffect( scaledPath( path_dir, preview_scale ), (xmax-xmin) * preview_scale, 0, PathDashPathEffect.Style.MORPH );
                     preview_rev_effect = new PathDashPathEffect( scaledPath( path_rev, preview_scale ), (xmax-xmin) * preview_scale, 0, PathDashPathEffect.Style.MORPH );
                     mLineEffect = new LineSymbolEffect( path_dir, path_rev, xmax - xmin, dash_values );
+                    if ( sketch_effect != null ) {
+                      mLineEffect.setSketchEffect( sketch_effect.path_dir, sketch_effect.path_rev, sketch_effect.carriers );
+                    }
                     break;
                   }
                 }
+              }
+  	    } else if ( vals[k].equals("sketch_effect") ) {
+              sketch_effect = readSketchEffect( br, filename, unit );
+              if ( mLineEffect != null ) {
+                mLineEffect.setSketchEffect( sketch_effect.path_dir, sketch_effect.path_rev, sketch_effect.carriers );
               }
   	    } else if ( vals[k].equals("endsymbol") ) {
   	      if ( name != null && th_name != null ) { 
