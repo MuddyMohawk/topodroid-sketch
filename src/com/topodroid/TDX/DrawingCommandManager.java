@@ -395,18 +395,46 @@ public class DrawingCommandManager
    */
   void refreshLinePaints()
   {
+    refreshLinePaints( null );
+  }
+
+  /** rebind line paints after the line library has been reloaded
+   * @param indexMap old line index to new line index map
+   */
+  void refreshLinePaints( int[] indexMap )
+  {
     synchronized( mSyncScrap ) {
-      for ( Scrap scrap : mScraps ) scrap.refreshLinePaints();
+      for ( Scrap scrap : mScraps ) scrap.refreshLinePaints( indexMap );
     }
     synchronized( mSyncOutline ) {
       for ( DrawingLinePath path : mPlotOutline ) {
-        if ( path != null ) path.setLineType( path.mLineType );
+        if ( path != null ) path.setLineType( DrawingWindow.mapSymbolIndex( indexMap, path.mLineType ) );
       }
     }
     synchronized( TDPath.mXSectionsLock ) {
       for ( DrawingOutlinePath path : mXSectionOutlines ) {
-        if ( path != null && path.mPath != null ) path.mPath.setLineType( path.mPath.mLineType );
+        if ( path != null && path.mPath != null ) path.mPath.setLineType( DrawingWindow.mapSymbolIndex( indexMap, path.mPath.mLineType ) );
       }
+    }
+  }
+
+  /** rebind point paints after the point library has been reloaded
+   * @param indexMap old point index to new point index map
+   */
+  void refreshPointPaints( int[] indexMap )
+  {
+    synchronized( mSyncScrap ) {
+      for ( Scrap scrap : mScraps ) scrap.refreshPointPaints( indexMap );
+    }
+  }
+
+  /** rebind area paints after the area library has been reloaded
+   * @param indexMap old area index to new area index map
+   */
+  void refreshAreaPaints( int[] indexMap )
+  {
+    synchronized( mSyncScrap ) {
+      for ( Scrap scrap : mScraps ) scrap.refreshAreaPaints( indexMap );
     }
   }
   

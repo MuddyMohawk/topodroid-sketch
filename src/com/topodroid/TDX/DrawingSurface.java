@@ -1210,10 +1210,40 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
    */
   void refreshLinePaints()
   {
-    if ( commandManager != null ) commandManager.refreshLinePaints();
-    if ( mCommandManager1 != null && mCommandManager1 != commandManager ) mCommandManager1.refreshLinePaints();
-    if ( mCommandManager2 != null && mCommandManager2 != commandManager ) mCommandManager2.refreshLinePaints();
-    if ( mCommandManager3 != null && mCommandManager3 != commandManager ) mCommandManager3.refreshLinePaints();
+    refreshLinePaints( null );
+  }
+
+  /** rebind line paints in every cached drawing manager
+   * @param indexMap old line index to new line index map
+   */
+  void refreshLinePaints( int[] indexMap )
+  {
+    if ( commandManager != null ) commandManager.refreshLinePaints( indexMap );
+    if ( mCommandManager1 != null && mCommandManager1 != commandManager ) mCommandManager1.refreshLinePaints( indexMap );
+    if ( mCommandManager2 != null && mCommandManager2 != commandManager ) mCommandManager2.refreshLinePaints( indexMap );
+    if ( mCommandManager3 != null && mCommandManager3 != commandManager ) mCommandManager3.refreshLinePaints( indexMap );
+  }
+
+  /** rebind point paints in every cached drawing manager
+   * @param indexMap old point index to new point index map
+   */
+  void refreshPointPaints( int[] indexMap )
+  {
+    if ( commandManager != null ) commandManager.refreshPointPaints( indexMap );
+    if ( mCommandManager1 != null && mCommandManager1 != commandManager ) mCommandManager1.refreshPointPaints( indexMap );
+    if ( mCommandManager2 != null && mCommandManager2 != commandManager ) mCommandManager2.refreshPointPaints( indexMap );
+    if ( mCommandManager3 != null && mCommandManager3 != commandManager ) mCommandManager3.refreshPointPaints( indexMap );
+  }
+
+  /** rebind area paints in every cached drawing manager
+   * @param indexMap old area index to new area index map
+   */
+  void refreshAreaPaints( int[] indexMap )
+  {
+    if ( commandManager != null ) commandManager.refreshAreaPaints( indexMap );
+    if ( mCommandManager1 != null && mCommandManager1 != commandManager ) mCommandManager1.refreshAreaPaints( indexMap );
+    if ( mCommandManager2 != null && mCommandManager2 != commandManager ) mCommandManager2.refreshAreaPaints( indexMap );
+    if ( mCommandManager3 != null && mCommandManager3 != commandManager ) mCommandManager3.refreshAreaPaints( indexMap );
   }
 
   // -------------------------------------------------------------------

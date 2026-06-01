@@ -20,6 +20,7 @@ This was written in English; other translations are likely not working
 - Add an option to disable all drawing except that from the stylus pen
 
 #### TODO bugs:
+- The line scaling makes them almost impossible to see in the recents, palette, and picker bars. It's drawing too long of a line I think.
 - Post-install splash screen needs some proofreading
 - There's some weird differences in the back key via S Pen stylus vs Active Key
 - Exporting to PNG with Grid lines on and transparent background off results in a pure black background. The grid lines aren't being preserved.
@@ -30,6 +31,7 @@ This was written in English; other translations are likely not working
 - Emulator test suite should probably test if the emulator is actually running lol
 - On the startup screens, the L icon size isn't displayed as default even though it is
 - The `undo` action seems weird over many actions. Potentially vanilla bug
+- There was a potential data-destruction bug when updating the app. Needs investigation.
 
 #### Future Possible Features / Brainstorming
 - Change the recent items bar to be a fixed selection. Make it two rows and maybe have a setting for how many items are in it
@@ -81,7 +83,7 @@ This was written in English; other translations are likely not working
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
 
-### TopoDroid Sketch v0.24.1 Changelog:
+### TopoDroid Sketch v0.25.3 Changelog:
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
@@ -147,6 +149,7 @@ This was written in English; other translations are likely not working
 - Added the new 1 foot sketch-grid unit alongside the existing 2 feet, yard, meter, and 10 cm options
 - Added an option (on by default) for overlapping areas (eg water) to darken instead of lighten. This is mostly for drawing deeper water pools
 - Made the default icon size large
+- Added an editor in the palette selection window to allow for in-app editing of most symbols. Built-in symbols are not currently supported.
 
 ### Testing
 

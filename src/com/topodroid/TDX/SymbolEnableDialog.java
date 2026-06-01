@@ -42,6 +42,7 @@ import android.widget.ListView;
 
 class SymbolEnableDialog extends MyDialog
                          implements View.OnClickListener
+                                  , SymbolAdapter.OnSymbolEditListener
 {
   private int mType; // symbols type
 
@@ -111,6 +112,9 @@ class SymbolEnableDialog extends MyDialog
     mPointAdapter = new SymbolAdapter( mContext, R.layout.symbol, new ArrayList< EnableSymbol >() );
     mLineAdapter  = new SymbolAdapter( mContext, R.layout.symbol, new ArrayList< EnableSymbol >() );
     mAreaAdapter  = new SymbolAdapter( mContext, R.layout.symbol, new ArrayList< EnableSymbol >() );
+    mPointAdapter.setOnSymbolEditListener( this );
+    mLineAdapter.setOnSymbolEditListener( this );
+    mAreaAdapter.setOnSymbolEditListener( this );
 
     if ( TDLevel.overBasic ) {
       SymbolPointLibrary point_lib = BrushManager.getPointLib();
@@ -231,6 +235,49 @@ class SymbolEnableDialog extends MyDialog
     // dismiss();
   }
 
+  @Override
+  public void onSymbolEdit( final EnableSymbol symbol )
+  {
+    if ( ! SymbolEditorDocument.isEditable( symbol ) ) {
+      TDToast.makeWarn( "This built-in symbol cannot be edited yet" );
+      return;
+    }
+
+    SymbolEditorDialog dialog = new SymbolEditorDialog( mContext, symbol, new SymbolEditorDialog.OnSymbolSaved() {
+      @Override
+      public void onSymbolSaved( int type )
+      {
+        reloadAfterSymbolSave( type );
+      }
+    } );
+    dialog.show();
+  }
+
+  private void reloadAfterSymbolSave( int type )
+  {
+    saveEnabledState( mPointAdapter, mLineAdapter, mAreaAdapter );
+
+    String[] oldNames = SymbolEditorDocument.libraryFullNames( type );
+    switch ( type ) {
+      case SymbolType.POINT:
+        BrushManager.reloadPointLibrary( mContext, mContext.getResources() );
+        break;
+      case SymbolType.LINE:
+        BrushManager.syncSketchLinePrefsFromSymbolFiles();
+        BrushManager.reloadLineLibrary( mContext.getResources() );
+        break;
+      case SymbolType.AREA:
+        BrushManager.reloadAreaLibrary( mContext.getResources() );
+        break;
+    }
+    TopoDroidApp.refreshDrawingAfterSymbolLibraryReload( type, SymbolEditorDocument.indexMap( type, oldNames ) );
+    if ( ! createAdapters() ) {
+      dismiss();
+    } else {
+      updateList( type );
+    }
+  }
+
   // static SaveSymbols mSaveSymbols = null; // new SaveSymbols();
 
   public void onBackPressed()
@@ -264,22 +311,7 @@ class SymbolEnableDialog extends MyDialog
 
     protected Void doInBackground( Void ... v )
     { 
-      // TDLog.v("save symbol make enabled lists ..."); // ENABLED_LIST
-      if ( TDLevel.overBasic ) {
-        mPtAdapter.updateSymbols( "p_" );
-        SymbolPointLibrary point_lib = BrushManager.getPointLib();
-        if ( point_lib != null ) point_lib.makeConfigEnabledList();
-      }
-
-      mLnAdapter.updateSymbols( "l_" );
-      SymbolLineLibrary line_lib   = BrushManager.getLineLib();
-      if ( line_lib  != null ) line_lib.makeConfigEnabledList();
-
-      if ( TDLevel.overBasic ) {
-        mArAdapter.updateSymbols( "a_" );
-        SymbolAreaLibrary area_lib   = BrushManager.getAreaLib();
-        if ( area_lib  != null ) area_lib.makeConfigEnabledList();
-      }
+      saveEnabledState( mPtAdapter, mLnAdapter, mArAdapter );
       run = false;
       return null;
     }
@@ -287,5 +319,26 @@ class SymbolEnableDialog extends MyDialog
     // protected void onProgressUpdate() { }
     // protected void onPostExecute( Void result ) { }
   }
-}
 
+  private static void saveEnabledState( SymbolAdapter ptAdapter, SymbolAdapter lnAdapter, SymbolAdapter arAdapter )
+  {
+    // TDLog.v("save symbol make enabled lists ..."); // ENABLED_LIST
+    if ( TDLevel.overBasic && ptAdapter != null ) {
+      ptAdapter.updateSymbols( "p_" );
+      SymbolPointLibrary point_lib = BrushManager.getPointLib();
+      if ( point_lib != null ) point_lib.makeConfigEnabledList();
+    }
+
+    if ( lnAdapter != null ) {
+      lnAdapter.updateSymbols( "l_" );
+      SymbolLineLibrary line_lib   = BrushManager.getLineLib();
+      if ( line_lib  != null ) line_lib.makeConfigEnabledList();
+    }
+
+    if ( TDLevel.overBasic && arAdapter != null ) {
+      arAdapter.updateSymbols( "a_" );
+      SymbolAreaLibrary area_lib   = BrushManager.getAreaLib();
+      if ( area_lib  != null ) area_lib.makeConfigEnabledList();
+    }
+  }
+}

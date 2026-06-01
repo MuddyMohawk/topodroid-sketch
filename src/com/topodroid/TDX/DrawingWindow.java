@@ -2700,26 +2700,65 @@ public class DrawingWindow extends ItemDrawer
    */
   public void refreshAfterLineLibraryReload()
   {
-    ItemDrawer.refreshRecentLineSymbols();
+    refreshAfterSymbolLibraryReload( SymbolType.LINE, null );
+  }
 
-    if ( mDrawingSurface != null ) {
-      mDrawingSurface.refreshLinePaints();
-    }
-    if ( mCurrentLinePath != null ) {
-      mCurrentLinePath.setLineType( mCurrentLinePath.mLineType );
-    }
-
-    if ( mBtnRecentL != null && mLayoutTools != null ) {
-      mRecentDimX = Float.parseFloat( getResources().getString( R.string.dimxl ) );
-      mRecentDimY = Float.parseFloat( getResources().getString( R.string.dimyl ) );
-      setButtonRecent( mBtnRecentL, mRecentLine );
-      setToolsToolbars();
+  /** refresh drawing symbols after a symbol library has been reloaded
+   * @param type symbol type
+   * @param indexMap old symbol index to new symbol index map
+   */
+  public void refreshAfterSymbolLibraryReload( int type, int[] indexMap )
+  {
+    switch ( type ) {
+      case SymbolType.POINT:
+        ItemDrawer.refreshRecentPointSymbols();
+        mCurrentPoint = mapSymbolIndex( indexMap, mCurrentPoint );
+        if ( mDrawingSurface != null ) mDrawingSurface.refreshPointPaints( indexMap );
+        if ( mBtnRecentP != null && mLayoutTools != null ) {
+          mRecentDimX = Float.parseFloat( getResources().getString( R.string.dimxp ) );
+          mRecentDimY = Float.parseFloat( getResources().getString( R.string.dimxp ) );
+          setButtonRecent( mBtnRecentP, mRecentPoint );
+          setToolsToolbars();
+        }
+        break;
+      case SymbolType.LINE:
+        ItemDrawer.refreshRecentLineSymbols();
+        mCurrentLine = mapSymbolIndex( indexMap, mCurrentLine );
+        if ( mDrawingSurface != null ) mDrawingSurface.refreshLinePaints( indexMap );
+        if ( mCurrentLinePath != null ) mCurrentLinePath.setLineType( mapSymbolIndex( indexMap, mCurrentLinePath.mLineType ) );
+        if ( mBtnRecentL != null && mLayoutTools != null ) {
+          mRecentDimX = Float.parseFloat( getResources().getString( R.string.dimxl ) );
+          mRecentDimY = Float.parseFloat( getResources().getString( R.string.dimyl ) );
+          setButtonRecent( mBtnRecentL, mRecentLine );
+          setToolsToolbars();
+        }
+        break;
+      case SymbolType.AREA:
+        ItemDrawer.refreshRecentAreaSymbols();
+        mCurrentArea = mapSymbolIndex( indexMap, mCurrentArea );
+        if ( mDrawingSurface != null ) mDrawingSurface.refreshAreaPaints( indexMap );
+        if ( mCurrentAreaPath != null ) mCurrentAreaPath.setAreaType( mapSymbolIndex( indexMap, mCurrentAreaPath.mAreaType ) );
+        if ( mBtnRecentA != null && mLayoutTools != null ) {
+          mRecentDimX = Float.parseFloat( getResources().getString( R.string.dimxl ) );
+          mRecentDimY = Float.parseFloat( getResources().getString( R.string.dimyl ) );
+          setButtonRecent( mBtnRecentA, mRecentArea );
+          setToolsToolbars();
+        }
+        break;
     }
 
     if ( mDrawingSurface != null ) {
       mDrawingSurface.refresh( mDrawingSurface.getHolder() );
       mDrawingSurface.invalidate();
     }
+  }
+
+  static int mapSymbolIndex( int[] indexMap, int index )
+  {
+    if ( index < 0 ) return index;
+    if ( indexMap == null ) return index;
+    if ( index < indexMap.length && indexMap[index] >= 0 ) return indexMap[index];
+    return 0;
   }
 
   /** refresh drawing references after grid settings have changed

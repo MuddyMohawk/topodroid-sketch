@@ -91,6 +91,23 @@ class SketchLineSymbolManager
     ensureLineSymbolsEnabled();
   }
 
+  static void writeLineSymbolFromSettings( int index )
+  {
+    if ( index < 0 || index >= FILENAMES.length ) return;
+    float[] widths = {
+      TDSetting.mUserLineFineWidth,
+      TDSetting.mUserLineStandardWidth,
+      TDSetting.mUserLineThickWidth
+    };
+    int[] colors = {
+      TDSetting.mUserLineFineColor,
+      TDSetting.mUserLineStandardColor,
+      TDSetting.mUserLineThickColor
+    };
+    writeLineSymbol( index, widths[index], colors[index] );
+    ensureLineSymbolsEnabled();
+  }
+
   static void onLineLibraryLoaded()
   {
     ensureLoadedSymbolsEnabled();
@@ -143,6 +160,13 @@ class SketchLineSymbolManager
   }
 
   private static void ensureLineSymbol( int index, float width, int color )
+  {
+    File file = TDPath.getLineFile( FILENAMES[index] );
+    if ( file.exists() ) return;
+    writeLineSymbol( index, width, color );
+  }
+
+  private static void writeLineSymbol( int index, float width, int color )
   {
     PrintWriter pw = null;
     try {

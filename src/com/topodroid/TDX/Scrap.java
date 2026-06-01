@@ -80,11 +80,49 @@ public class Scrap
    */
   void refreshLinePaints()
   {
+    refreshLinePaints( null );
+  }
+
+  /** rebind line paints after the line library has been reloaded
+   * @param indexMap old line index to new line index map
+   */
+  void refreshLinePaints( int[] indexMap )
+  {
     synchronized( TDPath.mCommandsLock ) {
       for ( ICanvasCommand cmd : mCurrentStack ) {
         if ( cmd instanceof DrawingLinePath ) {
           DrawingLinePath line = (DrawingLinePath)cmd;
-          line.setLineType( line.mLineType );
+          line.setLineType( DrawingWindow.mapSymbolIndex( indexMap, line.mLineType ) );
+        }
+      }
+    }
+  }
+
+  /** rebind point paints after the point library has been reloaded
+   * @param indexMap old point index to new point index map
+   */
+  void refreshPointPaints( int[] indexMap )
+  {
+    synchronized( TDPath.mCommandsLock ) {
+      for ( ICanvasCommand cmd : mCurrentStack ) {
+        if ( cmd instanceof DrawingPointPath ) {
+          DrawingPointPath point = (DrawingPointPath)cmd;
+          point.setPointType( DrawingWindow.mapSymbolIndex( indexMap, point.mPointType ) );
+        }
+      }
+    }
+  }
+
+  /** rebind area paints after the area library has been reloaded
+   * @param indexMap old area index to new area index map
+   */
+  void refreshAreaPaints( int[] indexMap )
+  {
+    synchronized( TDPath.mCommandsLock ) {
+      for ( ICanvasCommand cmd : mCurrentStack ) {
+        if ( cmd instanceof DrawingAreaPath ) {
+          DrawingAreaPath area = (DrawingAreaPath)cmd;
+          area.setAreaType( DrawingWindow.mapSymbolIndex( indexMap, area.mAreaType ) );
         }
       }
     }

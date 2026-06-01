@@ -14,6 +14,7 @@ package com.topodroid.TDX;
 import com.topodroid.util.TDColor;
 import com.topodroid.util.TDLog;
 import com.topodroid.prefs.TDSetting;
+import com.topodroid.types.SymbolType;
 
 // import java.lang.Math;
 
@@ -434,6 +435,7 @@ public class BrushManager
     // TDLog.v("BRUSH load point library" );
     mPointLib = new SymbolPointLibrary( ctx, res );
     // mPointLib.loadUserPoints();
+    TopoDroidApp.refreshDrawingAfterSymbolLibraryReload( SymbolType.POINT );
   }
 
   /** reload the line symbols
@@ -442,9 +444,9 @@ public class BrushManager
   public static void reloadLineLibrary( Resources res )
   {
     // TDLog.v("BRUSH load line library" );
-      SketchLineSymbolManager.ensureLineSymbols();
+    SketchLineSymbolManager.ensureLineSymbols();
     mLineLib = new SymbolLineLibrary( res );
-      SketchLineSymbolManager.onLineLibraryLoaded();
+    SketchLineSymbolManager.onLineLibraryLoaded();
     TopoDroidApp.refreshDrawingAfterLineLibraryReload();
   }
 
@@ -456,6 +458,17 @@ public class BrushManager
     // TDLog.v("BRUSH load area library" );
     mAreaLib = new SymbolAreaLibrary( res );
     // mAreaLib.loadUserAreas();
+    TopoDroidApp.refreshDrawingAfterSymbolLibraryReload( SymbolType.AREA );
+  }
+
+  public static void writeSketchLineSymbolFromSettings( int which )
+  {
+    SketchLineSymbolManager.writeLineSymbolFromSettings( which );
+  }
+
+  public static void syncSketchLinePrefsFromSymbolFiles()
+  {
+    SketchLineSymbolManager.syncPrefsFromSymbolFiles();
   }
 
   /** make the list of enabled symbols starting from a palette

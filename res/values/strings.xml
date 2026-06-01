@@ -924,6 +924,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="button_current"   >Active</string>
     <string name="button_delete"    >Delete</string>
     <string name="button_duplicate" >Duplicate</string>
+    <string name="button_edit"      >Edit</string>
     <string name="button_settime"   >Set time</string>
     <string name="button_surface"  copyable="fr">Surface</string>
     <string name="button_splay"    copyable="all">Splay</string>
@@ -1395,6 +1396,10 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="title_coeff">Calibration coefficients</string>
     <string name="title_coeff_two">Calibration coefficients [%1$d]</string>
   <string name="title_color_picker">Pick a color</string>
+  <string name="title_symbol_editor">Edit symbol</string>
+  <string name="symbol_editor_file">File</string>
+  <string name="symbol_editor_fields">Fields</string>
+  <string name="symbol_editor_raw">Raw symbol</string>
   <string name="color_preview">Preview</string>
   <string name="color_saturation_brightness">Saturation / Brightness</string>
   <string name="color_hue">Hue</string>

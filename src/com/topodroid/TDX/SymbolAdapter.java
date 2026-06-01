@@ -20,6 +20,7 @@ import java.util.ArrayList;
 
 import android.content.Context;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.TextView;
 import android.view.View;
@@ -29,10 +30,16 @@ import android.view.LayoutInflater;
 
 class SymbolAdapter extends ArrayAdapter< EnableSymbol >
 {
+  interface OnSymbolEditListener
+  {
+    void onSymbolEdit( EnableSymbol symbol );
+  }
+
   private ArrayList< EnableSymbol > mItems;
   // private Context mContext;
   // private Activity mActivity;
   private LayoutInflater mLayoutInflater;
+  private OnSymbolEditListener mEditListener = null;
 
   SymbolAdapter( Context ctx, int id, ArrayList< EnableSymbol > items )
   {
@@ -49,6 +56,11 @@ class SymbolAdapter extends ArrayAdapter< EnableSymbol >
   }
 
   public EnableSymbol get( int pos ) { return mItems.get(pos); }
+
+  void setOnSymbolEditListener( OnSymbolEditListener listener )
+  {
+    mEditListener = listener;
+  }
 
   public EnableSymbol get( String name ) 
   {
@@ -67,6 +79,7 @@ class SymbolAdapter extends ArrayAdapter< EnableSymbol >
   { 
     CheckBox     mCheckBox;
     ItemButton   mButton;
+    Button       mEditButton;
     TextView     mTextView;
     TextView     mGroupView;
     EnableSymbol mSymbol;
@@ -84,6 +97,7 @@ class SymbolAdapter extends ArrayAdapter< EnableSymbol >
       holder = new ViewHolder();
       holder.mCheckBox = (CheckBox) convertView.findViewById( R.id.enable_symbol_cb );
       holder.mButton   = (ItemButton) convertView.findViewById( R.id.enable_symbol_bt );
+      holder.mEditButton = (Button) convertView.findViewById( R.id.enable_symbol_edit );
       holder.mTextView = (TextView) convertView.findViewById( R.id.enable_symbol_tv );
       holder.mGroupView = (TextView) convertView.findViewById( R.id.enable_symbol_grp );
       convertView.setTag( holder );
@@ -93,6 +107,16 @@ class SymbolAdapter extends ArrayAdapter< EnableSymbol >
     holder.mSymbol = b;
     holder.mCheckBox.setChecked( b.mEnabled );
     holder.mCheckBox.setOnClickListener( b );
+    holder.mEditButton.setTag( b );
+    holder.mEditButton.setAlpha( SymbolEditorDocument.isEditable( b ) ? 1.0f : 0.35f );
+    holder.mEditButton.setOnClickListener( new View.OnClickListener() {
+      @Override
+      public void onClick( View v )
+      {
+        Object tag = v.getTag();
+        if ( mEditListener != null && tag instanceof EnableSymbol ) mEditListener.onSymbolEdit( (EnableSymbol)tag );
+      }
+    } );
     // holder.mCheckBox.setText( b.getName() );
     holder.mTextView.setText( b.getName() );
     holder.mGroupView.setText( b.getGroupName() );
@@ -117,4 +141,3 @@ class SymbolAdapter extends ArrayAdapter< EnableSymbol >
   }
 
 }
-

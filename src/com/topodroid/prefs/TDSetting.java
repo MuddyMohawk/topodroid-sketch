@@ -3679,6 +3679,7 @@ public class TDSetting
         } else {
           mUserLineThickWidth = f;
         }
+        BrushManager.writeSketchLineSymbolFromSettings( which );
         reloadLineLibrary();
       }
     } catch ( NumberFormatException e ) {
@@ -3713,6 +3714,7 @@ public class TDSetting
       } else {
         mUserLineThickColor = rgb;
       }
+      BrushManager.writeSketchLineSymbolFromSettings( which );
       reloadLineLibrary();
     }
     return Integer.toString( rgb );

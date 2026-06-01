@@ -137,16 +137,21 @@ abstract class ItemDrawer extends Activity
    */
   static void refreshRecentLineSymbols()
   {
-    ArrayList< Symbol > refreshed = new ArrayList<>();
-    for ( int k = 0; k < NR_RECENT; ++k ) {
-      Symbol line = mRecentLine[k];
-      if ( line == null ) continue;
-      Symbol current = BrushManager.getLineByThName( line.getFullThName() );
-      if ( current == null || ! current.isEnabled() ) continue;
-      if ( hasRecentSymbol( refreshed, current.getFullThName() ) ) continue;
-      refreshed.add( current );
-    }
-    setRecentLineList( refreshed );
+    setRecentLineList( refreshRecentSymbols( SymbolType.LINE, mRecentLine ) );
+  }
+
+  /** refresh point recent tools after the point library has been reloaded
+   */
+  static void refreshRecentPointSymbols()
+  {
+    setRecentList( refreshRecentSymbols( SymbolType.POINT, mRecentPoint ), mRecentPoint, mRecentPointAge );
+  }
+
+  /** refresh area recent tools after the area library has been reloaded
+   */
+  static void refreshRecentAreaSymbols()
+  {
+    setRecentList( refreshRecentSymbols( SymbolType.AREA, mRecentArea ), mRecentArea, mRecentAreaAge );
   }
 
   /** prepend line symbols to the recent-line toolbar, preserving unique items
@@ -194,11 +199,40 @@ abstract class ItemDrawer extends Activity
 
   private static void setRecentLineList( ArrayList< Symbol > lines )
   {
-    int nr = ( lines == null ) ? 0 : lines.size();
+    setRecentList( lines, mRecentLine, mRecentLineAge );
+  }
+
+  private static void setRecentList( ArrayList< Symbol > list, Symbol[] symbols, int[] ages )
+  {
+    int nr = ( list == null ) ? 0 : list.size();
     for ( int k = 0; k < NR_RECENT; ++k ) {
-      mRecentLine[k] = ( k < nr ) ? lines.get( k ) : null;
-      mRecentLineAge[k] = NR_RECENT - k;
+      symbols[k] = ( k < nr ) ? list.get( k ) : null;
+      ages[k] = NR_RECENT - k;
     }
+  }
+
+  private static ArrayList< Symbol > refreshRecentSymbols( int type, Symbol[] oldSymbols )
+  {
+    ArrayList< Symbol > refreshed = new ArrayList<>();
+    for ( int k = 0; k < NR_RECENT; ++k ) {
+      Symbol oldSymbol = oldSymbols[k];
+      if ( oldSymbol == null ) continue;
+      Symbol current = getSymbolByThName( type, oldSymbol.getFullThName() );
+      if ( current == null || ! current.isEnabled() ) continue;
+      if ( hasRecentSymbol( refreshed, current.getFullThName() ) ) continue;
+      refreshed.add( current );
+    }
+    return refreshed;
+  }
+
+  private static Symbol getSymbolByThName( int type, String thName )
+  {
+    switch ( type ) {
+      case SymbolType.POINT: return BrushManager.getPointByThName( thName );
+      case SymbolType.LINE:  return BrushManager.getLineByThName( thName );
+      case SymbolType.AREA:  return BrushManager.getAreaByThName( thName );
+    }
+    return null;
   }
 
   private static boolean hasRecentSymbol( ArrayList< Symbol > symbols, String fullThName )

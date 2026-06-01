@@ -542,7 +542,19 @@ public class DrawingPointPath extends DrawingPath
   //   setCenter( x, y );
   // }
 
-  // void setPointType( int t ) { mPointType = t; }
+  /** set the point type and rebind symbol paint/path
+   * @param t new point type
+   */
+  void setPointType( int t )
+  {
+    mPointType = t;
+    if ( BrushManager.hasPoint( mPointType ) ) {
+      mLevel = BrushManager.getPointLevel( mPointType );
+      setPathPaint( BrushManager.getPointPaint( mPointType ) );
+      if ( ! BrushManager.isPointOrientable( mPointType ) ) mOrientation = 0.0;
+      resetPath( 1.0f );
+    }
+  }
 
   /** get the type of the point
    * @return the point type

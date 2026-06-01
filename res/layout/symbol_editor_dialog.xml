@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/base_padding"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+  <TextView android:id="@+id/symbol_editor_file"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="@dimen/margintiny"
+      android:textStyle="bold" />
+
+  <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="@dimen/marginv"
+      android:text="@string/symbol_editor_fields"
+      android:textStyle="bold" />
+
+  <ScrollView
+      android:layout_width="match_parent"
+      android:layout_height="160dp"
+      android:fillViewport="false">
+    <LinearLayout android:id="@+id/symbol_editor_fields"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+  </ScrollView>
+
+  <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="@dimen/marginv"
+      android:text="@string/symbol_editor_raw"
+      android:textStyle="bold" />
+
+  <EditText android:id="@+id/symbol_editor_text"
+      android:layout_width="match_parent"
+      android:layout_height="220dp"
+      android:gravity="top|start"
+      android:inputType="textMultiLine|textNoSuggestions"
+      android:minLines="8"
+      android:scrollbars="vertical"
+      android:singleLine="false"
+      android:typeface="monospace" />
+
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="@dimen/marginv"
+      android:gravity="right"
+      android:orientation="horizontal">
+
+    <Button android:id="@+id/symbol_editor_reset"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/button_reset" />
+
+    <Button android:id="@+id/symbol_editor_cancel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/marginh"
+        android:text="@string/button_cancel" />
+
+    <Button android:id="@+id/symbol_editor_save"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/marginh"
+        android:text="@string/button_save" />
+  </LinearLayout>
+</LinearLayout>

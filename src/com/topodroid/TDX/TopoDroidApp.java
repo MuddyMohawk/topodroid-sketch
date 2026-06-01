@@ -59,6 +59,7 @@ import com.topodroid.types.LegType;
 import com.topodroid.types.ExtendType;
 import com.topodroid.types.PlotType;
 import com.topodroid.types.ExportInfo;
+import com.topodroid.types.SymbolType;
 // import com.topodroid.calib.CalibCoeffDialog;
 // import com.topodroid.calib.CalibReadTask;
 import com.topodroid.calib.CalibInfo;
@@ -324,10 +325,27 @@ public class TopoDroidApp extends Application
    */
   public static void refreshDrawingAfterLineLibraryReload()
   {
+    refreshDrawingAfterSymbolLibraryReload( SymbolType.LINE, null );
+  }
+
+  /** refresh the drawing window after a symbol library has been reloaded
+   * @param type symbol type
+   */
+  public static void refreshDrawingAfterSymbolLibraryReload( int type )
+  {
+    refreshDrawingAfterSymbolLibraryReload( type, null );
+  }
+
+  /** refresh the drawing window after a symbol library has been reloaded
+   * @param type symbol type
+   * @param indexMap old symbol index to new symbol index map
+   */
+  public static void refreshDrawingAfterSymbolLibraryReload( final int type, final int[] indexMap )
+  {
     final DrawingWindow window = mDrawingWindow;
     if ( window != null ) {
       window.runOnUiThread( new Runnable() {
-        @Override public void run() { window.refreshAfterLineLibraryReload(); }
+        @Override public void run() { window.refreshAfterSymbolLibraryReload( type, indexMap ); }
       } );
     }
   }
