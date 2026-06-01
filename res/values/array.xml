@@ -700,6 +700,7 @@
      <item name="three">Coarse</item>
      <item name="bezier">Bezier</item>
      <item name="simplified">Simplified</item>
+     <item name="straight">Straight</item>
   </string-array>
   <string-array name="lineStyleValue" translatable="false">
      <item name="none">1</item>
@@ -707,6 +708,7 @@
      <item name="three">3</item>
      <item name="bezier">0</item>
      <item name="simplified">4</item>
+     <item name="straight">5</item>
   </string-array>
 
   <string-array name="groupBy">

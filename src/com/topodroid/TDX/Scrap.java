@@ -1191,7 +1191,14 @@ public class Scrap
               lq1 = resetFirst( lq1, lq2, lp10 );
               lq2 = resetLast( lq2, lq1, lp20 );
               /*{{ IF DEF_FILTER_NO_START*/
-                if ( TDSetting.isLineStyleBezier() ) {
+                if ( TDSetting.isLineStyleStraight() ) {
+                  DrawingPointLinePath tmp = new DrawingPointLinePath( DrawingPath.DRAWING_PATH_LINE, true, false, mScrapIdx );
+                  if ( DrawingPointLineFilter.straight( lq1, lq2, tmp ) ) {
+                    lq1 = tmp.mFirst;
+                    if ( lq2 != null ) lq2 = tmp.mLast;
+                    ap.resetFirstLast( tmp.mFirst, tmp.mLast );
+                  }
+                } else if ( TDSetting.isLineStyleBezier() ) {
                   DrawingPointLinePath tmp = new DrawingPointLinePath( DrawingPath.DRAWING_PATH_LINE, true, false, mScrapIdx );
                   if ( DrawingPointLineFilter.bezier( lq1, lq2, tmp ) ) {
                     lq1 = tmp.mFirst;
@@ -1293,7 +1300,14 @@ public class Scrap
               // TDLog.v("FOUND P1 " + line.indexOf(lp10) + ": " + lp10.x + " " + lp10.y );
               lq1 = resetFirst( lq1, lq2, lp10 );
               /*{{ IF DEF_FILTER_NO_START*/
-                if ( TDSetting.isLineStyleBezier() ) {
+                if ( TDSetting.isLineStyleStraight() ) {
+                  DrawingPointLinePath tmp = new DrawingPointLinePath( DrawingPath.DRAWING_PATH_LINE, true, false, mScrapIdx );
+                  if ( DrawingPointLineFilter.straight( lq1, null, tmp ) ) {
+                    lq1 = tmp.mFirst;
+                    lq2 = tmp.mLast;
+                    ap.resetFirstLast( tmp.mFirst, tmp.mLast );
+                  }
+                } else if ( TDSetting.isLineStyleBezier() ) {
                   DrawingPointLinePath tmp = new DrawingPointLinePath( DrawingPath.DRAWING_PATH_LINE, true, false, mScrapIdx );
                   if ( DrawingPointLineFilter.bezier( lq1, null, tmp ) ) {
                     lq1 = tmp.mFirst;
@@ -1372,7 +1386,14 @@ public class Scrap
               // TDLog.v("FOUND P2 " + line.indexOf(lp20) + ": " + lp20.x + " " + lp20.y + " line size " + line.size() );
               lq2 = resetLast( lq2, lq1, lp20 );
               /*{{ IF DEF_FILTER_NO_START*/
-                if ( TDSetting.isLineStyleBezier() ) {
+                if ( TDSetting.isLineStyleStraight() ) {
+                  DrawingPointLinePath tmp = new DrawingPointLinePath( DrawingPath.DRAWING_PATH_LINE, true, false, mScrapIdx );
+                  if ( DrawingPointLineFilter.straight( lq1, lq2, tmp ) ) {
+                    lq1 = tmp.mFirst;
+                    lq2 = tmp.mLast;
+                    ap.resetFirstLast( tmp.mFirst, tmp.mLast );
+                  }
+                } else if ( TDSetting.isLineStyleBezier() ) {
                   DrawingPointLinePath tmp = new DrawingPointLinePath( DrawingPath.DRAWING_PATH_LINE, true, false, mScrapIdx );
                   if ( DrawingPointLineFilter.bezier( lq1, lq2, tmp ) ) {
                     lq1 = tmp.mFirst;

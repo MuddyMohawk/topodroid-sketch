@@ -27,11 +27,13 @@ This was written in English; other translations are likely not working
 - Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch 
   - station designation font size does not affect export size 
   - actually all the sketch settings might be respected (eg leg line size)?
-- Taking screenshot with volume-up doesn't work (vanilla bug)
+- Taking screenshot with volume-up doesn't work. Vanilla bug.
 - Emulator test suite should probably test if the emulator is actually running lol
-- On the startup screens, the L icon size isn't displayed as default even though it is
+- On the startup screens, the L icon size isn't displayed as default even though it is. Vanilla Bug.
 - The `undo` action seems weird over many actions. Potentially vanilla bug
-- There was a potential data-destruction bug when updating the app. Needs investigation.
+- There was a potential data-destruction bug when updating the app? Needs investigation.
+- Morphing of lines causes warping in tight turns. Vanilla bug.
+- Seems like the scaling of dashed line is odd, like it has a minimum size? Vanilla bug.
 
 #### Future Possible Features / Brainstorming
 - Change the recent items bar to be a fixed selection. Make it two rows and maybe have a setting for how many items are in it
@@ -40,8 +42,7 @@ This was written in English; other translations are likely not working
 - Fix the text box/text input scaling. Fonts / Architects Daughter?
 - Sketch line collision to prevent sketching through another line
 - Change the user-lines to wall-lines?
-- in-app generic symbol editor?
-  - this could be quite good for things like colors
+- copy/create new symbols
 - Add a straight line option to compliment bezier
 - Version control - file/edit/shot/survey history. Scroll back and pick versions. Check the existing backup feature?
 - Better PDF export
@@ -83,7 +84,7 @@ This was written in English; other translations are likely not working
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
 
-### TopoDroid Sketch v0.25.4 Changelog:
+### TopoDroid Sketch v0.26.0 Changelog:
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
@@ -102,6 +103,7 @@ This was written in English; other translations are likely not working
 
 **Lines**
 - Added a setting, "Fixed line pattern density", which disables the auto-scaling of lines (most notable with dashed lines, eg pits and ceiling ledges)
+- Added a "straight" line option in addition to the existing Fine, Normal, Coarse, Bezier, and Simplified lines styles
 
 **Cross-Section Viewports**
 - Added the ability to place cross-sections directly on the plan sketch in a viewport style experience. These can be moved around and edited by selecting them in edit mode (may require TopoDroid to be in Expert mode in the main settings)

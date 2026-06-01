@@ -34,7 +34,9 @@ class DrawingPointLineFilter
    */
   static boolean transform( LinePoint first, LinePoint last, DrawingPointLinePath path, float zoom )
   {
-    if ( TDSetting.isLineStyleBezier() ) {
+    if ( TDSetting.isLineStyleStraight() ) {
+      return straight( first, last, path );
+    } else if ( TDSetting.isLineStyleBezier() ) {
       return bezier( first, last, path );
     } else if ( TDSetting.isLineStyleSimplified() ) {
       return weeding( first, last, path, zoom );
@@ -69,6 +71,26 @@ class DrawingPointLineFilter
       path.addPoint( lp.x, lp.y );
     }
     if ( last != null ) path.addPoint( last.x, last.y );
+    return true;
+  }
+
+  /** collapse a string of line points to a single straight segment
+   * @param first    first line point
+   * @param last     last line point (can be null)
+   * @param path     path where the straight segment is copied
+   * @return true on success
+   */
+  static boolean straight( LinePoint first, LinePoint last, DrawingPointLinePath path )
+  {
+    if ( first == null ) return false;
+    LinePoint end = last;
+    if ( end == null ) {
+      end = first;
+      while ( end.mNext != null ) end = end.mNext;
+    }
+    if ( first == end ) return false;
+    path.addStartPoint( first.x, first.y );
+    path.addPoint( end.x, end.y );
     return true;
   }
 

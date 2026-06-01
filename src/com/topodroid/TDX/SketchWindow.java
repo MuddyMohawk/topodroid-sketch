@@ -1908,7 +1908,12 @@ public class SketchWindow extends ItemDrawer
         mSketchSurface.endCurrentPath(); 
         ArrayList< Point2D > cpath = mSketchSurface.getCurrentPath();
         if ( cpath.size() > 1 ) {
-          if ( TDSetting.isLineStyleSimplified() ) {
+          if ( TDSetting.isLineStyleStraight() ) {
+            ArrayList< Point2D > straightPath = new ArrayList<>();
+            straightPath.add( cpath.get(0) );
+            straightPath.add( cpath.get( cpath.size() - 1 ) );
+            cpath = straightPath;
+          } else if ( TDSetting.isLineStyleSimplified() ) {
 	    Weeder weeder = new Weeder();
             for ( Point2D lp : cpath ) weeder.addPoint( lp.x, lp.y );
 	    // get pixels from meters

@@ -5115,7 +5115,9 @@ public class DrawingWindow extends ItemDrawer
                       }
                       // add == true;
                     } else {
-                      if ( TDSetting.isLineStyleBezier() ) {
+                      if ( TDSetting.isLineStyleStraight() ) {
+                        add = DrawingPointLineFilter.straight( mCurrentLinePath.mFirst, mCurrentLinePath.mLast, lp1 );
+                      } else if ( TDSetting.isLineStyleBezier() ) {
                         add = DrawingPointLineFilter.bezier( mCurrentLinePath.mFirst, mCurrentLinePath.mLast, lp1 );
                       } else if ( TDSetting.isLineStyleSimplified() ) {
                         add = DrawingPointLineFilter.weeding( mCurrentLinePath.mFirst, mCurrentLinePath.mLast, lp1, mZoom );

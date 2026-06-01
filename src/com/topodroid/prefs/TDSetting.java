@@ -659,6 +659,7 @@ public class TDSetting
   private static final int LINE_STYLE_TWO    = 2;
   private static final int LINE_STYLE_THREE  = 3;
   private static final int LINE_STYLE_SIMPLIFIED = 4;
+  private static final int LINE_STYLE_STRAIGHT   = 5;
   public static final int SKETCH_PRESET_1 = 1;
   public static final int SKETCH_PRESET_2 = 2;
   private static final String ACTIVE_SKETCH_PRESET_KEY   = "DISTOX_ACTIVE_SKETCH_PRESET";
@@ -3377,6 +3378,7 @@ public class TDSetting
       case LINE_STYLE_TWO:
       case LINE_STYLE_THREE:
       case LINE_STYLE_SIMPLIFIED:
+      case LINE_STYLE_STRAIGHT:
         return style;
       default:
         return LINE_STYLE_ONE;
@@ -3423,6 +3425,7 @@ public class TDSetting
     if ( TDString.TWO.equals( style ) )   return LINE_STYLE_TWO;
     if ( TDString.THREE.equals( style ) ) return LINE_STYLE_THREE;
     if ( TDString.FOUR.equals( style ) )  return LINE_STYLE_SIMPLIFIED;
+    if ( TDString.FIVE.equals( style ) )  return LINE_STYLE_STRAIGHT;
     return LINE_STYLE_ONE;
   }
 
@@ -3433,6 +3436,7 @@ public class TDSetting
       case LINE_STYLE_TWO:        return TDString.TWO;
       case LINE_STYLE_THREE:      return TDString.THREE;
       case LINE_STYLE_SIMPLIFIED: return TDString.FOUR;
+      case LINE_STYLE_STRAIGHT:   return TDString.FIVE;
       default:                    return TDString.ONE;
     }
   }
@@ -3548,6 +3552,7 @@ public class TDSetting
 
   public static boolean isLineStyleBezier() { return mLineStyle == LINE_STYLE_BEZIER; }
   public static boolean isLineStyleSimplified() { return mLineStyle == LINE_STYLE_SIMPLIFIED; }
+  public static boolean isLineStyleStraight() { return mLineStyle == LINE_STYLE_STRAIGHT; }
 
   private static float positiveOrDefault( float value, float dflt )
   {
