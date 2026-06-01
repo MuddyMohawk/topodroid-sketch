@@ -85,7 +85,7 @@ This was written in English; other translations are likely not working
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
 
-### TopoDroid Sketch v0.27.4 Changelog:
+### TopoDroid Sketch v0.27.5 Changelog:
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
@@ -94,7 +94,6 @@ This was written in English; other translations are likely not working
   - The versioning was changed from vanilla TopoDroid. See the section `Versioning` for the details. Not well tested. 
 
 **Lines**
-
 
 - Added a setting, "Fixed line pattern density", which disables the auto-scaling of lines (most notable with dashed lines, eg pits and ceiling ledges)
 - Added a "straight" line option in addition to the existing Fine, Normal, Coarse, Bezier, and Simplified lines styles
