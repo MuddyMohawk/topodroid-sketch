@@ -78,7 +78,7 @@ class ItemSymbol
     // }
     lllp.setMargins(2,1,2,1);
 
-    mButton = new ItemButton( context, mSymbol.getPaint(), mSymbol.getScaledPath(), sx, sy, pad );
+    mButton = new ItemButton( context, mSymbol.getPreviewPaint(), mSymbol.getScaledPath(), sx, sy, pad );
     ll.addView( mButton, lllp );
 
     // if ( mUseText ) {
@@ -192,4 +192,3 @@ class ItemSymbol
   }
 
 }
-

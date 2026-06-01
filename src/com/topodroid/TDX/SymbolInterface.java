@@ -21,6 +21,7 @@ interface SymbolInterface
   String getGroupName(); 
   String getThName();
   Paint  getPaint();
+  Paint  getPreviewPaint();
   Path   getPath();
   Path   getScaledPath();
   String getDefaultOptions(); 
@@ -32,4 +33,3 @@ interface SymbolInterface
   boolean setAngle( float angle ); // return true if symbol has rotated
   int getAngle();
 }
-

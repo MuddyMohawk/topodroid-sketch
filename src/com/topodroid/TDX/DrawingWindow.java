@@ -11235,7 +11235,7 @@ public class DrawingWindow extends ItemDrawer
       if ( p == null || buttons[k] == null ) break;
       if ( p.isPoint() && p.isSection() ) continue;
       if ( p.isPoint() ) TDLog.v("SET button point " + p.getThName() );
-      buttons[kk].resetPaintPath( p.getPaint(), p.getScaledPath(), mRecentDimX, mRecentDimY );
+      buttons[kk].resetPaintPath( p.getPreviewPaint(), p.getScaledPath(), mRecentDimX, mRecentDimY );
       buttons[kk].invalidate();
       ++kk;
     }

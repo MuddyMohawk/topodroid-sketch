@@ -35,12 +35,15 @@ import android.graphics.Matrix;
 public class SymbolLine extends Symbol
 {
   static final float FIXED_PATTERN_SCALE = 0.4f;
+  private static final float PREVIEW_PATTERN_UNIT_LINES = 1.4f;
 
   String mName;       // local name
   Paint  mPaint;      // forward paint
   Paint  mRevPaint;   // reverse paint
   Paint  mFixedPaint; // forward fixed-density paint
   Paint  mRevFixedPaint; // reverse fixed-density paint
+  Paint  mPreviewPaint; // preview paint independent of line-style scale
+  Paint  mRevPreviewPaint; // reverse preview paint independent of line-style scale
   boolean mHasEffect; // whether the line paint has path-effect
   Path mPath;
   boolean mStyleStraight;
@@ -51,6 +54,11 @@ public class SymbolLine extends Symbol
   // @Override public String getThName( ) { return mThName; } // same as in Symbol.java
 
   @Override public Paint  getPaint() { return mPaint; }
+
+  @Override public Paint  getPreviewPaint()
+  {
+    return ( mPreviewPaint != null )? mPreviewPaint : mPaint;
+  }
 
   Paint getFixedPaint( boolean reversed )
   {
@@ -124,6 +132,8 @@ public class SymbolLine extends Symbol
     mRevPaint = new Paint (mPaint );
     mFixedPaint = null;
     mRevFixedPaint = null;
+    mPreviewPaint = null;
+    mRevPreviewPaint = null;
     mHasEffect = false;
     mStyleStraight = false;
     mClosed = false;
@@ -160,11 +170,21 @@ public class SymbolLine extends Symbol
     mRevFixedPaint.setPathEffect( effect_rev );
   }
 
-  private Path scaledPath( Path path )
+  private void setPreviewPatternPaints( PathEffect effect_dir, PathEffect effect_rev, float stroke_width )
+  {
+    mPreviewPaint = new Paint( mPaint );
+    mPreviewPaint.setStrokeWidth( stroke_width );
+    mPreviewPaint.setPathEffect( effect_dir );
+    mRevPreviewPaint = new Paint( mRevPaint );
+    mRevPreviewPaint.setStrokeWidth( stroke_width );
+    mRevPreviewPaint.setPathEffect( effect_rev );
+  }
+
+  private Path scaledPath( Path path, float scale )
   {
     Path ret = new Path( path );
     Matrix matrix = new Matrix();
-    matrix.setScale( FIXED_PATTERN_SCALE, FIXED_PATTERN_SCALE );
+    matrix.setScale( scale, scale );
     ret.transform( matrix );
     return ret;
   }
@@ -210,6 +230,7 @@ public class SymbolLine extends Symbol
   {
     // TDLog.v( "SL load line file " + filename );
     float unit = TDSetting.mUnitLines * TDSetting.mLineThickness;
+    float preview_scale = PREVIEW_PATTERN_UNIT_LINES / TDSetting.mUnitLines;
     String name    = null;
     String th_name = null;
     String group   = null;
@@ -221,10 +242,13 @@ public class SymbolLine extends Symbol
     Path path_rev = null;
     DashPathEffect dash = null;
     DashPathEffect fixed_dash = null;
+    DashPathEffect preview_dash = null;
     PathDashPathEffect effect = null;
     PathDashPathEffect rev_effect = null;
     PathDashPathEffect fixed_effect = null;
     PathDashPathEffect fixed_rev_effect = null;
+    PathDashPathEffect preview_effect = null;
+    PathDashPathEffect preview_rev_effect = null;
     float xmin=0, xmax=0;
     float ymin=0, ymax=0;
     String options = null;
@@ -351,17 +375,21 @@ public class SymbolLine extends Symbol
                   try {
                     float[] x = new float[n_dash];
                     float[] fixed_x = new float[n_dash];
+                    float[] preview_x = new float[n_dash];
   	            x[0] = Float.parseFloat( vals[k] ) * unit;
                     fixed_x[0] = x[0] * FIXED_PATTERN_SCALE;
+                    preview_x[0] = x[0] * preview_scale;
                     k_val = k;
                     for (int n=1; n<n_dash; ++n ) {
   	              x[n] = nextFloat( vals, s, unit );
                       fixed_x[n] = x[n] * FIXED_PATTERN_SCALE;
+                      preview_x[n] = x[n] * preview_scale;
                       // ++k; while ( k < s && vals[k].length() == 0 ) ++k;
   	              // x[n] = Float.parseFloat( vals[k] ) * unit;
                     }  
                     dash = new DashPathEffect( x, 0 );
                     fixed_dash = new DashPathEffect( fixed_x, 0 );
+                    preview_dash = new DashPathEffect( preview_x, 0 );
                   } catch ( NumberFormatException e ) {
                    TDLog.e( filename + " parse dash error: " + line );
                   }
@@ -518,8 +546,10 @@ public class SymbolLine extends Symbol
                     // path_rev.close();
                     effect     = new PathDashPathEffect( path_dir, (xmax-xmin), 0, PathDashPathEffect.Style.MORPH );
                     rev_effect = new PathDashPathEffect( path_rev, (xmax-xmin), 0, PathDashPathEffect.Style.MORPH );
-                    fixed_effect     = new PathDashPathEffect( scaledPath( path_dir ), (xmax-xmin) * FIXED_PATTERN_SCALE, 0, PathDashPathEffect.Style.MORPH );
-                    fixed_rev_effect = new PathDashPathEffect( scaledPath( path_rev ), (xmax-xmin) * FIXED_PATTERN_SCALE, 0, PathDashPathEffect.Style.MORPH );
+                    fixed_effect     = new PathDashPathEffect( scaledPath( path_dir, FIXED_PATTERN_SCALE ), (xmax-xmin) * FIXED_PATTERN_SCALE, 0, PathDashPathEffect.Style.MORPH );
+                    fixed_rev_effect = new PathDashPathEffect( scaledPath( path_rev, FIXED_PATTERN_SCALE ), (xmax-xmin) * FIXED_PATTERN_SCALE, 0, PathDashPathEffect.Style.MORPH );
+                    preview_effect     = new PathDashPathEffect( scaledPath( path_dir, preview_scale ), (xmax-xmin) * preview_scale, 0, PathDashPathEffect.Style.MORPH );
+                    preview_rev_effect = new PathDashPathEffect( scaledPath( path_rev, preview_scale ), (xmax-xmin) * preview_scale, 0, PathDashPathEffect.Style.MORPH );
                     break;
                   }
                 }
@@ -558,18 +588,30 @@ public class SymbolLine extends Symbol
                 //   mRevPaint.setStrokeWidth( width * TDSetting.mLineThickness );
                 }
 	        float dy = ymax - ymin + 1;
+                float preview_dy = (ymax - ymin) * preview_scale + 1;
                 mPaint.setStrokeWidth( dy * width * TDSetting.mLineThickness );
                 mRevPaint.setStrokeWidth( dy * width * TDSetting.mLineThickness );
                 if ( mPaint.getPathEffect() != null ) {
+                  PathEffect preview_dir = null;
+                  PathEffect preview_rev = null;
                   if ( fixed_effect != null ) {
                     if ( fixed_dash != null ) {
                       setFixedPatternPaints( new ComposePathEffect( fixed_effect, fixed_dash ),
                                              new ComposePathEffect( fixed_rev_effect, fixed_dash ) );
+                      preview_dir = new ComposePathEffect( preview_effect, preview_dash );
+                      preview_rev = new ComposePathEffect( preview_rev_effect, preview_dash );
                     } else {
                       setFixedPatternPaints( fixed_effect, fixed_rev_effect );
+                      preview_dir = preview_effect;
+                      preview_rev = preview_rev_effect;
                     }
                   } else if ( fixed_dash != null ) {
                     setFixedPatternPaints( fixed_dash, fixed_dash );
+                    preview_dir = preview_dash;
+                    preview_rev = preview_dash;
+                  }
+                  if ( preview_dir != null ) {
+                    setPreviewPatternPaints( preview_dir, preview_rev, preview_dy * width * TDSetting.mLineThickness );
                   }
                 }
   	      }

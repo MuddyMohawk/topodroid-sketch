@@ -2752,7 +2752,7 @@ public class SketchWindow extends ItemDrawer
       Symbol p = recents[k];
       if ( p == null || buttons[k] == null ) break;
       if ( p.isPoint() && p.isSection() ) continue;
-      buttons[kk].resetPaintPath( p.getPaint(), p.getPath(), mRecentDimX, mRecentDimY );
+      buttons[kk].resetPaintPath( p.getPreviewPaint(), p.getPath(), mRecentDimX, mRecentDimY );
       buttons[kk].invalidate();
       ++kk;
     }

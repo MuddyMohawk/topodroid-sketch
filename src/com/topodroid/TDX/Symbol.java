@@ -209,6 +209,10 @@ public class Symbol implements SymbolInterface
    */
   public Paint  getPaint()      { return null; } // Overridden
 
+  /** @return the symbol paint for previews - default to getPaint()
+   */
+  public Paint  getPreviewPaint() { return getPaint(); }
+
   /** @return the symbol path - default to null
    */
   public Path   getPath()       { return null; }
