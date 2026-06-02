@@ -91,6 +91,8 @@ import android.os.ParcelFileDescriptor;
 // /* fixme-23 */
 // import java.lang.reflect.Method;
 
+import android.text.TextUtils;
+
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -597,8 +599,7 @@ public class DrawingWindow extends ItemDrawer
   private LinearLayout mLayoutToolsA;
   private LinearLayout mLayoutToolsPreset;
   private LinearLayout mLayoutScale;
-  private Button mBtnPreset1;
-  private Button mBtnPreset2;
+  private Button[] mBtnPreset;
   private int mPendingSketchPreset = 0;
   // private ItemButton[] mBtnRecent;
   private ItemButton[] mBtnRecentP;
@@ -1098,7 +1099,7 @@ public class DrawingWindow extends ItemDrawer
       case TDSetting.SPEN_ACTION_TOGGLE_PRESET:
         if ( mMode == MODE_DRAW ) {
           int preset = getDisplayedSketchPreset();
-          requestSketchPresetSelection( ( preset == TDSetting.SKETCH_PRESET_2 ) ? TDSetting.SKETCH_PRESET_1 : TDSetting.SKETCH_PRESET_2 );
+          requestSketchPresetSelection( TDSetting.getNextSketchPreset( preset ) );
         }
         break;
       case TDSetting.SPEN_ACTION_TOGGLE_PALETTE:
@@ -2670,6 +2671,7 @@ public class DrawingWindow extends ItemDrawer
     setToolbarLayoutHeight( mLayoutToolsL, rowHeight );
     setToolbarLayoutHeight( mLayoutToolsA, rowHeight );
     setToolbarLayoutHeight( mLayoutToolsPreset, rowHeight );
+    rebuildSketchPresetButtons();
 
     mLayoutToolsP.removeAllViews( );
     mLayoutToolsL.removeAllViews( );
@@ -2712,6 +2714,13 @@ public class DrawingWindow extends ItemDrawer
     lp.setMargins( 0, 0, 0, 0 );
     lp.weight = 16;
     lp.gravity = 0x10; // LinearLayout.LayoutParams.center_vertical;
+    return lp;
+  }
+
+  private LinearLayout.LayoutParams makePresetButtonParams()
+  {
+    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams( 0, LinearLayout.LayoutParams.MATCH_PARENT );
+    lp.weight = 1;
     return lp;
   }
 
@@ -3083,16 +3092,8 @@ public class DrawingWindow extends ItemDrawer
     mLayoutToolsA = (LinearLayout) findViewById( R.id.layout_tool_a );
     mLayoutToolsPreset = (LinearLayout) findViewById( R.id.layout_tool_preset );
     mLayoutScale  = (LinearLayout) findViewById( R.id.layout_scale  );
-    mBtnPreset1  = (Button) findViewById( R.id.button_preset_1 );
-    mBtnPreset2  = (Button) findViewById( R.id.button_preset_2 );
     mScaleBar     = (SeekBar)findViewById( R.id.scalebar );
-    mBtnPreset1.setOnClickListener( new View.OnClickListener() {
-      @Override public void onClick( View v ) { requestSketchPresetSelection( TDSetting.SKETCH_PRESET_1 ); }
-    } );
-    mBtnPreset2.setOnClickListener( new View.OnClickListener() {
-      @Override public void onClick( View v ) { requestSketchPresetSelection( TDSetting.SKETCH_PRESET_2 ); }
-    } );
-    updateSketchPresetButtons();
+    rebuildSketchPresetButtons();
     mScaleBar.setOnSeekBarChangeListener( new SeekBar.OnSeekBarChangeListener() {
       public void onProgressChanged( SeekBar seekbar, int progress, boolean fromUser) {
         if ( fromUser ) {
@@ -3262,26 +3263,52 @@ public class DrawingWindow extends ItemDrawer
 
   private int getDisplayedSketchPreset()
   {
-    return ( mPendingSketchPreset != 0 ) ? mPendingSketchPreset : TDSetting.getActiveSketchPreset();
+    return TDSetting.normalizeSketchPreset( ( mPendingSketchPreset != 0 ) ? mPendingSketchPreset : TDSetting.getActiveSketchPreset() );
   }
 
-  private void updateSketchPresetButton( Button button, boolean active )
+  private void rebuildSketchPresetButtons()
+  {
+    if ( mLayoutToolsPreset == null ) return;
+    mLayoutToolsPreset.removeAllViews();
+    int slots = TDSetting.getSketchPresetSlotCount();
+    mBtnPreset = new Button[ slots ];
+    for ( int index = 0; index < slots; ++ index ) {
+      final int preset = index + 1;
+      Button button = new Button( this );
+      button.setSingleLine( true );
+      button.setEllipsize( TextUtils.TruncateAt.END );
+      button.setOnClickListener( new View.OnClickListener() {
+        @Override public void onClick( View v ) { requestSketchPresetSelection( preset ); }
+      } );
+      mBtnPreset[index] = button;
+      mLayoutToolsPreset.addView( button, makePresetButtonParams() );
+    }
+    updateSketchPresetButtons();
+  }
+
+  private void updateSketchPresetButton( Button button, int preset, boolean active )
   {
     if ( button == null ) return;
+    String name = TDSetting.getSketchPresetName( preset );
+    button.setText( name );
+    button.setContentDescription( getString( R.string.desc_preset, preset, name ) );
     button.setBackgroundColor( active ? 0xffd9d9d9 : 0xff7a7a7a );
     button.setTextColor( active ? 0xff111111 : 0xffffffff );
   }
 
   private void updateSketchPresetButtons()
   {
+    if ( mBtnPreset == null ) return;
     int preset = getDisplayedSketchPreset();
-    updateSketchPresetButton( mBtnPreset1, preset == TDSetting.SKETCH_PRESET_1 );
-    updateSketchPresetButton( mBtnPreset2, preset == TDSetting.SKETCH_PRESET_2 );
+    for ( int index = 0; index < mBtnPreset.length; ++ index ) {
+      int buttonPreset = index + 1;
+      updateSketchPresetButton( mBtnPreset[index], buttonPreset, preset == buttonPreset );
+    }
   }
 
   private void applySketchPresetSelection( int preset )
   {
-    int normalized = ( preset == TDSetting.SKETCH_PRESET_2 ) ? TDSetting.SKETCH_PRESET_2 : TDSetting.SKETCH_PRESET_1;
+    int normalized = TDSetting.normalizeSketchPreset( preset );
     mPendingSketchPreset = 0;
     TDSetting.selectSketchPreset( TDInstance.getPrefs(), normalized );
     setToolsToolbars();
@@ -3290,7 +3317,7 @@ public class DrawingWindow extends ItemDrawer
 
   private void requestSketchPresetSelection( int preset )
   {
-    int normalized = ( preset == TDSetting.SKETCH_PRESET_2 ) ? TDSetting.SKETCH_PRESET_2 : TDSetting.SKETCH_PRESET_1;
+    int normalized = TDSetting.normalizeSketchPreset( preset );
     int active = TDSetting.getActiveSketchPreset();
     if ( hasPendingSketchStroke() ) {
       mPendingSketchPreset = ( normalized == active ) ? 0 : normalized;

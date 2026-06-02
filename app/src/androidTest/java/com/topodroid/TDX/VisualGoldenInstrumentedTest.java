@@ -191,26 +191,26 @@ public class VisualGoldenInstrumentedTest
     // and only then user-fine. That made two of the strokes draw section
     // lines (triggering the cross-section dialog) and never exercised
     // user-standard or user-thick at all.
-    drawUserLineCurve( R.id.button_preset_1, SketchLineSymbolManager.LEGACY_TH_NAME_FINE,
+    drawUserLineCurve( 1, SketchLineSymbolManager.LEGACY_TH_NAME_FINE,
       0.08, 0.14, 0.48, 0.14,  0.04 );
-    drawUserLineCurve( R.id.button_preset_2, SketchLineSymbolManager.LEGACY_TH_NAME_FINE,
+    drawUserLineCurve( 2, SketchLineSymbolManager.LEGACY_TH_NAME_FINE,
       0.08, 0.26, 0.48, 0.26, -0.04 );
 
-    drawUserLineCurve( R.id.button_preset_1, SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD,
+    drawUserLineCurve( 1, SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD,
       0.08, 0.38, 0.48, 0.38,  0.05 );
-    drawUserLineCurve( R.id.button_preset_2, SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD,
+    drawUserLineCurve( 2, SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD,
       0.08, 0.50, 0.48, 0.50, -0.05 );
 
-    drawUserLineCurve( R.id.button_preset_1, SketchLineSymbolManager.LEGACY_TH_NAME_THICK,
+    drawUserLineCurve( 1, SketchLineSymbolManager.LEGACY_TH_NAME_THICK,
       0.08, 0.62, 0.48, 0.62,  0.06 );
-    drawUserLineCurve( R.id.button_preset_2, SketchLineSymbolManager.LEGACY_TH_NAME_THICK,
+    drawUserLineCurve( 2, SketchLineSymbolManager.LEGACY_TH_NAME_THICK,
       0.08, 0.74, 0.48, 0.74, -0.06 );
   }
 
-  private void drawUserLineCurve( int presetButtonId, String lineThName,
+  private void drawUserLineCurve( int preset, String lineThName,
     double startX, double startY, double endX, double endY, double curveOffset )
   {
-    mSupport.tapPresetButton( presetButtonId );
+    mSupport.tapPresetButton( preset );
     mSupport.clickRecentLineByThName( lineThName );
     // 30 samples along the path, 6 interpolation steps between each pair, for
     // a reasonably smooth but not-too-slow gesture.

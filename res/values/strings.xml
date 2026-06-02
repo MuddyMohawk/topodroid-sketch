@@ -1946,8 +1946,14 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_segment_message">Minimum distance between points on a line</string>
   <string name="pref_linestyle_title">Line style</string>
   <string name="pref_linestyle_summary">Line drawing style</string>
+  <string name="pref_preset_slots_title">Preset slots</string>
+  <string name="pref_preset_slots_summary">Number of preset buttons on the sketch preset bar</string>
+  <string name="pref_preset_name_title">Preset name</string>
+  <string name="pref_preset_name_summary">Label shown on the sketch preset bar</string>
+  <string name="title_settings_preset">Preset</string>
   <string name="preset_1_short" translatable="false">P1</string>
   <string name="preset_2_short" translatable="false">P2</string>
+  <string name="desc_preset">Sketch preset %1$d: %2$s</string>
   <!-- UNUSED string name="pref_linecontinue_title">Line continue</string -->
   <!-- UNUSED string name="pref_linecontinue_summary">Line default continue-mode</string -->
   <string name="pref_lineacc_title">Interpolation accuracy</string>

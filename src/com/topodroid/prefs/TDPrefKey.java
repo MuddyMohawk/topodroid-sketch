@@ -659,22 +659,71 @@ class TDPrefKey
   };
 
   /** sketch preset settings
-   * preset 1 and 2 use the same line-style and point-spacing settings as the live draw configuration
+   * presets use the same line-style and point-spacing settings as the live draw configuration
    */
-  static TDPrefKey[] mToolPreset = {
-    new TDPrefKey( B, NON, "DISTOX_PRESET_1_SCREEN", R.string.pref_preset_1_title ),
-    new TDPrefKey( B, NON, "DISTOX_PRESET_2_SCREEN", R.string.pref_preset_2_title )
-  };
+  static String presetScreenKey( int preset )     { return String.format( Locale.US, "DISTOX_PRESET_%d_SCREEN", preset ); }
+  static String presetNameKey( int preset )       { return String.format( Locale.US, "DISTOX_PRESET_%d_NAME", preset ); }
+  static String presetLineStyleKey( int preset )  { return String.format( Locale.US, "DISTOX_PRESET_%d_LINE_STYLE", preset ); }
+  static String presetLineSegmentKey( int preset ){ return String.format( Locale.US, "DISTOX_PRESET_%d_LINE_SEGMENT", preset ); }
 
-  static TDPrefKey[] mPreset1 = {
-    new TDPrefKey( N,       DR, "DISTOX_PRESET_1_LINE_STYLE",   R.string.pref_linestyle_title, R.string.pref_linestyle_summary, TDString.ONE,  R.array.lineStyle, R.array.lineStyleValue ),
-    new TDPrefKey( N, LONG, DR, "DISTOX_PRESET_1_LINE_SEGMENT", R.string.pref_segment_title,   R.string.pref_segment_message,   TDString.ONE )
-  };
+  private static String presetDefaultStyle( int preset )
+  {
+    if ( preset == TDSetting.SKETCH_PRESET_2 ) return TDString.ZERO;
+    if ( preset >= TDSetting.SKETCH_PRESET_3 ) return TDString.FIVE;
+    return TDString.ONE;
+  }
 
-  static TDPrefKey[] mPreset2 = {
-    new TDPrefKey( N,       DR, "DISTOX_PRESET_2_LINE_STYLE",   R.string.pref_linestyle_title, R.string.pref_linestyle_summary, TDString.ZERO, R.array.lineStyle, R.array.lineStyleValue ),
-    new TDPrefKey( N, LONG, DR, "DISTOX_PRESET_2_LINE_SEGMENT", R.string.pref_segment_title,   R.string.pref_segment_message,   "10" )
-  };
+  private static String presetDefaultSegment( int preset )
+  {
+    if ( preset == TDSetting.SKETCH_PRESET_2 ) return TDString.TEN;
+    if ( preset >= TDSetting.SKETCH_PRESET_3 ) return TDString.FIVE;
+    return TDString.ONE;
+  }
+
+  private static TDPrefKey[] makeToolPresetKeys()
+  {
+    TDPrefKey[] ret = new TDPrefKey[ TDSetting.SKETCH_PRESET_MAX + 1 ];
+    ret[0] = new TDPrefKey( B, LONG, DR, "DISTOX_PRESET_SLOTS", R.string.pref_preset_slots_title, R.string.pref_preset_slots_summary, TDString.THREE );
+    for ( int preset = 1; preset <= TDSetting.SKETCH_PRESET_MAX; ++ preset ) {
+      ret[preset] = new TDPrefKey( B, NON, presetScreenKey( preset ), R.string.title_settings_preset );
+    }
+    return ret;
+  }
+
+  private static TDPrefKey[] makePresetKeys( int preset )
+  {
+    return new TDPrefKey[] {
+      new TDPrefKey( B, STR,  DR, presetNameKey( preset ),        R.string.pref_preset_name_title, R.string.pref_preset_name_summary, "P" + preset ),
+      new TDPrefKey( N,       DR, presetLineStyleKey( preset ),   R.string.pref_linestyle_title,   R.string.pref_linestyle_summary,   presetDefaultStyle( preset ), R.array.lineStyle, R.array.lineStyleValue ),
+      new TDPrefKey( N, LONG, DR, presetLineSegmentKey( preset ), R.string.pref_segment_title,     R.string.pref_segment_message,     presetDefaultSegment( preset ) )
+    };
+  }
+
+  private static TDPrefKey[][] makePresetKeySets()
+  {
+    TDPrefKey[][] ret = new TDPrefKey[ TDSetting.SKETCH_PRESET_MAX ][];
+    for ( int preset = 1; preset <= TDSetting.SKETCH_PRESET_MAX; ++ preset ) {
+      ret[preset - 1] = makePresetKeys( preset );
+    }
+    return ret;
+  }
+
+  static TDPrefKey[] mToolPreset = makeToolPresetKeys();
+  static TDPrefKey[][] mPreset = makePresetKeySets();
+  static TDPrefKey[] mPreset1 = mPreset[0];
+  static TDPrefKey[] mPreset2 = mPreset[1];
+  static TDPrefKey[] mPreset3 = mPreset[2];
+  static TDPrefKey[] mPreset4 = mPreset[3];
+  static TDPrefKey[] mPreset5 = mPreset[4];
+  static TDPrefKey[] mPreset6 = mPreset[5];
+  static TDPrefKey[] mPreset7 = mPreset[6];
+  static TDPrefKey[] mPreset8 = mPreset[7];
+
+  static TDPrefKey[] presetKeys( int preset )
+  {
+    if ( preset < 1 || preset > TDSetting.SKETCH_PRESET_MAX ) preset = 1;
+    return mPreset[preset - 1];
+  }
 
   /** eraser settings
    * "select" radius // "select" radius // "select" radius
@@ -1016,6 +1065,12 @@ class TDPrefKey
     mToolPreset,
     mPreset1,
     mPreset2,
+    mPreset3,
+    mPreset4,
+    mPreset5,
+    mPreset6,
+    mPreset7,
+    mPreset8,
     mSPen,
     null
   };

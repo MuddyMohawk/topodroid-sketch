@@ -673,6 +673,11 @@ public class TDSetting
   private static final int LINE_STYLE_STRAIGHT   = 5;
   public static final int SKETCH_PRESET_1 = 1;
   public static final int SKETCH_PRESET_2 = 2;
+  public static final int SKETCH_PRESET_3 = 3;
+  public static final int SKETCH_PRESET_MIN     = 1;
+  public static final int SKETCH_PRESET_MAX     = 8;
+  public static final int SKETCH_PRESET_DEFAULT = 3;
+  private static final String PRESET_SLOTS_KEY          = "DISTOX_PRESET_SLOTS";
   private static final String ACTIVE_SKETCH_PRESET_KEY   = "DISTOX_ACTIVE_SKETCH_PRESET";
   private static final String PRESET_1_LINE_STYLE_KEY    = "DISTOX_PRESET_1_LINE_STYLE";
   private static final String PRESET_1_LINE_SEGMENT_KEY  = "DISTOX_PRESET_1_LINE_SEGMENT";
@@ -683,7 +688,11 @@ public class TDSetting
   public static int   mLineType;        // line type:  1       1     2    3
   public static int   mLineSegment   = 1;
   public static int   mLineSegment2  = 1;   // square of mLineSegment
+  public static int   mSketchPresetSlots   = SKETCH_PRESET_DEFAULT;
   public static int   mActiveSketchPreset    = SKETCH_PRESET_1;
+  private static int[]    mSketchPresetLineStyle   = new int[ SKETCH_PRESET_MAX ];
+  private static int[]    mSketchPresetLineSegment = new int[ SKETCH_PRESET_MAX ];
+  private static String[] mSketchPresetName        = new String[ SKETCH_PRESET_MAX ];
   public static int   mSketchPreset1LineStyle   = LINE_STYLE_ONE;
   public static int   mSketchPreset1LineSegment = 1;
   public static int   mSketchPreset2LineStyle   = LINE_STYLE_BEZIER;
@@ -1646,22 +1655,29 @@ public class TDSetting
     mUnitLines     = tryFloat( prefs,  key[13].key,     key[13].dflt );  // DISTOX_LINE_UNITS
     mSlopeLSide    = tryInt(   prefs,  key[14].key,     key[14].dflt );  // DISTOX_SLOPE_LSIDE
     mFixedLinePatterns = prefs.getBoolean( key[15].key, bool(key[15].dflt) ); // DISTOX_FIXED_LINE_PATTERNS
-    boolean hasPreset1Style   = prefs.contains( PRESET_1_LINE_STYLE_KEY );
-    boolean hasPreset1Segment = prefs.contains( PRESET_1_LINE_SEGMENT_KEY );
-    boolean hasPreset2Style   = prefs.contains( PRESET_2_LINE_STYLE_KEY );
-    boolean hasPreset2Segment = prefs.contains( PRESET_2_LINE_SEGMENT_KEY );
-    boolean hasActivePreset   = prefs.contains( ACTIVE_SKETCH_PRESET_KEY );
-    mSketchPreset1LineStyle   = hasPreset1Style
-                               ? parseLineStylePreferenceValue( prefs.getString( PRESET_1_LINE_STYLE_KEY, TDString.ONE ) )
-                               : mLineStyle;
-    mSketchPreset1LineSegment = hasPreset1Segment
-                               ? normalizeLineSegmentValue( tryInt( prefs, PRESET_1_LINE_SEGMENT_KEY, TDString.ONE ) )
-                               : mLineSegment;
-    mSketchPreset2LineStyle   = parseLineStylePreferenceValue( prefs.getString( PRESET_2_LINE_STYLE_KEY, TDString.ZERO ) );
-    mSketchPreset2LineSegment = normalizeLineSegmentValue( tryInt( prefs, PRESET_2_LINE_SEGMENT_KEY, "10" ) );
-    mActiveSketchPreset       = normalizeSketchPreset( tryInt( prefs, ACTIVE_SKETCH_PRESET_KEY, TDString.ONE ) );
+    int rawPresetSlots = tryInt( prefs, PRESET_SLOTS_KEY, TDString.THREE );
+    mSketchPresetSlots = normalizeSketchPresetSlots( rawPresetSlots );
+    boolean needsPresetPersist = ! prefs.contains( PRESET_SLOTS_KEY ) || rawPresetSlots != mSketchPresetSlots;
+    for ( int preset = SKETCH_PRESET_MIN; preset <= SKETCH_PRESET_MAX; ++ preset ) {
+      String nameKey    = sketchPresetNameKey( preset );
+      String styleKey   = sketchPresetLineStyleKey( preset );
+      String segmentKey = sketchPresetLineSegmentKey( preset );
+      boolean hasName    = prefs.contains( nameKey );
+      boolean hasStyle   = prefs.contains( styleKey );
+      boolean hasSegment = prefs.contains( segmentKey );
+      int defaultStyle   = ( preset == SKETCH_PRESET_1 ) ? mLineStyle : defaultSketchPresetLineStyle( preset );
+      int defaultSegment = ( preset == SKETCH_PRESET_1 ) ? mLineSegment : defaultSketchPresetLineSegment( preset );
+      mSketchPresetName[preset - 1]        = normalizeSketchPresetName( preset, prefs.getString( nameKey, defaultSketchPresetName( preset ) ) );
+      mSketchPresetLineStyle[preset - 1]   = hasStyle ? parseLineStylePreferenceValue( prefs.getString( styleKey, getLineStylePreferenceValue( defaultStyle ) ) ) : defaultStyle;
+      mSketchPresetLineSegment[preset - 1] = hasSegment ? normalizeLineSegmentValue( tryInt( prefs, segmentKey, Integer.toString( defaultSegment ) ) ) : defaultSegment;
+      needsPresetPersist |= ! hasName || ! hasStyle || ! hasSegment;
+    }
+    syncLegacySketchPresetFields();
+    boolean hasActivePreset = prefs.contains( ACTIVE_SKETCH_PRESET_KEY );
+    int rawActivePreset = tryInt( prefs, ACTIVE_SKETCH_PRESET_KEY, TDString.ONE );
+    mActiveSketchPreset = normalizeSketchPreset( rawActivePreset );
     applySketchPreset( mActiveSketchPreset );
-    if ( ! hasPreset1Style || ! hasPreset1Segment || ! hasPreset2Style || ! hasPreset2Segment || ! hasActivePreset ) {
+    if ( needsPresetPersist || ! hasActivePreset || rawActivePreset != mActiveSketchPreset ) {
       persistSketchPresetState( prefs );
     }
     // mContinueLine  = tryInt(   prefs,  key[7].key,      key[7].dflt );   // DISTOX_LINE_CONTINUE
@@ -1698,6 +1714,8 @@ public class TDSetting
   public static String updatePreference( TDPrefHelper hlp, int cat, String k, String v )
   {
     // TDLog.v("SETTINGS update cat " + cat + " pref " + k + " val " + v );
+    int preset = TDPrefCat.presetFromCategory( cat );
+    if ( preset > 0 ) return updatePrefPreset( hlp, k, v, preset );
     switch ( cat ) {
       case TDPrefCat.PREF_CATEGORY_ALL:    return updatePrefMain( hlp, k, v );
       case TDPrefCat.PREF_CATEGORY_SURVEY: return updatePrefSurvey( hlp, k, v );
@@ -1726,11 +1744,9 @@ public class TDSetting
       case TDPrefCat.PREF_ACCURACY:        return updatePrefAccuracy( hlp, k, v );
       case TDPrefCat.PREF_LOCATION:        return updatePrefLocation( hlp, k, v );
       case TDPrefCat.PREF_PLOT_SCREEN:     return updatePrefScreen( hlp, k, v );
-      case TDPrefCat.PREF_TOOL_PRESET:     return null;
+      case TDPrefCat.PREF_TOOL_PRESET:     return updatePrefToolPreset( hlp, k, v );
       case TDPrefCat.PREF_TOOL_LINE:       return updatePrefLine( hlp, k, v );
       case TDPrefCat.PREF_TOOL_POINT:      return updatePrefPoint( hlp, k, v );
-      case TDPrefCat.PREF_PRESET_1:        return updatePrefPreset1( hlp, k, v );
-      case TDPrefCat.PREF_PRESET_2:        return updatePrefPreset2( hlp, k, v );
       // case TDPrefCat.PREF_PLOT_WALLS:      return updatePrefWalls( hlp, k, v ); // AUTOWALLS
       case TDPrefCat.PREF_PLOT_DRAW:       return updatePrefDraw( hlp, k, v );
       case TDPrefCat.PREF_PLOT_ERASE:      return updatePrefErase( hlp, k, v );
@@ -3287,13 +3303,41 @@ public class TDSetting
     return ret;
   }
 
-  private static String updatePrefPreset( TDPrefHelper hlp, String k, String v, TDPrefKey[] key, int preset )
+  private static String updatePrefToolPreset( TDPrefHelper hlp, String k, String v )
   {
     String ret = null;
+    TDPrefKey[] key = TDPrefKey.mToolPreset;
+    if ( k.equals( key[0].key ) ) { // DISTOX_PRESET_SLOTS
+      int value = tryIntValue( hlp, k, v, key[0].dflt );
+      int slots = normalizeSketchPresetSlots( value );
+      mSketchPresetSlots = slots;
+      if ( mActiveSketchPreset > mSketchPresetSlots ) applySketchPreset( mSketchPresetSlots );
+      persistSketchPresetState( hlp.getSharedPrefs() );
+      TopoDroidApp.resetRecentTools();
+      if ( slots != value ) ret = Integer.toString( slots );
+    } else {
+      TDLog.e("missing PRESET TOOL key: " + k );
+    }
+    if ( ret != null ) TDPrefHelper.update( k, ret );
+    return ret;
+  }
+
+  private static String updatePrefPreset( TDPrefHelper hlp, String k, String v, int preset )
+  {
+    String ret = null;
+    boolean refreshPresetButtons = false;
+    preset = normalizeSketchPresetDefinition( preset );
+    TDPrefKey[] key = TDPrefKey.presetKeys( preset );
     if ( k.equals( key[0].key ) ) {
-      setSketchPresetLineStyle( preset, parseLineStylePreferenceValue( tryStringValue( hlp, k, v, key[0].dflt ) ) );
+      String name = tryStringValue( hlp, k, v, defaultSketchPresetName( preset ) );
+      setSketchPresetName( preset, name );
+      String normalizedName = getSketchPresetName( preset );
+      if ( ! normalizedName.equals( name ) ) ret = normalizedName;
+      refreshPresetButtons = true;
     } else if ( k.equals( key[1].key ) ) {
-      int segment = tryIntValue( hlp, k, v, key[1].dflt );
+      setSketchPresetLineStyle( preset, parseLineStylePreferenceValue( tryStringValue( hlp, k, v, key[1].dflt ) ) );
+    } else if ( k.equals( key[2].key ) ) {
+      int segment = tryIntValue( hlp, k, v, key[2].dflt );
       if ( segment < 1 ) {
         segment = 1;
         ret = TDString.ONE;
@@ -3302,22 +3346,23 @@ public class TDSetting
     } else {
       TDLog.e("missing PRESET key: " + k );
     }
-    if ( normalizeSketchPreset( preset ) == mActiveSketchPreset ) {
+    if ( normalizeSketchPresetDefinition( preset ) == mActiveSketchPreset ) {
       applySketchPreset( mActiveSketchPreset );
     }
     persistSketchPresetState( hlp.getSharedPrefs() );
+    if ( refreshPresetButtons ) TopoDroidApp.resetRecentTools();
     if ( ret != null ) TDPrefHelper.update( k, ret );
     return ret;
   }
 
   private static String updatePrefPreset1( TDPrefHelper hlp, String k, String v )
   {
-    return updatePrefPreset( hlp, k, v, TDPrefKey.mPreset1, SKETCH_PRESET_1 );
+    return updatePrefPreset( hlp, k, v, SKETCH_PRESET_1 );
   }
 
   private static String updatePrefPreset2( TDPrefHelper hlp, String k, String v )
   {
-    return updatePrefPreset( hlp, k, v, TDPrefKey.mPreset2, SKETCH_PRESET_2 );
+    return updatePrefPreset( hlp, k, v, SKETCH_PRESET_2 );
   }
 
   private static String updatePrefErase( TDPrefHelper hlp, String k, String v )
@@ -3454,11 +3499,6 @@ public class TDSetting
     }
   }
 
-  private static int normalizeSketchPreset( int preset )
-  {
-    return ( preset == SKETCH_PRESET_2 ) ? SKETCH_PRESET_2 : SKETCH_PRESET_1;
-  }
-
   private static int lineTypeFromStyle( int style )
   {
     switch ( normalizeLineStyle( style ) ) {
@@ -3501,32 +3541,127 @@ public class TDSetting
     setLineStyleAndType( parseLineStylePreferenceValue( style ) );
   }
 
+  public static String sketchPresetNameKey( int preset )
+  {
+    return String.format( Locale.US, "DISTOX_PRESET_%d_NAME", normalizeSketchPresetDefinition( preset ) );
+  }
+
+  public static String sketchPresetLineStyleKey( int preset )
+  {
+    return String.format( Locale.US, "DISTOX_PRESET_%d_LINE_STYLE", normalizeSketchPresetDefinition( preset ) );
+  }
+
+  public static String sketchPresetLineSegmentKey( int preset )
+  {
+    return String.format( Locale.US, "DISTOX_PRESET_%d_LINE_SEGMENT", normalizeSketchPresetDefinition( preset ) );
+  }
+
+  private static int normalizeSketchPresetSlots( int slots )
+  {
+    if ( slots < SKETCH_PRESET_MIN ) return SKETCH_PRESET_MIN;
+    if ( slots > SKETCH_PRESET_MAX ) return SKETCH_PRESET_MAX;
+    return slots;
+  }
+
+  private static int normalizeSketchPresetDefinition( int preset )
+  {
+    if ( preset < SKETCH_PRESET_MIN ) return SKETCH_PRESET_MIN;
+    if ( preset > SKETCH_PRESET_MAX ) return SKETCH_PRESET_MAX;
+    return preset;
+  }
+
+  public static int normalizeSketchPreset( int preset )
+  {
+    if ( preset < SKETCH_PRESET_MIN ) return SKETCH_PRESET_MIN;
+    if ( preset > mSketchPresetSlots ) return mSketchPresetSlots;
+    return preset;
+  }
+
+  public static int getSketchPresetSlotCount()
+  {
+    return mSketchPresetSlots;
+  }
+
+  public static int getNextSketchPreset( int preset )
+  {
+    if ( mSketchPresetSlots <= SKETCH_PRESET_MIN ) return normalizeSketchPreset( preset );
+    preset = normalizeSketchPreset( preset );
+    return ( preset >= mSketchPresetSlots ) ? SKETCH_PRESET_MIN : preset + 1;
+  }
+
+  private static String defaultSketchPresetName( int preset )
+  {
+    return "P" + normalizeSketchPresetDefinition( preset );
+  }
+
+  private static int defaultSketchPresetLineStyle( int preset )
+  {
+    preset = normalizeSketchPresetDefinition( preset );
+    if ( preset == SKETCH_PRESET_2 ) return LINE_STYLE_BEZIER;
+    if ( preset >= SKETCH_PRESET_3 ) return LINE_STYLE_STRAIGHT;
+    return LINE_STYLE_ONE;
+  }
+
+  private static int defaultSketchPresetLineSegment( int preset )
+  {
+    preset = normalizeSketchPresetDefinition( preset );
+    if ( preset == SKETCH_PRESET_2 ) return 10;
+    if ( preset >= SKETCH_PRESET_3 ) return 5;
+    return 1;
+  }
+
+  private static String normalizeSketchPresetName( int preset, String name )
+  {
+    if ( name == null ) return defaultSketchPresetName( preset );
+    name = name.trim();
+    return TDString.isNullOrEmpty( name ) ? defaultSketchPresetName( preset ) : name;
+  }
+
+  private static void syncLegacySketchPresetFields()
+  {
+    mSketchPreset1LineStyle   = mSketchPresetLineStyle[0];
+    mSketchPreset1LineSegment = mSketchPresetLineSegment[0];
+    mSketchPreset2LineStyle   = mSketchPresetLineStyle[1];
+    mSketchPreset2LineSegment = mSketchPresetLineSegment[1];
+  }
+
   private static int getSketchPresetLineStyle( int preset )
   {
-    return ( normalizeSketchPreset( preset ) == SKETCH_PRESET_2 ) ? mSketchPreset2LineStyle : mSketchPreset1LineStyle;
+    return mSketchPresetLineStyle[ normalizeSketchPresetDefinition( preset ) - 1 ];
   }
 
   private static int getSketchPresetLineSegment( int preset )
   {
-    return ( normalizeSketchPreset( preset ) == SKETCH_PRESET_2 ) ? mSketchPreset2LineSegment : mSketchPreset1LineSegment;
+    return mSketchPresetLineSegment[ normalizeSketchPresetDefinition( preset ) - 1 ];
+  }
+
+  private static void setSketchPresetName( int preset, String name )
+  {
+    mSketchPresetName[ normalizeSketchPresetDefinition( preset ) - 1 ] = normalizeSketchPresetName( preset, name );
+  }
+
+  public static String getSketchPresetName( int preset )
+  {
+    preset = normalizeSketchPresetDefinition( preset );
+    return normalizeSketchPresetName( preset, mSketchPresetName[preset - 1] );
+  }
+
+  public static String getSketchPresetSettingsTitle( int preset )
+  {
+    preset = normalizeSketchPresetDefinition( preset );
+    return String.format( Locale.US, "PRESET %d - %s", preset, getSketchPresetName( preset ) );
   }
 
   private static void setSketchPresetLineStyle( int preset, int style )
   {
-    if ( normalizeSketchPreset( preset ) == SKETCH_PRESET_2 ) {
-      mSketchPreset2LineStyle = normalizeLineStyle( style );
-    } else {
-      mSketchPreset1LineStyle = normalizeLineStyle( style );
-    }
+    mSketchPresetLineStyle[ normalizeSketchPresetDefinition( preset ) - 1 ] = normalizeLineStyle( style );
+    syncLegacySketchPresetFields();
   }
 
   private static void setSketchPresetLineSegment( int preset, int segment )
   {
-    if ( normalizeSketchPreset( preset ) == SKETCH_PRESET_2 ) {
-      mSketchPreset2LineSegment = normalizeLineSegmentValue( segment );
-    } else {
-      mSketchPreset1LineSegment = normalizeLineSegmentValue( segment );
-    }
+    mSketchPresetLineSegment[ normalizeSketchPresetDefinition( preset ) - 1 ] = normalizeLineSegmentValue( segment );
+    syncLegacySketchPresetFields();
   }
 
   private static void syncActiveSketchPresetFromLineSettings()
@@ -3540,17 +3675,15 @@ public class TDSetting
     mActiveSketchPreset = normalizeSketchPreset( preset );
     setLineStyleAndType( getSketchPresetLineStyle( mActiveSketchPreset ) );
     setLineSegment( getSketchPresetLineSegment( mActiveSketchPreset ) );
+    syncLegacySketchPresetFields();
   }
 
   private static void storeSketchPresetDefinition( Editor editor, int preset )
   {
-    if ( normalizeSketchPreset( preset ) == SKETCH_PRESET_2 ) {
-      setPreference( editor, PRESET_2_LINE_STYLE_KEY,   getLineStylePreferenceValue( mSketchPreset2LineStyle ) );
-      setPreference( editor, PRESET_2_LINE_SEGMENT_KEY, mSketchPreset2LineSegment );
-    } else {
-      setPreference( editor, PRESET_1_LINE_STYLE_KEY,   getLineStylePreferenceValue( mSketchPreset1LineStyle ) );
-      setPreference( editor, PRESET_1_LINE_SEGMENT_KEY, mSketchPreset1LineSegment );
-    }
+    preset = normalizeSketchPresetDefinition( preset );
+    setPreference( editor, sketchPresetNameKey( preset ),        getSketchPresetName( preset ) );
+    setPreference( editor, sketchPresetLineStyleKey( preset ),   getLineStylePreferenceValue( getSketchPresetLineStyle( preset ) ) );
+    setPreference( editor, sketchPresetLineSegmentKey( preset ), getSketchPresetLineSegment( preset ) );
   }
 
   private static void storeLiveLinePreferences( Editor editor )
@@ -3561,8 +3694,10 @@ public class TDSetting
 
   private static void storeSketchPresetState( Editor editor )
   {
-    storeSketchPresetDefinition( editor, SKETCH_PRESET_1 );
-    storeSketchPresetDefinition( editor, SKETCH_PRESET_2 );
+    mSketchPresetSlots = normalizeSketchPresetSlots( mSketchPresetSlots );
+    mActiveSketchPreset = normalizeSketchPreset( mActiveSketchPreset );
+    setPreference( editor, PRESET_SLOTS_KEY, mSketchPresetSlots );
+    for ( int preset = SKETCH_PRESET_MIN; preset <= SKETCH_PRESET_MAX; ++ preset ) storeSketchPresetDefinition( editor, preset );
     setPreference( editor, ACTIVE_SKETCH_PRESET_KEY, mActiveSketchPreset );
     storeLiveLinePreferences( editor );
   }
@@ -3587,13 +3722,55 @@ public class TDSetting
     return commitEditor( editor );
   }
 
+  private static int sketchPresetForKey( String key, String suffix )
+  {
+    for ( int preset = SKETCH_PRESET_MIN; preset <= SKETCH_PRESET_MAX; ++ preset ) {
+      if ( String.format( Locale.US, "DISTOX_PRESET_%d_%s", preset, suffix ).equals( key ) ) return preset;
+    }
+    return 0;
+  }
+
+  private static boolean importSketchPresetKey( Editor editor, String key, String value )
+  {
+    if ( PRESET_SLOTS_KEY.equals( key ) ) {
+      mSketchPresetSlots = normalizeSketchPresetSlots( Integer.parseInt( value ) );
+      if ( mActiveSketchPreset > mSketchPresetSlots ) applySketchPreset( mSketchPresetSlots );
+      setPreference( editor, PRESET_SLOTS_KEY, mSketchPresetSlots );
+      return true;
+    }
+    if ( ACTIVE_SKETCH_PRESET_KEY.equals( key ) ) {
+      mActiveSketchPreset = normalizeSketchPreset( Integer.parseInt( value ) );
+      setPreference( editor, ACTIVE_SKETCH_PRESET_KEY, mActiveSketchPreset );
+      return true;
+    }
+    int preset = sketchPresetForKey( key, "NAME" );
+    if ( preset > 0 ) {
+      setSketchPresetName( preset, value );
+      setPreference( editor, sketchPresetNameKey( preset ), getSketchPresetName( preset ) );
+      return true;
+    }
+    preset = sketchPresetForKey( key, "LINE_STYLE" );
+    if ( preset > 0 ) {
+      setSketchPresetLineStyle( preset, parseLineStylePreferenceValue( value ) );
+      setPreference( editor, sketchPresetLineStyleKey( preset ), getLineStylePreferenceValue( getSketchPresetLineStyle( preset ) ) );
+      return true;
+    }
+    preset = sketchPresetForKey( key, "LINE_SEGMENT" );
+    if ( preset > 0 ) {
+      setSketchPresetLineSegment( preset, Integer.parseInt( value ) );
+      setPreference( editor, sketchPresetLineSegmentKey( preset ), getSketchPresetLineSegment( preset ) );
+      return true;
+    }
+    return false;
+  }
+
   private static boolean isSketchPresetImportKey( String key )
   {
     return ACTIVE_SKETCH_PRESET_KEY.equals( key )
-        || PRESET_1_LINE_STYLE_KEY.equals( key )
-        || PRESET_1_LINE_SEGMENT_KEY.equals( key )
-        || PRESET_2_LINE_STYLE_KEY.equals( key )
-        || PRESET_2_LINE_SEGMENT_KEY.equals( key );
+        || PRESET_SLOTS_KEY.equals( key )
+        || sketchPresetForKey( key, "NAME" ) > 0
+        || sketchPresetForKey( key, "LINE_STYLE" ) > 0
+        || sketchPresetForKey( key, "LINE_SEGMENT" ) > 0;
   }
 
   public static boolean isLineStyleComplex() 
@@ -4590,6 +4767,7 @@ B DISTOX_SAP5_BIT16_BUG true
                            ? ( ( flag & (1 << TDPrefKey.DR) ) != 0 )
                            : TDPrefKey.checkKeyGroup( kay, flag );
         if ( allowImport ) {
+          if ( isSketchPresetImportKey( kay ) && importSketchPresetKey( editor, kay, value ) ) continue;
           switch ( kay ) {
             case "DISTOX_SIZE_BUTTONS":
               size = Integer.parseInt( value );

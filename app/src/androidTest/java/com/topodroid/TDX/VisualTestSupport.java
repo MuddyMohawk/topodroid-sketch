@@ -581,9 +581,9 @@ final class VisualTestSupport
     return sb.toString();
   }
 
-  void tapPresetButton( int viewId )
+  void tapPresetButton( int preset )
   {
-    tapViewCenter( viewId, "preset button" );
+    tapChildInContainer( R.id.layout_tool_preset, preset - 1, "preset bar" );
   }
 
   void selectReferencePointTool()
@@ -1021,7 +1021,7 @@ selection.mHotItem.getHandleRole() );
 
   void setCanonicalToolbarState()
   {
-    tapPresetButton( R.id.button_preset_1 );
+    tapPresetButton( 1 );
     // Resolve by th_name so the "active line" highlight sits on user-fine
     // regardless of where it lives in the recent-line palette on this install.
     clickRecentLineByThName( SketchLineSymbolManager.LEGACY_TH_NAME_FINE );
@@ -1725,6 +1725,7 @@ selection.mHotItem.getHandleRole() );
     editor.putBoolean( "DISTOX_SINGLE_BACK", true );
     editor.putString( "DISTOX_WITH_LEVELS", "0" );
     editor.putString( "DISTOX_TOOLBAR_UPDATE", "0" );
+    editor.putString( "DISTOX_PRESET_SLOTS", "2" );
     editor.putString( "DISTOX_PRESET_1_LINE_STYLE", "1" );
     editor.putString( "DISTOX_PRESET_1_LINE_SEGMENT", "1" );
     editor.putString( "DISTOX_PRESET_2_LINE_STYLE", "0" );

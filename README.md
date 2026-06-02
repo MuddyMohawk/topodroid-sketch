@@ -1,9 +1,9 @@
 # TopoDroid Sketch
 
-This is a fork of the main TopoDroid repository. It is focused on adding features to better support a paper-style free hand sketching style instead of using symbols.
+This is a fork of the main TopoDroid repository. It is focused on adding features to better support a paper-style free hand sketching style instead of using symbols and therion.
 The intended workflow is to create beautiful sketches on the sketching screen and export those as images for the cartographer.
 
-This was essentially entirely vibe-coded with Codex.
+This was essentially entirely vibe-coded with Codex and Claude.
 
 Testing and development was done with a Cavway X1 and an Active Tab 3.
 
@@ -21,17 +21,17 @@ This was written in English; other translations are likely not working
 
 #### TODO bugs:
 - Post-install splash screen needs some proofreading
-- There's some weird differences in the back key via S Pen stylus vs Active Key
+- There's some weird differences in the back key via S Pen stylus vs Active Key, Single-back vs double back
 - Exporting to PNG with Grid lines on and transparent background off results in a pure black background. The grid lines aren't being preserved.
 - Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch 
   - station designation font size does not affect export size 
   - actually all the sketch settings might be respected (eg leg line size)?
-- Taking screenshot with volume-up doesn't work. Vanilla bug.
 - Emulator test suite should probably test if the emulator is actually running lol
 - On the startup screens, the L icon size isn't displayed as default even though it is. Vanilla Bug.
 - The `undo` action seems weird over many actions. Potentially vanilla bug
 - There was a potential data-destruction bug when updating the app? Needs investigation.
 - Morphing of lines causes warping in tight turns. Vanilla bug.
+- Taking screenshot with volume-up doesn't work. Vanilla bug.
 - Seems like the scaling of dashed line is odd, like it has a minimum size? Vanilla bug.
 - Water displayed in a cross-section viewport is not showing up in the main sketch screen
 
@@ -43,7 +43,6 @@ This was written in English; other translations are likely not working
 - Sketch line collision to prevent sketching through another line
 - Change the user-lines to wall-lines?
 - copy/create new symbols
-- Add a straight line option to compliment bezier
 - Version control - file/edit/shot/survey history. Scroll back and pick versions. Check the existing backup feature?
 - Better PDF export
 - At-station cross-section viewport support
@@ -59,20 +58,24 @@ This was written in English; other translations are likely not working
   - switch between profile and plan (and cross-sections?)
   - press-and-hold to pan like Krita does
   - 2,3,4... finger tap and finger drag actions
+  - switch between toolsets
+  - switch between tools/brushes
 - Pie in the sky: Advanced GPS/gnss tools. RTK when.
 - Inventory/Rope Audit/Vandalism tracking tools
-- Investigate and enhance the point symbols. They could be good. They need to be aligned with the NSS conventional symbols
+- Investigate and enhance the point symbols. They could be good. They need to be aligned with the NSS/UIS conventional symbols
   - Better, finer, sand symbol
   - Mud symbol in alignment with the NSS symbol
   - Bedrock symbol
   - cobbles
   - Randomized rock symbol?
+  - better size range for symbols
+- In-app symbol editor
 - Sketch layers
 - Opacity? that would be useful for doing fade-in-fade-out overlapping layers
 - Display Cavway line features on the sketch (is this a thing already?)
 - Sort shots by their ordering, not their shot ID (is this a skill issue)
-- Bulk reassign splays?
-- Setting to automatically detect if there hasn't been any successful wifi or data connections in the last N minutes, and then toggle airplane mode to save battery
+- Bulk reassign splays? (I've been told this is a skill issue)
+- Setting to automatically detect if there hasn't been any successful wifi or data connections in the last N minutes, and then toggle airplane mode to save battery?
 - Long-press erase mode for the S pen. Attempted once, was bugged and didn't work.
 - Legend, sketch info, etc viewport style box to use with the png export. Jealous of that Therion fanciness
 - More naming options for png export? (create a name based off of the selected export options? eg append `s` for splay, `n` for north arrow)
@@ -83,8 +86,9 @@ This was written in English; other translations are likely not working
 - Tweak bad backsight orange line to be a little more subtle
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
+- Fdroid distribution and updating
 
-### TopoDroid Sketch v0.29.0 Changelog:
+### TopoDroid Sketch v0.30.0 Changelog:
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
@@ -95,7 +99,7 @@ This was written in English; other translations are likely not working
 **Lines**
 
 - Added a setting, "Fixed line pattern density", which disables the auto-scaling of lines (most notable with dashed lines, eg pits and ceiling ledges)
-- Added a "straight" line option in addition to the existing Fine, Normal, Coarse, Bezier, and Simplified lines styles
+- Added a straight line option in addition to the existing Fine, Normal, Coarse, Bezier, and Simplified lines styles
 - Changed the vanilla morphing of line-symbols from warp-to-fit to a rigid-stamping that prevents the ugly morphing of things like ceiling ledges
 - Extended the line symbols with additional terms; sketch_effect, carriers, rigid stamps, dash-on segments, and advance. These are used to make prettier curved brush lines. This bumped the TDVersion.SYMBOL_VERSION from 44 to 45. However, this is still compatible with vanilla TopoDroid. Probably.
 
@@ -118,10 +122,11 @@ This was written in English; other translations are likely not working
 - Added the ability to place a reference image on a sketch (eg, a photo for a cross-section). The image can be scaled, moved, rotated, and its opacity and visibility can be changed. The reference image is included with the PNG export if it's visible
 
 **Line Presets**
-- Added two drawing presets to the sketch screen, which appear as "P1" and "P2". These are intended to allow a sketcher to switch between drawing thin, detailed lines, and smooth, straight lines
+- Added drawing presets to the sketch screen, which appear as "P1" and "P2". These are intended to allow a sketcher to switch between drawing thin, detailed lines, and smooth, straight lines
 - Preset 1's defaults are a line style of `fine` and a line point spacing of 1
-- Preset 2's defaults are a line style of `bezier` and a line point spacing of 10 (todo: switch to 15?)
-- Added a presets menu to the sketch settings screen to allow customization of each preset
+- Preset 2's defaults are a line style of `bezier` and a line point spacing of 10
+- Preset 3's defaults are a line style of `straight` and a line point spacing of 5
+- Added a presets menu to the sketch settings screen to allow customization of each preset. Users can also add up to 8 preset slots.
 
 **Toolbar Overhaul**
 - Added a setting for an overhauled toolbar/recents bar. This is on by default under Settings -> Secondary sketch settings -> Toolbar mode

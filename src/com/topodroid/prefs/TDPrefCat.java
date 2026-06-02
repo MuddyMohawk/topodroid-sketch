@@ -64,11 +64,30 @@ public class TDPrefCat
   public static final int PREF_CATEGORY_SRV       = 41;
   public static final int PREF_CATEGORY_PLY       = 42;
   public static final int PREF_TOOL_PRESET       = 43;
+  public static final int PREF_PRESET_FIRST      = 44;
   public static final int PREF_PRESET_1          = 44;
   public static final int PREF_PRESET_2          = 45;
-  public static final int PREF_CATEGORY_SPEN      = 46;
+  public static final int PREF_PRESET_3          = 46;
+  public static final int PREF_PRESET_4          = 47;
+  public static final int PREF_PRESET_5          = 48;
+  public static final int PREF_PRESET_6          = 49;
+  public static final int PREF_PRESET_7          = 50;
+  public static final int PREF_PRESET_8          = 51;
+  public static final int PREF_PRESET_LAST       = 51;
+  public static final int PREF_CATEGORY_SPEN      = 52;
   // public static final int PREF_CATEGORY_LOG       = 42; // this must be the last NO_LOGS
-  public static final int PREF_CATEGORY_MAX = 46; // last category
+  public static final int PREF_CATEGORY_MAX = 52; // last category
+
+  public static int presetCategory( int preset )
+  {
+    return PREF_PRESET_FIRST + preset - 1;
+  }
+
+  public static int presetFromCategory( int cat )
+  {
+    if ( cat < PREF_PRESET_FIRST || cat > PREF_PRESET_LAST ) return 0;
+    return cat - PREF_PRESET_FIRST + 1;
+  }
 
   // the order must be the same as TDPrefKey.mKeySet as above
   static int[] mTitleRes = {
@@ -118,8 +137,14 @@ public class TDPrefCat
     R.string.title_settings_srv,      // 41
     R.string.title_settings_ply,
     R.string.title_settings_presets,
-    R.string.title_settings_preset_1,
-    R.string.title_settings_preset_2,
+    R.string.title_settings_preset,
+    R.string.title_settings_preset,
+    R.string.title_settings_preset,
+    R.string.title_settings_preset,
+    R.string.title_settings_preset,
+    R.string.title_settings_preset,
+    R.string.title_settings_preset,
+    R.string.title_settings_preset,
     R.string.title_settings_spen,
     // R.string.title_settings_log       // 43
   };

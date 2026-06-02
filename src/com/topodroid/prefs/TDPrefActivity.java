@@ -363,11 +363,21 @@ public class TDPrefActivity extends Activity
     "PRESETS",
     "PRESET_1",
     "PRESET_2",
+    "PRESET_3",
+    "PRESET_4",
+    "PRESET_5",
+    "PRESET_6",
+    "PRESET_7",
+    "PRESET_8",
     "SPEN",
     // R.string.title_settings_log       // 43
   };
 
-  private String getCategoryName() { return getResources().getString( TDPrefCat.mTitleRes[ mPrefCategory ] ); }
+  private String getCategoryName()
+  {
+    int preset = TDPrefCat.presetFromCategory( mPrefCategory );
+    return ( preset > 0 ) ? TDSetting.getSketchPresetSettingsTitle( preset ) : getResources().getString( TDPrefCat.mTitleRes[ mPrefCategory ] );
+  }
 
   /** set the title of the window
    */
@@ -472,8 +482,14 @@ public class TDPrefActivity extends Activity
       case TDPrefCat.PREF_PLOT_SCREEN:        mPrefs = TDPref.makeScreenPrefs(   this, hlp ); break;
       case TDPrefCat.PREF_TOOL_LINE:          mPrefs = TDPref.makeLinePrefs(     this, hlp ); break;
       case TDPrefCat.PREF_TOOL_POINT:         mPrefs = TDPref.makePointPrefs(    this, hlp ); break;
-      case TDPrefCat.PREF_PRESET_1:          mPrefs = TDPref.makePreset1Prefs( this, hlp ); break;
-      case TDPrefCat.PREF_PRESET_2:          mPrefs = TDPref.makePreset2Prefs( this, hlp ); break;
+      case TDPrefCat.PREF_PRESET_1:          mPrefs = TDPref.makePresetPrefs( this, hlp, 1 ); break;
+      case TDPrefCat.PREF_PRESET_2:          mPrefs = TDPref.makePresetPrefs( this, hlp, 2 ); break;
+      case TDPrefCat.PREF_PRESET_3:          mPrefs = TDPref.makePresetPrefs( this, hlp, 3 ); break;
+      case TDPrefCat.PREF_PRESET_4:          mPrefs = TDPref.makePresetPrefs( this, hlp, 4 ); break;
+      case TDPrefCat.PREF_PRESET_5:          mPrefs = TDPref.makePresetPrefs( this, hlp, 5 ); break;
+      case TDPrefCat.PREF_PRESET_6:          mPrefs = TDPref.makePresetPrefs( this, hlp, 6 ); break;
+      case TDPrefCat.PREF_PRESET_7:          mPrefs = TDPref.makePresetPrefs( this, hlp, 7 ); break;
+      case TDPrefCat.PREF_PRESET_8:          mPrefs = TDPref.makePresetPrefs( this, hlp, 8 ); break;
       // case TDPrefCat.PREF_PLOT_WALLS:         mPrefs = TDPref.makeWallsPrefs(    this, hlp ); break; // AUTOWALLS
       case TDPrefCat.PREF_PLOT_DRAW:          mPrefs = TDPref.makeDrawPrefs(     this, hlp ); break;
       case TDPrefCat.PREF_PLOT_ERASE:         mPrefs = TDPref.makeErasePrefs(    this, hlp ); break;
@@ -578,8 +594,9 @@ public class TDPrefActivity extends Activity
       linkPreference( "DISTOX_TOOL_POINT",          TDPrefCat.PREF_TOOL_POINT );
       linkPreference( "DISTOX_TOOL_PRESET",        TDPrefCat.PREF_TOOL_PRESET );
     } else if (mPrefCategory == TDPrefCat.PREF_TOOL_PRESET ) {
-      linkPreference( "DISTOX_PRESET_1_SCREEN",    TDPrefCat.PREF_PRESET_1 );
-      linkPreference( "DISTOX_PRESET_2_SCREEN",    TDPrefCat.PREF_PRESET_2 );
+      for ( int preset = 1; preset <= TDSetting.getSketchPresetSlotCount(); ++ preset ) {
+        linkPreference( TDPrefKey.presetScreenKey( preset ), TDPrefCat.presetCategory( preset ) );
+      }
     } else if (mPrefCategory == TDPrefCat.PREF_CATEGORY_DEVICE ) {
       linkPreference( "DISTOX_SPEN_PREF",           TDPrefCat.PREF_CATEGORY_SPEN );
       linkPreference( "DISTOX_CALIB_PREF",          TDPrefCat.PREF_CATEGORY_CALIB );
