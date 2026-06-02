@@ -31,6 +31,7 @@ import android.graphics.*;
 import android.view.View;
 import android.view.ViewGroup.LayoutParams;
 import android.widget.Button;
+import android.widget.CheckBox;
 // import android.widget.LinearLayout;
 
 // FIXME_SCALE
@@ -66,6 +67,7 @@ class ItemPickerDialog extends MyDialog
   private  Button mBTline;
   private  Button mBTarea;
   private  Button mBTsize;     // FIXME_SCALE
+  private  CheckBox mLockRow;
   // private  Button mBTleft;
   // private  Button mBTright;
   // private  Button mBTcancel;
@@ -74,6 +76,7 @@ class ItemPickerDialog extends MyDialog
 
   // private DrawingWindow mParent;
   private WeakReference<ItemDrawer> mParent;
+  private int mToolbarRow;
 
   //* private ListView    mList = null;
   private GridView    mList = null;
@@ -102,11 +105,24 @@ class ItemPickerDialog extends MyDialog
    */
   ItemPickerDialog( Context context, ItemDrawer parent, long type, int item_type  )
   {
+    this( context, parent, type, item_type, 0 );
+  }
+
+  /**
+   * @param context    context
+   * @param parent     DrawingWindow parent
+   * @param type       plot type
+   * @param item_type  initial symbol class to show
+   * @param toolbarRow toolbar row selected by the palette button
+   */
+  ItemPickerDialog( Context context, ItemDrawer parent, long type, int item_type, int toolbarRow )
+  {
     super( context, null, R.string.ItemPickerDialog ); // null app
     mParent  = new WeakReference<ItemDrawer>( parent );
 
     mPlotType = type;
     mItemType = item_type; // mParent.mSymbol;
+    mToolbarRow = ItemDrawer.normalizeToolbarRow( toolbarRow );
  
     mPointLib = BrushManager.getPointLib();
     mLineLib  = BrushManager.getLineLib();
@@ -195,6 +211,7 @@ class ItemPickerDialog extends MyDialog
     mBTpoint = (Button) findViewById(R.id.item_point);
     mBTline  = (Button) findViewById(R.id.item_line );
     mBTarea  = (Button) findViewById(R.id.item_area );
+    mLockRow = (CheckBox) findViewById(R.id.item_lock);
     mBTsize  = (Button) findViewById(R.id.size);     // FIXME_SCALE
     mBTsize.setOnClickListener( this );
     // mBTleft  = (Button) findViewById(R.id.item_left );
@@ -210,6 +227,15 @@ class ItemPickerDialog extends MyDialog
       mBTpoint.setOnClickListener( this );
       mBTline.setOnClickListener( this );
       mBTarea.setOnClickListener( this );
+      if ( mLockRow != null ) {
+        if ( ItemDrawer.isManualToolbar() ) {
+          mLockRow.setVisibility( View.VISIBLE );
+          mLockRow.setChecked( ItemDrawer.isToolbarRowLocked( mToolbarRow ) );
+          mLockRow.setOnClickListener( this );
+        } else {
+          mLockRow.setVisibility( View.GONE );
+        }
+      }
     // }
     // mBTsize.setOnLongClickListener( new View.OnLongClickListener() {
     //   @Override
@@ -573,6 +599,14 @@ class ItemPickerDialog extends MyDialog
     setTheTitle();
   }
 
+  private void notifyToolbarTypeChanged()
+  {
+    ItemDrawer parent = mParent.get();
+    if ( parent != null && ! parent.isFinishing() && mLockRow != null && mLockRow.isChecked() ) {
+      parent.itemPickerTypeChanged( mToolbarRow, mItemType );
+    }
+  }
+
   // this is called tapping the tab-buttons on the top
   private void setTypeFromCurrent( )
   {
@@ -668,20 +702,20 @@ class ItemPickerDialog extends MyDialog
         // if ( TDLevel.overBasic )
         if ( mParent.get() != null && ! mParent.get().isFinishing() ) {
           // TDLog.v( "item picker selected point " + mSelectedPoint );
-          mParent.get().itemPickerSelected( SymbolType.POINT, mSelectedPoint );
+          mParent.get().itemPickerSelected( SymbolType.POINT, mSelectedPoint, mToolbarRow );
         }
         break;
       case SymbolType.LINE: 
         if ( mParent.get() != null && ! mParent.get().isFinishing() ) {
           // TDLog.v( "item picker selected line " + mSelectedLine );
-          mParent.get().itemPickerSelected( SymbolType.LINE, mSelectedLine );
+          mParent.get().itemPickerSelected( SymbolType.LINE, mSelectedLine, mToolbarRow );
 	}
         break;
       case SymbolType.AREA: 
         // if ( TDLevel.overBasic )
         if ( mParent.get() != null && ! mParent.get().isFinishing() ) {
           // TDLog.v( "item picker selected area " + mSelectedArea );
-          mParent.get().itemPickerSelected( SymbolType.AREA, mSelectedArea );
+          mParent.get().itemPickerSelected( SymbolType.AREA, mSelectedArea, mToolbarRow );
         }
         break;
     }
@@ -700,6 +734,7 @@ class ItemPickerDialog extends MyDialog
           updateList();
           // updateRecentButtons( mItemType );
           setTypeFromCurrent( );
+          notifyToolbarTypeChanged();
         }
       }
     } else if ( vid == R.id.item_line ) {
@@ -708,6 +743,7 @@ class ItemPickerDialog extends MyDialog
         updateList();
         // updateRecentButtons( mItemType );
         setTypeFromCurrent( );
+        notifyToolbarTypeChanged();
       }
     } else if ( vid == R.id.item_area ) {
       // if ( TDLevel.overBasic )
@@ -717,6 +753,7 @@ class ItemPickerDialog extends MyDialog
           updateList();
           // updateRecentButtons( mItemType );
           setTypeFromCurrent( );
+          notifyToolbarTypeChanged();
         }
       }
     } else if ( vid == R.id.size ) { // FIXME_SCALE
@@ -726,6 +763,9 @@ class ItemPickerDialog extends MyDialog
       }
       if ( mParent.get() != null && ! mParent.get().isFinishing() ) mParent.get().setPointScale( mScale );
       setTheTitle();
+    } else if ( vid == R.id.item_lock ) {
+      ItemDrawer parent = mParent.get();
+      if ( parent != null && ! parent.isFinishing() && mLockRow != null ) parent.itemPickerLockChanged( mToolbarRow, mLockRow.isChecked(), mItemType );
     }
 
     // if ( mRecent != null ) { // this select the symbol and closes the dialog

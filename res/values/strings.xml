@@ -2076,6 +2076,9 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_toolbarSize_summary">Size of the toolbar of drawing items</string>
   <string name="pref_toolbarSlots_title">Toolbar slots</string>
   <string name="pref_toolbarSlots_summary">Number of manual toolbar slots</string>
+  <string name="pref_toolbarRows_title">Toolbar rows</string>
+  <string name="pref_toolbarRows_summary">Number of manual toolbar rows</string>
+  <string name="toolbar_lock_row">Lock row</string>
   <string name="pref_backup_number_title">Backup number</string>
   <string name="pref_backup_number_summary">Number of sketch files backups</string>
   <string name="pref_backup_interval_title">Backup interval</string>

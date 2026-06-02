@@ -193,7 +193,8 @@ class TDPrefKey
    * if clino is over thr, H_SECTION is horizontal (has north arrow)
    * whether to check all shots are connected
    * whether leg extends are all set
-   * number of symbils in toolbar
+   * number of symbols in each toolbar row
+   * number of toolbar rows
    * whether to use plot cache
    */
   static TDPrefKey[] mPlot = {
@@ -204,6 +205,7 @@ class TDPrefKey
     new TDPrefKey( A, BOOL, DT,  "DISTOX_CHECK_EXTEND",   R.string.pref_checkExtend_title,   R.string.pref_checkExtend_summary,   TRUE          ),
     new TDPrefKey( T, FLT,  UI,  "DISTOX_TOOLBAR_SIZE",   R.string.pref_toolbarSize_title,   R.string.pref_toolbarSize_summary,   TDString.FIVE ),
     new TDPrefKey( T, LONG, UI,  "DISTOX_TOOLBAR_SLOTS",  R.string.pref_toolbarSlots_title,  R.string.pref_toolbarSlots_summary,  "8" ),
+    new TDPrefKey( T, LONG, UI,  "DISTOX_TOOLBAR_ROWS",   R.string.pref_toolbarRows_title,   R.string.pref_toolbarRows_summary,   TDString.ONE ),
     new TDPrefKey( B, BOOL, GEN, "DISTOX_PLOT_CACHE",     R.string.pref_plot_cache_title,    R.string.pref_plot_cache_summary,    TRUE ),
     new TDPrefKey( B,       NON, "DISTOX_TOOL_POINT",     R.string.pref_tool_point_title  ),
     new TDPrefKey( N,       NON, "DISTOX_TOOL_LINE",      R.string.pref_tool_line_title   ),

@@ -34,6 +34,13 @@
           android:textSize="@dimen/textsizehead"
           android:textColor="@color/symbol_tab"
         />
+        <CheckBox android:id="@+id/item_lock"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/toolbar_lock_row"
+          android:textSize="@dimen/textsizehead"
+          android:textColor="@color/symbol_tab"
+        />
           <!-- Button android:id="@+id/item_left"
             android:layout_width="wrap_content" 
             android:layout_height="wrap_content" 
@@ -101,4 +108,3 @@
           android:stretchMode="columnWidth"
       />  
   </LinearLayout>
-

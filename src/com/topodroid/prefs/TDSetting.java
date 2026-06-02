@@ -89,9 +89,12 @@ public class TDSetting
   public static final int TOOLBAR_UPDATE_MANUAL = 3;
   public static final int TOOLBAR_SLOTS_MIN     = 4;
   public static final int TOOLBAR_SLOTS_MAX     = 16;
+  public static final int TOOLBAR_ROWS_MIN      = 1;
+  public static final int TOOLBAR_ROWS_MAX      = 8;
 
   public static int mToolbarUpdate = TOOLBAR_UPDATE_MANUAL; // bottom toolbar mode
   public static int mToolbarSlots  = 8; // manual toolbar slots
+  public static int mToolbarRows   = 1; // manual toolbar rows
 
   private static int FLAG_BUTTON = 1;
   private static int FLAG_MENU   = 2;
@@ -1241,7 +1244,8 @@ public class TDSetting
     mCheckExtend   = prefs.getBoolean( key[4].key, bool(key[4].dflt) ); // DISTOX_CHECK_EXTEND
     mItemButtonSize= tryFloat( prefs,  key[5].key,      key[5].dflt );  // DISTOX_TOOLBAR_SIZE
     mToolbarSlots  = normalizeToolbarSlots( tryInt( prefs, key[6].key, key[6].dflt ) ); // DISTOX_TOOLBAR_SLOTS
-    mPlotCache     = prefs.getBoolean( key[7].key, bool(key[7].dflt) ); // DISTOX_PLOT_CACHE
+    mToolbarRows   = normalizeToolbarRows( tryInt( prefs, key[7].key, key[7].dflt ) ); // DISTOX_TOOLBAR_ROWS
+    mPlotCache     = prefs.getBoolean( key[8].key, bool(key[8].dflt) ); // DISTOX_PLOT_CACHE
     // TDLog.v("SETTING load plot done");
 
     key = TDPrefKey.mCalib;
@@ -1928,8 +1932,14 @@ public class TDSetting
       mToolbarSlots = slots;
       TopoDroidApp.resetRecentTools();
       if ( slots != value ) ret = Integer.toString( slots );
-    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_PLOT_CACHE
-      mPlotCache = tryBooleanValue( hlp, k, v, bool(key[7].dflt) );
+    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_TOOLBAR_ROWS
+      int value = tryIntValue( hlp, k, v, key[7].dflt );
+      int rows = normalizeToolbarRows( value );
+      mToolbarRows = rows;
+      TopoDroidApp.resetRecentTools();
+      if ( rows != value ) ret = Integer.toString( rows );
+    } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_PLOT_CACHE
+      mPlotCache = tryBooleanValue( hlp, k, v, bool(key[8].dflt) );
     } else {
       TDLog.e("missing PLOT key: " + k );
     }
@@ -2001,6 +2011,13 @@ public class TDSetting
     if ( slots < TOOLBAR_SLOTS_MIN ) return TOOLBAR_SLOTS_MIN;
     if ( slots > TOOLBAR_SLOTS_MAX ) return TOOLBAR_SLOTS_MAX;
     return slots;
+  }
+
+  private static int normalizeToolbarRows( int rows )
+  {
+    if ( rows < TOOLBAR_ROWS_MIN ) return TOOLBAR_ROWS_MIN;
+    if ( rows > TOOLBAR_ROWS_MAX ) return TOOLBAR_ROWS_MAX;
+    return rows;
   }
 
   private static int normalizeToolbarUpdate( int mode )
@@ -4134,6 +4151,8 @@ public class TDSetting
 I DISTOX_LOCALE 
 I DISTOX_SURVEY_STATION 1
 F DISTOX_TOOLBAR_SIZE 5
+I DISTOX_TOOLBAR_SLOTS 8
+I DISTOX_TOOLBAR_ROWS 1
 I DISTOX_TOOLBAR_UPDATE 0
 B DISTOX_PLOT_CACHE true
 F DISTOX_ALGO_MIN_ALPHA 0.05
@@ -4591,6 +4610,10 @@ B DISTOX_SAP5_BIT16_BUG true
             case "DISTOX_TOOLBAR_SLOTS":
               size = normalizeToolbarSlots( Integer.parseInt( value ) );
               mToolbarSlots = size; setPreference( editor, kay, mToolbarSlots );
+              break;
+            case "DISTOX_TOOLBAR_ROWS":
+              size = normalizeToolbarRows( Integer.parseInt( value ) );
+              mToolbarRows = size; setPreference( editor, kay, mToolbarRows );
               break;
             case "DISTOX_TOOLBAR_UPDATE":
               size = Integer.parseInt( value );

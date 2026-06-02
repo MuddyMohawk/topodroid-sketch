@@ -20,7 +20,6 @@ This was written in English; other translations are likely not working
 - Add an option to disable all drawing except that from the stylus pen
 
 #### TODO bugs:
-- The line scaling makes them almost impossible to see in the recents, palette, and picker bars. It's drawing too long of a line I think.
 - Post-install splash screen needs some proofreading
 - There's some weird differences in the back key via S Pen stylus vs Active Key
 - Exporting to PNG with Grid lines on and transparent background off results in a pure black background. The grid lines aren't being preserved.
@@ -85,7 +84,7 @@ This was written in English; other translations are likely not working
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
 
-### TopoDroid Sketch v0.28.0 Changelog:
+### TopoDroid Sketch v0.29.0 Changelog:
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
@@ -128,6 +127,7 @@ This was written in English; other translations are likely not working
 - Added a setting for an overhauled toolbar/recents bar. This is on by default under Settings -> Secondary sketch settings -> Toolbar mode
 - The new toolbar replaces the old recents-style functionality with manually selected slots, which are saved on a per-survey basis
   - To change the tool in a slot, select the slot, tap the >> button the far right, and select the new tool/brush you want from the palette
+- Added an option for multiple toolbar rows. These rows can be locked to a specific toolset (eg line, point, area
 
 **S Pen, Active Key, and Volume Button Support**
 - Added support for the S Pen button for single click, double click, and long click inputs
@@ -135,7 +135,7 @@ This was written in English; other translations are likely not working
 - Added the following actions:
   - Undo: Perform the undo action in the sketch screen
   - Redo: Performs the redo action in the sketch screen
-  - Toggle palette: Toggles the recently used bottom pallete between LINE, POINT, and AREA
+  - Toggle palette: Toggles the recently used bottom palette between LINE, POINT, and AREA
 - Toggle preset: Toggles the active line drawing preset between Preset 1 and Preset 2
   - Back: Goes back a screen (eg exit sketch page to shot list, or goes back one screen in the settings)
   - Toggle erase/sketch: Toggles between the erase sketch mode and the drawing sketch mode
