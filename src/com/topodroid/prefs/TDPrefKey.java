@@ -680,6 +680,14 @@ class TDPrefKey
     return TDString.ONE;
   }
 
+  private static String presetDefaultName( int preset )
+  {
+    if ( preset == TDSetting.SKETCH_PRESET_1 ) return "Fine";
+    if ( preset == TDSetting.SKETCH_PRESET_2 ) return "Smooth";
+    if ( preset == TDSetting.SKETCH_PRESET_3 ) return "Straight";
+    return "P" + preset;
+  }
+
   private static TDPrefKey[] makeToolPresetKeys()
   {
     TDPrefKey[] ret = new TDPrefKey[ TDSetting.SKETCH_PRESET_MAX + 1 ];
@@ -693,7 +701,7 @@ class TDPrefKey
   private static TDPrefKey[] makePresetKeys( int preset )
   {
     return new TDPrefKey[] {
-      new TDPrefKey( B, STR,  DR, presetNameKey( preset ),        R.string.pref_preset_name_title, R.string.pref_preset_name_summary, "P" + preset ),
+      new TDPrefKey( B, STR,  DR, presetNameKey( preset ),        R.string.pref_preset_name_title, R.string.pref_preset_name_summary, presetDefaultName( preset ) ),
       new TDPrefKey( N,       DR, presetLineStyleKey( preset ),   R.string.pref_linestyle_title,   R.string.pref_linestyle_summary,   presetDefaultStyle( preset ), R.array.lineStyle, R.array.lineStyleValue ),
       new TDPrefKey( N, LONG, DR, presetLineSegmentKey( preset ), R.string.pref_segment_title,     R.string.pref_segment_message,     presetDefaultSegment( preset ) )
     };

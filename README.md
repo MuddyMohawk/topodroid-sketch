@@ -83,6 +83,7 @@ This was written in English; other translations are likely not working
 - Option to automatically use the Cavway backsight mark to actually make backsights into backsights
   - Better alerting and information for bad backsights?
   - automatically label them as going from the `to` station to the `from` station (eg, from A1->A0)
+  - Remotely clear unsent shots on the Cavway?
 - Tweak bad backsight orange line to be a little more subtle
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
@@ -123,9 +124,9 @@ This was written in English; other translations are likely not working
 
 **Line Presets**
 - Added drawing presets to the sketch screen, which appear as "P1" and "P2". These are intended to allow a sketcher to switch between drawing thin, detailed lines, and smooth, straight lines
-- Preset 1's defaults are a line style of `fine` and a line point spacing of 1
-- Preset 2's defaults are a line style of `bezier` and a line point spacing of 10
-- Preset 3's defaults are a line style of `straight` and a line point spacing of 5
+- Fine's defaults are a line style of `fine` and a line point spacing of 1
+- Smooth's defaults are a line style of `bezier` and a line point spacing of 10
+- Straight's defaults are a line style of `straight` and a line point spacing of 5
 - Added a presets menu to the sketch settings screen to allow customization of each preset. Users can also add up to 8 preset slots.
 
 **Toolbar Overhaul**

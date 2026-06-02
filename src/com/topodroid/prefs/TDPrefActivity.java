@@ -140,6 +140,7 @@ public class TDPrefActivity extends Activity
   {
     super.onResume();
     ActionKeyBindingManager.registerHost( this );
+    if ( mPrefCategory == TDPrefCat.PREF_TOOL_PRESET ) refreshPresetForwardTitles();
   }
 
   @Override
@@ -665,6 +666,15 @@ public class TDPrefActivity extends Activity
    * @note called by TopoDroidApp.setLocale and ExportDialogSettings
    */
   public static void reloadPreferences() { if ( mPrefActivityAll != null ) mPrefActivityAll.doReloadPreferences(); }
+
+  private void refreshPresetForwardTitles()
+  {
+    if ( mPrefs == null ) return;
+    int count = Math.min( mPrefs.length, 1 + TDSetting.getSketchPresetSlotCount() );
+    for ( int preset = 1; preset < count; ++ preset ) {
+      mPrefs[preset].setTitle( TDSetting.getSketchPresetSettingsTitle( preset ) );
+    }
+  }
 
   /** reload preferences (implementation) - only for the general preference screen
    */

@@ -756,6 +756,15 @@ public class TDPref implements AdapterView.OnItemSelectedListener
    */
   String stringValue()   { return value; }
 
+  void setTitle( String title0 )
+  {
+    title = title0;
+    if ( mView != null ) {
+      TextView textview = (TextView) mView.findViewById( R.id.title );
+      if ( textview != null ) textview.setText( title );
+    }
+  }
+
   /** @return the preference boolean value
    */
   boolean booleanValue() { return ( pref_type == BOOLEAN )&& b_value; }
@@ -781,7 +790,7 @@ public class TDPref implements AdapterView.OnItemSelectedListener
   {
     int count = 1 + TDSetting.getSketchPresetSlotCount();
     TDPref[] ret = makePrefs( TDPrefKey.mToolPreset, ctx, hlp, count );
-    for ( int preset = 1; preset < count; ++ preset ) ret[preset].title = TDSetting.getSketchPresetSettingsTitle( preset );
+    for ( int preset = 1; preset < count; ++ preset ) ret[preset].setTitle( TDSetting.getSketchPresetSettingsTitle( preset ) );
     return ret;
   }
   static TDPref[] makeCalibPrefs( Context ctx, TDPrefHelper hlp )  { return makePrefs( TDPrefKey.mCalib, ctx, hlp ); }

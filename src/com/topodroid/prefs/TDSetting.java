@@ -3591,7 +3591,11 @@ public class TDSetting
 
   private static String defaultSketchPresetName( int preset )
   {
-    return "P" + normalizeSketchPresetDefinition( preset );
+    preset = normalizeSketchPresetDefinition( preset );
+    if ( preset == SKETCH_PRESET_1 ) return "Fine";
+    if ( preset == SKETCH_PRESET_2 ) return "Smooth";
+    if ( preset == SKETCH_PRESET_3 ) return "Straight";
+    return "P" + preset;
   }
 
   private static int defaultSketchPresetLineStyle( int preset )
