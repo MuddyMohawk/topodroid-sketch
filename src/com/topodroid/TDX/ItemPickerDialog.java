@@ -668,20 +668,20 @@ class ItemPickerDialog extends MyDialog
         // if ( TDLevel.overBasic )
         if ( mParent.get() != null && ! mParent.get().isFinishing() ) {
           // TDLog.v( "item picker selected point " + mSelectedPoint );
-          mParent.get().pointSelected( mSelectedPoint, true ); // true = update tools toolbar
+          mParent.get().itemPickerSelected( SymbolType.POINT, mSelectedPoint );
         }
         break;
       case SymbolType.LINE: 
         if ( mParent.get() != null && ! mParent.get().isFinishing() ) {
           // TDLog.v( "item picker selected line " + mSelectedLine );
-          mParent.get().lineSelected( mSelectedLine, true ); 
+          mParent.get().itemPickerSelected( SymbolType.LINE, mSelectedLine );
 	}
         break;
       case SymbolType.AREA: 
         // if ( TDLevel.overBasic )
         if ( mParent.get() != null && ! mParent.get().isFinishing() ) {
           // TDLog.v( "item picker selected area " + mSelectedArea );
-          mParent.get().areaSelected( mSelectedArea, true );
+          mParent.get().itemPickerSelected( SymbolType.AREA, mSelectedArea );
         }
         break;
     }

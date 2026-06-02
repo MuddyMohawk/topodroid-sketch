@@ -558,7 +558,7 @@ final class VisualTestSupport
   private int resolveRecentLineIndex( String thName )
   {
     String target = Symbol.deprefix_u( thName );
-    for ( int k = 0; k < ItemDrawer.NR_RECENT; ++k ) {
+    for ( int k = 0; k < ItemDrawer.getToolbarSlotCount(); ++k ) {
       Symbol symbol = ItemDrawer.mRecentLine[k];
       if ( symbol == null ) continue;
       String full = symbol.getFullThName();
@@ -572,7 +572,7 @@ final class VisualTestSupport
   private String describeRecentLinePalette()
   {
     StringBuilder sb = new StringBuilder( "[" );
-    for ( int k = 0; k < ItemDrawer.NR_RECENT; ++k ) {
+    for ( int k = 0; k < ItemDrawer.getToolbarSlotCount(); ++k ) {
       if ( k > 0 ) sb.append( "," );
       Symbol symbol = ItemDrawer.mRecentLine[k];
       sb.append( symbol == null ? "null" : symbol.getFullThName() );

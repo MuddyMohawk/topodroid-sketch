@@ -85,7 +85,7 @@ This was written in English; other translations are likely not working
 - Sound alerts/noises/haptics for specific events? (data successfully download, shots are good, shots are bad, pairing, multi-device noises?)
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
 
-### TopoDroid Sketch v0.27.5 Changelog:
+### TopoDroid Sketch v0.28.0 Changelog:
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
@@ -109,7 +109,6 @@ This was written in English; other translations are likely not working
 - If exported and imported into the `TopoDroidX-6.4.25-36`, the new sketch lines fall back into the `user` line type. It'll be ugly, but still compatible.
 - If exported with the personal line box checked, it can be imported into another copy of TopoDroid Sketch and the lines are preserved
 
-
 **Cross-Section Viewports**
 - Added the ability to place cross-sections directly on the plan sketch in a viewport style experience. These can be moved around and edited by selecting them in edit mode (may require TopoDroid to be in Expert mode in the main settings)
   - To do this, use the `section` line tool and draw across the passage like normal TopoDroid. Then select the "place on plan" button in the resulting pop-up window. Tap where you want to place your cross-section. Its position can be further adjusted in edit mode.  
@@ -124,6 +123,11 @@ This was written in English; other translations are likely not working
 - Preset 1's defaults are a line style of `fine` and a line point spacing of 1
 - Preset 2's defaults are a line style of `bezier` and a line point spacing of 10 (todo: switch to 15?)
 - Added a presets menu to the sketch settings screen to allow customization of each preset
+
+**Toolbar Overhaul**
+- Added a setting for an overhauled toolbar/recents bar. This is on by default under Settings -> Secondary sketch settings -> Toolbar mode
+- The new toolbar replaces the old recents-style functionality with manually selected slots, which are saved on a per-survey basis
+  - To change the tool in a slot, select the slot, tap the >> button the far right, and select the new tool/brush you want from the palette
 
 **S Pen, Active Key, and Volume Button Support**
 - Added support for the S Pen button for single click, double click, and long click inputs

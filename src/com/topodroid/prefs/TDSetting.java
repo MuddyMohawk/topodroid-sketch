@@ -83,7 +83,15 @@ public class TDSetting
   private static String defaultButtonSize = TDString.FOUR;
   private static String defaultSymbolSize = "1.8";
 
-  public static int mToolbarUpdate = 0; // how to update toolbars symbols
+  public static final int TOOLBAR_UPDATE_OLDEST = 0;
+  public static final int TOOLBAR_UPDATE_FRONT  = 1;
+  public static final int TOOLBAR_UPDATE_DROP   = 2;
+  public static final int TOOLBAR_UPDATE_MANUAL = 3;
+  public static final int TOOLBAR_SLOTS_MIN     = 4;
+  public static final int TOOLBAR_SLOTS_MAX     = 16;
+
+  public static int mToolbarUpdate = TOOLBAR_UPDATE_MANUAL; // bottom toolbar mode
+  public static int mToolbarSlots  = 8; // manual toolbar slots
 
   private static int FLAG_BUTTON = 1;
   private static int FLAG_MENU   = 2;
@@ -1232,7 +1240,8 @@ public class TDSetting
     mCheckAttached = prefs.getBoolean( key[3].key, bool(key[3].dflt) ); // DISTOX_CHECK_ATTACHED
     mCheckExtend   = prefs.getBoolean( key[4].key, bool(key[4].dflt) ); // DISTOX_CHECK_EXTEND
     mItemButtonSize= tryFloat( prefs,  key[5].key,      key[5].dflt );  // DISTOX_TOOLBAR_SIZE
-    mPlotCache     = prefs.getBoolean( key[6].key, bool(key[6].dflt) ); // DISTOX_PLOT_CACHE
+    mToolbarSlots  = normalizeToolbarSlots( tryInt( prefs, key[6].key, key[6].dflt ) ); // DISTOX_TOOLBAR_SLOTS
+    mPlotCache     = prefs.getBoolean( key[7].key, bool(key[7].dflt) ); // DISTOX_PLOT_CACHE
     // TDLog.v("SETTING load plot done");
 
     key = TDPrefKey.mCalib;
@@ -1521,7 +1530,7 @@ public class TDSetting
     mGraphPaperScale = tryInt( prefs,   key[ 9].key,      key[ 9].dflt );  // DISTOX_GRAPH_PAPER_SCALE
     mSlantXSection  = prefs.getBoolean( key[10].key, bool(key[10].dflt) ); // DISTOX_SLANT_XSECTION
     mObliqueMax     = tryInt( prefs,    key[11].key,      key[11].dflt );  // DISTOX_OBLIQUE_PROJECTED
-    mToolbarUpdate  = tryInt( prefs,    key[12].key,      key[12].dflt );  // DISTOX_TOOLBAR_UPDATE
+    mToolbarUpdate  = normalizeToolbarUpdate( tryInt( prefs, key[12].key, key[12].dflt ) );  // DISTOX_TOOLBAR_UPDATE
     // mZoomLowerBound = tryFloat( prefs, key[13].key,      key[13].dflt );  // DISTOX_ZOOM_LOWER_BOUND
     // TDLog.v("SETTING load secondary GEEK plot done");
 
@@ -1913,8 +1922,14 @@ public class TDSetting
     } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_TOOLBAR_SIZE
       mItemButtonSize = tryFloatValue( hlp, k, v, key[5].dflt );
       TopoDroidApp.setToolsToolbarParams();
-    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_PLOT_CACHE
-      mPlotCache = tryBooleanValue( hlp, k, v, bool(key[6].dflt) );
+    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_TOOLBAR_SLOTS
+      int value = tryIntValue( hlp, k, v, key[6].dflt );
+      int slots = normalizeToolbarSlots( value );
+      mToolbarSlots = slots;
+      TopoDroidApp.resetRecentTools();
+      if ( slots != value ) ret = Integer.toString( slots );
+    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_PLOT_CACHE
+      mPlotCache = tryBooleanValue( hlp, k, v, bool(key[7].dflt) );
     } else {
       TDLog.e("missing PLOT key: " + k );
     }
@@ -1979,6 +1994,19 @@ public class TDSetting
     }
     if ( ret != null ) TDPrefHelper.update( k, ret );
     return ret;
+  }
+
+  private static int normalizeToolbarSlots( int slots )
+  {
+    if ( slots < TOOLBAR_SLOTS_MIN ) return TOOLBAR_SLOTS_MIN;
+    if ( slots > TOOLBAR_SLOTS_MAX ) return TOOLBAR_SLOTS_MAX;
+    return slots;
+  }
+
+  private static int normalizeToolbarUpdate( int mode )
+  {
+    if ( mode < TOOLBAR_UPDATE_OLDEST || mode > TOOLBAR_UPDATE_MANUAL ) return TOOLBAR_UPDATE_MANUAL;
+    return mode;
   }
 
   private static String updatePrefDevice( TDPrefHelper hlp, String k, String v )
@@ -2323,7 +2351,11 @@ public class TDSetting
       if ( mObliqueMax < 10 )  { mObliqueMax = 0; ret = Integer.toString( mObliqueMax ); }
       else if ( mObliqueMax > 80 ) { mObliqueMax = 80; ret = Integer.toString( mObliqueMax ); }
     } else if ( k.equals( key[12 ].key ) ) { // DISTOX_TOOLBAR_UPDATE
-      mToolbarUpdate = tryIntValue( hlp, k, v, key[12 ].dflt );
+      int value = tryIntValue( hlp, k, v, key[12 ].dflt );
+      int mode = normalizeToolbarUpdate( value );
+      mToolbarUpdate = mode;
+      TopoDroidApp.resetRecentTools();
+      if ( mode != value ) ret = Integer.toString( mode );
     // } else if ( k.equals( key[13 ] ) ) {  // DISTOX_ZOOM_LOWER_BOUND
     //   mZoomLowerBound = tryFloatValue( hlp, k, v, key[13] );  // DISTOX_ZOOM_LOWER_BOUND
     //   if ( mZoomLowerBound < 0.0f ) mZoomLowerBound = 0.0f;
@@ -4556,9 +4588,13 @@ B DISTOX_SAP5_BIT16_BUG true
               fsize = Float.parseFloat( value );
               if ( fsize > 0 ) mItemButtonSize = fsize; setPreference( editor, kay, mItemButtonSize );
               break;
+            case "DISTOX_TOOLBAR_SLOTS":
+              size = normalizeToolbarSlots( Integer.parseInt( value ) );
+              mToolbarSlots = size; setPreference( editor, kay, mToolbarSlots );
+              break;
             case "DISTOX_TOOLBAR_UPDATE":
               size = Integer.parseInt( value );
-              if ( size >= 0 && size <= 2) mToolbarUpdate = size; setPreference( editor, kay, mToolbarUpdate );
+              mToolbarUpdate = normalizeToolbarUpdate( size ); setPreference( editor, kay, mToolbarUpdate );
               break;
             case "DISTOX_MKEYBOARD":
               mKeyboard = Boolean.parseBoolean( value ); setPreference( editor, kay, mKeyboard );

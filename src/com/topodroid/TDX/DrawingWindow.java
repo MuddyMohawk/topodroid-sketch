@@ -2689,11 +2689,15 @@ public class DrawingWindow extends ItemDrawer
     mLayoutToolsP.removeAllViews( );
     mLayoutToolsL.removeAllViews( );
     mLayoutToolsA.removeAllViews( );
-    for ( int k = 0; k<=NR_RECENT; ++k ) {
+    int slots = getToolbarSlotCount();
+    for ( int k = 0; k<slots; ++k ) {
       mLayoutToolsP.addView( mBtnRecentP[k], lp );
       mLayoutToolsL.addView( mBtnRecentL[k], lp );
       mLayoutToolsA.addView( mBtnRecentA[k], lp );
     }
+    mLayoutToolsP.addView( mBtnRecentP[NR_RECENT], lp );
+    mLayoutToolsL.addView( mBtnRecentL[NR_RECENT], lp );
+    mLayoutToolsA.addView( mBtnRecentA[NR_RECENT], lp );
   }
 
   /** refresh drawing lines after the line library has been reloaded
@@ -3026,7 +3030,7 @@ public class DrawingWindow extends ItemDrawer
       mBtnRecentP[k].setOnClickListener(
         new View.OnClickListener() {
           @Override public void onClick( View v ) {
-            for ( int k = 0; k<NR_RECENT; ++k ) if ( v == mBtnRecentP[k] ) {
+            for ( int k = 0; k<getToolbarSlotCount(); ++k ) if ( v == mBtnRecentP[k] ) {
               if ( setCurrentPoint( k, false ) ) {
                 setHighlight( SymbolType.POINT, k );
               } else {
@@ -3041,7 +3045,7 @@ public class DrawingWindow extends ItemDrawer
       mBtnRecentL[k].setOnClickListener(
         new View.OnClickListener() {
           @Override public void onClick( View v ) {
-            for ( int k = 0; k<NR_RECENT; ++k ) if ( v == mBtnRecentL[k] ) {
+            for ( int k = 0; k<getToolbarSlotCount(); ++k ) if ( v == mBtnRecentL[k] ) {
               if ( setCurrentLine( k, false ) ) {
                 setHighlight( SymbolType.LINE, k );
               } else {
@@ -3056,7 +3060,7 @@ public class DrawingWindow extends ItemDrawer
       mBtnRecentA[k].setOnClickListener(
         new View.OnClickListener() {
           @Override public void onClick( View v ) {
-            for ( int k = 0; k<NR_RECENT; ++k ) if ( v == mBtnRecentA[k] ) {
+            for ( int k = 0; k<getToolbarSlotCount(); ++k ) if ( v == mBtnRecentA[k] ) {
               setCurrentArea( k, false );
               setHighlight( SymbolType.AREA, k );
               break;
@@ -11181,7 +11185,7 @@ public class DrawingWindow extends ItemDrawer
    */
   private int getCurrentPointIndex()
   {
-    for ( int k=0; k < NR_RECENT; ++k ) {
+    for ( int k=0; k < getToolbarSlotCount(); ++k ) {
       if ( mCurrentPoint == BrushManager.getPointIndex( mRecentPoint[k] ) ) return k;
     }
     return -1;
@@ -11193,7 +11197,7 @@ public class DrawingWindow extends ItemDrawer
   private int getCurrentLineIndex()
   {
     // TDLog.v("get current line index: current line " + mCurrentLine );
-    for ( int k=0; k < NR_RECENT; ++k ) {
+    for ( int k=0; k < getToolbarSlotCount(); ++k ) {
       if ( mCurrentLine == BrushManager.getLineIndex( mRecentLine[k] ) ) return k;
     }
     return -1;
@@ -11204,7 +11208,7 @@ public class DrawingWindow extends ItemDrawer
    */
   private int getCurrentAreaIndex()
   {
-    for ( int k=0; k < NR_RECENT; ++k ) {
+    for ( int k=0; k < getToolbarSlotCount(); ++k ) {
       if ( mCurrentArea == BrushManager.getAreaIndex( mRecentArea[k] ) ) return k;
     }
     return -1;
@@ -11221,7 +11225,12 @@ public class DrawingWindow extends ItemDrawer
     setButtonRecent( mBtnRecentA, mRecentArea  );
 
     mRecentTools = mRecentLine; // by default the drawing tool is the wall-line
-    if ( mCurrentLine < 0 ) mCurrentLine = ( BrushManager.isLineEnabled( SymbolLibrary.WALL ) )?  1 : 0;
+    if ( isManualToolbar() && mRecentLine[0] != null ) {
+      mCurrentLine = BrushManager.getLineIndex( mRecentLine[0] );
+      setActiveToolbarSlot( SymbolType.LINE, 0 );
+    } else if ( mCurrentLine < 0 ) {
+      mCurrentLine = ( BrushManager.isLineEnabled( SymbolLibrary.WALL ) )?  1 : 0;
+    }
     setToolsToolbars();
   }
 
@@ -11232,7 +11241,7 @@ public class DrawingWindow extends ItemDrawer
   private void setButtonRecent( ItemButton[] buttons, Symbol[] recents )
   {
     int kk = 0;
-    for ( int k=0; k<NR_RECENT; ++k ) {
+    for ( int k=0; k<getToolbarSlotCount(); ++k ) {
       Symbol p = recents[k];
       if ( p == null || buttons[k] == null ) break;
       if ( p.isPoint() && p.isSection() ) continue;
@@ -11273,7 +11282,7 @@ public class DrawingWindow extends ItemDrawer
   private void setHighlight( int type, int index )
   {
     // TDLog.v("PLOT highlight " + type + " from " + highlightType + "/" + highlightIndex + " to " + index );
-    if ( highlightIndex >= 0 && highlightIndex < NR_RECENT ) { // clear previous highlight
+    if ( highlightIndex >= 0 && highlightIndex < getToolbarSlotCount() ) { // clear previous highlight
       switch ( highlightType ) { // switch off highlighted symbol
         case SymbolType.POINT:
           mBtnRecentP[ highlightIndex ].highlight( false );
@@ -11286,7 +11295,7 @@ public class DrawingWindow extends ItemDrawer
           break;
       }
     }
-    if ( index < 0 || index >= NR_RECENT ) {
+    if ( index < 0 || index >= getToolbarSlotCount() ) {
       highlightIndex = -1;
       highlightType  = SymbolType.UNDEF;
     } else {
@@ -11318,7 +11327,8 @@ public class DrawingWindow extends ItemDrawer
     if ( forbidPointSection( index ) || forbidPointPicture( index ) ) return false;
     mCurrentPoint = index;
     pointSelected( index, update_recent );
-    updateAge( k, mRecentPointAge );
+    setActiveToolbarSlot( SymbolType.POINT, k );
+    if ( ! isManualToolbar() ) updateAge( k, mRecentPointAge );
     return true;
   }
 
@@ -11335,7 +11345,8 @@ public class DrawingWindow extends ItemDrawer
     // TDLog.v("set line " + k + " update " + update_recent + " current " + current );
     mCurrentLine = current;
     lineSelected( current, update_recent );
-    updateAge( k, mRecentLineAge );
+    setActiveToolbarSlot( SymbolType.LINE, k );
+    if ( ! isManualToolbar() ) updateAge( k, mRecentLineAge );
     return true;
   }
 
@@ -11350,7 +11361,8 @@ public class DrawingWindow extends ItemDrawer
     if ( index < 0 ) return false;
     mCurrentArea = index;
     areaSelected( index, update_recent );
-    updateAge( k, mRecentAreaAge );
+    setActiveToolbarSlot( SymbolType.AREA, k );
+    if ( ! isManualToolbar() ) updateAge( k, mRecentAreaAge );
     return true;
   }
 

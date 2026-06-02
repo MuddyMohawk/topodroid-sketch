@@ -203,6 +203,7 @@ class TDPrefKey
     new TDPrefKey( A, BOOL, DT,  "DISTOX_CHECK_ATTACHED", R.string.pref_checkAttached_title, R.string.pref_checkAttached_summary, FALSE         ),
     new TDPrefKey( A, BOOL, DT,  "DISTOX_CHECK_EXTEND",   R.string.pref_checkExtend_title,   R.string.pref_checkExtend_summary,   TRUE          ),
     new TDPrefKey( T, FLT,  UI,  "DISTOX_TOOLBAR_SIZE",   R.string.pref_toolbarSize_title,   R.string.pref_toolbarSize_summary,   TDString.FIVE ),
+    new TDPrefKey( T, LONG, UI,  "DISTOX_TOOLBAR_SLOTS",  R.string.pref_toolbarSlots_title,  R.string.pref_toolbarSlots_summary,  "8" ),
     new TDPrefKey( B, BOOL, GEN, "DISTOX_PLOT_CACHE",     R.string.pref_plot_cache_title,    R.string.pref_plot_cache_summary,    TRUE ),
     new TDPrefKey( B,       NON, "DISTOX_TOOL_POINT",     R.string.pref_tool_point_title  ),
     new TDPrefKey( N,       NON, "DISTOX_TOOL_LINE",      R.string.pref_tool_line_title   ),
@@ -777,7 +778,7 @@ class TDPrefKey
    * 0 no, 1 by class, 2 by instance
    *                                                            
    * whether to allow slanted xsections in clino degrees 5 by 5
-   * how to update the bottom toolbar with the selected symbol: 0 replace oldest, 1 put in front, 2 drop oldest and put in front
+   * toolbar mode: 0 replace oldest, 1 put in front, 2 drop oldest and put in front, 3 manual slots
    */ 
   static TDPrefKey[] mGeekPlot = {
     new TDPrefKey( T, BOOL, UI,  "DISTOX_PLOT_SHIFT",       R.string.pref_plot_shift_title,        R.string.pref_plot_shift_summary,        FALSE ),
@@ -792,7 +793,7 @@ class TDPrefKey
     new TDPrefKey( T, BTN,  DR,  "DISTOX_GRAPH_PAPER_SCALE",R.string.pref_graph_paper_scale_title, R.string.pref_graph_paper_scale_summary, TDString.ZERO ),
     new TDPrefKey( T, BOOL, XT,  "DISTOX_SLANT_XSECTION",   R.string.pref_slant_xsection_title,    R.string.pref_slant_xsection_summary,    FALSE ),
     new TDPrefKey( T, LONG, XT,  "DISTOX_OBLIQUE_PROJECTED",R.string.pref_oblique_projection_title,R.string.pref_oblique_projection_summary,TDString.ZERO ),
-    new TDPrefKey( T,       UI,  "DISTOX_TOOLBAR_UPDATE",   R.string.pref_toolbar_update_title,    R.string.pref_toolbar_update_summary,    TDString.ZERO, R.array.toolbarUpdate, R.array.toolbarUpdateValue )
+    new TDPrefKey( T,       UI,  "DISTOX_TOOLBAR_UPDATE",   R.string.pref_toolbar_update_title,    R.string.pref_toolbar_update_summary,    "3", R.array.toolbarUpdate, R.array.toolbarUpdateValue )
   };
 
   /** additional splay settings

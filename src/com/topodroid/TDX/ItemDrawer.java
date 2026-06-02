@@ -44,16 +44,50 @@ abstract class ItemDrawer extends Activity
   protected int mSymbol = SymbolType.LINE; // kind of symbol being drawn
 
   // -----------------------------------------------------------
-  static final int NR_RECENT = 6; // max is 6
-  static Symbol[] mRecentPoint = { null, null, null, null, null, null };
-  static Symbol[] mRecentLine  = { null, null, null, null, null, null };
-  static Symbol[] mRecentArea  = { null, null, null, null, null, null };
-  static int[] mRecentPointAge = { 6, 5, 4, 3, 2, 1 };
-  static int[] mRecentLineAge  = { 6, 5, 4, 3, 2, 1 };
-  static int[] mRecentAreaAge  = { 6, 5, 4, 3, 2, 1 };
+  static final int NR_RECENT = TDSetting.TOOLBAR_SLOTS_MAX; // max toolbar capacity
+  static final int NR_LEGACY_RECENT = 6;
+  static final String KEY_TOOLBAR_POINTS = "toolbar_points";
+  static final String KEY_TOOLBAR_LINES  = "toolbar_lines";
+  static final String KEY_TOOLBAR_AREAS  = "toolbar_areas";
+
+  private static final String[] DEFAULT_MANUAL_LINES = {
+    "water-flow", "ceiling-meander", "floor-meander", "pit", "chimney",
+    "user-fine", "user-standard", "user-thick"
+  };
+
+  static Symbol[] mRecentPoint = new Symbol[ NR_RECENT ];
+  static Symbol[] mRecentLine  = new Symbol[ NR_RECENT ];
+  static Symbol[] mRecentArea  = new Symbol[ NR_RECENT ];
+  static int[] mRecentPointAge = makeAgeArray();
+  static int[] mRecentLineAge  = makeAgeArray();
+  static int[] mRecentAreaAge  = makeAgeArray();
   static Symbol[] mRecentTools = mRecentLine;
   static float mRecentDimX;
   static float mRecentDimY;
+  protected int mActiveToolbarType = SymbolType.LINE;
+  protected int mActiveToolbarSlot = 0;
+
+  private static int[] makeAgeArray()
+  {
+    int[] ages = new int[ NR_RECENT ];
+    for ( int k = 0; k < NR_RECENT; ++k ) ages[k] = NR_RECENT - k;
+    return ages;
+  }
+
+  static boolean isManualToolbar()
+  {
+    return TDSetting.mToolbarUpdate == TDSetting.TOOLBAR_UPDATE_MANUAL;
+  }
+
+  static int getToolbarSlotCount()
+  {
+    if ( isManualToolbar() ) {
+      if ( TDSetting.mToolbarSlots < TDSetting.TOOLBAR_SLOTS_MIN ) return TDSetting.TOOLBAR_SLOTS_MIN;
+      if ( TDSetting.mToolbarSlots > TDSetting.TOOLBAR_SLOTS_MAX ) return TDSetting.TOOLBAR_SLOTS_MAX;
+      return TDSetting.mToolbarSlots;
+    }
+    return NR_LEGACY_RECENT;
+  }
 
   void setPointScale( int scale )
   {
@@ -159,16 +193,17 @@ abstract class ItemDrawer extends Activity
    */
   static void prependRecentLines( Symbol[] lines )
   {
+    int limit = NR_LEGACY_RECENT;
     ArrayList< Symbol > merged = new ArrayList<>();
     if ( lines != null ) {
       for ( Symbol line : lines ) {
         if ( line == null ) continue;
         if ( hasRecentSymbol( merged, line.getFullThName() ) ) continue;
         merged.add( line );
-        if ( merged.size() >= NR_RECENT ) break;
+        if ( merged.size() >= limit ) break;
       }
     }
-    for ( int k = 0; k < NR_RECENT && merged.size() < NR_RECENT; ++k ) {
+    for ( int k = 0; k < limit && merged.size() < limit; ++k ) {
       Symbol line = mRecentLine[k];
       if ( line == null ) continue;
       if ( hasRecentSymbol( merged, line.getFullThName() ) ) continue;
@@ -182,19 +217,7 @@ abstract class ItemDrawer extends Activity
    */
   static String serializeRecentLines()
   {
-    StringBuilder lines = new StringBuilder();
-    boolean first = false;
-    for ( int k = NR_RECENT - 1; k >= 0; --k ) {
-      Symbol symbol = mRecentLine[k];
-      if ( symbol == null ) continue;
-      if ( first ) {
-        lines.append( " " ).append( symbol.getThName() );
-      } else {
-        first = true;
-        lines.append( symbol.getThName() );
-      }
-    }
-    return lines.toString();
+    return serializeSymbols( mRecentLine, NR_LEGACY_RECENT, true );
   }
 
   private static void setRecentLineList( ArrayList< Symbol > lines )
@@ -244,6 +267,121 @@ abstract class ItemDrawer extends Activity
     return false;
   }
 
+  static void loadManualToolbarSymbols( DataHelper data )
+  {
+    loadManualToolbarList( SymbolType.POINT, mRecentPoint, mRecentPointAge, data == null ? null : data.getValue( KEY_TOOLBAR_POINTS ), data );
+    loadManualToolbarList( SymbolType.LINE,  mRecentLine,  mRecentLineAge,  data == null ? null : data.getValue( KEY_TOOLBAR_LINES  ), data );
+    loadManualToolbarList( SymbolType.AREA,  mRecentArea,  mRecentAreaAge,  data == null ? null : data.getValue( KEY_TOOLBAR_AREAS  ), data );
+  }
+
+  static void saveManualToolbarSymbols( DataHelper data )
+  {
+    if ( data == null ) return;
+    data.setValue( KEY_TOOLBAR_POINTS, serializeSymbols( mRecentPoint, NR_RECENT, false ) );
+    data.setValue( KEY_TOOLBAR_LINES,  serializeSymbols( mRecentLine,  NR_RECENT, false ) );
+    data.setValue( KEY_TOOLBAR_AREAS,  serializeSymbols( mRecentArea,  NR_RECENT, false ) );
+  }
+
+  private static void loadManualToolbarList( int type, Symbol[] symbols, int[] ages, String names, DataHelper data )
+  {
+    for ( int k = 0; k < NR_RECENT; ++k ) {
+      symbols[k] = null;
+      ages[k] = NR_RECENT - k;
+    }
+
+    int index = 0;
+    if ( names == null && type == SymbolType.LINE ) {
+      for ( String name : DEFAULT_MANUAL_LINES ) {
+        Symbol symbol = getSymbolByThName( type, name );
+        if ( symbol == null ) continue;
+        enableDefaultToolbarLine( symbol, data );
+        if ( hasSymbol( symbols, symbol, index ) ) continue;
+        symbols[index++] = symbol;
+        if ( index >= NR_RECENT ) break;
+      }
+    } else if ( names != null ) {
+      String[] vals = names.trim().split( "\\s+" );
+      for ( String name : vals ) {
+        if ( name.length() == 0 ) continue;
+        Symbol symbol = getSymbolByThName( type, name );
+        if ( symbol == null || ! symbol.isEnabled() ) continue;
+        if ( hasSymbol( symbols, symbol, index ) ) continue;
+        symbols[index++] = symbol;
+        if ( index >= NR_RECENT ) break;
+      }
+    }
+    fillToolbarList( type, symbols, index );
+  }
+
+  private static void enableDefaultToolbarLine( Symbol symbol, DataHelper data )
+  {
+    if ( symbol == null ) return;
+    symbol.setEnabled( true );
+    symbol.setConfigEnabled( true );
+    if ( data != null ) data.setSymbolEnabled( "l_" + symbol.getThName(), true );
+  }
+
+  private static void fillToolbarList( int type, Symbol[] symbols, int index )
+  {
+    int size = getLibrarySize( type );
+    for ( int k = 0; k < size && index < NR_RECENT; ++k ) {
+      Symbol symbol = getSymbolByIndex( type, k );
+      if ( symbol == null || ! symbol.isEnabled() ) continue;
+      if ( type == SymbolType.POINT && ( symbol.isSection() || symbol.isPicture() ) ) continue;
+      if ( hasSymbol( symbols, symbol, index ) ) continue;
+      symbols[index++] = symbol;
+    }
+  }
+
+  private static int getLibrarySize( int type )
+  {
+    switch ( type ) {
+      case SymbolType.POINT: return BrushManager.getPointLibSize();
+      case SymbolType.LINE:  return BrushManager.getLineLibSize();
+      case SymbolType.AREA:  return BrushManager.getAreaLibSize();
+    }
+    return 0;
+  }
+
+  private static Symbol getSymbolByIndex( int type, int index )
+  {
+    switch ( type ) {
+      case SymbolType.POINT: return BrushManager.getPointByIndex( index );
+      case SymbolType.LINE:  return BrushManager.getLineByIndex( index );
+      case SymbolType.AREA:  return BrushManager.getAreaByIndex( index );
+    }
+    return null;
+  }
+
+  private static boolean hasSymbol( Symbol[] symbols, Symbol symbol, int limit )
+  {
+    if ( symbol == null ) return false;
+    String fullThName = symbol.getFullThName();
+    for ( int k = 0; k < limit && k < symbols.length; ++k ) {
+      Symbol current = symbols[k];
+      if ( current != null && fullThName != null && fullThName.equals( current.getFullThName() ) ) return true;
+    }
+    return false;
+  }
+
+  private static String serializeSymbols( Symbol[] symbols, int limit, boolean reverse )
+  {
+    StringBuilder sb = new StringBuilder();
+    if ( reverse ) {
+      for ( int k = limit - 1; k >= 0; --k ) appendSymbolName( sb, symbols[k] );
+    } else {
+      for ( int k = 0; k < limit; ++k ) appendSymbolName( sb, symbols[k] );
+    }
+    return sb.toString();
+  }
+
+  private static void appendSymbolName( StringBuilder sb, Symbol symbol )
+  {
+    if ( symbol == null ) return;
+    if ( sb.length() > 0 ) sb.append( " " );
+    sb.append( symbol.getThName() );
+  }
+
   // DEBUG
   // static void printSymbols( Symbol[] symbols, int[] ages )
   // {
@@ -262,34 +400,36 @@ abstract class ItemDrawer extends Activity
   {
     // printSymbols( symbols, ages );
     if ( symbol == null ) return;
+    if ( isManualToolbar() ) return;
+    int limit = NR_LEGACY_RECENT;
     if ( TDSetting.mToolbarUpdate == 1 ) { // 1 put new symbol in front
       int k0 = 0;
-      for ( ; k0 < symbols.length; ++k0 ) {
+      for ( ; k0 < limit; ++k0 ) {
         if ( ( symbols[k0] == null ) || ( symbols[k0].getFullThName().equals( symbol.getFullThName() ) ) ) break;
       }
-      if ( k0 == symbols.length ) --k0;
+      if ( k0 == limit ) --k0;
       for ( int k = k0; k>0; --k ) {
         symbols[k] = symbols[k-1];
         ages[k] = ages[k-1];
       }
       symbols[0] = symbol;
-      updateAge( 0, ages );
+      updateAge( 0, ages, limit );
     } else if ( TDSetting.mToolbarUpdate == 2 ) { // 2 put new symbol in front - drop the oldest
       int k0=0;
-      for ( ; k0 < symbols.length; ++k0 ) {
+      for ( ; k0 < limit; ++k0 ) {
         if ( ( symbols[k0] == null ) || ( symbols[k0].getFullThName().equals( symbol.getFullThName() ) ) ) {
           for ( int k=k0; k>0; --k) {
             symbols[k] = symbols[k-1];
             ages[k] = ages[k-1];
           }
           symbols[0] = symbol;
-          updateAge( 0, ages );
+          updateAge( 0, ages, limit );
           // TDLog.v("Found at " + k0 + " new ages " + ages[0] + " " + ages[1] + " " + ages[2] + " " + ages[3] + " " + ages[4] + " " + ages[5] );
           return;
         }
       }
       k0 = 0; // index min age
-      for ( int k=1; k<NR_RECENT; ++k ) {
+      for ( int k=1; k<limit; ++k ) {
         if ( ages[k] <= ages[k0] ) k0 = k;
       }
       for ( int k=k0; k>0; --k) {
@@ -297,20 +437,20 @@ abstract class ItemDrawer extends Activity
         ages[k] = ages[k-1];
       }
       symbols[0] = symbol;
-      updateAge( 0, ages );
+      updateAge( 0, ages, limit );
       // TDLog.v("Oldest at " + k0 + " new ages " + ages[0] + " " + ages[1] + " " + ages[2] + " " + ages[3] + " " + ages[4] + " " + ages[5] );
     } else { // 0: replace oldest
       int kmin = 0;
-      for ( int k=0; k<NR_RECENT; ++k ) {
+      for ( int k=0; k<limit; ++k ) {
         if ( symbol == symbols[k] ) {
-          updateAge( k, ages );
+          updateAge( k, ages, limit );
           return;
         } else if ( ages[k] < ages[kmin] ) {
           kmin = k;
         }
       }
       symbols[kmin] = symbol;
-      updateAge( kmin, ages );
+      updateAge( kmin, ages, limit );
     }
   }
 
@@ -320,9 +460,14 @@ abstract class ItemDrawer extends Activity
    */
   static void updateAge( int kk, int[] ages )
   {
+    updateAge( kk, ages, isManualToolbar() ? getToolbarSlotCount() : NR_LEGACY_RECENT );
+  }
+
+  private static void updateAge( int kk, int[] ages, int limit )
+  {
     // TDLog.v("AGE kk " + kk );
     int amax = ages[kk];
-    for ( int k=0; k<NR_RECENT; ++k ) {
+    for ( int k=0; k<limit; ++k ) {
       if ( k != kk && ages[kk] < ages[k] ) { 
         if ( amax < ages[k] ) amax = ages[k];
         -- ages[k];
@@ -352,6 +497,94 @@ abstract class ItemDrawer extends Activity
 
   // ----------------------------------------------------------------------
   // TOOL SELECTION
+
+  public void itemPickerSelected( int type, int index )
+  {
+    if ( isManualToolbar() ) {
+      if ( ! canSelectToolbarSymbol( type, index ) ) return;
+      int slot = replaceManualToolbarSymbol( type, index );
+      if ( slot < 0 ) return;
+      selectSymbolByType( type, index, false );
+      setActiveToolbarSlot( type, slot );
+      setBtnRecent( type );
+    } else {
+      selectSymbolByType( type, index, true );
+    }
+  }
+
+  private boolean canSelectToolbarSymbol( int type, int index )
+  {
+    if ( index < 0 ) return false;
+    switch ( type ) {
+      case SymbolType.POINT:
+        return ! forbidPointSection( index ) && ! forbidPointPicture( index );
+      case SymbolType.LINE:
+        return ! forbidLineSection( index );
+      case SymbolType.AREA:
+        return true;
+    }
+    return false;
+  }
+
+  private void selectSymbolByType( int type, int index, boolean update_recent )
+  {
+    switch ( type ) {
+      case SymbolType.POINT:
+        pointSelected( index, update_recent );
+        break;
+      case SymbolType.LINE:
+        lineSelected( index, update_recent );
+        break;
+      case SymbolType.AREA:
+        areaSelected( index, update_recent );
+        break;
+    }
+  }
+
+  protected void setActiveToolbarSlot( int type, int slot )
+  {
+    int count = getToolbarSlotCount();
+    if ( slot < 0 || slot >= count ) return;
+    mActiveToolbarType = type;
+    mActiveToolbarSlot = slot;
+  }
+
+  protected int replaceManualToolbarSymbol( int type, int index )
+  {
+    Symbol symbol = getSymbolByIndex( type, index );
+    Symbol[] symbols = getToolbarSymbols( type );
+    if ( symbol == null || symbols == null ) return -1;
+
+    int count = getToolbarSlotCount();
+    int slot = ( mActiveToolbarType == type && mActiveToolbarSlot >= 0 && mActiveToolbarSlot < count ) ? mActiveToolbarSlot : 0;
+    int duplicate = findToolbarSymbol( symbols, symbol, count );
+    if ( duplicate >= 0 && duplicate != slot ) {
+      symbols[duplicate] = symbols[slot];
+    }
+    symbols[slot] = symbol;
+    return slot;
+  }
+
+  private static Symbol[] getToolbarSymbols( int type )
+  {
+    switch ( type ) {
+      case SymbolType.POINT: return mRecentPoint;
+      case SymbolType.LINE:  return mRecentLine;
+      case SymbolType.AREA:  return mRecentArea;
+    }
+    return null;
+  }
+
+  private static int findToolbarSymbol( Symbol[] symbols, Symbol symbol, int limit )
+  {
+    if ( symbol == null ) return -1;
+    String fullThName = symbol.getFullThName();
+    for ( int k = 0; k < limit && k < symbols.length; ++k ) {
+      Symbol current = symbols[k];
+      if ( current != null && fullThName != null && fullThName.equals( current.getFullThName() ) ) return k;
+    }
+    return -1;
+  }
 
   /** react to the selection of an area symbol
    * @param k      symbol index

@@ -1818,8 +1818,8 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_text_size_summary">Size of text in lists</string>
   <string name="pref_symbol_size_title">Symbol size</string>
   <string name="pref_symbol_size_summary">Size of symbols in bottom bar</string>
-  <string name="pref_toolbar_update_title">Toolbar update</string>
-  <string name="pref_toolbar_update_summary">How to insert symbols in bottom bar</string>
+  <string name="pref_toolbar_update_title">Toolbar mode</string>
+  <string name="pref_toolbar_update_summary">How the bottom toolbar chooses and updates tools</string>
   <string name="pref_closeness_title">Selection radius</string>
   <string name="pref_closeness_message">Sketch item selection radius</string>
   <string name="pref_eraseness_title">Eraser size</string>
@@ -2074,6 +2074,8 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_checkExtend_summary">Check if leg extends are set</string>
   <string name="pref_toolbarSize_title">Toolbar size</string>
   <string name="pref_toolbarSize_summary">Size of the toolbar of drawing items</string>
+  <string name="pref_toolbarSlots_title">Toolbar slots</string>
+  <string name="pref_toolbarSlots_summary">Number of manual toolbar slots</string>
   <string name="pref_backup_number_title">Backup number</string>
   <string name="pref_backup_number_summary">Number of sketch files backups</string>
   <string name="pref_backup_interval_title">Backup interval</string>

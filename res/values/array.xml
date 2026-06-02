@@ -10,11 +10,13 @@
   </string-array>
 
   <string-array name="toolbarUpdate">
-     <item name="oldest">Replace oldest</item>
-     <item name="front">Put at front</item>
-     <item name="front_oldest">At front, drop oldest</item>
+     <item name="manual">Manual slots</item>
+     <item name="oldest">Recent: replace oldest</item>
+     <item name="front">Recent: put at front</item>
+     <item name="front_oldest">Recent: front, drop oldest</item>
   </string-array>
   <string-array name="toolbarUpdateValue" translatable="false">
+     <item name="manual">3</item>
      <item name="oldest">0</item>
      <item name="front">1</item>
      <item name="front_oldest">2</item>

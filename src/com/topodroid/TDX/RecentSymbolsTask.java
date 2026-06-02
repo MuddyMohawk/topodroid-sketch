@@ -61,11 +61,15 @@ class RecentSymbolsTask extends AsyncTask<Void, Integer, Boolean>
   private void saveRecentSymbols()
   {
     // TDLog.v( "save recent tools");
+    if ( ItemDrawer.isManualToolbar() ) {
+      ItemDrawer.saveManualToolbarSymbols( mData );
+      return;
+    }
     boolean first = false;
     if ( ItemDrawer.mRecentPoint[0] != null ) {
       StringBuilder points = new StringBuilder( );
       // first = false;
-      for ( int k=ItemDrawer.NR_RECENT-1; k>=0; --k ) {
+      for ( int k=ItemDrawer.NR_LEGACY_RECENT-1; k>=0; --k ) {
         Symbol symbol = ItemDrawer.mRecentPoint[k];
         if ( symbol != null ) {
           if ( first ) {
@@ -82,7 +86,7 @@ class RecentSymbolsTask extends AsyncTask<Void, Integer, Boolean>
     if ( ItemDrawer.mRecentLine[0] != null ) {
       StringBuilder lines = new StringBuilder( );
       first = false;
-      for ( int k=ItemDrawer.NR_RECENT-1; k>=0; --k ) {
+      for ( int k=ItemDrawer.NR_LEGACY_RECENT-1; k>=0; --k ) {
         Symbol symbol = ItemDrawer.mRecentLine[k];
         if ( symbol != null ) {
           if ( first ) {
@@ -100,7 +104,7 @@ class RecentSymbolsTask extends AsyncTask<Void, Integer, Boolean>
     if ( ItemDrawer.mRecentArea[0] != null ) { 
       StringBuilder areas = new StringBuilder( );
       first = false;
-      for ( int k=ItemDrawer.NR_RECENT-1; k>=0; --k ) {
+      for ( int k=ItemDrawer.NR_LEGACY_RECENT-1; k>=0; --k ) {
         Symbol symbol = ItemDrawer.mRecentArea[k];
         if ( symbol != null ) {
           if ( first ) {
@@ -126,6 +130,10 @@ class RecentSymbolsTask extends AsyncTask<Void, Integer, Boolean>
     BrushManager.setRecentAreas(  ItemDrawer.mRecentArea );
 
     if ( mData == null ) return;
+    if ( ItemDrawer.isManualToolbar() ) {
+      ItemDrawer.loadManualToolbarSymbols( mData );
+      return;
+    }
     String names = mData.getValue( "recent_points" );
     if ( names != null ) {
       String[] points = names.split(" ");
