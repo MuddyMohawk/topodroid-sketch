@@ -187,6 +187,18 @@ final class VisualTestSupport
     waitForIdle();
   }
 
+  void prepareForPhysicalCompatCase() throws Exception
+  {
+    adoptShellPermissions();
+    closeScenario();
+    clearCaseArtifacts();
+    configureStablePreferences();
+    configureStableRuntimeState();
+    disableDialogRExit();
+    resetSelectedSurveyState();
+    waitForIdle();
+  }
+
   private void ensureDataHelperReady() throws Exception
   {
     if ( TopoDroidApp.mData != null ) return;
@@ -262,6 +274,16 @@ final class VisualTestSupport
 
   void launchMainWindow() throws Exception
   {
+    launchMainWindow( true );
+  }
+
+  void launchMainWindowOnAnyDevice() throws Exception
+  {
+    launchMainWindow( false );
+  }
+
+  private void launchMainWindow( boolean verifyGoldenEmulatorProfile ) throws Exception
+  {
     Intent intent = new Intent( mTargetContext, MainWindow.class );
     intent.setAction( Intent.ACTION_VIEW );
     intent.addFlags( Intent.FLAG_ACTIVITY_NEW_TASK );
@@ -270,7 +292,7 @@ final class VisualTestSupport
     disableDialogRExit();
     waitForMainWindow();
     ensureSketchLineSymbolsReady();
-    verifyEmulatorProfile();
+    if ( verifyGoldenEmulatorProfile ) verifyEmulatorProfile();
   }
 
   void relaunchMainWindow() throws Exception
@@ -1122,6 +1144,19 @@ selection.mHotItem.getHandleRole() );
     return new File( new File( getPublicRoot(), "zip" ), surveyName + ".zip" );
   }
 
+  File getCaseArtifactsDirectory()
+  {
+    return getCaseArtifactsDir();
+  }
+
+  void deleteGeneratedSurveyAndArtifacts( String surveyName )
+  {
+    List< String > surveyNames = allSurveyNames( surveyName );
+    cleanupNamedSurveysInDatabase( surveyNames );
+    cleanupNamedSurveyArtifacts( surveyNames );
+    resetSelectedSurveyState();
+  }
+
   File getDownloadFile( String filename )
   {
     return new File( Environment.getExternalStoragePublicDirectory( Environment.DIRECTORY_DOWNLOADS ), filename );
@@ -1946,6 +1981,7 @@ selection.mHotItem.getHandleRole() );
   {
     TDSetting.mSingleBack = true;
     TDSetting.mEraseReferenceImages = false;
+    TDSetting.mExportDataShare = false;
     Context appContext = mTargetContext.getApplicationContext();
     if ( appContext instanceof TopoDroidApp ) {
       TopoDroidApp app = (TopoDroidApp)appContext;

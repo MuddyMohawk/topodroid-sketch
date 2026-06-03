@@ -6,6 +6,7 @@
 
 # Gradle homes used by the PS1 test scripts
 /.gradle-test-home/
+/.gradle-test-home-run/
 /.gradle-test-home/
 /.gradle-check-home/
 /.gradle-home/
@@ -21,8 +22,10 @@
 # Test run artifacts produced by scripts/test-*.ps1 and refresh-visual-baselines.ps1
 /tmp-test-artifacts/
 /tmp-test-artifacts-latest*/
+/tmp-test-runs/
 /tmp-recorded-latest/
 /tmp-baseline-pull/
+/tmp-*/
 /dist/
 
 # Ad-hoc dumps (emulator screenshots + uiautomator XML captured during debugging)

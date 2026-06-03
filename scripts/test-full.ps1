@@ -213,7 +213,6 @@ Push-Location $RepoRoot
 try {
   $env:JAVA_HOME = $JavaHome
   $env:PATH = "$JavaHome\bin;$env:PATH"
-  $env:_JAVA_OPTIONS = "-XX:TieredStopAtLevel=1"
 
   if ($SkipBuild) {
     Write-Host ("[{0}] SKIP Gradle build; using existing APKs" -f (Get-Date -Format "HH:mm:ss"))
