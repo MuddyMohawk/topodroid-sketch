@@ -1,32 +1,125 @@
 param(
-  [string]$Serial = "emulator-5554"
+  [string]$Serial = "emulator-5554",
+  [switch]$SkipBuild
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $ScriptDir "android-test-common.ps1")
 $RepoRoot = Split-Path -Parent $ScriptDir
 $Gradle = Join-Path $RepoRoot "gradlew.bat"
-$GradleUserHome = Join-Path $RepoRoot ".gradle-test-home"
+$GradleUserHome = Resolve-GradleUserHome -RepoRoot $RepoRoot
 $LocalProperties = Join-Path $RepoRoot "local.properties"
 $ArtifactsLocal = Join-Path $RepoRoot "tmp-test-artifacts"
 $ArtifactsRemote = "/sdcard/Android/data/com.topodroid.TDX.sketch/files/test-artifacts"
 $AppPackage = "com.topodroid.TDX.sketch"
 $TestPackage = "com.topodroid.TDX.sketch.test"
-$Runner = "$TestPackage/androidx.test.runner.AndroidJUnitRunner"
-$FullClass = "com.topodroid.TDX.VisualGoldenInstrumentedTest"
+$Runner = "androidx.test.runner.AndroidJUnitRunner"
+$Instrumentation = "$TestPackage/$Runner"
+$FullTests = @(
+  @{
+    Name = "Visual golden sketch screen"
+    Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#createSurvey_addShots_createSketch_drawPresetsAndSketchLines_matchesGolden"
+    Estimate = 150
+    Timeout = 360
+    IdleTimeout = 240
+  },
+  @{
+    Name = "Visual ZIP round-trip"
+    Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#exportZip_includesSketchLineSymbols_and_importRoundTripsThroughPicker"
+    Estimate = 300
+    Timeout = 600
+    IdleTimeout = 300
+  },
+  @{
+    Name = "Visual PNG export"
+    Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#exportPng_matchesGolden"
+    Estimate = 180
+    Timeout = 420
+    IdleTimeout = 240
+  },
+  @{
+    Name = "Compass export fixture"
+    Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#exportCompass_matchesFixture"
+    Estimate = 120
+    Timeout = 300
+    IdleTimeout = 180
+  },
+  @{
+    Name = "Reference visible PNG export"
+    Class = "com.topodroid.TDX.ReferenceImageInstrumentedTest#exportPng_includesVisibleReferenceImage"
+    Estimate = 150
+    Timeout = 360
+    IdleTimeout = 240
+  },
+  @{
+    Name = "Reference hidden PNG export"
+    Class = "com.topodroid.TDX.ReferenceImageInstrumentedTest#exportPng_omitsHiddenReferenceImage"
+    Estimate = 150
+    Timeout = 360
+    IdleTimeout = 240
+  },
+  @{
+    Name = "Reference ZIP round-trip"
+    Class = "com.topodroid.TDX.ReferenceImageInstrumentedTest#zipRoundTrip_restoresReferenceMetadataAndAsset"
+    Estimate = 300
+    Timeout = 600
+    IdleTimeout = 300
+  },
+  @{
+    Name = "Reference live screen"
+    Class = "com.topodroid.TDX.ReferenceImageInstrumentedTest#liveScreen_showsVisibleReferenceImage"
+    Estimate = 150
+    Timeout = 360
+    IdleTimeout = 240
+  },
+  @{
+    Name = "Reference corner handle"
+    Class = "com.topodroid.TDX.ReferenceImageInstrumentedTest#cornerHandleDrag_scalesReferenceImage"
+    Estimate = 150
+    Timeout = 360
+    IdleTimeout = 240
+  },
+  @{
+    Name = "Reference protected erase"
+    Class = "com.topodroid.TDX.ReferenceImageInstrumentedTest#eraser_keepsProtectedReferenceWhileRemovingLine"
+    Estimate = 150
+    Timeout = 360
+    IdleTimeout = 240
+  },
+  @{
+    Name = "Reference enabled erase"
+    Class = "com.topodroid.TDX.ReferenceImageInstrumentedTest#eraser_canDeleteReferenceWhenEnabled"
+    Estimate = 150
+    Timeout = 360
+    IdleTimeout = 240
+  },
+  @{
+    Name = "Line/preset/toolbar model tests"
+    Class = "com.topodroid.TDX.LinePatternInstrumentedTest,com.topodroid.TDX.PresetBarInstrumentedTest,com.topodroid.TDX.ToolbarRowsInstrumentedTest"
+    Estimate = 15
+    Timeout = 180
+    IdleTimeout = 90
+  }
+)
 
 function Get-SdkPath {
-  if ($env:ANDROID_SDK_ROOT) { return $env:ANDROID_SDK_ROOT }
-  if ($env:ANDROID_HOME) { return $env:ANDROID_HOME }
+  if ($env:ANDROID_SDK_ROOT) { return Convert-SdkPath $env:ANDROID_SDK_ROOT }
+  if ($env:ANDROID_HOME) { return Convert-SdkPath $env:ANDROID_HOME }
   if (Test-Path $LocalProperties) {
     $sdkLine = Get-Content $LocalProperties | Where-Object { $_ -like 'sdk.dir=*' } | Select-Object -First 1
     if ($sdkLine) {
-      return ($sdkLine -replace '^sdk.dir=', '') -replace '\\:', ':'
+      return Convert-SdkPath ($sdkLine -replace '^sdk.dir=', '')
     }
   }
-  return (Join-Path $env:LOCALAPPDATA 'Android\Sdk')
+  return Convert-SdkPath (Join-Path $env:LOCALAPPDATA 'Android\Sdk')
+}
+
+function Convert-SdkPath {
+  param([string]$Path)
+  return $Path.Replace('\:', ':')
 }
 
 function Get-JavaHome {
@@ -50,7 +143,7 @@ function Get-JavaHome {
 
 function Invoke-Adb {
   param([string[]]$Arguments)
-  & $Adb -s $Serial @Arguments
+  Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments $Arguments -Description "adb $($Arguments -join ' ')"
 }
 
 function Invoke-Instrumentation {
@@ -122,19 +215,26 @@ try {
   $env:PATH = "$JavaHome\bin;$env:PATH"
   $env:_JAVA_OPTIONS = "-XX:TieredStopAtLevel=1"
 
-  & $Gradle -g $GradleUserHome ":app:assembleDebug" ":app:assembleDebugAndroidTest"
+  if ($SkipBuild) {
+    Write-Host ("[{0}] SKIP Gradle build; using existing APKs" -f (Get-Date -Format "HH:mm:ss"))
+  } else {
+    Invoke-NativeChecked -FilePath $Gradle -Arguments @("-g", $GradleUserHome, "--console=plain", ":app:assembleDebug", ":app:assembleDebugAndroidTest") -Description "Gradle build" -TimeoutSeconds 1200 -IdleTimeoutSeconds 300
+  }
 
-  Invoke-Adb @("install", "-r", "-t", $AppApk) | Out-Null
-  Invoke-Adb @("install", "-r", "-t", $TestApk) | Out-Null
+  Install-TestApksAndPreflight -Adb $Adb -Serial $Serial -AppApk $AppApk -TestApk $TestApk -AppPackage $AppPackage -TestPackage $TestPackage -Runner $Runner
   Invoke-Adb @("shell", "pm", "clear", $AppPackage) | Out-Null
   Invoke-Adb @("shell", "pm", "clear", $TestPackage) | Out-Null
   Grant-Permissions
 
-  $instrumentationOk = Invoke-Instrumentation @("shell", "am", "instrument", "-w", "-e", "class", $FullClass, $Runner)
-
-  if (Test-Path $ArtifactsLocal) {
-    Remove-Item -LiteralPath $ArtifactsLocal -Recurse -Force
+  $instrumentationOk = $true
+  foreach ($test in $FullTests) {
+    $ok = Invoke-InstrumentationTimed -Adb $Adb -Serial $Serial `
+      -Arguments @("shell", "am", "instrument", "-w", "-r", "-e", "class", $test.Class, $Instrumentation) `
+      -Name $test.Name -EstimateSeconds $test.Estimate -TimeoutSeconds $test.Timeout -IdleTimeoutSeconds $test.IdleTimeout -AppPackage $AppPackage -TestPackage $TestPackage -ArtifactsLocal $ArtifactsLocal
+    $instrumentationOk = $instrumentationOk -and $ok
   }
+
+  Clear-LocalArtifactDirectory -Path $ArtifactsLocal -Description "full test artifacts"
   Invoke-Adb @("pull", $ArtifactsRemote, $ArtifactsLocal) | Out-Null
 
   if (-not $instrumentationOk) {

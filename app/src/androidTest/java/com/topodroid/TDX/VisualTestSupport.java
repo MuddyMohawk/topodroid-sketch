@@ -27,6 +27,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Point;
 import android.graphics.PointF;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Environment;
 import android.os.ParcelFileDescriptor;
@@ -36,6 +37,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CompoundButton;
+import android.widget.TextView;
 
 import androidx.test.core.app.ActivityScenario;
 import androidx.test.espresso.NoActivityResumedException;
@@ -71,6 +73,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
@@ -164,6 +168,10 @@ final class VisualTestSupport
     adoptShellPermissions();
     closeScenario();
     clearCaseArtifacts();
+    configureStablePreferences();
+    configureStableRuntimeState();
+    disableDialogRExit();
+    ensureDataHelperReady();
     // Wipe every known survey (from this run, prior runs, or dev work) so the
     // main list is empty when the test starts. Without this, the list grows
     // across runs and UiScrollable has to fling through dozens of rows to find
@@ -177,6 +185,13 @@ final class VisualTestSupport
     configureStableRuntimeState();
     disableDialogRExit();
     waitForIdle();
+  }
+
+  private void ensureDataHelperReady() throws Exception
+  {
+    if ( TopoDroidApp.mData != null ) return;
+    launchMainWindow();
+    closeScenario();
   }
 
   private void wipeAllSurveys()
@@ -271,6 +286,11 @@ final class VisualTestSupport
     } catch ( Exception e ) {
       // ignore cleanup failures in tear-down
     }
+    try {
+      returnToMainWindowForCleanup();
+    } catch ( Throwable t ) {
+      Log.w( "VisualTestSupport", "Unable to return to main window before cleanup", t );
+    }
     closeScenario();
     if ( mShellIdentityAdopted ) {
       mInstrumentation.getUiAutomation().dropShellPermissionIdentity();
@@ -318,7 +338,6 @@ final class VisualTestSupport
   void waitForDrawingWindow()
   {
     waitForDisplayedView( R.id.drawingSurface );
-    waitForDisplayedView( R.id.layout_tool_l );
   }
 
   void waitForSurveyOnMainList( String surveyName )
@@ -536,7 +555,11 @@ final class VisualTestSupport
 
   void clickRecentLineButton( int childIndex )
   {
-    tapChildInContainer( R.id.layout_tool_l, childIndex, "layout_tool_l" );
+    if ( ItemDrawer.isManualToolbar() ) {
+      tapManualToolbarChild( 0, childIndex );
+    } else {
+      tapChildInContainer( R.id.layout_tool_l, childIndex, "layout_tool_l" );
+    }
   }
 
   /** Tap the recent-line toolbar button for a specific symbol, identified by
@@ -584,6 +607,49 @@ final class VisualTestSupport
   void tapPresetButton( int preset )
   {
     tapChildInContainer( R.id.layout_tool_preset, preset - 1, "preset bar" );
+  }
+
+  void assertDefaultSketchToolbarVisible()
+  {
+    assertPresetBarVisible( "Fine", "Smooth", "Straight" );
+    assertManualToolbarVisible( 8 );
+  }
+
+  private void assertPresetBarVisible( String... expectedLabels )
+  {
+    onView( withId( R.id.layout_tool_preset ) ).check( ( View view, NoMatchingViewException error ) -> {
+      if ( error != null ) throw error;
+      assertTrue( "Preset bar is not a ViewGroup", view instanceof ViewGroup );
+      assertTrue( "Preset bar is not visible",
+        view.getVisibility() == View.VISIBLE && view.getWidth() > 0 && view.getHeight() > 0 );
+      ViewGroup group = (ViewGroup)view;
+      assertEquals( "Unexpected preset button count", expectedLabels.length, group.getChildCount() );
+      for ( int index = 0; index < expectedLabels.length; ++index ) {
+        View child = group.getChildAt( index );
+        assertTrue( "Preset button " + index + " is not visible",
+          child.getVisibility() == View.VISIBLE && child.getWidth() > 0 && child.getHeight() > 0 );
+        assertTrue( "Preset button " + index + " has no text", child instanceof TextView );
+        assertEquals( "Preset button " + index + " label",
+          expectedLabels[index], ((TextView)child).getText().toString() );
+      }
+    } );
+  }
+
+  private void assertManualToolbarVisible( int expectedSlots )
+  {
+    onView( withId( R.id.layout_tools ) ).check( ( View view, NoMatchingViewException error ) -> {
+      if ( error != null ) throw error;
+      assertTrue( "Tools container is not a ViewGroup", view instanceof ViewGroup );
+      ViewGroup row = findManualToolbarRow( (ViewGroup)view, 0 );
+      assertNotNull( "Manual toolbar row is not visible", row );
+      assertTrue( "Manual toolbar row has too few children",
+        row.getChildCount() >= expectedSlots + 1 );
+      for ( int slot = 0; slot < expectedSlots; ++slot ) {
+        View child = row.getChildAt( slot );
+        assertTrue( "Manual toolbar slot " + slot + " is not visible",
+          child.getVisibility() == View.VISIBLE && child.getWidth() > 0 && child.getHeight() > 0 );
+      }
+    } );
   }
 
   void selectReferencePointTool()
@@ -885,7 +951,7 @@ selection.mHotItem.getHandleRole() );
   void confirmAlertOk()
   {
     UiObject2 okButton = waitForAnyObject(
-      By.res( "android", "button2" ),
+      By.res( "android", "button1" ),
       By.text( string( R.string.button_ok ) )
     );
     assertNotNull( "OK button not visible in alert dialog", okButton );
@@ -973,6 +1039,15 @@ selection.mHotItem.getHandleRole() );
       ++ attempts;
     }
     waitForMainWindow();
+  }
+
+  private void returnToMainWindowForCleanup()
+  {
+    if ( ! PACKAGE_NAME.equals( mDevice.getCurrentPackageName() ) ) return;
+    if ( isViewDisplayed( R.id.td_list ) ) return;
+    pressBackToMainWindow();
+    waitForIdle();
+    SystemClock.sleep( 500 );
   }
 
   /** Draw a curved stroke on the sketch surface. The path is a quadratic
@@ -1157,7 +1232,40 @@ selection.mHotItem.getHandleRole() );
   {
     File targetFile = getDownloadFile( sourceFile.getName() );
     copyFile( sourceFile, targetFile );
+    assertTrue( "Failed to copy import fixture to Downloads: " + targetFile.getAbsolutePath(), targetFile.exists() );
+    // Make freshly copied imports show up in DocumentsUI immediately instead
+    // of relying on the downloads provider to infer metadata lazily.
+    //noinspection ResultOfMethodCallIgnored
+    targetFile.setLastModified( System.currentTimeMillis() );
+    scanFileForDocumentsUi( targetFile, getMimeTypeForPicker( targetFile ) );
     return targetFile;
+  }
+
+  private String getMimeTypeForPicker( File file )
+  {
+    String name = file.getName().toLowerCase( Locale.US );
+    if ( name.endsWith( ".zip" ) ) return "application/zip";
+    if ( name.endsWith( ".jpg" ) || name.endsWith( ".jpeg" ) ) return "image/jpeg";
+    if ( name.endsWith( ".png" ) ) return "image/png";
+    return "application/octet-stream";
+  }
+
+  private void scanFileForDocumentsUi( File file, String mimeType ) throws Exception
+  {
+    final CountDownLatch latch = new CountDownLatch( 1 );
+    MediaScannerConnection.scanFile(
+      mTargetContext,
+      new String[] { file.getAbsolutePath() },
+      new String[] { mimeType },
+      new MediaScannerConnection.OnScanCompletedListener() {
+        @Override public void onScanCompleted( String path, Uri uri )
+        {
+          latch.countDown();
+        }
+      }
+    );
+    assertTrue( "Timed out scanning file for DocumentsUI: " + file.getAbsolutePath(),
+      latch.await( 5000, TimeUnit.MILLISECONDS ) );
   }
 
   void captureAndAssertScreen( String assetName ) throws Exception
@@ -1281,15 +1389,63 @@ selection.mHotItem.getHandleRole() );
     if ( showRootsButton != null && tryClickObject( showRootsButton ) ) {
       if ( tryTapDocumentText( "Downloads", 5000 ) || tryTapDocumentText( "Download", 3000 ) ) {
         if ( tryPickVisibleDocument( fileName, documentsUiPackage, 5000 ) ) return;
+        if ( trySearchDocument( fileName, documentsUiPackage ) ) return;
       } else if ( tryTapDocumentText( "sdk_gphone64_x86_64", 3000 )
         || tryTapDocumentText( "SDCARD", 3000 )
         || tryTapDocumentText( "Internal storage", 3000 ) ) {
         openDocumentsUiPath( "Download" );
         if ( tryPickVisibleDocument( fileName, documentsUiPackage, 5000 ) ) return;
+        if ( trySearchDocument( fileName, documentsUiPackage ) ) return;
       }
     }
 
+    if ( ! isDocumentsUiPackage( mDevice.getCurrentPackageName() ) ) return;
+
+    captureDocumentPickerFailure( fileName );
     fail( "Requested document not visible in picker: " + fileName );
+  }
+
+  private boolean trySearchDocument( String fileName, String documentsUiPackage )
+  {
+    UiObject2 searchButton = findAnyObject( 3000,
+      By.res( documentsUiPackage, "option_menu_search" ),
+      By.res( documentsUiPackage, "menu_search" ),
+      By.res( documentsUiPackage, "action_menu_search" ),
+      By.descContains( "Search" ),
+      By.text( "Search" )
+    );
+    if ( searchButton == null || ! tryClickObject( searchButton ) ) return false;
+
+    UiObject2 searchBox = findAnyObject( 5000,
+      By.res( "android", "search_src_text" ),
+      By.res( documentsUiPackage, "search_src_text" ),
+      By.clazz( "android.widget.EditText" )
+    );
+    if ( searchBox == null ) {
+      return false;
+    }
+
+    try {
+      searchBox.setText( fileName );
+    } catch ( StaleObjectException e ) {
+      return false;
+    }
+    waitForIdle();
+    SystemClock.sleep( 1000 );
+    if ( tryPickVisibleDocument( fileName, documentsUiPackage, 8000 ) ) return true;
+    return false;
+  }
+
+  private void captureDocumentPickerFailure( String fileName ) throws Exception
+  {
+    File artifactDir = getCaseArtifactsDir();
+    takeScreenshotWithRetry( new File( artifactDir, "document-picker-failure.png" ) );
+    File hierarchy = new File( artifactDir, "document-picker-failure.xml" );
+    ensureParentDir( hierarchy );
+    mDevice.dumpWindowHierarchy( hierarchy );
+    writeTextFile( new File( artifactDir, "document-picker-failure.txt" ),
+      "file=" + fileName + "\n"
+      + "package=" + mDevice.getCurrentPackageName() + "\n" );
   }
 
   private boolean tryPickVisibleDocument( String fileName, String documentsUiPackage, long waitMs )
@@ -1297,6 +1453,10 @@ selection.mHotItem.getHandleRole() );
     long deadline = SystemClock.uptimeMillis() + waitMs;
     boolean scrolled = false;
     while ( SystemClock.uptimeMillis() < deadline ) {
+      // Some DocumentsUI providers close immediately after a matching search
+      // result is accepted. Let the caller assert the import postcondition.
+      if ( ! isDocumentsUiPackage( mDevice.getCurrentPackageName() ) ) return true;
+
       UiObject2 row = findDocumentObject( fileName, 500 );
       if ( row != null && tryClickObject( row ) ) {
         if ( waitForDocumentsUiToClose( 1500 ) ) return true;
@@ -1529,6 +1689,45 @@ selection.mHotItem.getHandleRole() );
     waitForIdle();
   }
 
+  private void tapManualToolbarChild( int rowIndex, int childIndex )
+  {
+    final int[] center = new int[2];
+    onView( withId( R.id.layout_tools ) ).check( ( View view, NoMatchingViewException error ) -> {
+      if ( error != null ) throw error;
+      assertTrue( "Tools container is not a ViewGroup", view instanceof ViewGroup );
+      ViewGroup row = findManualToolbarRow( (ViewGroup)view, rowIndex );
+      assertNotNull( "Manual toolbar row " + rowIndex + " is not visible", row );
+      assertTrue( "Manual toolbar row " + rowIndex + " does not have child index " + childIndex,
+        childIndex >= 0 && childIndex < row.getChildCount() );
+      View child = row.getChildAt( childIndex );
+      assertTrue( "Manual toolbar child " + childIndex + " is not visible",
+        child.getVisibility() == View.VISIBLE && child.getWidth() > 0 && child.getHeight() > 0 );
+      int[] location = new int[2];
+      child.getLocationOnScreen( location );
+      center[0] = location[0] + child.getWidth() / 2;
+      center[1] = location[1] + child.getHeight() / 2;
+    } );
+    assertTrue( "Failed to inject tap into manual toolbar row " + rowIndex + " child " + childIndex,
+      mDevice.click( center[0], center[1] ) );
+    waitForIdle();
+  }
+
+  private ViewGroup findManualToolbarRow( ViewGroup tools, int rowIndex )
+  {
+    int found = 0;
+    for ( int index = 0; index < tools.getChildCount(); ++index ) {
+      View child = tools.getChildAt( index );
+      if ( ! ( child instanceof ViewGroup ) ) continue;
+      if ( child.getId() != View.NO_ID ) continue;
+      if ( child.getVisibility() != View.VISIBLE || child.getWidth() <= 0 || child.getHeight() <= 0 ) continue;
+      ViewGroup row = (ViewGroup)child;
+      if ( row.getChildCount() < ItemDrawer.getToolbarSlotCount() + 1 ) continue;
+      if ( found == rowIndex ) return row;
+      ++found;
+    }
+    return null;
+  }
+
   private void compareBitmapFileToGolden( File actualFile, String assetName, double maxDiffRatio, int maxChannelDelta ) throws Exception
   {
     Bitmap actual = BitmapFactory.decodeFile( actualFile.getAbsolutePath() );
@@ -1724,15 +1923,23 @@ selection.mHotItem.getHandleRole() );
     editor.putBoolean( "DISTOX_WELCOME_SCREEN", false );
     editor.putBoolean( "DISTOX_SINGLE_BACK", true );
     editor.putString( "DISTOX_WITH_LEVELS", "0" );
-    editor.putString( "DISTOX_TOOLBAR_UPDATE", "0" );
-    editor.putString( "DISTOX_PRESET_SLOTS", "2" );
+    editor.putString( "DISTOX_TOOLBAR_UPDATE", Integer.toString( TDSetting.TOOLBAR_UPDATE_MANUAL ) );
+    editor.putString( "DISTOX_TOOLBAR_SLOTS", "8" );
+    editor.putString( "DISTOX_TOOLBAR_ROWS", "1" );
+    editor.putString( "DISTOX_PRESET_SLOTS", "3" );
+    editor.putString( "DISTOX_PRESET_1_NAME", "Fine" );
     editor.putString( "DISTOX_PRESET_1_LINE_STYLE", "1" );
     editor.putString( "DISTOX_PRESET_1_LINE_SEGMENT", "1" );
+    editor.putString( "DISTOX_PRESET_2_NAME", "Smooth" );
     editor.putString( "DISTOX_PRESET_2_LINE_STYLE", "0" );
     editor.putString( "DISTOX_PRESET_2_LINE_SEGMENT", "10" );
+    editor.putString( "DISTOX_PRESET_3_NAME", "Straight" );
+    editor.putString( "DISTOX_PRESET_3_LINE_STYLE", "5" );
+    editor.putString( "DISTOX_PRESET_3_LINE_SEGMENT", "5" );
     editor.putString( "DISTOX_ACTIVE_SKETCH_PRESET", "1" );
     editor.putBoolean( "DISTOX_ERASE_REFERENCE", false );
     editor.apply();
+    TDSetting.loadSecondaryPreferences( new TDPrefHelper( mTargetContext ) );
   }
 
   private void configureStableRuntimeState()
@@ -1762,20 +1969,16 @@ selection.mHotItem.getHandleRole() );
     waitForIdle();
   }
 
-  /** Force-delete a survey by name from the database and its filesystem
-   * directory. Used by round-trip import tests to guarantee a clean slate
-   * before re-importing the ZIP, even if the in-app "Delete" menu/dialog flow
-   * didn't fully commit — otherwise the ZIP importer hits the duplicate-
-   * survey-name guard and surfaces a "Failed: duplicate survey name" toast.
-   */
-  void forceDeleteSurveyByName( String surveyName )
+  void waitForSurveyAbsentInDatabase( String surveyName )
   {
-    if ( surveyName == null ) return;
-    if ( TopoDroidApp.mData != null ) {
-      long sid = TopoDroidApp.mData.getSurveyId( surveyName );
-      if ( sid > 0L ) TopoDroidApp.mData.doDeleteSurvey( sid );
+    long deadline = SystemClock.uptimeMillis() + FILE_TIMEOUT_MS;
+    while ( SystemClock.uptimeMillis() < deadline ) {
+      if ( surveyName == null || TopoDroidApp.mData == null || TopoDroidApp.mData.getSurveyId( surveyName ) <= 0L ) {
+        return;
+      }
+      SystemClock.sleep( 250 );
     }
-    deleteRecursively( getSurveyDir( surveyName ) );
+    fail( "Survey still exists in database after delete: " + surveyName );
   }
 
   private void cleanupNamedSurveyArtifacts( List< String > surveyNames )
@@ -2133,6 +2336,20 @@ selection.mHotItem.getHandleRole() );
     if ( mScenario != null ) {
       mScenario.close();
       mScenario = null;
+      waitForIdle();
+      waitForPackageToLeaveForeground();
+    }
+  }
+
+  private void waitForPackageToLeaveForeground()
+  {
+    long deadline = SystemClock.uptimeMillis() + UI_TIMEOUT_MS;
+    while ( SystemClock.uptimeMillis() < deadline ) {
+      if ( ! PACKAGE_NAME.equals( mDevice.getCurrentPackageName() ) ) {
+        SystemClock.sleep( 500 );
+        return;
+      }
+      SystemClock.sleep( 200 );
     }
   }
 

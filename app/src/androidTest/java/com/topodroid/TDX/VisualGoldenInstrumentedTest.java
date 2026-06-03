@@ -50,6 +50,7 @@ public class VisualGoldenInstrumentedTest
     );
     mSupport.launchMainWindow();
     createCanonicalSurveyAndOpenSketch( SURVEY_SKETCH );
+    mSupport.assertDefaultSketchToolbarVisible();
     drawCanonicalSketch();
     mSupport.setCanonicalToolbarState();
     mSupport.captureAndAssertScreen( "sketch_screen.png" );
@@ -83,12 +84,7 @@ public class VisualGoldenInstrumentedTest
     mSupport.confirmAlertOk();
     mSupport.relaunchMainWindow();
 
-    // The in-app delete flow normally clears the DB row synchronously, but if
-    // anything races (dialog dismiss, activity teardown, etc.) the survey row
-    // can still be present when the import runs, and the ZIP importer then
-    // bails with "Failed: duplicate survey name". Nuke it defensively here
-    // before invoking the picker so the import always sees a clean slate.
-    mSupport.forceDeleteSurveyByName( SURVEY_ZIP );
+    mSupport.waitForSurveyAbsentInDatabase( SURVEY_ZIP );
 
     mSupport.openMainImportDialogFromToolbar();
     mSupport.tapView( R.id.button_ok );

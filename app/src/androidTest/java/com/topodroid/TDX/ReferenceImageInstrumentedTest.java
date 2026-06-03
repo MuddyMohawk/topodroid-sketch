@@ -126,7 +126,7 @@ public class ReferenceImageInstrumentedTest
     mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_delete ) );
     mSupport.confirmAlertOk();
     mSupport.relaunchMainWindow();
-    mSupport.forceDeleteSurveyByName( SURVEY_ZIP );
+    mSupport.waitForSurveyAbsentInDatabase( SURVEY_ZIP );
 
     mSupport.openMainImportDialogFromToolbar();
     mSupport.tapView( R.id.button_ok );

@@ -18,6 +18,7 @@ This was written in English; other translations are likely not working
 - Extend the visual regression suite to cover S Pen button, Active Key, and action-binding flows (undo/redo, palette toggle, preset toggle, back, erase/sketch toggle). Current coverage only exercises taps on the drawing surface and toolbars.
 - Tweak the Sketch icon a bit, it's too zoomed in
 - Add an option to disable all drawing except that from the stylus pen
+- Investigate telemetry collection
 
 #### TODO bugs:
 - Post-install splash screen needs some proofreading
@@ -26,7 +27,7 @@ This was written in English; other translations are likely not working
 - Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch 
   - station designation font size does not affect export size 
   - actually all the sketch settings might be respected (eg leg line size)?
-- Emulator test suite should probably test if the emulator is actually running lol
+- Emulator test suite now has preflight checks and heartbeat/progress logging; remaining reliability issue is Gradle/cache bootstrap churn before instrumentation starts.
 - On the startup screens, the L icon size isn't displayed as default even though it is. Vanilla Bug.
 - The `undo` action seems weird over many actions. Potentially vanilla bug
 - There was a potential data-destruction bug when updating the app? Needs investigation.
@@ -110,7 +111,7 @@ This was written in English; other translations are likely not working
 - Added per-variant width settings for new sketching lines, with defaults of 1.0x, 2.0x, and 5.0x.
 - Added color options to the new sketch lines
 - Made the three sketch lines default in the recent-line toolbar
-- If exported and imported into the `TopoDroidX-6.4.25-36`, the new sketch lines fall back into the `user` line type. It'll be ugly, but still compatible.
+- Compatibility intent: when exported and imported into vanilla TopoDroid, the new sketch lines should fall back into the `user` line type. It'll be ugly, but still compatible. The current emulator has only smoke-tested side-by-side install/launch with an already-installed vanilla 6.4.27; real vanilla ZIP import still needs a compatible vanilla APK/device.
 - If exported with the personal line box checked, it can be imported into another copy of TopoDroid Sketch and the lines are preserved
 
 **Cross-Section Viewports**
@@ -170,31 +171,226 @@ This was written in English; other translations are likely not working
 
 ### Testing
 
-Instrumentation tests live under `app/src/androidTest/`. They drive a running emulator with real taps and swipes (Espresso + UIAutomator), export files to `/sdcard/...`, and compare screenshots and text exports to golden fixtures. They're probably a bit brittle outside of the particular environment they were created in.
+Instrumentation tests live under `app/src/androidTest/`. They drive a real emulator with Espresso and UIAutomator, create surveys, draw in the sketch UI, export files to device storage, and compare screenshots / exported files against fixtures under `app/src/androidTest/assets/goldens/emulator_2560x1600_320dpi_font1.0/`.
+
+There are currently no JVM unit tests under `app/src/test/` and no CI workflow. The test suite is therefore emulator-bound and slow. Treat the scripts below as a release/QA gate, not as a fast inner-loop test suite yet.
+
+**Important current status**
+- `scripts\test-fast.ps1 -Serial emulator-5554 -SkipBuild` last passed on June 3, 2026 using existing APKs. The visual sketch golden test passed in about 69 seconds and the Compass export fixture passed in about 41 seconds, plus install/preflight/artifact time.
+- The normal build-before-test path is currently blocked by local Gradle cache/bootstrap issues on this machine. The repo-local Gradle home has failed while deleting `tmp-jvm*probe` files and taking ownership of `caches\9.3.1\jvms`; a `%TEMP%` Gradle home got past that but hit a fresh-cache D8 failure while dexing `ktor-http-jvm-2.3.2.jar`. Treat `-SkipBuild` as a practical test-run option only when the APKs were already built from the code under test.
+- `scripts\test-full.ps1 -Serial emulator-5554 -SkipBuild` last passed on June 3, 2026 using existing APKs. All 25 instrumentation cases passed: 4 visual/export tests, 7 reference-image tests, and 14 line/preset/toolbar model tests. The full run took about 10.5 minutes after preflight. A local locked `tmp-test-artifacts\...\sketch_screen.png` produced a cleanup warning after the tests passed; this is nonfatal for fast/full runs.
+- The emulator screenshot issue from June 2026 was a real test setup bug: the visual tests were forcing legacy toolbar mode and two preset slots. The stable test preferences now force the Sketch defaults: manual toolbar, 8 toolbar slots, 1 toolbar row, and 3 preset slots named `Fine`, `Smooth`, and `Straight`. The sketch golden test now asserts that UI before drawing.
+- Current automated ZIP/import tests are Sketch-only round trips. A side-by-side smoke script now verifies package coexistence, launchability, and storage roots, but it does not yet prove vanilla <-> Sketch ZIP compatibility. The dropped vanilla `TopoDroidX-6.4.53-36.apk` is ARM-only, which is appropriate for the target tablets, but it cannot install on the current x86_64 emulator; use a universal/x86_64 vanilla APK for this emulator, an ARM emulator image, or a physical ARM tablet for real vanilla import/export testing.
 
 **Requirements**
-- An emulator running at **2560 × 1600, 320 dpi, font scale 1.0, English locale**. The tests asserts this profile on startup and will fail fast on a mismatch. Goldens are matched to this profile.
-- Android SDK platform-tools on `PATH`, or `local.properties` pointing at `sdk.dir` (the scripts will read it either way, probably).
-- JDK 21
+- Windows PowerShell.
+- Android SDK platform-tools. The scripts use `ANDROID_SDK_ROOT`, `ANDROID_HOME`, `local.properties` `sdk.dir`, or `%LOCALAPPDATA%\Android\Sdk`.
+- JDK 21. The scripts prefer `JAVA_HOME`, Android Studio's bundled JBR, or common local JDK 21 install paths.
+- A running emulator. Scripts default to `-Serial emulator-5554`; pass `-Serial <id>` to target another device.
+- Existing debug and androidTest APKs under `app\build\outputs\apk\...` if using `-SkipBuild`.
+- Emulator profile must match the golden profile exactly:
+  - physical size: `2560x1600`
+  - density: `320 dpi`
+  - font scale: `1.0`
+  - locale: English
 
-**Scripts** (PowerShell, under `scripts/`)
-- `scripts\test-fast.ps1` — sketch-draw + Compass-export only.
-- `scripts\test-full.ps1` — all four tests including the ZIP round-trip (import via DocumentsUI) and PNG export.
-- `scripts\refresh-visual-baselines.ps1` — re-runs in record mode and copies the new PNG/`.dat` fixtures into `app/src/androidTest/assets/goldens/emulator_2560x1600_320dpi_font1.0/`. Run this after any intentional UI or rendering change that invalidates the existing goldens.
+**Script preflight**
 
-Each script defaults to `-Serial emulator-5554`. Pass `-Serial <id>` to target a different device.
+`scripts\android-test-common.ps1` is shared by the emulator scripts. Before running instrumentation it verifies:
+- the requested adb serial exists and is online
+- emulator size, density, font scale, and locale match the expected profile
+- app APK install succeeds
+- androidTest APK install succeeds
+- app package `com.topodroid.TDX.sketch` is installed
+- test package `com.topodroid.TDX.sketch.test` is installed
+- instrumentation runner `com.topodroid.TDX.sketch.test/androidx.test.runner.AndroidJUnitRunner` targets the expected app package
 
-**What's covered**
-1. Create a survey, enter shots, open a plan sketch, draw with P1/P2 presets and the three user-line widths (fine/standard/thick), screenshot-diff against golden .PNG files.
-2. Export to ZIP with symbols on, validate `lines.zip` inside contains `user-fine`/`user-standard`/`user-thick`, delete the survey, re-import the ZIP through the system document picker, re-open the plot, screenshot-diff.
-3. Export to PNG, pixel-exact compare against golden .pngs
-4. Export to Compass `.dat`, normalize the dynamic `SURVEY DATE:` line (this is fine, right?), compare against golden.
+The scripts clear app/test package data, grant storage/media permissions, and allow `MANAGE_EXTERNAL_STORAGE` for the app package before instrumentation. Public TopoDroid files under `Documents/TopoDroid Sketch/` can survive `pm clear`, so the test helper also cleans known test surveys and artifacts inside the app.
 
-**Where output lands**
-- `tmp-test-artifacts/<testCaseName>/`: Actual screenshots, exported files, and on failure also `expected-<name>` and `diff-<name>` PNGs for visual diagnosis.
-- `tmp-recorded-latest/recorded-goldens/...`: Only written by `refresh-visual-baselines.ps1`; the script copies from here into the tracked goldens directory.
+**Scripts**
+- `scripts\test-fast.ps1`
+  - Builds `:app:assembleDebug` and `:app:assembleDebugAndroidTest` unless `-SkipBuild` is supplied.
+  - Installs and preflights app/test APKs.
+  - Runs two named smoke tests: the sketch screen golden and Compass export fixture.
+  - Each test has its own estimate, total timeout, and idle/no-instrumentation-progress timeout.
+  - `-SkipBuild` uses existing APKs and is useful when script/progress behavior is being tested or when Gradle cache problems are being investigated separately.
+- `scripts\test-full.ps1`
+  - Builds unless `-SkipBuild` is supplied, installs, preflights, clears packages, grants permissions, then runs every existing instrumentation class.
+  - UI-heavy tests run one test method at a time with an estimate, a total timeout, and an idle timeout. This is intentionally a little more startup overhead in exchange for much better failure isolation.
+  - The pure/model-style instrumentation tests (`LinePatternInstrumentedTest`, `PresetBarInstrumentedTest`, and `ToolbarRowsInstrumentedTest`) still run as one grouped chunk because they do not drive app activity teardown and normally finish in seconds.
+  - This is the intended full emulator gate, but it currently still needs lifecycle/ANR reliability cleanup before it is pleasant to use.
+- `scripts\refresh-visual-baselines.ps1`
+  - Builds unless `-SkipBuild` is supplied, then runs `VisualGoldenInstrumentedTest` in `visual_baseline_mode=record`.
+  - Pulls recorded artifacts and copies new baselines into `app/src/androidTest/assets/goldens/emulator_2560x1600_320dpi_font1.0/`.
+  - Run only after intentional UI/rendering/export changes.
+- `scripts\start-test-run.ps1 -Suite fast|full|refresh -Serial emulator-5554 [-SkipBuild] [-GradleUserHome <path>]`
+  - Starts one of the above scripts in a hidden background PowerShell process.
+  - Writes stdout/stderr logs under `tmp-test-runs/`.
+  - Prints the PID and log paths so the run can be polled without blocking the shell for the full emulator run.
+  - `-SkipBuild` is forwarded to the target script with hashtable splatting so it binds as the real switch.
+  - `-GradleUserHome <path>` sets `TOPO_TEST_GRADLE_HOME` for the child process. This is useful for isolating a wedged Gradle cache, but it may redownload Gradle/dependencies and can expose fresh-cache transform failures.
+- `scripts\watch-test-run.ps1 -Log <logPath> -PidFile <pidPath>`
+  - Follows a background test log and prints a watcher heartbeat every interval.
+  - Stops once the recorded PID is no longer active.
+- `scripts\test-side-by-side.ps1 [-VanillaApk <path>] [-SketchApk <path>]`
+  - Preflights the vanilla APK package name and native ABI before installing.
+  - Installs/uses vanilla `com.topodroid.TDX` and Sketch `com.topodroid.TDX.sketch`, verifies both packages resolve launcher activities, verifies distinct FileProvider authorities, launches both apps, and checks the public storage roots.
+  - Default vanilla APK path is `Files for Codex\TopoDroidX-6.4.53-36.apk`.
+  - `-UseInstalledVanilla -SkipSketchInstall` runs a non-installing smoke against packages already on the emulator.
 
-Both `tmp-*` dirs are gitignored and are regenerated on every run.
+**Progress and failure visibility**
+
+The scripts print start/pass/fail lines with elapsed times for the Gradle build and each instrumentation chunk. Gradle is run with `--console=plain`; if the build is quiet, the script prints heartbeat lines every 30 seconds with elapsed time, time since last output, and remaining time before total timeout. Instrumentation uses `am instrument -r` so Android reports per-test status.
+
+Each instrumentation chunk has an expected runtime estimate; if elapsed time passes the estimate, the script prints a warning. While a chunk is running, the script prints heartbeat lines every 30 seconds with elapsed time, time since last instrumentation output, and remaining time before total timeout. On total timeout, idle timeout, or ANR-like instrumentation output, the shared script attempts to dump focused-window/process state and pull a UI hierarchy to `tmp-test-artifacts/instrumentation-timeout-window.xml`.
+
+For Codex or any other environment where a direct shell command buffers output until completion, use `scripts\start-test-run.ps1` and then either run the printed `scripts\watch-test-run.ps1` command or poll the stdout log every 30 seconds. Do not start another long emulator run without either visible terminal output or a pollable log. A typical monitored smoke run is:
+
+`scripts\start-test-run.ps1 -Suite fast -Serial emulator-5554 -SkipBuild`
+
+**Output locations**
+- `tmp-test-artifacts/<testCaseName>/`: screenshots, exported files, ZIPs, and on visual failure `expected-*` / `diff-*` images.
+- `tmp-recorded-latest/recorded-goldens/...`: temporary output from `refresh-visual-baselines.ps1` before it copies fixtures into the tracked golden directory.
+
+Both `tmp-*` directories are gitignored and regenerated by the scripts.
+
+If Windows has a screenshot artifact locked, the fast/full scripts warn after three cleanup attempts instead of failing a passed test run. `refresh-visual-baselines.ps1` treats cleanup failure as fatal because stale baseline artifacts could be copied into tracked fixtures.
+
+**Emulator test cases**
+
+`VisualGoldenInstrumentedTest`
+- `createSurvey_addShots_createSketch_drawPresetsAndSketchLines_matchesGolden`
+  - Creates a canonical survey.
+  - Adds canonical leg/splay shots.
+  - Opens a plan sketch.
+  - Asserts the Sketch drawing UI shows the expected default toolbar/preset layout: 8 manual toolbar slots and presets `Fine`, `Smooth`, `Straight`.
+  - Draws the canonical sketch using Sketch line symbols and preset-driven line behavior.
+  - Captures `sketch_screen.png` and compares it to the emulator golden.
+- `exportZip_includesSketchLineSymbols_and_importRoundTripsThroughPicker`
+  - Creates a canonical survey and sketch.
+  - Draws the canonical sketch.
+  - Exports a ZIP with symbol export enabled.
+  - Verifies the ZIP contains Sketch line symbols in `lines.zip`.
+  - Deletes the survey.
+  - Re-imports the ZIP through Android DocumentsUI.
+  - Reopens the imported plot and compares `zip_roundtrip_screen.png` to the golden.
+  - This is a Sketch -> Sketch round trip, not a vanilla compatibility test.
+- `exportPng_matchesGolden`
+  - Creates/draws the canonical sketch.
+  - Exports a PNG with a deterministic filename.
+  - Compares the exported PNG against `export_png.png`.
+- `exportCompass_matchesFixture`
+  - Creates a canonical survey with shots.
+  - Exports Compass `.dat`.
+  - Normalizes the dynamic `SURVEY DATE:` line.
+  - Compares the text export against `export_compass.dat`.
+
+`ReferenceImageInstrumentedTest`
+- `exportPng_includesVisibleReferenceImage`
+  - Creates a sketch.
+  - Inserts a generated visible reference image from Downloads.
+  - Applies scale/rotation/alpha/position changes.
+  - Exports PNG.
+  - Asserts the exported PNG contains the fixture colors.
+- `exportPng_omitsHiddenReferenceImage`
+  - Inserts a reference image and marks it hidden.
+  - Exports PNG.
+  - Asserts the exported PNG does not contain the fixture colors.
+- `zipRoundTrip_restoresReferenceMetadataAndAsset`
+  - Inserts a reference JPEG.
+  - Applies transform and visibility metadata.
+  - Exports ZIP.
+  - Deletes the survey.
+  - Imports the ZIP back through DocumentsUI.
+  - Asserts reference metadata and asset survive the Sketch -> Sketch ZIP round trip.
+- `liveScreen_showsVisibleReferenceImage`
+  - Inserts a visible reference image.
+  - Captures the live drawing screen.
+  - Asserts the fixture colors are visible on screen.
+- `cornerHandleDrag_scalesReferenceImage`
+  - Inserts a reference image.
+  - Drags the reference corner handle.
+  - Asserts scene width/height increase and orientation does not unexpectedly change.
+- `eraser_keepsProtectedReferenceWhileRemovingLine`
+  - Disables reference-image erasing.
+  - Inserts a reference image and draws a normal sketch line across it.
+  - Erases at the reference center.
+  - Asserts the reference remains and the sketch line is removed.
+- `eraser_canDeleteReferenceWhenEnabled`
+  - Enables reference-image erasing.
+  - Inserts a reference image.
+  - Erases at the reference center.
+  - Asserts the reference is deleted.
+  - Current risk: in full grouped runs, the suite has produced an Android input-dispatch ANR around this part of the reference-image group. Evidence points to activity teardown / focus pressure between tests rather than a confirmed eraser logic failure, but this is not fully resolved.
+
+`LinePatternInstrumentedTest`
+- `fixedLinePatternDensity_keepsDashRepeatCountStableAcrossZoom`
+  - Renders fixed-density dashed line behavior at multiple zoom levels.
+  - Asserts dash repeat count remains stable.
+- `legacyLinePatternDensity_changesDashRepeatCountAcrossZoom`
+  - Renders legacy density behavior at multiple zoom levels.
+  - Asserts repeat count changes with zoom, proving the test can distinguish old/new behavior.
+- `sketchCarrierEffect_drawsContinuousCurvedCarrier`
+  - Renders a Sketch carrier effect on a curved line.
+  - Asserts the effect draws as a continuous curved carrier.
+- `sketchDashedEffect_stampsOncePerDashOnSegment`
+  - Renders a dashed Sketch effect on a segment.
+  - Asserts stamp placement occurs once per dash.
+- `sketchDashedEffect_anchorsStampToCurvedLine`
+  - Renders dashed Sketch stamps along a curved line.
+  - Asserts stamps anchor to the curve instead of drifting.
+
+`PresetBarInstrumentedTest`
+- `freshPresetPrefs_defaultToThreeSlotsAndStraightP3`
+  - Starts from clean preset prefs.
+  - Asserts defaults are 3 slots: `Fine`, `Smooth`, `Straight`.
+  - Asserts preset 3 has the expected settings title and can be selected.
+- `renamedPreset_updatesDisplayedNameAndSettingsTitle`
+  - Renames a preset.
+  - Asserts display name and settings title update.
+- `loweringSlotCount_hidesButPreservesPresetDefinitions`
+  - Lowers the visible preset slot count.
+  - Asserts hidden preset definitions are preserved and selection behavior remains sane.
+
+`ToolbarRowsInstrumentedTest`
+- `freshManualToolbar_keeps029DefaultsInRowZero`
+  - Starts from clean toolbar prefs.
+  - Asserts the manual toolbar keeps the expected default row-0 slot layout.
+- `manualRows_copyRowZeroDefaultsAndRemainAvailableWhenHidden`
+  - Exercises multi-row manual toolbar prefs.
+  - Asserts hidden rows preserve copied defaults and remain available.
+- `rowLock_controlsDisplayedTypeOnlyForThatRow`
+  - Locks a toolbar row to a displayed item type.
+  - Asserts the lock affects only that row.
+- `pickerLockCallbacks_updateLockAndTabImmediately`
+  - Exercises picker lock callbacks.
+  - Asserts lock and tab state update immediately.
+- `replacingDuplicateSymbol_swapsOnlyWithinSameRowAndType`
+  - Replaces a duplicate toolbar symbol.
+  - Asserts replacement is constrained to the same row and item type.
+- `legacyRecentModes_keepSixSlotSingleRowBehavior`
+  - Switches to legacy recent-toolbar modes.
+  - Asserts the old six-slot single-row behavior is preserved.
+
+**Vanilla <-> Sketch compatibility status**
+
+Partially automated. `scripts\test-side-by-side.ps1` performs the install/launch/storage-root smoke for:
+- vanilla TopoDroid package: `com.topodroid.TDX`
+- Sketch package: `com.topodroid.TDX.sketch`
+
+Current emulator findings from June 3, 2026:
+- `TopoDroidX-6.4.53-36.apk` has package `com.topodroid.TDX`, version `6.4.53` / `604053`, and native ABIs `arm64-v8a`, `armeabi-v7a`.
+- The current emulator is `x86_64`, so the dropped 6.4.53 APK cannot install there. This is an emulator/fixture mismatch, not evidence that the APK is wrong for the ARM tablet target. The script fails fast with an ABI mismatch before attempting install.
+- The already-installed vanilla `6.4.27` / `604027` launches side by side with Sketch `0.30.1` / `730010`.
+- The smoke verified both launcher activities, distinct FileProvider authorities (`com.topodroid.fileprovider` and `com.topodroid.TDX.sketch.fileprovider`), and both public roots: `Documents/TDX/` and `Documents/TopoDroid Sketch/`.
+
+Still needed for real vanilla <-> Sketch compatibility:
+1. install a vanilla APK that matches the test device ABI, or run on an ARM emulator/device
+2. create/export a Sketch ZIP
+3. import that ZIP into vanilla
+4. verify Sketch-only lines degrade safely in vanilla
+5. re-export from vanilla
+6. import the vanilla round-trip ZIP back into Sketch
 
 ### Versioning
 - TopoDroid Sketch uses SemVer for the app version: MAJOR.MINOR.PATCH, currently 0.22.1.

@@ -1,14 +1,16 @@
 param(
-  [string]$Serial = "emulator-5554"
+  [string]$Serial = "emulator-5554",
+  [switch]$SkipBuild
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $ScriptDir "android-test-common.ps1")
 $RepoRoot = Split-Path -Parent $ScriptDir
 $Gradle = Join-Path $RepoRoot "gradlew.bat"
-$GradleUserHome = Join-Path $RepoRoot ".gradle-test-home"
+$GradleUserHome = Resolve-GradleUserHome -RepoRoot $RepoRoot
 $LocalProperties = Join-Path $RepoRoot "local.properties"
 $ArtifactsLocal = Join-Path $RepoRoot "tmp-recorded-latest"
 $ArtifactsRemote = "/sdcard/Android/data/com.topodroid.TDX.sketch/files/test-artifacts"
@@ -16,19 +18,25 @@ $GoldenSource = Join-Path $ArtifactsLocal "recorded-goldens\emulator_2560x1600_3
 $GoldenTarget = Join-Path $RepoRoot "app\src\androidTest\assets\goldens\emulator_2560x1600_320dpi_font1.0"
 $AppPackage = "com.topodroid.TDX.sketch"
 $TestPackage = "com.topodroid.TDX.sketch.test"
-$Runner = "$TestPackage/androidx.test.runner.AndroidJUnitRunner"
+$Runner = "androidx.test.runner.AndroidJUnitRunner"
+$Instrumentation = "$TestPackage/$Runner"
 $FullClass = "com.topodroid.TDX.VisualGoldenInstrumentedTest"
 
 function Get-SdkPath {
-  if ($env:ANDROID_SDK_ROOT) { return $env:ANDROID_SDK_ROOT }
-  if ($env:ANDROID_HOME) { return $env:ANDROID_HOME }
+  if ($env:ANDROID_SDK_ROOT) { return Convert-SdkPath $env:ANDROID_SDK_ROOT }
+  if ($env:ANDROID_HOME) { return Convert-SdkPath $env:ANDROID_HOME }
   if (Test-Path $LocalProperties) {
     $sdkLine = Get-Content $LocalProperties | Where-Object { $_ -like 'sdk.dir=*' } | Select-Object -First 1
     if ($sdkLine) {
-      return ($sdkLine -replace '^sdk.dir=', '') -replace '\\:', ':'
+      return Convert-SdkPath ($sdkLine -replace '^sdk.dir=', '')
     }
   }
-  return (Join-Path $env:LOCALAPPDATA 'Android\Sdk')
+  return Convert-SdkPath (Join-Path $env:LOCALAPPDATA 'Android\Sdk')
+}
+
+function Convert-SdkPath {
+  param([string]$Path)
+  return $Path.Replace('\:', ':')
 }
 
 function Get-JavaHome {
@@ -52,7 +60,7 @@ function Get-JavaHome {
 
 function Invoke-Adb {
   param([string[]]$Arguments)
-  & $Adb -s $Serial @Arguments
+  Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments $Arguments -Description "adb $($Arguments -join ' ')"
 }
 
 function Invoke-Instrumentation {
@@ -124,19 +132,22 @@ try {
   $env:PATH = "$JavaHome\bin;$env:PATH"
   $env:_JAVA_OPTIONS = "-XX:TieredStopAtLevel=1"
 
-  & $Gradle -g $GradleUserHome ":app:assembleDebug" ":app:assembleDebugAndroidTest"
+  if ($SkipBuild) {
+    Write-Host ("[{0}] SKIP Gradle build; using existing APKs" -f (Get-Date -Format "HH:mm:ss"))
+  } else {
+    Invoke-NativeChecked -FilePath $Gradle -Arguments @("-g", $GradleUserHome, "--console=plain", ":app:assembleDebug", ":app:assembleDebugAndroidTest") -Description "Gradle build" -TimeoutSeconds 1200 -IdleTimeoutSeconds 300
+  }
 
-  Invoke-Adb @("install", "-r", "-t", $AppApk) | Out-Null
-  Invoke-Adb @("install", "-r", "-t", $TestApk) | Out-Null
+  Install-TestApksAndPreflight -Adb $Adb -Serial $Serial -AppApk $AppApk -TestApk $TestApk -AppPackage $AppPackage -TestPackage $TestPackage -Runner $Runner
   Invoke-Adb @("shell", "pm", "clear", $AppPackage) | Out-Null
   Invoke-Adb @("shell", "pm", "clear", $TestPackage) | Out-Null
   Grant-Permissions
 
-  $instrumentationOk = Invoke-Instrumentation @("shell", "am", "instrument", "-w", "-e", "class", $FullClass, "-e", "visual_baseline_mode", "record", $Runner)
+  $instrumentationOk = Invoke-InstrumentationTimed -Adb $Adb -Serial $Serial `
+    -Arguments @("shell", "am", "instrument", "-w", "-r", "-e", "class", $FullClass, "-e", "visual_baseline_mode", "record", $Instrumentation) `
+    -Name "Refresh visual baselines" -EstimateSeconds 750 -TimeoutSeconds 1200 -IdleTimeoutSeconds 300 -AppPackage $AppPackage -TestPackage $TestPackage -ArtifactsLocal $ArtifactsLocal
 
-  if (Test-Path $ArtifactsLocal) {
-    Remove-Item -LiteralPath $ArtifactsLocal -Recurse -Force
-  }
+  Clear-LocalArtifactDirectory -Path $ArtifactsLocal -Description "recorded visual baseline artifacts" -Fatal
   Invoke-Adb @("pull", $ArtifactsRemote, $ArtifactsLocal) | Out-Null
 
   if (-not $instrumentationOk) {

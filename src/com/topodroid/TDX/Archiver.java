@@ -112,6 +112,16 @@ public class Archiver
     return mManifestError[-k];
   }
 
+  private static boolean manifestSurveyAlreadyPresent( DataHelper app_data )
+  {
+    if ( app_data == null || mManifestSurveyname == null ) return false;
+    if ( app_data.hasSurveyName( mManifestSurveyname ) ) {
+      TDLog.e( "ZIP import survey already exists before SQL load: <" + mManifestSurveyname + ">" );
+      return true;
+    }
+    return false;
+  }
+
 
   /** cstr
    */
@@ -792,6 +802,11 @@ public class Archiver
           boolean sql = false;
           pathname = null;
           if ( ze.getName().equals( "survey.sql" ) ) {
+            if ( manifestSurveyAlreadyPresent( app_data ) ) {
+              zin.close();
+              zip.close();
+              return ERR_SURVEY;
+            }
             pathname = TDPath.getSqlFile();
             sql = true;
           // /* FIXME_SKETCH_3D *
@@ -953,6 +968,11 @@ public class Archiver
           boolean sql = false;
           pathname = null;
           if ( ze.getName().equals( "survey.sql" ) ) {
+            if ( manifestSurveyAlreadyPresent( app_data ) ) {
+              ok_manifest = ERR_SURVEY;
+              zin.closeEntry();
+              break;
+            }
             pathname = TDPath.getSqlFile();
             sql = true;
           } else if ( ze.getName().endsWith( TDPath.TDR ) ) {

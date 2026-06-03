@@ -299,9 +299,17 @@ public class DataHelper extends DataSetObservable
     boolean need_upgrade = myDB.needUpgrade( TDVersion.DATABASE_VERSION ); 
     TDLog.v( "DB: version " + oldVersion + " -> " + newVersion + " upgrade: " + need_upgrade );
     if ( oldVersion < newVersion ) {
-      // TDLog.v( "DB updating tables ...");
-      DistoXOpenHelper.updateTables( myDB, oldVersion, newVersion );
-      myDB.setVersion( TDVersion.DATABASE_VERSION );
+      boolean transactionStarted = false;
+      try {
+        myDB.beginTransaction();
+        transactionStarted = true;
+        // TDLog.v( "DB updating tables ...");
+        DistoXOpenHelper.updateTables( myDB, oldVersion, newVersion );
+        myDB.setVersion( TDVersion.DATABASE_VERSION );
+        myDB.setTransactionSuccessful();
+      } finally {
+        if ( transactionStarted ) myDB.endTransaction();
+      }
     }
     return true;
   }
@@ -7283,6 +7291,13 @@ public class DataHelper extends DataSetObservable
          }
          boolean immutable = TDSetting.WITH_IMMUTABLE; // imported surveys are always immutable FIXME_IMMUTABLE
 
+         if ( hasSurveyName( name ) ) {
+           TDLog.e( "DB load survey already exists: <" + name + ">" );
+           br.close();
+           fr.close();
+           return -1L;
+         }
+
          sid = setSurvey( name, datamode );
 
          try {
@@ -8435,9 +8450,9 @@ public class DataHelper extends DataSetObservable
                    db.execSQL( "DROP TABLE originals " );
                    db.execSQL( "ALTER TABLE temp RENAME TO originals " );
                    db.setTransactionSuccessful();
-                 } catch ( SQLiteDiskIOException e0 ) { TDLog.v( e0.getMessage() );
-                 } catch ( SQLiteException e1 )       { TDLog.v( e1.getMessage() );
-                 } catch ( IllegalStateException e2 ) { TDLog.v( e2.getMessage() );
+                 } catch ( SQLiteDiskIOException e0 ) { TDLog.v( e0.getMessage() ); throw e0;
+                 } catch ( SQLiteException e1 )       { TDLog.v( e1.getMessage() ); throw e1;
+                 } catch ( IllegalStateException e2 ) { TDLog.v( e2.getMessage() ); throw e2;
                  } finally { db.endTransaction(); }
                }
              }
