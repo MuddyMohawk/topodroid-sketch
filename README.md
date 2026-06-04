@@ -1,9 +1,8 @@
 # TopoDroid Sketch
 
-This is a fork of the main TopoDroid repository. It is focused on adding features to better support a paper-style free hand sketching style instead of using symbols and therion.
-The intended workflow is to create beautiful sketches on the sketching screen and export those as images for the cartographer.
+This is a fork of the main TopoDroid repository. It is focused on adding features to better support a paper-style free hand sketching style with a .png export instead of using symbols and Therion.
 
-This was essentially entirely vibe-coded with Codex and Claude.
+This was essentially entirely vibe-coded with Codex and Claude. From my estimation, it would have taken 6-8 years with the current weekly time investment to learn Android app development and make this fork otherwise. 
 
 Testing and development was done with a Cavway X1 and an Active Tab 3.
 
@@ -11,13 +10,8 @@ This was written in English; other translations are likely not working
 
 #### TODO
 - Add safety warnings when importing vanilla TopoDroid stuff
-- Switch the defaults for preset 2 to a line-point spacing of 15 instead of 20
-- Add a 4th sketch line. I love sketch lines.
-- Performance check for large sketches
 - Option for rearranging render order (eg, survey station designations on top)
-- Extend the visual regression suite to cover S Pen button, Active Key, and action-binding flows (undo/redo, palette toggle, preset toggle, back, erase/sketch toggle). Current coverage only exercises taps on the drawing surface and toolbars.
 - Tweak the Sketch icon a bit, it's too zoomed in
-- Add an option to disable all drawing except that from the stylus pen
 - Investigate telemetry collection
 
 #### TODO bugs:
@@ -26,33 +20,30 @@ This was written in English; other translations are likely not working
 - Exporting to PNG with Grid lines on and transparent background off results in a pure black background. The grid lines aren't being preserved.
 - Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch 
   - station designation font size does not affect export size 
-  - actually all the sketch settings might be respected (eg leg line size)?
-- Emulator test suite now has preflight checks and heartbeat/progress logging; remaining reliability issue is Gradle/cache bootstrap churn before instrumentation starts.
+  - actually all the sketch settings might not be respected (eg leg lines size)?
 - On the startup screens, the L icon size isn't displayed as default even though it is. Vanilla Bug.
 - The `undo` action seems weird over many actions. Potentially vanilla bug
-- There was a potential data-destruction bug when updating the app? Needs investigation.
-- Morphing of lines causes warping in tight turns. Vanilla bug.
 - Taking screenshot with volume-up doesn't work. Vanilla bug.
 - Seems like the scaling of dashed line is odd, like it has a minimum size? Vanilla bug.
 - Water displayed in a cross-section viewport is not showing up in the main sketch screen
 
 #### Future Possible Features / Brainstorming
-- Change the recent items bar to be a fixed selection. Make it two rows and maybe have a setting for how many items are in it
+- Add an option to disable all drawing except that from the stylus pen
+  - Maybe still detect fingers for panning/zooming, drawing only from stylus?
+- Performance check for large sketches
 - Measure distance between two points on the 2D sketch screen
 - Ceiling height text objects
 - Fix the text box/text input scaling. Fonts / Architects Daughter?
 - Sketch line collision to prevent sketching through another line
 - Change the user-lines to wall-lines?
 - copy/create new symbols
-- Version control - file/edit/shot/survey history. Scroll back and pick versions. Check the existing backup feature?
+- Version control? - file/edit/shot/survey history. Scroll back and pick versions. Check the existing backup feature?
 - Better PDF export
 - At-station cross-section viewport support
 - Use the new color picker to support more color settings everywhere
-- Press-and-hold the stylus button while hovering to erase
-- Option for double row/larger recents palette
-- Side-by-side installation with vanilla TopoDroid
 - Set usage profile to expert by default
 - Per-screen action bindings (eg double tab the Active Key from the survey page to enter the last sketch. Double tap it in the sketch page works as the back action)
+- Press-and-hold the stylus button while hovering to erase
 - Always more actions. Some thoughts:
   - Take a shot
   - Download data via bluetooth from device (multi-device?)
@@ -74,10 +65,8 @@ This was written in English; other translations are likely not working
 - Sketch layers
 - Opacity? that would be useful for doing fade-in-fade-out overlapping layers
 - Display Cavway line features on the sketch (is this a thing already?)
-- Sort shots by their ordering, not their shot ID (is this a skill issue)
 - Bulk reassign splays? (I've been told this is a skill issue)
 - Setting to automatically detect if there hasn't been any successful wifi or data connections in the last N minutes, and then toggle airplane mode to save battery?
-- Long-press erase mode for the S pen. Attempted once, was bugged and didn't work.
 - Legend, sketch info, etc viewport style box to use with the png export. Jealous of that Therion fanciness
 - More naming options for png export? (create a name based off of the selected export options? eg append `s` for splay, `n` for north arrow)
 - Option to toggle the display of backsights
