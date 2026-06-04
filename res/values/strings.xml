@@ -73,7 +73,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="setup_textsize">Set the text size.\nYou can always change this later through the main window settings.</string>
     <string name="setup_buttonsize">Set the button size.\nYou can always change this later through the main window settings.</string>
     <string name="setup_drawingunit">Set the sketch icon size.\nYou can always change this later through the sketch window settings.</string>
-    <string name="setup_done">The basic setup is done.\n\nIf you experience problems with the connection to the surveying device, try and set the insecure socket.\n\nThere are other settings for the presentation of the sketches (icon size, label size, line width etc.); you can set them later.\n</string>
+    <string name="setup_done">The basic setup is done.\n\nIf you experience problems connecting to the surveying device over Bluetooth, try setting Socket to Insecure in Settings > Devices.\n\nYou can also assign actions to physical buttons, including the S Pen, Active Key, and volume up/down, in Settings > Devices > Action Key Bindings.\n\nPlease report any bugs you find, and share feedback on what would make using TopoDroid Sketch a better experience\n\nThere are other settings for the presentation of the sketches (icon size, label size, line width etc.); you can set them later.\n</string>
     <string name="lorem_ipsum" translatable="false">Lorem ipsum dolor sit amet</string>
 
     <string name="POINT" copyable="fr">POINT</string>

@@ -95,11 +95,15 @@ class SetupButtonSizeDialog extends MyDialog
     // float displayHeight = TopoDroidApp.mDisplayHeight;
     
     switch ( mSize ) {
-      case TDSetting.BTN_SIZE_SMALL:  mRBxs.setChecked( true ); setSize(0); break;
-      case TDSetting.BTN_SIZE_NORMAL: mRBs.setChecked( true );  setSize(1); break;
-      case TDSetting.BTN_SIZE_MEDIUM: mRBm.setChecked( true );  setSize(3); break;
-      case TDSetting.BTN_SIZE_LARGE:  mRBl.setChecked( true );  setSize(4); break;
-      case TDSetting.BTN_SIZE_HUGE:   mRBxl.setChecked( true ); setSize(2); break;
+      case 0: mRBxs.setChecked( true ); setSize(0); break;
+      case 1: mRBs.setChecked( true );  setSize(1); break;
+      case 3: mRBm.setChecked( true );  setSize(3); break;
+      case 4: mRBl.setChecked( true );  setSize(4); break;
+      case 5: mRBxl.setChecked( true ); setSize(5); break;
+      default:
+        mRBl.setChecked( true );
+        setSize(4);
+        break;
     }
   }
 
@@ -135,7 +139,7 @@ class SetupButtonSizeDialog extends MyDialog
      } else if ( b == mRBl  ) {
        setSize( 4 );
      } else if ( b == mRBxl ) {
-       setSize( 2 );
+       setSize( 5 );
      }
    }
 

@@ -13,21 +13,22 @@ This was written in English; other translations are likely not working
 - Option for rearranging render order (eg, survey station designations on top)
 - Tweak the Sketch icon a bit, it's too zoomed in
 - Investigate telemetry collection
+- Change default line colors to white
 
 #### TODO bugs:
-- Post-install splash screen needs some proofreading
 - There's some weird differences in the back key via S Pen stylus vs Active Key, Single-back vs double back
 - Exporting to PNG with Grid lines on and transparent background off results in a pure black background. The grid lines aren't being preserved.
 - Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch 
   - station designation font size does not affect export size 
   - actually all the sketch settings might not be respected (eg leg lines size)?
-- On the startup screens, the L icon size isn't displayed as default even though it is. Vanilla Bug.
+- The "location is needed" pop-ups upon install even if permission was granted during installation. Vanilla bug.
 - The `undo` action seems weird over many actions. Potentially vanilla bug
 - Taking screenshot with volume-up doesn't work. Vanilla bug.
 - Seems like the scaling of dashed line is odd, like it has a minimum size? Vanilla bug.
 - Water displayed in a cross-section viewport is not showing up in the main sketch screen
 
 #### Future Possible Features / Brainstorming
+- Add TopoDroid Sketch settings to the installation splash window
 - Add an option to disable all drawing except that from the stylus pen
   - Maybe still detect fingers for panning/zooming, drawing only from stylus?
 - Performance check for large sketches

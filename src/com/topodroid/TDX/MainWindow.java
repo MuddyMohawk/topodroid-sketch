@@ -1705,7 +1705,7 @@ public class MainWindow extends Activity
         (new SetupTextSizeDialog( this, this, setup, TDSetting.mTextSize )).show();
 	break;
       case SETUP_BUTTONSIZE:
-        (new SetupButtonSizeDialog( this, this, setup, TDSetting.mSizeButtons )).show();
+        (new SetupButtonSizeDialog( this, this, setup, TDSetting.mSizeBtns )).show();
 	break;
       case SETUP_DRAWINGUNIT:
         (new SetupDrawingUnitDialog( this, this, setup, TDSetting.mUnitIcons )).show();
