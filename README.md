@@ -24,7 +24,7 @@ This was written in English; other translations are likely not working
 - The `undo` action seems weird over many actions. Potentially vanilla bug
 - Taking screenshot with volume-up doesn't work. Vanilla bug.
 - Seems like the scaling of dashed line is odd, like it has a minimum size? Vanilla bug.
-- Water displayed in a cross-section viewport is not showing up in the main sketch screen
+- Had a bug where I placed a section cross-section but then couldn't select it via the edit tool. Wasn't replicable but noted here.
 
 #### Future Possible Features / Brainstorming
 - Add TopoDroid Sketch-specific settings to the installation splash window
@@ -32,8 +32,8 @@ This was written in English; other translations are likely not working
   - Maybe still detect fingers for panning/zooming, drawing only from stylus?
 - Performance check for large sketches
 - Measure distance between two points on the 2D sketch screen
-- Ceiling height text objects
-- Fix the text box/text input scaling. Fonts / Architects Daughter?
+- Text objects for ceiling height circles
+- Fix the text box/text input scaling. Enhance with fonts (Architects Daughter)?
 - Sketch line collision to prevent sketching through another line
 - Change the user-lines to wall-lines?
 - copy/create new symbols

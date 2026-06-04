@@ -12,6 +12,8 @@
  */
 package com.topodroid.TDX;
 
+import com.topodroid.prefs.TDSetting;
+
 import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Path;
@@ -140,16 +142,8 @@ class DrawingOutlinePath
     matrix.mapRect( clip );
     canvas.clipRect( clip );
 
-    if ( mSketchPaths != null ) {
-      for ( DrawingPath path : mSketchPaths ) {
-        if ( path != null ) path.draw( canvas, matrix, scale, mBox );
-      }
-    }
-    if ( mRefPaths != null ) {
-      for ( DrawingPath path : mRefPaths ) {
-        if ( path != null ) path.draw( canvas, matrix, scale, mBox );
-      }
-    }
+    drawPaths( canvas, matrix, scale, mSketchPaths );
+    drawPaths( canvas, matrix, scale, mRefPaths );
     canvas.restoreToCount( save );
 
     if ( edit_box ) {
@@ -157,6 +151,33 @@ class DrawingOutlinePath
       box.addRect( mBox, Path.Direction.CW );
       box.transform( matrix );
       canvas.drawPath( box, BrushManager.fixedYellowPaint );
+    }
+  }
+
+  private void drawPaths( Canvas canvas, Matrix matrix, float scale, List< DrawingPath > paths )
+  {
+    if ( paths == null ) return;
+    boolean area_overlap_darken = TDSetting.mAreaOverlapDarken;
+    boolean has_area = false;
+    if ( area_overlap_darken ) {
+      for ( DrawingPath path : paths ) {
+        if ( path != null && path.isArea() ) {
+          has_area = true;
+          break;
+        }
+      }
+    }
+    if ( has_area ) {
+      int area_layer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
+      for ( DrawingPath path : paths ) {
+        if ( path != null && path.isArea() ) path.draw( canvas, matrix, scale, mBox );
+      }
+      canvas.restoreToCount( area_layer );
+    }
+    for ( DrawingPath path : paths ) {
+      if ( path == null ) continue;
+      if ( area_overlap_darken && path.isArea() ) continue;
+      path.draw( canvas, matrix, scale, mBox );
     }
   }
 
