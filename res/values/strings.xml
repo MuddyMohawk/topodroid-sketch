@@ -1600,7 +1600,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_orientation_title">Screen orientation</string>
   <string name="pref_orientation_summary">App screen orientation</string>
   <string name="pref_single_back_title">Single back</string>
-  <string name="pref_single_back_summary">Close windows with single back</string>
+  <string name="pref_single_back_summary">Close windows with one Android Back press</string>
   <string name="pref_hide_navbar_title">Navigation bar</string>
   <string name="pref_hide_navbar_summary">Hidden. Shown sliding up</string>
 

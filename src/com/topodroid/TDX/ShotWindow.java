@@ -2952,7 +2952,7 @@ public class ShotWindow extends Activity
   public boolean handleActionBindingAction( int action )
   {
     if ( action == TDSetting.SPEN_ACTION_BACK ) {
-      onBackPressed();
+      performImmediateBackAction();
       return true;
     }
     return false;

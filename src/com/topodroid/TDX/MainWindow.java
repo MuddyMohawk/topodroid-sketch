@@ -1397,6 +1397,26 @@ public class MainWindow extends Activity
     }
   };
 
+  private void cancelDoubleBackPrompt()
+  {
+    doubleBack = false;
+    if ( doubleBackHandler != null ) {
+      doubleBackHandler.removeCallbacks( doubleBackRunnable );
+    }
+    if ( doubleBackToast != null ) doubleBackToast.cancel();
+    doubleBackToast = null;
+  }
+
+  private void performImmediateBackAction()
+  {
+    if ( onMenu ) {
+      closeMenu();
+      return;
+    }
+    cancelDoubleBackPrompt();
+    super.onBackPressed();
+  }
+
   /** handle the HW back-key press
    */
   @Override
@@ -1640,7 +1660,7 @@ public class MainWindow extends Activity
   public boolean handleActionBindingAction( int action )
   {
     if ( action == TDSetting.SPEN_ACTION_BACK ) {
-      onBackPressed();
+      performImmediateBackAction();
       return true;
     }
     return false;

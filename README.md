@@ -16,7 +16,6 @@ This was written in English; other translations are likely not working
 - Change default line colors to white
 
 #### TODO bugs:
-- There's some weird differences in the back key via S Pen stylus vs Active Key, Single-back vs double back
 - Exporting to PNG with Grid lines on and transparent background off results in a pure black background. The grid lines aren't being preserved.
 - Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch 
   - station designation font size does not affect export size 
@@ -28,7 +27,7 @@ This was written in English; other translations are likely not working
 - Water displayed in a cross-section viewport is not showing up in the main sketch screen
 
 #### Future Possible Features / Brainstorming
-- Add TopoDroid Sketch settings to the installation splash window
+- Add TopoDroid Sketch-specific settings to the installation splash window
 - Add an option to disable all drawing except that from the stylus pen
   - Maybe still detect fingers for panning/zooming, drawing only from stylus?
 - Performance check for large sketches
