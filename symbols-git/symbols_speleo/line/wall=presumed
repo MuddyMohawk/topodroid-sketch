@@ -16,7 +16,7 @@ name-sk odhadovaná_stena
 name-ua ймовірний
 th_name wall:presumed
 group wall
-color 0xff0000 0xff
+color 0xffffff 0xff
 width 1
 roundtrip 1
 dash 15 5

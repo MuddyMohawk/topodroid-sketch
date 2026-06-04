@@ -16,7 +16,7 @@ name-sk sklon_svahu
 name-ua нахил
 th_name slope
 group slope
-color 0xffcc00 0xff
+color 0xffffff 0xff
 width 1
 dash 17 15
 effect

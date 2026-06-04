@@ -12,11 +12,9 @@ This was written in English; other translations are likely not working
 - Add safety warnings when importing vanilla TopoDroid stuff
 - Option for rearranging render order (eg, survey station designations on top)
 - Tweak the Sketch icon a bit, it's too zoomed in
-- Investigate telemetry collection
-- Change default line colors to white
+- Change the update check and versioning to track something besides `https://raw.githubusercontent.com/marcocorvi/speleoapks/main/tdversion.txt`
 
 #### TODO bugs:
-- Exporting to PNG with Grid lines on and transparent background off results in a pure black background. The grid lines aren't being preserved.
 - Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch 
   - station designation font size does not affect export size 
   - actually all the sketch settings might not be respected (eg leg lines size)?
@@ -64,6 +62,7 @@ This was written in English; other translations are likely not working
 - In-app symbol editor
 - Sketch layers
 - Opacity? that would be useful for doing fade-in-fade-out overlapping layers
+- Opacity in symbol editor
 - Display Cavway line features on the sketch (is this a thing already?)
 - Bulk reassign splays? (I've been told this is a skill issue)
 - Setting to automatically detect if there hasn't been any successful wifi or data connections in the last N minutes, and then toggle airplane mode to save battery?
@@ -79,7 +78,7 @@ This was written in English; other translations are likely not working
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
 - Fdroid distribution and updating
 
-### TopoDroid Sketch v0.31.0 Changelog:
+### TopoDroid Sketch v0.31.4 Changelog:
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
@@ -93,6 +92,7 @@ This was written in English; other translations are likely not working
 - Added a straight line option in addition to the existing Fine, Normal, Coarse, Bezier, and Simplified lines styles
 - Changed the vanilla morphing of line-symbols from warp-to-fit to a rigid-stamping that prevents the ugly morphing of things like ceiling ledges
 - Extended the line symbols with additional terms; sketch_effect, carriers, rigid stamps, dash-on segments, and advance. These are used to make prettier curved brush lines. This bumped the TDVersion.SYMBOL_VERSION from 44 to 45. However, this is still compatible with vanilla TopoDroid. Probably.
+- Changed most of the lines from the default speleo symbol pack to be white
 
 *Sketch Lines*
 - Added three new "sketch lines", which are programmatically generated custom line symbols based on the existing `user` lines 

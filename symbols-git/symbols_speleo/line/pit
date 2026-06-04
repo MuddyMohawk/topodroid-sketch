@@ -16,7 +16,7 @@ name-sk šachta
 name-ua колодязь
 th_name pit
 group floor
-color 0xff00ff 0xff
+color 0xffffff 0xff
 width 8
 effect
   moveTo 0 1

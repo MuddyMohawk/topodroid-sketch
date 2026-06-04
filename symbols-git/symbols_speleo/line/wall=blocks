@@ -15,7 +15,7 @@ name-sk steny_z_blokov
 name-ua стіна_із_блоків
 th_name wall:blocks
 group wall
-color 0xff0000 0xff
+color 0xffffff 0xff
 width 1
 roundtrip 1
 dash 33 9

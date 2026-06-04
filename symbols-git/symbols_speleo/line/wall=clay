@@ -15,7 +15,7 @@ name-sk hlinené_steny
 name-ua стіна_в_глині
 th_name wall:clay
 group wall
-color 0xff0000 0xff
+color 0xffffff 0xff
 width 1
 roundtrip 1
 effect

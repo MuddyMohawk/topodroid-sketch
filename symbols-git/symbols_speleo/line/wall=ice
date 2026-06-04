@@ -15,7 +15,7 @@ name-sk ľadové_steny
 name-ua стіна_в_льоду
 th_name wall:ice
 group wall
-color 0xff0000 0xff
+color 0xffffff 0xff
 width 1
 roundtrip 1
 effect

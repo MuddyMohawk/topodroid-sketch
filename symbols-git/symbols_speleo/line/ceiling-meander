@@ -16,7 +16,7 @@ name-sk stropné_koryto
 name-ua меандр_в_стелі
 th_name ceiling-meander
 group ceiling
-color 0xff99ff 0xff
+color 0xffffff 0xff
 width 1
 dash 15 5
 effect
