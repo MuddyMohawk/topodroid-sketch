@@ -78,7 +78,7 @@ This was written in English; other translations are likely not working
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
 - Fdroid distribution and updating
 
-### TopoDroid Sketch v0.31.4 Changelog:
+### TopoDroid Sketch v0.31.9 Changelog:
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.

@@ -94,7 +94,7 @@ public class TDSetting
 
   public static int mToolbarUpdate = TOOLBAR_UPDATE_MANUAL; // bottom toolbar mode
   public static int mToolbarSlots  = 8; // manual toolbar slots
-  public static int mToolbarRows   = 1; // manual toolbar rows
+  public static int mToolbarRows   = 2; // manual toolbar rows
 
   private static int FLAG_BUTTON = 1;
   private static int FLAG_MENU   = 2;
@@ -4333,7 +4333,7 @@ I DISTOX_LOCALE
 I DISTOX_SURVEY_STATION 1
 F DISTOX_TOOLBAR_SIZE 5
 I DISTOX_TOOLBAR_SLOTS 8
-I DISTOX_TOOLBAR_ROWS 1
+I DISTOX_TOOLBAR_ROWS 2
 I DISTOX_TOOLBAR_UPDATE 0
 B DISTOX_PLOT_CACHE true
 F DISTOX_ALGO_MIN_ALPHA 0.05

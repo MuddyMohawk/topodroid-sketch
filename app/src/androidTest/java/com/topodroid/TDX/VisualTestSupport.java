@@ -578,7 +578,7 @@ final class VisualTestSupport
   void clickRecentLineButton( int childIndex )
   {
     if ( ItemDrawer.isManualToolbar() ) {
-      tapManualToolbarChild( 0, childIndex );
+      tapManualToolbarChild( ItemDrawer.getToolbarViewIndexForRow( 0 ), childIndex );
     } else {
       tapChildInContainer( R.id.layout_tool_l, childIndex, "layout_tool_l" );
     }
@@ -662,14 +662,17 @@ final class VisualTestSupport
     onView( withId( R.id.layout_tools ) ).check( ( View view, NoMatchingViewException error ) -> {
       if ( error != null ) throw error;
       assertTrue( "Tools container is not a ViewGroup", view instanceof ViewGroup );
-      ViewGroup row = findManualToolbarRow( (ViewGroup)view, 0 );
-      assertNotNull( "Manual toolbar row is not visible", row );
-      assertTrue( "Manual toolbar row has too few children",
-        row.getChildCount() >= expectedSlots + 1 );
-      for ( int slot = 0; slot < expectedSlots; ++slot ) {
-        View child = row.getChildAt( slot );
-        assertTrue( "Manual toolbar slot " + slot + " is not visible",
-          child.getVisibility() == View.VISIBLE && child.getWidth() > 0 && child.getHeight() > 0 );
+      int rows = ItemDrawer.getToolbarRowCount();
+      for ( int rowIndex = 0; rowIndex < rows; ++rowIndex ) {
+        ViewGroup row = findManualToolbarRow( (ViewGroup)view, rowIndex );
+        assertNotNull( "Manual toolbar row " + rowIndex + " is not visible", row );
+        assertTrue( "Manual toolbar row " + rowIndex + " has too few children",
+          row.getChildCount() >= expectedSlots + 1 );
+        for ( int slot = 0; slot < expectedSlots; ++slot ) {
+          View child = row.getChildAt( slot );
+          assertTrue( "Manual toolbar row " + rowIndex + " slot " + slot + " is not visible",
+            child.getVisibility() == View.VISIBLE && child.getWidth() > 0 && child.getHeight() > 0 );
+        }
       }
     } );
   }
@@ -1960,7 +1963,7 @@ selection.mHotItem.getHandleRole() );
     editor.putString( "DISTOX_WITH_LEVELS", "0" );
     editor.putString( "DISTOX_TOOLBAR_UPDATE", Integer.toString( TDSetting.TOOLBAR_UPDATE_MANUAL ) );
     editor.putString( "DISTOX_TOOLBAR_SLOTS", "8" );
-    editor.putString( "DISTOX_TOOLBAR_ROWS", "1" );
+    editor.putString( "DISTOX_TOOLBAR_ROWS", "2" );
     editor.putString( "DISTOX_PRESET_SLOTS", "3" );
     editor.putString( "DISTOX_PRESET_1_NAME", "Fine" );
     editor.putString( "DISTOX_PRESET_1_LINE_STYLE", "1" );

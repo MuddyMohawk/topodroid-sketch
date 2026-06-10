@@ -2730,7 +2730,8 @@ public class DrawingWindow extends ItemDrawer
     removeManualToolbarRows();
     int rows = getToolbarRowCount();
     int slots = getToolbarSlotCount();
-    for ( int row = 0; row < rows; ++row ) {
+    for ( int viewIndex = 0; viewIndex < rows; ++viewIndex ) {
+      int row = getToolbarRowForViewIndex( viewIndex );
       LinearLayout layout = mManualToolbarRows[row];
       if ( layout == null ) {
         layout = new LinearLayout( this );
@@ -2742,7 +2743,7 @@ public class DrawingWindow extends ItemDrawer
       for ( int slot = 0; slot < slots; ++slot ) layout.addView( mBtnManualToolbar[row][slot], makeToolbarButtonParams() );
       layout.addView( mBtnManualPicker[row], makeToolbarButtonParams() );
       layout.setVisibility( View.VISIBLE );
-      mLayoutTools.addView( layout, row );
+      mLayoutTools.addView( layout, viewIndex );
     }
   }
 
@@ -11523,9 +11524,9 @@ public class DrawingWindow extends ItemDrawer
   {
     // TDLog.v("set btn recent all" );
     if ( isManualToolbar() ) {
-      setToolbarCurrentType( SymbolType.LINE );
-      mRecentTools = mRecentLine; // legacy alias, kept for older menu entry points
-      if ( ! setCurrentUnlockedToolbarSymbol( SymbolType.LINE ) ) setCurrentFirstVisibleToolbarSymbol();
+      setToolbarCurrentType( SymbolType.POINT );
+      mRecentTools = mRecentPoint; // legacy alias, kept for older menu entry points
+      if ( ! setCurrentUnlockedToolbarSymbol( SymbolType.POINT ) ) setCurrentFirstVisibleToolbarSymbol();
       redrawManualToolbars();
       setToolsToolbars();
       return;

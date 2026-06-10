@@ -57,10 +57,19 @@ abstract class ItemDrawer extends Activity
   static final String KEY_TOOLBAR_ROW_AREAS  = "_areas";
   static final String KEY_TOOLBAR_ROW_LOCK   = "_lock";
   static final String KEY_TOOLBAR_ROW_SLOT   = "_slot";
+  static final String KEY_TOOLBAR_SEED = "toolbar_seed_version";
+  static final int TOOLBAR_SEED_VERSION = 1;
 
-  private static final String[] DEFAULT_MANUAL_LINES = {
-    "water-flow", "ceiling-meander", "floor-meander", "pit", "chimney",
+  private static final String[] DEFAULT_ROW0_LINES = {
+    SymbolLibrary.WATER_FLOW, SymbolLibrary.SECTION, SymbolLibrary.CEILING_MEANDER,
+    SymbolLibrary.PIT, SymbolLibrary.CHIMNEY,
     "user-fine", "user-standard", "user-thick"
+  };
+
+  private static final String[] DEFAULT_ROW1_POINTS = {
+    SymbolLibrary.REFERENCE, SymbolLibrary.PILLAR, SymbolLibrary.STALACTITE,
+    SymbolLibrary.STALAGMITE, SymbolLibrary.WATER_FLOW, SymbolLibrary.SODA_STRAW,
+    SymbolLibrary.CONTINUATION, SymbolLibrary.AIR_DRAUGHT
   };
 
   static Symbol[][] mToolbarPoint = new Symbol[ NR_TOOLBAR_ROWS ][ NR_RECENT ];
@@ -68,7 +77,7 @@ abstract class ItemDrawer extends Activity
   static Symbol[][] mToolbarArea  = new Symbol[ NR_TOOLBAR_ROWS ][ NR_RECENT ];
   static int[] mToolbarLock = new int[ NR_TOOLBAR_ROWS ];
   static int[] mToolbarActiveSlot = new int[ NR_TOOLBAR_ROWS ];
-  static int mToolbarCurrentType = SymbolType.LINE;
+  static int mToolbarCurrentType = SymbolType.POINT;
   static Symbol[] mRecentPoint = mToolbarPoint[0];
   static Symbol[] mRecentLine  = mToolbarLine[0];
   static Symbol[] mRecentArea  = mToolbarArea[0];
@@ -110,6 +119,22 @@ abstract class ItemDrawer extends Activity
     if ( TDSetting.mToolbarRows < TDSetting.TOOLBAR_ROWS_MIN ) return TDSetting.TOOLBAR_ROWS_MIN;
     if ( TDSetting.mToolbarRows > TDSetting.TOOLBAR_ROWS_MAX ) return TDSetting.TOOLBAR_ROWS_MAX;
     return TDSetting.mToolbarRows;
+  }
+
+  static int getToolbarRowForViewIndex( int viewIndex )
+  {
+    int rows = getToolbarRowCount();
+    if ( viewIndex < 0 ) return rows - 1;
+    if ( viewIndex >= rows ) return 0;
+    return rows - viewIndex - 1;
+  }
+
+  static int getToolbarViewIndexForRow( int row )
+  {
+    int rows = getToolbarRowCount();
+    row = normalizeToolbarRow( row );
+    if ( row >= rows ) return 0;
+    return rows - row - 1;
   }
 
   static int normalizeToolbarRow( int row )
@@ -354,20 +379,69 @@ abstract class ItemDrawer extends Activity
 
   static void loadManualToolbarSymbols( DataHelper data )
   {
-    mToolbarCurrentType = SymbolType.LINE;
+    mToolbarCurrentType = SymbolType.POINT;
+    if ( needsToolbarSeed( data ) ) {
+      if ( canSeedToolbar() ) seedManualToolbarSymbols( data );
+      return;
+    }
+
     for ( int row = 0; row < NR_TOOLBAR_ROWS; ++row ) {
-      mToolbarLock[row] = lockFromString( data == null ? null : data.getValue( rowKey( row, KEY_TOOLBAR_ROW_LOCK ) ) );
+      mToolbarLock[row] = lockFromString( data == null ? null : data.getValue( rowKey( row, KEY_TOOLBAR_ROW_LOCK ) ), row );
       mToolbarActiveSlot[row] = slotFromString( data == null ? null : data.getValue( rowKey( row, KEY_TOOLBAR_ROW_SLOT ) ) );
     }
 
-    loadManualToolbarList( SymbolType.POINT, mToolbarPoint[0], mRecentPointAge, getToolbarRowNames( data, 0, SymbolType.POINT ), data, true );
-    loadManualToolbarList( SymbolType.LINE,  mToolbarLine[0],  mRecentLineAge,  getToolbarRowNames( data, 0, SymbolType.LINE  ), data, true );
-    loadManualToolbarList( SymbolType.AREA,  mToolbarArea[0],  mRecentAreaAge,  getToolbarRowNames( data, 0, SymbolType.AREA  ), data, true );
+    loadManualToolbarList( SymbolType.POINT, mToolbarPoint[0], mRecentPointAge, getToolbarRowNames( data, 0, SymbolType.POINT ) );
+    loadManualToolbarList( SymbolType.LINE,  mToolbarLine[0],  mRecentLineAge,  getToolbarRowNames( data, 0, SymbolType.LINE  ) );
+    loadManualToolbarList( SymbolType.AREA,  mToolbarArea[0],  mRecentAreaAge,  getToolbarRowNames( data, 0, SymbolType.AREA  ) );
 
     for ( int row = 1; row < NR_TOOLBAR_ROWS; ++row ) {
-      loadOrCopyManualToolbarList( SymbolType.POINT, mToolbarPoint[row], mToolbarPoint[0], getToolbarRowNames( data, row, SymbolType.POINT ), data );
-      loadOrCopyManualToolbarList( SymbolType.LINE,  mToolbarLine[row],  mToolbarLine[0],  getToolbarRowNames( data, row, SymbolType.LINE  ), data );
-      loadOrCopyManualToolbarList( SymbolType.AREA,  mToolbarArea[row],  mToolbarArea[0],  getToolbarRowNames( data, row, SymbolType.AREA  ), data );
+      loadOrCopyManualToolbarList( SymbolType.POINT, mToolbarPoint[row], mToolbarPoint[0], getToolbarRowNames( data, row, SymbolType.POINT ) );
+      loadOrCopyManualToolbarList( SymbolType.LINE,  mToolbarLine[row],  mToolbarLine[0],  getToolbarRowNames( data, row, SymbolType.LINE  ) );
+      loadOrCopyManualToolbarList( SymbolType.AREA,  mToolbarArea[row],  mToolbarArea[0],  getToolbarRowNames( data, row, SymbolType.AREA  ) );
+    }
+  }
+
+  private static boolean needsToolbarSeed( DataHelper data )
+  {
+    if ( data == null ) return true;
+    String value = data.getValue( KEY_TOOLBAR_SEED );
+    int version = 0;
+    if ( value != null ) {
+      try { version = Integer.parseInt( value.trim() ); } catch ( NumberFormatException e ) { version = 0; }
+    }
+    return version < TOOLBAR_SEED_VERSION;
+  }
+
+  private static boolean canSeedToolbar()
+  {
+    return BrushManager.getPointLibSize() > 0 && BrushManager.getLineLibSize() > 0;
+  }
+
+  private static void seedManualToolbarSymbols( DataHelper data )
+  {
+    mToolbarCurrentType = SymbolType.POINT;
+    for ( int row = 0; row < NR_TOOLBAR_ROWS; ++row ) {
+      mToolbarLock[row] = ( row == 0 ) ? SymbolType.LINE : TOOLBAR_LOCK_UNLOCKED;
+      mToolbarActiveSlot[row] = 0;
+    }
+
+    seedToolbarList( SymbolType.POINT, mToolbarPoint[0], mRecentPointAge, DEFAULT_ROW1_POINTS, data );
+    seedToolbarList( SymbolType.LINE,  mToolbarLine[0],  mRecentLineAge,  DEFAULT_ROW0_LINES,  data );
+    loadManualToolbarList( SymbolType.AREA, mToolbarArea[0], mRecentAreaAge, null );
+
+    seedToolbarList( SymbolType.POINT, mToolbarPoint[1], null, DEFAULT_ROW1_POINTS, data );
+    copyToolbarList( SymbolType.LINE,  mToolbarLine[0], mToolbarLine[1] );
+    copyToolbarList( SymbolType.AREA,  mToolbarArea[0], mToolbarArea[1] );
+
+    for ( int row = 2; row < NR_TOOLBAR_ROWS; ++row ) {
+      copyToolbarList( SymbolType.POINT, mToolbarPoint[0], mToolbarPoint[row] );
+      copyToolbarList( SymbolType.LINE,  mToolbarLine[0],  mToolbarLine[row]  );
+      copyToolbarList( SymbolType.AREA,  mToolbarArea[0],  mToolbarArea[row]  );
+    }
+
+    if ( data != null ) {
+      saveManualToolbarSymbols( data );
+      data.setValue( KEY_TOOLBAR_SEED, Integer.toString( TOOLBAR_SEED_VERSION ) );
     }
   }
 
@@ -386,30 +460,21 @@ abstract class ItemDrawer extends Activity
     data.setValue( KEY_TOOLBAR_AREAS,  serializeSymbols( mRecentArea,  NR_RECENT, false ) );
   }
 
-  private static void loadOrCopyManualToolbarList( int type, Symbol[] symbols, Symbol[] source, String names, DataHelper data )
+  private static void loadOrCopyManualToolbarList( int type, Symbol[] symbols, Symbol[] source, String names )
   {
     if ( hasToolbarNames( names ) ) {
-      loadManualToolbarList( type, symbols, null, names, data, false );
+      loadManualToolbarList( type, symbols, null, names );
     } else {
       copyToolbarList( type, source, symbols );
     }
   }
 
-  private static void loadManualToolbarList( int type, Symbol[] symbols, int[] ages, String names, DataHelper data, boolean seedDefaultLines )
+  private static void loadManualToolbarList( int type, Symbol[] symbols, int[] ages, String names )
   {
     clearToolbarList( symbols, ages );
 
     int index = 0;
-    if ( ! hasToolbarNames( names ) && seedDefaultLines && type == SymbolType.LINE ) {
-      for ( String name : DEFAULT_MANUAL_LINES ) {
-        Symbol symbol = getSymbolByThName( type, name );
-        if ( symbol == null ) continue;
-        enableDefaultToolbarLine( symbol, data );
-        if ( hasSymbol( symbols, symbol, index ) ) continue;
-        symbols[index++] = symbol;
-        if ( index >= NR_RECENT ) break;
-      }
-    } else if ( hasToolbarNames( names ) ) {
+    if ( hasToolbarNames( names ) ) {
       String[] vals = names.trim().split( "\\s+" );
       for ( String name : vals ) {
         if ( name.length() == 0 ) continue;
@@ -419,6 +484,22 @@ abstract class ItemDrawer extends Activity
         symbols[index++] = symbol;
         if ( index >= NR_RECENT ) break;
       }
+    }
+    fillToolbarList( type, symbols, index );
+  }
+
+  private static void seedToolbarList( int type, Symbol[] symbols, int[] ages, String[] names, DataHelper data )
+  {
+    clearToolbarList( symbols, ages );
+
+    int index = 0;
+    for ( String name : names ) {
+      Symbol symbol = getSymbolByThName( type, name );
+      if ( symbol == null ) continue;
+      enableDefaultToolbarSymbol( type, symbol, data );
+      if ( hasSymbol( symbols, symbol, index ) ) continue;
+      symbols[index++] = symbol;
+      if ( index >= NR_RECENT ) break;
     }
     fillToolbarList( type, symbols, index );
   }
@@ -497,9 +578,9 @@ abstract class ItemDrawer extends Activity
     return slot;
   }
 
-  private static int lockFromString( String value )
+  private static int lockFromString( String value, int row )
   {
-    if ( value == null ) return TOOLBAR_LOCK_UNLOCKED;
+    if ( value == null ) return normalizeToolbarRow( row ) == 0 ? SymbolType.LINE : TOOLBAR_LOCK_UNLOCKED;
     String lock = value.trim();
     if ( "point".equals( lock ) ) return SymbolType.POINT;
     if ( "line".equals( lock ) ) return SymbolType.LINE;
@@ -517,12 +598,22 @@ abstract class ItemDrawer extends Activity
     return "unlocked";
   }
 
-  private static void enableDefaultToolbarLine( Symbol symbol, DataHelper data )
+  private static void enableDefaultToolbarSymbol( int type, Symbol symbol, DataHelper data )
   {
     if ( symbol == null ) return;
     symbol.setEnabled( true );
     symbol.setConfigEnabled( true );
-    if ( data != null ) data.setSymbolEnabled( "l_" + symbol.getThName(), true );
+    if ( data != null ) data.setSymbolEnabled( toolbarConfigPrefix( type ) + symbol.getThName(), true );
+  }
+
+  private static String toolbarConfigPrefix( int type )
+  {
+    switch ( type ) {
+      case SymbolType.POINT: return "p_";
+      case SymbolType.LINE:  return "l_";
+      case SymbolType.AREA:  return "a_";
+    }
+    return "";
   }
 
   private static void fillToolbarList( int type, Symbol[] symbols, int index )

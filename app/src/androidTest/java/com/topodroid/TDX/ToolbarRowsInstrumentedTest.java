@@ -23,8 +23,13 @@ import org.junit.runner.RunWith;
 public class ToolbarRowsInstrumentedTest
 {
   private static final String[] DEFAULT_LINE_NAMES = {
-    "water-flow", "ceiling-meander", "floor-meander", "pit", "chimney",
+    "water-flow", "section", "ceiling-meander", "pit", "chimney",
     "user-fine", "user-standard", "user-thick"
+  };
+
+  private static final String[] DEFAULT_POINT_NAMES = {
+    "reference", "pillar", "stalactite", "stalagmite", "water-flow",
+    "soda-straw", "continuation", "air-draught"
   };
 
   private int mPreviousToolbarUpdate;
@@ -51,7 +56,7 @@ public class ToolbarRowsInstrumentedTest
 
     TDSetting.mToolbarUpdate = TDSetting.TOOLBAR_UPDATE_MANUAL;
     TDSetting.mToolbarSlots = 8;
-    TDSetting.mToolbarRows = 1;
+    TDSetting.mToolbarRows = 2;
     ItemDrawer.loadManualToolbarSymbols( null );
   }
 
@@ -65,12 +70,38 @@ public class ToolbarRowsInstrumentedTest
   }
 
   @Test
-  public void freshManualToolbar_keeps029DefaultsInRowZero()
+  public void freshManualToolbar_usesDefaultLineAndPointRows()
   {
-    assertEquals( 1, ItemDrawer.getToolbarRowCount() );
+    assertDefaultToolbarSeed();
+  }
+
+  @Test
+  public void manualToolbarSeed_overwritesPriorSymbolsAndLocks()
+  {
+    ItemDrawer.mToolbarLine[0][0] = ItemDrawer.mToolbarLine[0][3];
+    ItemDrawer.mToolbarPoint[1][0] = ItemDrawer.mToolbarPoint[1][3];
+    ItemDrawer.setToolbarRowLock( 0, ItemDrawer.TOOLBAR_LOCK_UNLOCKED );
+    ItemDrawer.setToolbarRowLock( 1, SymbolType.LINE );
+    ItemDrawer.setToolbarCurrentType( SymbolType.LINE );
+
+    ItemDrawer.loadManualToolbarSymbols( null );
+
+    assertDefaultToolbarSeed();
+  }
+
+  private void assertDefaultToolbarSeed()
+  {
+    assertEquals( 2, ItemDrawer.getToolbarRowCount() );
     assertEquals( 8, ItemDrawer.getToolbarSlotCount() );
+    assertEquals( SymbolType.LINE, ItemDrawer.getToolbarRowLock( 0 ) );
+    assertTrue( ! ItemDrawer.isToolbarRowLocked( 1 ) );
+    assertEquals( SymbolType.LINE, ItemDrawer.getToolbarDisplayType( 0 ) );
+    assertEquals( SymbolType.POINT, ItemDrawer.getToolbarDisplayType( 1 ) );
     for ( int slot = 0; slot < DEFAULT_LINE_NAMES.length; ++slot ) {
       assertEquals( DEFAULT_LINE_NAMES[slot], ItemDrawer.mToolbarLine[0][slot].getThName() );
+    }
+    for ( int slot = 0; slot < DEFAULT_POINT_NAMES.length; ++slot ) {
+      assertEquals( DEFAULT_POINT_NAMES[slot], ItemDrawer.mToolbarPoint[1][slot].getThName() );
     }
   }
 
@@ -92,9 +123,23 @@ public class ToolbarRowsInstrumentedTest
   }
 
   @Test
+  public void manualRows_displayAboveRowZeroAsTheyAreAdded()
+  {
+    TDSetting.mToolbarRows = 3;
+
+    assertEquals( 2, ItemDrawer.getToolbarRowForViewIndex( 0 ) );
+    assertEquals( 1, ItemDrawer.getToolbarRowForViewIndex( 1 ) );
+    assertEquals( 0, ItemDrawer.getToolbarRowForViewIndex( 2 ) );
+    assertEquals( 2, ItemDrawer.getToolbarViewIndexForRow( 0 ) );
+    assertEquals( 1, ItemDrawer.getToolbarViewIndexForRow( 1 ) );
+    assertEquals( 0, ItemDrawer.getToolbarViewIndexForRow( 2 ) );
+  }
+
+  @Test
   public void rowLock_controlsDisplayedTypeOnlyForThatRow()
   {
     TDSetting.mToolbarRows = 3;
+    ItemDrawer.setToolbarRowLock( 0, ItemDrawer.TOOLBAR_LOCK_UNLOCKED );
     ItemDrawer.setToolbarCurrentType( SymbolType.POINT );
     ItemDrawer.setToolbarRowLock( 1, SymbolType.AREA );
     assertEquals( SymbolType.POINT, ItemDrawer.getToolbarDisplayType( 0 ) );

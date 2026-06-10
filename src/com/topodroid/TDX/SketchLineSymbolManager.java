@@ -212,6 +212,8 @@ class SketchLineSymbolManager
 
   private static void seedRecentLinesIfNeeded()
   {
+    // This feeds only the legacy recent-line toolbar; the manual toolbar has
+    // its own per-row seed in ItemDrawer.
     if ( TopoDroidApp.mData == null ) return;
     String seeded = TopoDroidApp.mData.getValue( DB_KEY_RECENTS_SEEDED );
     if ( "1".equals( seeded ) ) return;
