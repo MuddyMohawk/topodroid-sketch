@@ -21,7 +21,7 @@ $VanillaFileProvider = "com.topodroid.fileprovider"
 $SketchFileProvider = "com.topodroid.TDX.sketch.fileprovider"
 
 if ([string]::IsNullOrWhiteSpace($VanillaApk)) {
-  $VanillaApk = Join-Path $RepoRoot "test-fixtures\TopoDroidX-6.4.53-36.apk"
+  $VanillaApk = Join-Path $RepoRoot "test-fixtures\apks\TopoDroidX-6.4.53-36.apk"
 }
 if ([string]::IsNullOrWhiteSpace($SketchApk)) {
   $SketchApk = Join-Path $RepoRoot "app\build\outputs\apk\debug\app-debug.apk"
