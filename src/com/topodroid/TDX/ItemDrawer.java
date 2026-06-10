@@ -58,7 +58,7 @@ abstract class ItemDrawer extends Activity
   static final String KEY_TOOLBAR_ROW_LOCK   = "_lock";
   static final String KEY_TOOLBAR_ROW_SLOT   = "_slot";
   static final String KEY_TOOLBAR_SEED = "toolbar_seed_version";
-  static final int TOOLBAR_SEED_VERSION = 1;
+  static final int TOOLBAR_SEED_VERSION = 2; // bumped to re-seed installs that carry stale toolbar state in the persistent Documents DB
 
   private static final String[] DEFAULT_ROW0_LINES = {
     SymbolLibrary.WATER_FLOW, SymbolLibrary.SECTION, SymbolLibrary.CEILING_MEANDER,

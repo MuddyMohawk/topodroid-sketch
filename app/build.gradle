@@ -153,6 +153,12 @@ android {
     testOptions {
         animationsDisabled true
     }
+
+    lint {
+        // Translations (res/values-bg, -cn, -de, -es, -hu, -it, -pt, -ru) lag behind
+        // strings added by the fork; without this, lintVitalRelease fails the release build.
+        disable 'MissingTranslation'
+    }
 }
 
 dependencies {

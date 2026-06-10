@@ -1264,12 +1264,6 @@ public class TopoDroidApp extends Application
     // TDLog.v( "DData version <" + version + "> TDversion <" + TDVersion.string() + ">" );
     if ( version == null || ( ! version.equals( TDVersion.string() ) ) ) {
       mDData.setValue( "version",  TDVersion.string()  );
-      // FIXME INSTALL_SYMBOL installSymbols( false ); // this updates symbol_version in the database
-      String symbol_version = mDData.getValue( "symbol_version" );
-      if ( symbol_version == null ) {
-        // TDLog.v("PATH " + "symbol version " + symbol_version );
-        installSymbols( true );
-      }
       String firmware_version = mDData.getValue( "firmware_version" );
       // TDLog.v("APP current firmware version " + firmware_version );
       if ( firmware_version == null || ( ! firmware_version.equals( TDVersion.FIRMWARE_VERSION ) ) ) {
@@ -1277,6 +1271,16 @@ public class TopoDroidApp extends Application
       }
       // installUserManual( );
       mCheckManualTranslation = true;
+    }
+
+    // Self-healing symbol install (no longer gated on the app-version change):
+    // run on first start (symbol_version null) and whenever the installed symbol files
+    // have gone missing while the device DB survived (e.g. Android/data cleanup tools,
+    // install-over-existing). Without this the palette stays broken with only the
+    // built-in points and no discoverable recovery.
+    String symbol_version = mDData.getValue( "symbol_version" );
+    if ( symbol_version == null || ! hasInstalledSymbolFiles() ) {
+      installSymbols( true );
     }
 
     TDPrefHelper prefHlp = new TDPrefHelper( thisApp );
@@ -2194,6 +2198,20 @@ public class TopoDroidApp extends Application
  
   // -------------------------------------------------------------
   // SYMBOLS
+
+  /** @return true if installed symbol files are present on disk
+   * @note checks the private point-symbol folder: it is populated only by the symbol
+   *       install (or user-created symbols), so an empty/missing folder means the
+   *       symbol files have been lost and the speleo set must be re-installed.
+   *       A non-empty folder is left alone to respect user curation of the library.
+   */
+  static private boolean hasInstalledSymbolFiles()
+  {
+    File dir = TDPath.getPointDir();
+    if ( dir == null || ! dir.exists() ) return false;
+    String[] files = dir.list();
+    return files != null && files.length > 0;
+  }
 
   /** install default (speleo) symbols
    * @param overwrite whether to overwrite existing files
