@@ -4,12 +4,8 @@
 /.gradle/
 /app/.gradle/
 
-# Gradle homes used by the PS1 test scripts
-/.gradle-test-home/
-/.gradle-test-home-run/
-/.gradle-test-home/
-/.gradle-check-home/
-/.gradle-home/
+# Gradle home dirs used by the PS1 test scripts
+/.gradle-*/
 
 # IDE / machine-local config (local.properties contains a user-specific SDK path)
 /local.properties
@@ -38,3 +34,19 @@
 
 # Misc
 /test-fixtures/
+
+# res/values-* locale and screen-size dirs generated from int18/ by the Makefile
+/res/values-bg/
+/res/values-cn/
+/res/values-de/
+/res/values-es/
+/res/values-hu/
+/res/values-it/
+/res/values-pt/
+/res/values-ru/
+/res/values-sw600dp/
+/res/values-sw720dp/
+
+
+# Lint output
+/lint.out
