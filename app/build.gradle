@@ -73,6 +73,16 @@ if (possibleJniDirs.isEmpty()) {
     logger.lifecycle('No JNI libs directory found. Native libraries such as libnativename.so must be present under libs/<abi>, lib/<abi>, or jniLibs/<abi> before packaging.')
 }
 
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+
+base {
+    archivesName = "TopoDroidSketch-${sketchVersionName}"
+}
+
 android {
     namespace 'com.topodroid.TDX'
     compileSdk 36
@@ -94,10 +104,24 @@ android {
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
 
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         debug {
         }
         release {
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), '../proguard.cfg'
         }
