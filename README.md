@@ -24,6 +24,7 @@ This was written in English; other translations are likely not working
 - Had a bug where I placed a section cross-section but then couldn't select it via the edit tool. Wasn't replicable but noted here.
 
 #### Future Possible Features / Brainstorming
+- zip export save location
 - Add TopoDroid Sketch-specific settings to the installation splash window
 - Add an option to disable all drawing except that from the stylus pen
   - Maybe still detect fingers for panning/zooming, drawing only from stylus?
@@ -77,7 +78,7 @@ This was written in English; other translations are likely not working
 - Expand the preset functionality into more of saved-brushes functionality, adding the ability to save line/point/area brush types in addition to the current settings.
 - Fdroid distribution and updating
 
-### TopoDroid Sketch v0.31.10 Changelog:
+### TopoDroid Sketch v0.31.13 Changelog:
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
