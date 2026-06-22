@@ -87,7 +87,7 @@ The intent behind the current compatibility goal is that nothing you do in Sketc
 
 ## Known issues
 
-The honest list lives in [the roadmap](docs/roadmap.md). Highlights: the PNG export's north arrow and scale bar can overlap the sketch, some sketch settings may not be respected at export, and undo across many actions can act strangely. Several inherited vanilla bugs are noted there too.
+Known bugs are currently listed in [the roadmap](docs/roadmap.md).
 
 ## What's next
 
