@@ -959,7 +959,7 @@ class TDPrefKey
    * ZIP share app (?)
    */
   static TDPrefKey[] mGeekImport = {
-    new TDPrefKey( T, BOOL, XP, "DISTOX_ZIP_WITH_SYMBOLS",  R.string.pref_zipped_symbols_title,    R.string.pref_zipped_symbols_summary,     FALSE ),
+    new TDPrefKey( T, BOOL, XP, "DISTOX_ZIP_WITH_SYMBOLS",  R.string.pref_zipped_symbols_title,    R.string.pref_zipped_symbols_summary,     TRUE  ),
     new TDPrefKey( T,       XP, "DISTOX_IMPORT_DATAMODE",   R.string.pref_import_datamode_title,   R.string.pref_import_datamode_summary,    TDString.ZERO, R.array.importDatamode, R.array.importDatamodeValue),
     new TDPrefKey( T, BOOL, XP, "DISTOX_AUTO_XSECTIONS",    R.string.pref_auto_xsections_title,    R.string.pref_auto_xsections_summary,     TRUE  ),
     new TDPrefKey( T, BOOL, XP, "DISTOX_AUTO_STATIONS",     R.string.pref_autoStations_title,      R.string.pref_autoStations_summary,       TRUE  ),

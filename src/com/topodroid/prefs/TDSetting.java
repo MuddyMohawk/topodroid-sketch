@@ -302,7 +302,7 @@ public class TDSetting
   public static boolean mExportMedia          = false;  // whether to include media in export
   public static boolean mExportStationsPrefix = false;  // whether to prepend cave name to station in cSurvey/compass export
   public static String  mExportPrefix         = null;   // export prefix - only for the current run
-  public static boolean mZipWithSymbols       = false;  // whether to add/load symbols to/from archive
+  public static boolean mZipWithSymbols       = true;   // whether to add/load symbols to/from archive
   // public static boolean mZipShare             = false;  // whether to share exported zip
   public static boolean mZipShareCategory     = false;  // DISTOX_ZIP_SHARE_CATEGORY
   public static boolean mZipOverwrite         = true;   // whether to overwrite exported zip

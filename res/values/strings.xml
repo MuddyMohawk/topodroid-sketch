@@ -1337,7 +1337,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="export_share">Share</string>
   <string name="export_overwrite">Overwrite</string>
   <string name="export_file_exists">File already exists: %1$s</string>
-  <string name="export_sketch_line_symbols">Include sketch line symbols</string>
+  <string name="export_sketch_line_symbols">Include TopoDroid Sketch-specific symbology</string>
   <string name="export_png_scale">PNG scale</string>
   <!-- UNUSED string name="export_scale_png">Resolution</string -->
     <string name="export_png_filename">PNG filename</string>
