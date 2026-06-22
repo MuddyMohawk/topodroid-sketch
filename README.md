@@ -1,6 +1,6 @@
 # TopoDroid Sketch
 
-[![Latest release](https://img.shields.io/github/v/release/MuddyMohawk/topodroid-sketch)](https://github.com/MuddyMohawk/topodroid-sketch/releases)
+[![Latest release](https://img.shields.io/github/v/release/MuddyMohawk/topodroid-sketch?include_prereleases)](https://github.com/MuddyMohawk/topodroid-sketch/releases)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](COPYING)
 ![Platform](https://img.shields.io/badge/platform-Android%205.0%2B-green)
 
