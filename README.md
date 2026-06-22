@@ -105,7 +105,7 @@ Release builds are signed via an untracked `keystore.properties` — see `keysto
 
 ## Credits & license
 
-All of this stands on [marcocorvi/topodroid](https://github.com/marcocorvi/topodroid) — twenty years of cave survey software, generously GPL'd. Visit the [TopoDroid site](https://sites.google.com/site/speleoapps) for the original.
+This was built on the original, generously GPL'd [marcocorvi/topodroid](https://github.com/marcocorvi/topodroid).
 
 TopoDroid Sketch was essentially entirely vibe-coded with AI assistants (Codex and Claude). From my estimation, learning Android development and making this fork by hand would have taken 6-8 years at my available weekly time investment.
 
