@@ -43,7 +43,7 @@ The recents bar is replaced with manually assigned tool slots, saved per survey.
 
 ### S Pen, Active Key, and hardware buttons
 
-Bind undo, redo, back, erase/draw toggle, preset toggle, and palette toggle to the S Pen button, the Active Key, or the volume keys. Default: pen single-click undoes, double-click goes back, long-click swaps presets.
+Bind undo, redo, back, erase/draw toggle, preset toggle, and palette toggle to the S Pen button, the Active Key, or the volume keys. Defaults: S pen single-click undoes, double-click goes back, and long-click swaps line style presets.
 
 <!-- MEDIA: docs/media/spen.webp — 10-15s: drawing, clicking the pen to undo, long-clicking to swap preset, drawing again -->
 
