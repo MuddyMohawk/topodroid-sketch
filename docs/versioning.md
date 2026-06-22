@@ -1,0 +1,13 @@
+# Versioning
+- TopoDroid Sketch uses SemVer for the app version: MAJOR.MINOR.PATCH, eg 0.31.13.
+- Android versionName is the human app version shown by Android and in app UI.
+- Android versionCode is a monotonically increasing integer used by Android to allow upgrades. For Sketch it is derived from the SemVer parts with a Sketch epoch, currently 731130
+- Git SHA is not included in versionName; it is only added to QA APK filenames for traceability.
+- QA debug APKs can be built with packageQaDebug, producing names like TopoDroid-Sketch-v0.31.13-731130-<sha>-debug.apk.
+- TopoDroid file compatibility is versioned separately from the Android app version.
+- TOPODROID_COMPAT_VERSION_NAME / TOPODROID_COMPAT_VERSION_CODE describe the vanilla TopoDroid file/protocol baseline Sketch currently exports as compatible with, currently 6.4.27 / 604027.
+- ZIP manifests, TDR/sketch streams, and parser-sensitive import/export paths use the compatibility version, not Sketch’s Android versionCode.
+- Export provenance may say TopoDroid Sketch v X.XX.X, but compatibility gates should still use 604027 until the file format baseline changes.
+- Dev note: Only bump the compatibility version after merging/testing against a newer vanilla TopoDroid baseline.
+- Dev note: Do not bump database, symbol, or compatibility versions merely for normal Sketch app releases.
+- Dev note: the changelog lives in CHANGELOG.md, one section per release.

@@ -42,3 +42,15 @@
 /keystore.properties
 *.jks
 *.keystore
+
+# Generated locale dirs (built from int18/ by the Makefile)
+/res/values-bg/
+/res/values-cn/
+/res/values-de/
+/res/values-es/
+/res/values-hu/
+/res/values-it/
+/res/values-pt/
+/res/values-ru/
+/res/values-sw600dp/
+/res/values-sw720dp/
