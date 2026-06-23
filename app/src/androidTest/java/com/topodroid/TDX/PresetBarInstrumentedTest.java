@@ -79,6 +79,26 @@ public class PresetBarInstrumentedTest
   }
 
   @Test
+  public void presetCanStoreSnapLineStyle()
+  {
+    SharedPreferences.Editor editor = mPrefs.edit();
+    editor.putString( "DISTOX_PRESET_SLOTS", "4" );
+    editor.putString( "DISTOX_PRESET_4_NAME", "Snap 90" );
+    editor.putString( "DISTOX_PRESET_4_LINE_STYLE", "8" );
+    editor.putString( "DISTOX_PRESET_4_LINE_SEGMENT", "5" );
+    editor.apply();
+    TDSetting.loadSecondaryPreferences( new TDPrefHelper( mContext ) );
+
+    assertEquals( 4, TDSetting.getSketchPresetSlotCount() );
+    assertEquals( "Snap 90", TDSetting.getSketchPresetName( 4 ) );
+
+    assertTrue( TDSetting.selectSketchPreset( mPrefs, 4 ) );
+    assertTrue( TDSetting.isLineStyleSnapping() );
+    assertEquals( 90.0f, TDSetting.getLineStyleSnapAngle(), 0.001f );
+    assertEquals( 5, TDSetting.mLineSegment );
+  }
+
+  @Test
   public void renamedPreset_updatesDisplayedNameAndSettingsTitle()
   {
     TDSetting.loadSecondaryPreferences( new TDPrefHelper( mContext ) );

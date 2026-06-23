@@ -703,6 +703,9 @@
      <item name="bezier">Bezier</item>
      <item name="simplified">Simplified</item>
      <item name="straight">Straight</item>
+     <item name="snap_22_5">Snap 22.5&#176;</item>
+     <item name="snap_45">Snap 45&#176;</item>
+     <item name="snap_90">Snap 90&#176;</item>
   </string-array>
   <string-array name="lineStyleValue" translatable="false">
      <item name="none">1</item>
@@ -711,6 +714,9 @@
      <item name="bezier">0</item>
      <item name="simplified">4</item>
      <item name="straight">5</item>
+     <item name="snap_22_5">6</item>
+     <item name="snap_45">7</item>
+     <item name="snap_90">8</item>
   </string-array>
 
   <string-array name="groupBy">

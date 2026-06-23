@@ -671,6 +671,9 @@ public class TDSetting
   private static final int LINE_STYLE_THREE  = 3;
   private static final int LINE_STYLE_SIMPLIFIED = 4;
   private static final int LINE_STYLE_STRAIGHT   = 5;
+  private static final int LINE_STYLE_SNAP_22_5  = 6;
+  private static final int LINE_STYLE_SNAP_45    = 7;
+  private static final int LINE_STYLE_SNAP_90    = 8;
   public static final int SKETCH_PRESET_1 = 1;
   public static final int SKETCH_PRESET_2 = 2;
   public static final int SKETCH_PRESET_3 = 3;
@@ -3473,6 +3476,9 @@ public class TDSetting
       case LINE_STYLE_THREE:
       case LINE_STYLE_SIMPLIFIED:
       case LINE_STYLE_STRAIGHT:
+      case LINE_STYLE_SNAP_22_5:
+      case LINE_STYLE_SNAP_45:
+      case LINE_STYLE_SNAP_90:
         return style;
       default:
         return LINE_STYLE_ONE;
@@ -3515,6 +3521,9 @@ public class TDSetting
     if ( TDString.THREE.equals( style ) ) return LINE_STYLE_THREE;
     if ( TDString.FOUR.equals( style ) )  return LINE_STYLE_SIMPLIFIED;
     if ( TDString.FIVE.equals( style ) )  return LINE_STYLE_STRAIGHT;
+    if ( "6".equals( style ) )            return LINE_STYLE_SNAP_22_5;
+    if ( "7".equals( style ) )            return LINE_STYLE_SNAP_45;
+    if ( "8".equals( style ) )            return LINE_STYLE_SNAP_90;
     return LINE_STYLE_ONE;
   }
 
@@ -3526,6 +3535,9 @@ public class TDSetting
       case LINE_STYLE_THREE:      return TDString.THREE;
       case LINE_STYLE_SIMPLIFIED: return TDString.FOUR;
       case LINE_STYLE_STRAIGHT:   return TDString.FIVE;
+      case LINE_STYLE_SNAP_22_5:  return "6";
+      case LINE_STYLE_SNAP_45:    return "7";
+      case LINE_STYLE_SNAP_90:    return "8";
       default:                    return TDString.ONE;
     }
   }
@@ -3783,6 +3795,20 @@ public class TDSetting
   public static boolean isLineStyleBezier() { return mLineStyle == LINE_STYLE_BEZIER; }
   public static boolean isLineStyleSimplified() { return mLineStyle == LINE_STYLE_SIMPLIFIED; }
   public static boolean isLineStyleStraight() { return mLineStyle == LINE_STYLE_STRAIGHT; }
+  public static boolean isLineStyleSnapping()
+  {
+    return mLineStyle == LINE_STYLE_SNAP_22_5 || mLineStyle == LINE_STYLE_SNAP_45 || mLineStyle == LINE_STYLE_SNAP_90;
+  }
+
+  public static float getLineStyleSnapAngle()
+  {
+    switch ( mLineStyle ) {
+      case LINE_STYLE_SNAP_22_5: return 22.5f;
+      case LINE_STYLE_SNAP_45:   return 45.0f;
+      case LINE_STYLE_SNAP_90:   return 90.0f;
+      default:                   return 0.0f;
+    }
+  }
 
   private static float positiveOrDefault( float value, float dflt )
   {

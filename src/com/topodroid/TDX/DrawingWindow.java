@@ -5305,7 +5305,9 @@ public class DrawingWindow extends ItemDrawer
                       }
                       // add == true;
                     } else {
-                      if ( TDSetting.isLineStyleStraight() ) {
+                      if ( TDSetting.isLineStyleSnapping() ) {
+                        add = DrawingPointLineFilter.snap( mCurrentLinePath.mFirst, mCurrentLinePath.mLast, lp1, TDSetting.getLineStyleSnapAngle() );
+                      } else if ( TDSetting.isLineStyleStraight() ) {
                         add = DrawingPointLineFilter.straight( mCurrentLinePath.mFirst, mCurrentLinePath.mLast, lp1 );
                       } else if ( TDSetting.isLineStyleBezier() ) {
                         add = DrawingPointLineFilter.bezier( mCurrentLinePath.mFirst, mCurrentLinePath.mLast, lp1 );

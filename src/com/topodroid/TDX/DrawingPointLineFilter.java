@@ -34,7 +34,9 @@ class DrawingPointLineFilter
    */
   static boolean transform( LinePoint first, LinePoint last, DrawingPointLinePath path, float zoom )
   {
-    if ( TDSetting.isLineStyleStraight() ) {
+    if ( TDSetting.isLineStyleSnapping() ) {
+      return snap( first, last, path, TDSetting.getLineStyleSnapAngle() );
+    } else if ( TDSetting.isLineStyleStraight() ) {
       return straight( first, last, path );
     } else if ( TDSetting.isLineStyleBezier() ) {
       return bezier( first, last, path );
@@ -71,6 +73,53 @@ class DrawingPointLineFilter
       path.addPoint( lp.x, lp.y );
     }
     if ( last != null ) path.addPoint( last.x, last.y );
+    return true;
+  }
+
+  static Point2D snapEndpoint( float x0, float y0, float x1, float y1, float degrees )
+  {
+    float dx = x1 - x0;
+    float dy = y1 - y0;
+    float length = TDMath.sqrt( dx * dx + dy * dy );
+    if ( length <= 0.0f || degrees <= 0.0f ) return new Point2D( x1, y1 );
+
+    float angle = TDMath.atan2d( dy, dx );
+    float snapped = degrees * Math.round( angle / degrees );
+    float radians = snapped * TDMath.DEG2RAD;
+    return new Point2D( x0 + length * TDMath.cos( radians ), y0 + length * TDMath.sin( radians ) );
+  }
+
+  static ArrayList< Point2D > snap( ArrayList< Point2D > points, float degrees )
+  {
+    ArrayList< Point2D > snapped = new ArrayList<>();
+    int size = points.size();
+    if ( size < 2 ) return snapped;
+    Point2D first = points.get( 0 );
+    Point2D last  = points.get( size - 1 );
+    snapped.add( new Point2D( first ) );
+    snapped.add( snapEndpoint( first.x, first.y, last.x, last.y, degrees ) );
+    return snapped;
+  }
+
+  /** collapse a string of line points to a straight segment snapped to an angle interval
+   * @param first    first line point
+   * @param last     last line point (can be null)
+   * @param path     path where the snapped segment is copied
+   * @param degrees  snap angle interval
+   * @return true on success
+   */
+  static boolean snap( LinePoint first, LinePoint last, DrawingPointLinePath path, float degrees )
+  {
+    if ( first == null ) return false;
+    LinePoint end = last;
+    if ( end == null ) {
+      end = first;
+      while ( end.mNext != null ) end = end.mNext;
+    }
+    if ( first == end ) return false;
+    Point2D snapped = snapEndpoint( first.x, first.y, end.x, end.y, degrees );
+    path.addStartPoint( first.x, first.y );
+    path.addPoint( snapped.x, snapped.y );
     return true;
   }
 

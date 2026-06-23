@@ -579,7 +579,7 @@ class TDPrefKey
   /** lines settings
    * thickness of normal lines (walls are twice)
    * line units
-   * line style: 0 bezier, 1 fine, 2 normal, 3 coarse, 4 simplified, 5 straight
+   * line style: 0 bezier, 1 fine, 2 normal, 3 coarse, 4 simplified, 5 straight, 6/7/8 snap
    * minimum distance between consecutive points on a line
    * close lines of closed type
    * slope line l-side
@@ -631,7 +631,7 @@ class TDPrefKey
    * plot unit
    * size of labels [pt]
    * thickness of normal lines (walls are twice)
-   * line style: 0 bezier, 1 fine, 2 normal, 3 coarse, 4 simplified, 5 straight
+   * line style: 0 bezier, 1 fine, 2 normal, 3 coarse, 4 simplified, 5 straight, 6/7/8 snap
    * close lines of closed type
    *                                                               
    * length of the tick at the first line-point (when applicable)

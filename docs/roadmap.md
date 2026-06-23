@@ -8,6 +8,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Change the update check and versioning to track something besides `https://raw.githubusercontent.com/marcocorvi/speleoapks/main/tdversion.txt`
 
 ## Known bugs
+- Adjusting the number of preset buttons doesn't update that settings screen, causing the user to have to leave and re-enter that settings page to adjust the new preset bars
 - Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch 
   - station designation font size does not affect export size 
   - actually all the sketch settings might not be respected (eg leg lines size)?
@@ -18,6 +19,9 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Had a bug where I placed a section cross-section but then couldn't select it via the edit tool. Wasn't replicable but noted here.
 
 ## Future possible features / brainstorming
+- Line-following for fast water area drawing
+- shadow sketching/cosurvey
+- investigate text-to-speech options
 - zip export save location
 - Add TopoDroid Sketch-specific settings to the installation splash window
 - Add an option to disable all drawing except that from the stylus pen
@@ -53,7 +57,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - cobbles
   - Randomized rock symbol?
   - better size range for symbols
-- In-app symbol editor
+- In-app symbol editor v2
 - Sketch layers
 - Opacity? that would be useful for doing fade-in-fade-out overlapping layers
 - Opacity in symbol editor
