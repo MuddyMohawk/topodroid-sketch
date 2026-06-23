@@ -4,7 +4,7 @@
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](COPYING)
 ![Platform](https://img.shields.io/badge/platform-Android%205.0%2B-green)
 
-<!-- MEDIA: docs/media/hero.png — static screenshot of your prettiest real survey sketch, full passage with sketch lines, presets bar visible -->
+<!-- MEDIA: docs/media/hero.png -->
 
 TopoDroid Sketch is a fork of [TopoDroid](https://github.com/marcocorvi/topodroid) for surveyors who sketch by hand and hand the result to a cartographer, instead of feeding symbols into the Therion pipeline. The core data collection and shot taking are unchanged. This fork is about better supporting freehand, paper-style sketching with line weights, stroke style presets, a proper toolbar, and PNG export.
 
@@ -27,19 +27,19 @@ Grab the latest APK from [Releases](https://github.com/MuddyMohawk/topodroid-ske
 
 Three freehand pen weights (thin / standard / thick) with per-weight width and color settings. 
 
-![Line Weights](./docs/media/line_weights.webp)
+<img src="./docs/media/line_weights.webp" width="300" alt="Line Weights">
 
 ### Drawing/Stroke Style Presets
 
 Three drawing style presets have been added and can be quickly toggled via a new toolbar in the sketching screen. The `fine` preset using the `fine` line style with a line-point spacing of 1. `Smooth` uses the bezier curve style, and `Straight` uses a newly added `straight` line style for drawing perfectly straight lines. You can edit, add, remove, or adjust the presets from the settings screen. 
 
-![Style Presets](./docs/media/style_presets.webp)
+<img src="./docs/media/style_presets.webp" width="300" alt="Style Presets">
 
 ### Toolbar Overhaul
 
 The recents bar is replaced with manually assigned tool slots, saved per survey. You can add up to 8 rows, edit the number of buttons per row, and lock a row to lines, points, or areas.
 
-![Toolbar Overhaul](./docs/media/toolbar_overhaul.webp)
+<img src="./docs/media/toolbar_overhaul.webp" width="300" alt="Toolbar Overhaul">
 
 ### S Pen, Active Key, and hardware buttons
 
@@ -51,31 +51,31 @@ Bind undo, redo, back, erase/draw toggle, preset toggle, and palette toggle to t
 
 Place cross-sections directly on the plan sketch as movable viewports instead of separate plots. Currently only supported for the section line, not at-station cross-sections. Draw the section line, tap "place on plan". Like vanilla TopoDroid, use the edit button to select and open the cross-section for drawing.
 
-![Cross-Section Viewports](./docs/media/cross-section_viewports.webp)
+<img src="./docs/media/cross-section_viewports.webp" width="300" alt="Cross-Section Viewports">
 
 ### Reference images
 
 Drop a photo onto the sketch. You can scale, rotate, set opacity, sketch over it, and hide it when done.
 
-![Reference Images](./docs/media/reference_image.webp)
+<img src="./docs/media/reference_image.webp" width="300" alt="Reference Images">
 
 ### PNG export
 
 Export the sketch as a PNG sized for handing to a cartographer. The stations, legs, splays, grid, north arrow, scale bar, and background transparency all toggleable. The output can be scaled from 0.05x to 4.0x. I recommend 1x-2x for cartographer export, 0.5x or less for previewing on the device.
 
-![PNG Export](./docs/media/png_export.jpg)
+<img src="./docs/media/png_export.jpg" width="300" alt="PNG Export">
 
 ### Line Symbol Rendering
 
 Line symbols, such as the pit/ledge line, stamp rigidly along curves at a fixed size instead of warping and scaling. Use the `Line style scale` setting to adjust their sizing in the sketch settings.
 
-![Line Rendering](./docs/media/line_rendering.webp)
+<img src="./docs/media/line_rendering.webp" width="300" alt="Line Rendering">
 
 ### In-app symbol editor
 
 Edit most symbols from the palette window. It's basic, but allows for quick adjusting of colors and such. This will likely be further improved with the planned symbol overhaul.
 
-![In-App Symbol Editor](./docs/media/in-app_symbol_editor.webp)
+<img src="./docs/media/in-app_symbol_editor.webp" width="300" alt="In-App Symbol Editor">
 
 ### Small stuff
 
