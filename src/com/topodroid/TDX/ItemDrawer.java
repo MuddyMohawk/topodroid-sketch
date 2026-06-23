@@ -57,6 +57,9 @@ abstract class ItemDrawer extends Activity
   static final String KEY_TOOLBAR_ROW_AREAS  = "_areas";
   static final String KEY_TOOLBAR_ROW_LOCK   = "_lock";
   static final String KEY_TOOLBAR_ROW_SLOT   = "_slot";
+  static final String KEY_TOOLBAR_ACTIVE_ROW  = "toolbar_active_row";
+  static final String KEY_TOOLBAR_ACTIVE_TYPE = "toolbar_active_type";
+  static final String KEY_TOOLBAR_CURRENT_TYPE = "toolbar_current_type";
   static final String KEY_TOOLBAR_SEED = "toolbar_seed_version";
   static final int TOOLBAR_SEED_VERSION = 2; // bumped to re-seed installs that carry stale toolbar state in the persistent Documents DB
 
@@ -77,6 +80,8 @@ abstract class ItemDrawer extends Activity
   static Symbol[][] mToolbarArea  = new Symbol[ NR_TOOLBAR_ROWS ][ NR_RECENT ];
   static int[] mToolbarLock = new int[ NR_TOOLBAR_ROWS ];
   static int[] mToolbarActiveSlot = new int[ NR_TOOLBAR_ROWS ];
+  static int mToolbarActiveRow = -1;
+  static int mToolbarActiveType = SymbolType.UNDEF;
   static int mToolbarCurrentType = SymbolType.POINT;
   static Symbol[] mRecentPoint = mToolbarPoint[0];
   static Symbol[] mRecentLine  = mToolbarLine[0];
@@ -183,6 +188,16 @@ abstract class ItemDrawer extends Activity
   static void setToolbarCurrentType( int type )
   {
     if ( isToolbarType( type ) ) mToolbarCurrentType = type;
+  }
+
+  static int getToolbarActiveRow()
+  {
+    return mToolbarActiveRow;
+  }
+
+  static int getToolbarActiveType()
+  {
+    return mToolbarActiveType;
   }
 
   void setPointScale( int scale )
@@ -379,10 +394,20 @@ abstract class ItemDrawer extends Activity
 
   static void loadManualToolbarSymbols( DataHelper data )
   {
+    mToolbarActiveRow = -1;
+    mToolbarActiveType = SymbolType.UNDEF;
     mToolbarCurrentType = SymbolType.POINT;
     if ( needsToolbarSeed( data ) ) {
       if ( canSeedToolbar() ) seedManualToolbarSymbols( data );
       return;
+    }
+
+    mToolbarActiveRow = rowFromString( data == null ? null : data.getValue( KEY_TOOLBAR_ACTIVE_ROW ) );
+    mToolbarActiveType = typeFromString( data == null ? null : data.getValue( KEY_TOOLBAR_ACTIVE_TYPE ), SymbolType.UNDEF );
+    mToolbarCurrentType = typeFromString( data == null ? null : data.getValue( KEY_TOOLBAR_CURRENT_TYPE ), SymbolType.POINT );
+    if ( mToolbarActiveRow < 0 || ! isToolbarType( mToolbarActiveType ) ) {
+      mToolbarActiveRow = -1;
+      mToolbarActiveType = SymbolType.UNDEF;
     }
 
     for ( int row = 0; row < NR_TOOLBAR_ROWS; ++row ) {
@@ -420,6 +445,8 @@ abstract class ItemDrawer extends Activity
   private static void seedManualToolbarSymbols( DataHelper data )
   {
     mToolbarCurrentType = SymbolType.POINT;
+    mToolbarActiveRow = 1;
+    mToolbarActiveType = SymbolType.POINT;
     for ( int row = 0; row < NR_TOOLBAR_ROWS; ++row ) {
       mToolbarLock[row] = ( row == 0 ) ? SymbolType.LINE : TOOLBAR_LOCK_UNLOCKED;
       mToolbarActiveSlot[row] = 0;
@@ -448,6 +475,9 @@ abstract class ItemDrawer extends Activity
   static void saveManualToolbarSymbols( DataHelper data )
   {
     if ( data == null ) return;
+    data.setValue( KEY_TOOLBAR_ACTIVE_ROW, Integer.toString( mToolbarActiveRow ) );
+    data.setValue( KEY_TOOLBAR_ACTIVE_TYPE, lockToString( mToolbarActiveType ) );
+    data.setValue( KEY_TOOLBAR_CURRENT_TYPE, lockToString( mToolbarCurrentType ) );
     for ( int row = 0; row < NR_TOOLBAR_ROWS; ++row ) {
       data.setValue( rowKey( row, KEY_TOOLBAR_ROW_POINTS ), serializeSymbols( mToolbarPoint[row], NR_RECENT, false ) );
       data.setValue( rowKey( row, KEY_TOOLBAR_ROW_LINES  ), serializeSymbols( mToolbarLine[row],  NR_RECENT, false ) );
@@ -578,14 +608,30 @@ abstract class ItemDrawer extends Activity
     return slot;
   }
 
+  static int rowFromString( String value )
+  {
+    int row = -1;
+    if ( value != null ) {
+      try { row = Integer.parseInt( value.trim() ); } catch ( NumberFormatException e ) { row = -1; }
+    }
+    if ( row < 0 || row >= NR_TOOLBAR_ROWS ) return -1;
+    return row;
+  }
+
+  static int typeFromString( String value, int defaultType )
+  {
+    if ( value == null ) return defaultType;
+    String type = value.trim();
+    if ( "point".equals( type ) ) return SymbolType.POINT;
+    if ( "line".equals( type ) ) return SymbolType.LINE;
+    if ( "area".equals( type ) ) return SymbolType.AREA;
+    return defaultType;
+  }
+
   private static int lockFromString( String value, int row )
   {
     if ( value == null ) return normalizeToolbarRow( row ) == 0 ? SymbolType.LINE : TOOLBAR_LOCK_UNLOCKED;
-    String lock = value.trim();
-    if ( "point".equals( lock ) ) return SymbolType.POINT;
-    if ( "line".equals( lock ) ) return SymbolType.LINE;
-    if ( "area".equals( lock ) ) return SymbolType.AREA;
-    return TOOLBAR_LOCK_UNLOCKED;
+    return typeFromString( value, TOOLBAR_LOCK_UNLOCKED );
   }
 
   private static String lockToString( int lock )
@@ -874,6 +920,8 @@ abstract class ItemDrawer extends Activity
     mActiveToolbarRow = row;
     mActiveToolbarType = type;
     mActiveToolbarSlot = slot;
+    mToolbarActiveRow = row;
+    mToolbarActiveType = type;
     mToolbarActiveSlot[row] = slot;
   }
 

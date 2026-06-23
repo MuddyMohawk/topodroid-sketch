@@ -2,7 +2,7 @@
 
 Everything TopoDroid Sketch changes relative to vanilla TopoDroid. Future releases get their own section.
 
-## v0.32.0 (June 2026) -- first alpha
+## v0.32.1 (June 2026) -- first alpha
 
 Everything since forking from TopoDroid 6.4.27.
 

@@ -11358,16 +11358,43 @@ public class DrawingWindow extends ItemDrawer
 
   private boolean setCurrentToolbarSymbol( int row, int type, int slot, boolean update_recent )
   {
+    if ( row < 0 || row >= getToolbarRowCount() ) return false;
     if ( slot < 0 || slot >= getToolbarSlotCount() ) return false;
     Symbol[] symbols = getToolbarSymbols( row, type );
     if ( symbols == null ) return false;
     int index = getToolbarSymbolIndex( type, symbols[slot] );
     if ( index < 0 ) return false;
     if ( ! selectToolbarSymbol( type, index, update_recent ) ) return false;
+    setRecentToolsForType( type );
     setActiveToolbarSlot( row, type, slot );
     setHighlight( row, type, slot );
     setButtonTool();
     return true;
+  }
+
+  private boolean setCurrentSavedToolbarSymbol()
+  {
+    int row = getToolbarActiveRow();
+    int type = getToolbarActiveType();
+    if ( row < 0 || row >= getToolbarRowCount() ) return false;
+    if ( ! isToolbarType( type ) ) return false;
+    if ( ! isToolbarRowLocked( row ) ) setToolbarCurrentType( type );
+    return setCurrentToolbarSymbol( row, type, mToolbarActiveSlot[row], false );
+  }
+
+  private void setRecentToolsForType( int type )
+  {
+    switch ( type ) {
+      case SymbolType.POINT:
+        mRecentTools = mRecentPoint;
+        break;
+      case SymbolType.LINE:
+        mRecentTools = mRecentLine;
+        break;
+      case SymbolType.AREA:
+        mRecentTools = mRecentArea;
+        break;
+    }
   }
 
   private boolean setCurrentUnlockedToolbarSymbol( int type )
@@ -11526,9 +11553,10 @@ public class DrawingWindow extends ItemDrawer
   {
     // TDLog.v("set btn recent all" );
     if ( isManualToolbar() ) {
-      setToolbarCurrentType( SymbolType.POINT );
-      mRecentTools = mRecentPoint; // legacy alias, kept for older menu entry points
-      if ( ! setCurrentUnlockedToolbarSymbol( SymbolType.POINT ) ) setCurrentFirstVisibleToolbarSymbol();
+      setRecentToolsForType( mToolbarCurrentType ); // legacy alias, kept for older menu entry points
+      if ( ! setCurrentSavedToolbarSymbol() ) {
+        if ( ! setCurrentUnlockedToolbarSymbol( mToolbarCurrentType ) ) setCurrentFirstVisibleToolbarSymbol();
+      }
       redrawManualToolbars();
       setToolsToolbars();
       return;

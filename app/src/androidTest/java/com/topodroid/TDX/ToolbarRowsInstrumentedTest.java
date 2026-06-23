@@ -187,6 +187,23 @@ public class ToolbarRowsInstrumentedTest
   }
 
   @Test
+  public void activeToolbarSelection_tracksRowTypeAndSlotWithNormalizedReloadValues()
+  {
+    TestDrawer drawer = newTestDrawer();
+
+    drawer.activateSlot( 1, SymbolType.POINT, 2 );
+
+    assertEquals( 1, ItemDrawer.getToolbarActiveRow() );
+    assertEquals( SymbolType.POINT, ItemDrawer.getToolbarActiveType() );
+    assertEquals( 2, ItemDrawer.mToolbarActiveSlot[1] );
+    assertEquals( 2, ItemDrawer.rowFromString( "2" ) );
+    assertEquals( -1, ItemDrawer.rowFromString( "-1" ) );
+    assertEquals( -1, ItemDrawer.rowFromString( "999" ) );
+    assertEquals( SymbolType.LINE, ItemDrawer.typeFromString( "line", SymbolType.UNDEF ) );
+    assertEquals( SymbolType.POINT, ItemDrawer.typeFromString( "bogus", SymbolType.POINT ) );
+  }
+
+  @Test
   public void legacyRecentModes_keepSixSlotSingleRowBehavior()
   {
     TDSetting.mToolbarUpdate = TDSetting.TOOLBAR_UPDATE_OLDEST;

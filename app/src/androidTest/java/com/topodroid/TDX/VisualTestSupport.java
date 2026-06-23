@@ -465,6 +465,43 @@ final class VisualTestSupport
     return out[0];
   }
 
+  void waitForCurrentLineThName( String expectedThName )
+  {
+    String lastLine = null;
+    long deadline = SystemClock.uptimeMillis() + UI_TIMEOUT_MS;
+    while ( SystemClock.uptimeMillis() < deadline ) {
+      final String[] out = new String[2];
+      mInstrumentation.runOnMainSync( () -> {
+        DrawingWindow window = findCurrentDrawingWindow();
+        if ( window == null ) return;
+        Symbol symbol = BrushManager.getLineByIndex( window.mCurrentLine );
+        if ( symbol != null ) {
+          out[0] = symbol.getThName();
+          out[1] = symbol.getFullThName();
+        }
+      } );
+      lastLine = out[0];
+      if ( expectedThName.equals( out[0] ) || expectedThName.equals( out[1] ) ) return;
+      SystemClock.sleep( 100 );
+    }
+    fail( "Expected current line " + expectedThName + " but was " + lastLine
+      + "; title=" + getDrawingWindowTitleText() );
+  }
+
+  void waitForToolbarConfigValue( String key, String expectedValue )
+  {
+    String lastValue = null;
+    long deadline = SystemClock.uptimeMillis() + UI_TIMEOUT_MS;
+    while ( SystemClock.uptimeMillis() < deadline ) {
+      if ( TopoDroidApp.mData != null ) {
+        lastValue = TopoDroidApp.mData.getValue( key );
+        if ( expectedValue.equals( lastValue ) ) return;
+      }
+      SystemClock.sleep( 100 );
+    }
+    fail( "Expected config " + key + "=" + expectedValue + " but was " + lastValue );
+  }
+
   private DrawingWindow requireCurrentDrawingWindow()
   {
     DrawingWindow window = findCurrentDrawingWindow();
