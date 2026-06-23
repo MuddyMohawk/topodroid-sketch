@@ -2,7 +2,7 @@
 
 Everything TopoDroid Sketch changes relative to vanilla TopoDroid. Future releases get their own section.
 
-## v0.31.14 (June 2026) -- first alpha
+## v0.32.0 (June 2026) -- first alpha
 
 Everything since forking from TopoDroid 6.4.27.
 
@@ -18,6 +18,7 @@ Everything since forking from TopoDroid 6.4.27.
 
 - Added a setting, "Fixed line pattern density", which disables the auto-scaling of lines (most notable with dashed lines, eg pits and ceiling ledges)
 - Added a straight line option in addition to the existing Fine, Normal, Coarse, Bezier, and Simplified lines styles
+- Added a snapping line style that snaps a drawn line to the nearest 22.5, 45, or 90 degree angle
 - Changed the vanilla morphing of line-symbols from warp-to-fit to a rigid-stamping that prevents the ugly morphing of things like ceiling ledges
 - Extended the line symbols with additional terms; sketch_effect, carriers, rigid stamps, dash-on segments, and advance. These are used to make prettier curved brush lines. This bumped the TDVersion.SYMBOL_VERSION from 44 to 45. However, this is still compatible with vanilla TopoDroid. Probably.
 - Changed most of the lines from the default speleo symbol pack to be white

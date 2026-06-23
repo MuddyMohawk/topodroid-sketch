@@ -8,6 +8,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Change the update check and versioning to track something besides `https://raw.githubusercontent.com/marcocorvi/speleoapks/main/tdversion.txt`
 
 ## Known bugs
+- Large reference images, and reference images in general, are kinda low and cause lag
 - Adjusting the number of preset buttons doesn't update that settings screen, causing the user to have to leave and re-enter that settings page to adjust the new preset bars
 - Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch 
   - station designation font size does not affect export size 
