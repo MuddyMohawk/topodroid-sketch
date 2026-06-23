@@ -10,7 +10,7 @@ TopoDroid Sketch is a fork of [TopoDroid](https://github.com/marcocorvi/topodroi
 
 It was built with heavy use of AI coding tools. See the full [changelog](CHANGELOG.md) for everything that's different.
 
-> ⚠️ **Alpha software.** This is an early test release. It has been tested on exactly one device. **Back up your surveys** before and during use, and report anything weird via [Issues](https://github.com/MuddyMohawk/topodroid-sketch/issues) or on Discord.
+> ⚠️ **Alpha software.** This is an early test release. It has been tested on exactly one device. Updates may cause things to break or change unexpectedly. **Back up your surveys** before and during use, and report anything weird via [Issues](https://github.com/MuddyMohawk/topodroid-sketch/issues) or on Discord.
 
 ## Download & install
 

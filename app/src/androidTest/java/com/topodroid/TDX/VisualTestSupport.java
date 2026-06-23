@@ -633,7 +633,7 @@ final class VisualTestSupport
 
   void assertDefaultSketchToolbarVisible()
   {
-    assertPresetBarVisible( "Fine", "Smooth", "Straight" );
+    assertPresetBarVisible( "Fine", "Smooth", "Straight", "Snap" );
     assertManualToolbarVisible( 8 );
   }
 
@@ -1964,7 +1964,8 @@ selection.mHotItem.getHandleRole() );
     editor.putString( "DISTOX_TOOLBAR_UPDATE", Integer.toString( TDSetting.TOOLBAR_UPDATE_MANUAL ) );
     editor.putString( "DISTOX_TOOLBAR_SLOTS", "8" );
     editor.putString( "DISTOX_TOOLBAR_ROWS", "2" );
-    editor.putString( "DISTOX_PRESET_SLOTS", "3" );
+    editor.putString( "DISTOX_PRESET_SLOTS", "4" );
+    editor.putString( "DISTOX_PRESET_DEFAULTS_VERSION", "2" );
     editor.putString( "DISTOX_PRESET_1_NAME", "Fine" );
     editor.putString( "DISTOX_PRESET_1_LINE_STYLE", "1" );
     editor.putString( "DISTOX_PRESET_1_LINE_SEGMENT", "1" );
@@ -1974,6 +1975,9 @@ selection.mHotItem.getHandleRole() );
     editor.putString( "DISTOX_PRESET_3_NAME", "Straight" );
     editor.putString( "DISTOX_PRESET_3_LINE_STYLE", "5" );
     editor.putString( "DISTOX_PRESET_3_LINE_SEGMENT", "5" );
+    editor.putString( "DISTOX_PRESET_4_NAME", "Snap" );
+    editor.putString( "DISTOX_PRESET_4_LINE_STYLE", "6" );
+    editor.putString( "DISTOX_PRESET_4_LINE_SEGMENT", "10" );
     editor.putString( "DISTOX_ACTIVE_SKETCH_PRESET", "1" );
     editor.putBoolean( "DISTOX_ERASE_REFERENCE", false );
     editor.apply();

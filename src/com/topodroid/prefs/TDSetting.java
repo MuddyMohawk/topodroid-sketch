@@ -679,8 +679,10 @@ public class TDSetting
   public static final int SKETCH_PRESET_3 = 3;
   public static final int SKETCH_PRESET_MIN     = 1;
   public static final int SKETCH_PRESET_MAX     = 8;
-  public static final int SKETCH_PRESET_DEFAULT = 3;
+  public static final int SKETCH_PRESET_DEFAULT = 4;
   private static final String PRESET_SLOTS_KEY          = "DISTOX_PRESET_SLOTS";
+  private static final String PRESET_DEFAULTS_VERSION_KEY = "DISTOX_PRESET_DEFAULTS_VERSION";
+  private static final int SKETCH_PRESET_DEFAULTS_VERSION = 2;
   private static final String ACTIVE_SKETCH_PRESET_KEY   = "DISTOX_ACTIVE_SKETCH_PRESET";
   private static final String PRESET_1_LINE_STYLE_KEY    = "DISTOX_PRESET_1_LINE_STYLE";
   private static final String PRESET_1_LINE_SEGMENT_KEY  = "DISTOX_PRESET_1_LINE_SEGMENT";
@@ -1658,19 +1660,23 @@ public class TDSetting
     mUnitLines     = tryFloat( prefs,  key[13].key,     key[13].dflt );  // DISTOX_LINE_UNITS
     mSlopeLSide    = tryInt(   prefs,  key[14].key,     key[14].dflt );  // DISTOX_SLOPE_LSIDE
     mFixedLinePatterns = prefs.getBoolean( key[15].key, bool(key[15].dflt) ); // DISTOX_FIXED_LINE_PATTERNS
-    int rawPresetSlots = tryInt( prefs, PRESET_SLOTS_KEY, TDString.THREE );
+    int rawPresetSlots = tryInt( prefs, PRESET_SLOTS_KEY, TDString.FOUR );
+    boolean resetPresetDefaults = tryInt( prefs, PRESET_DEFAULTS_VERSION_KEY, TDString.ZERO ) < SKETCH_PRESET_DEFAULTS_VERSION;
+    if ( resetPresetDefaults ) rawPresetSlots = SKETCH_PRESET_DEFAULT;
     mSketchPresetSlots = normalizeSketchPresetSlots( rawPresetSlots );
-    boolean needsPresetPersist = ! prefs.contains( PRESET_SLOTS_KEY ) || rawPresetSlots != mSketchPresetSlots;
+    boolean needsPresetPersist = resetPresetDefaults || ! prefs.contains( PRESET_SLOTS_KEY ) || rawPresetSlots != mSketchPresetSlots;
     for ( int preset = SKETCH_PRESET_MIN; preset <= SKETCH_PRESET_MAX; ++ preset ) {
       String nameKey    = sketchPresetNameKey( preset );
       String styleKey   = sketchPresetLineStyleKey( preset );
       String segmentKey = sketchPresetLineSegmentKey( preset );
-      boolean hasName    = prefs.contains( nameKey );
-      boolean hasStyle   = prefs.contains( styleKey );
-      boolean hasSegment = prefs.contains( segmentKey );
-      int defaultStyle   = ( preset == SKETCH_PRESET_1 ) ? mLineStyle : defaultSketchPresetLineStyle( preset );
-      int defaultSegment = ( preset == SKETCH_PRESET_1 ) ? mLineSegment : defaultSketchPresetLineSegment( preset );
-      mSketchPresetName[preset - 1]        = normalizeSketchPresetName( preset, prefs.getString( nameKey, defaultSketchPresetName( preset ) ) );
+      boolean useDefaultPreset = resetPresetDefaults && preset <= SKETCH_PRESET_DEFAULT;
+      boolean hasName    = ! useDefaultPreset && prefs.contains( nameKey );
+      boolean hasStyle   = ! useDefaultPreset && prefs.contains( styleKey );
+      boolean hasSegment = ! useDefaultPreset && prefs.contains( segmentKey );
+      int defaultStyle   = ( preset == SKETCH_PRESET_1 && ! useDefaultPreset ) ? mLineStyle : defaultSketchPresetLineStyle( preset );
+      int defaultSegment = ( preset == SKETCH_PRESET_1 && ! useDefaultPreset ) ? mLineSegment : defaultSketchPresetLineSegment( preset );
+      mSketchPresetName[preset - 1]        = normalizeSketchPresetName( preset,
+          hasName ? prefs.getString( nameKey, defaultSketchPresetName( preset ) ) : defaultSketchPresetName( preset ) );
       mSketchPresetLineStyle[preset - 1]   = hasStyle ? parseLineStylePreferenceValue( prefs.getString( styleKey, getLineStylePreferenceValue( defaultStyle ) ) ) : defaultStyle;
       mSketchPresetLineSegment[preset - 1] = hasSegment ? normalizeLineSegmentValue( tryInt( prefs, segmentKey, Integer.toString( defaultSegment ) ) ) : defaultSegment;
       needsPresetPersist |= ! hasName || ! hasStyle || ! hasSegment;
@@ -3607,6 +3613,7 @@ public class TDSetting
     if ( preset == SKETCH_PRESET_1 ) return "Fine";
     if ( preset == SKETCH_PRESET_2 ) return "Smooth";
     if ( preset == SKETCH_PRESET_3 ) return "Straight";
+    if ( preset == 4 ) return "Snap";
     return "P" + preset;
   }
 
@@ -3614,6 +3621,7 @@ public class TDSetting
   {
     preset = normalizeSketchPresetDefinition( preset );
     if ( preset == SKETCH_PRESET_2 ) return LINE_STYLE_BEZIER;
+    if ( preset == 4 ) return LINE_STYLE_SNAP_22_5;
     if ( preset >= SKETCH_PRESET_3 ) return LINE_STYLE_STRAIGHT;
     return LINE_STYLE_ONE;
   }
@@ -3622,6 +3630,7 @@ public class TDSetting
   {
     preset = normalizeSketchPresetDefinition( preset );
     if ( preset == SKETCH_PRESET_2 ) return 10;
+    if ( preset == 4 ) return 10;
     if ( preset >= SKETCH_PRESET_3 ) return 5;
     return 1;
   }
@@ -3713,6 +3722,7 @@ public class TDSetting
     mSketchPresetSlots = normalizeSketchPresetSlots( mSketchPresetSlots );
     mActiveSketchPreset = normalizeSketchPreset( mActiveSketchPreset );
     setPreference( editor, PRESET_SLOTS_KEY, mSketchPresetSlots );
+    setPreference( editor, PRESET_DEFAULTS_VERSION_KEY, SKETCH_PRESET_DEFAULTS_VERSION );
     for ( int preset = SKETCH_PRESET_MIN; preset <= SKETCH_PRESET_MAX; ++ preset ) storeSketchPresetDefinition( editor, preset );
     setPreference( editor, ACTIVE_SKETCH_PRESET_KEY, mActiveSketchPreset );
     storeLiveLinePreferences( editor );

@@ -669,6 +669,7 @@ class TDPrefKey
   private static String presetDefaultStyle( int preset )
   {
     if ( preset == TDSetting.SKETCH_PRESET_2 ) return TDString.ZERO;
+    if ( preset == 4 ) return "6";
     if ( preset >= TDSetting.SKETCH_PRESET_3 ) return TDString.FIVE;
     return TDString.ONE;
   }
@@ -676,6 +677,7 @@ class TDPrefKey
   private static String presetDefaultSegment( int preset )
   {
     if ( preset == TDSetting.SKETCH_PRESET_2 ) return TDString.TEN;
+    if ( preset == 4 ) return TDString.TEN;
     if ( preset >= TDSetting.SKETCH_PRESET_3 ) return TDString.FIVE;
     return TDString.ONE;
   }
@@ -685,13 +687,14 @@ class TDPrefKey
     if ( preset == TDSetting.SKETCH_PRESET_1 ) return "Fine";
     if ( preset == TDSetting.SKETCH_PRESET_2 ) return "Smooth";
     if ( preset == TDSetting.SKETCH_PRESET_3 ) return "Straight";
+    if ( preset == 4 ) return "Snap";
     return "P" + preset;
   }
 
   private static TDPrefKey[] makeToolPresetKeys()
   {
     TDPrefKey[] ret = new TDPrefKey[ TDSetting.SKETCH_PRESET_MAX + 1 ];
-    ret[0] = new TDPrefKey( B, LONG, DR, "DISTOX_PRESET_SLOTS", R.string.pref_preset_slots_title, R.string.pref_preset_slots_summary, TDString.THREE );
+    ret[0] = new TDPrefKey( B, LONG, DR, "DISTOX_PRESET_SLOTS", R.string.pref_preset_slots_title, R.string.pref_preset_slots_summary, TDString.FOUR );
     for ( int preset = 1; preset <= TDSetting.SKETCH_PRESET_MAX; ++ preset ) {
       ret[preset] = new TDPrefKey( B, NON, presetScreenKey( preset ), R.string.title_settings_preset );
     }
