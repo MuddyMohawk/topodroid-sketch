@@ -53,6 +53,7 @@ public class SymbolLibrary
   public final static String BLOCKS  = "blocks";
   public final static String CLAY    = "clay";
   public final static String DEBRIS  = "debris";
+  public final static String BEDROCK = "bedrock";
   public final static String SAND    = "sand";
   public final static String AIR_DRAUGHT  = "air-draught";
   public final static String CONTINUATION = "continuation";

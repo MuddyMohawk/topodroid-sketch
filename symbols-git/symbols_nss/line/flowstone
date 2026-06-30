@@ -1,6 +1,6 @@
 encoding utf-8
 symbol line
-name NSS_Flowstone
+name flowstone
 th_name flowstone
 group floor
 color 0xffffff 0xff

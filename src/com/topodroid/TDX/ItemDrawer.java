@@ -61,18 +61,17 @@ abstract class ItemDrawer extends Activity
   static final String KEY_TOOLBAR_ACTIVE_TYPE = "toolbar_active_type";
   static final String KEY_TOOLBAR_CURRENT_TYPE = "toolbar_current_type";
   static final String KEY_TOOLBAR_SEED = "toolbar_seed_version";
-  static final int TOOLBAR_SEED_VERSION = 2; // bumped to re-seed installs that carry stale toolbar state in the persistent Documents DB
+  // Bump only when existing saved toolbars should be intentionally reseeded.
+  static final int TOOLBAR_SEED_VERSION = 2;
 
   private static final String[] DEFAULT_ROW0_LINES = {
-    SymbolLibrary.WATER_FLOW, SymbolLibrary.SECTION, SymbolLibrary.CEILING_MEANDER,
-    SymbolLibrary.PIT, SymbolLibrary.CHIMNEY,
-    "user-fine", "user-standard", "user-thick"
+    SymbolLibrary.WALL, SymbolLibrary.USER, SymbolLibrary.PIT,
+    SymbolLibrary.CHIMNEY, SymbolLibrary.FLOWSTONE
   };
 
   private static final String[] DEFAULT_ROW1_POINTS = {
-    SymbolLibrary.REFERENCE, SymbolLibrary.PILLAR, SymbolLibrary.STALACTITE,
-    SymbolLibrary.STALAGMITE, SymbolLibrary.WATER_FLOW, SymbolLibrary.SODA_STRAW,
-    SymbolLibrary.CONTINUATION, SymbolLibrary.AIR_DRAUGHT
+    SymbolLibrary.SAND, SymbolLibrary.CLAY, SymbolLibrary.BEDROCK,
+    SymbolLibrary.SLOPE
   };
 
   static Symbol[][] mToolbarPoint = new Symbol[ NR_TOOLBAR_ROWS ][ NR_RECENT ];

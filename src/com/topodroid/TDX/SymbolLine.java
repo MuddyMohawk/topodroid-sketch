@@ -30,6 +30,7 @@ import android.graphics.PathEffect;
 import android.graphics.ComposePathEffect;
 import android.graphics.DashPathEffect;
 import android.graphics.PathDashPathEffect;
+import android.graphics.RectF;
 // import android.graphics.PathDashPathEffect.Style;
 import android.graphics.Matrix;
 
@@ -48,6 +49,7 @@ public class SymbolLine extends Symbol
   boolean mHasEffect; // whether the line paint has path-effect
   LineSymbolEffect mLineEffect;
   Path mPath;
+  Path mPreviewPath;
   boolean mStyleStraight;
   boolean mClosed;
   int mStyleX;            // X times (one out of how many point to use)
@@ -72,7 +74,7 @@ public class SymbolLine extends Symbol
   //  */
   // @Override public int getColor() { return (mPaint == null)? 0 : mPaint.getColor(); }
 
-  @Override public Path   getPath()  { return mPath; }
+  @Override public Path   getPath()  { return ( mPreviewPath != null )? mPreviewPath : mPath; }
 
   // @Override public boolean isOrientable() { return false; }
   // @Override public boolean isEnabled() { return mEnabled; }
@@ -136,6 +138,7 @@ public class SymbolLine extends Symbol
     mRevFixedPaint = null;
     mPreviewPaint = null;
     mRevPreviewPaint = null;
+    mPreviewPath = null;
     mHasEffect = false;
     mLineEffect = null;
     mStyleStraight = false;
@@ -149,6 +152,7 @@ public class SymbolLine extends Symbol
     mStyleStraight = false;
     mClosed = false;
     mStyleX = 1;
+    mPreviewPath = null;
     readFile( filepath, locale, iso );
     makeLinePath();
   }
@@ -181,6 +185,32 @@ public class SymbolLine extends Symbol
     mRevPreviewPaint = new Paint( mRevPaint );
     mRevPreviewPaint.setStrokeWidth( stroke_width );
     mRevPreviewPaint.setPathEffect( effect_rev );
+  }
+
+  private void setSketchStrokePreview( SketchEffectData sketch_effect, float stroke_width )
+  {
+    if ( sketch_effect == null || ! sketch_effect.strokeStamp || sketch_effect.path_dir == null ) return;
+    RectF bounds = new RectF();
+    sketch_effect.path_dir.computeBounds( bounds, true );
+    if ( bounds.isEmpty() || bounds.width() <= 0 ) return;
+
+    Path preview = new Path();
+    float advance = Math.max( 1.0f, bounds.width() );
+    float y_offset = -0.5f * ( bounds.top + bounds.bottom );
+    for ( float x = -50.0f; x < 50.0f; x += advance ) {
+      Path stamp = new Path( sketch_effect.path_dir );
+      stamp.offset( x - bounds.left, y_offset );
+      preview.addPath( stamp );
+    }
+    mPreviewPath = preview;
+
+    mPreviewPaint = new Paint( mPaint );
+    mPreviewPaint.setPathEffect( null );
+    mPreviewPaint.setStyle( Paint.Style.STROKE );
+    mPreviewPaint.setStrokeCap( Paint.Cap.ROUND );
+    mPreviewPaint.setStrokeJoin( Paint.Join.ROUND );
+    mPreviewPaint.setStrokeWidth( Math.max( 1.0f, stroke_width ) );
+    mRevPreviewPaint = new Paint( mPreviewPaint );
   }
 
   private Path scaledPath( Path path, float scale )
@@ -719,6 +749,7 @@ public class SymbolLine extends Symbol
                     setPreviewPatternPaints( preview_dir, preview_rev, preview_dy * width * TDSetting.mLineThickness );
                   }
                 }
+                setSketchStrokePreview( sketch_effect, preview_dy * width * TDSetting.mLineThickness );
   	      }
               in_symbol = false;
             }

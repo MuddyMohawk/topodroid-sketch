@@ -1,6 +1,6 @@
 encoding utf-8
 symbol point
-name NSS_Slope
+name slope
 th_name slope
 group slope
 orientation yes

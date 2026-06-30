@@ -1,6 +1,6 @@
 encoding utf-8
 symbol line
-name NSS_Ledge_Pit
+name pit
 th_name pit
 group floor
 color 0xffffff 0xff

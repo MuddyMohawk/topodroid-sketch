@@ -5,6 +5,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
+import android.graphics.RectF;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
@@ -23,13 +24,11 @@ import org.junit.runner.RunWith;
 public class ToolbarRowsInstrumentedTest
 {
   private static final String[] DEFAULT_LINE_NAMES = {
-    "water-flow", "section", "ceiling-meander", "pit", "chimney",
-    "user-fine", "user-standard", "user-thick"
+    "wall", "user", "pit", "chimney", "flowstone"
   };
 
   private static final String[] DEFAULT_POINT_NAMES = {
-    "reference", "pillar", "stalactite", "stalagmite", "water-flow",
-    "soda-straw", "continuation", "air-draught"
+    "sand", "clay", "bedrock", "slope"
   };
 
   private int mPreviousToolbarUpdate;
@@ -73,6 +72,38 @@ public class ToolbarRowsInstrumentedTest
   public void freshManualToolbar_usesDefaultLineAndPointRows()
   {
     assertDefaultToolbarSeed();
+  }
+
+  @Test
+  public void defaultSymbolInstall_layersNssOverSpeleoPlaceholders()
+  {
+    int pit = BrushManager.getLineIndexByThName( SymbolLibrary.PIT );
+    int flowstone = BrushManager.getLineIndexByThName( SymbolLibrary.FLOWSTONE );
+    int wall = BrushManager.getLineIndexByThName( SymbolLibrary.WALL );
+    int clay = BrushManager.getPointIndexByThName( SymbolLibrary.CLAY );
+    int bedrock = BrushManager.getPointIndexByThName( SymbolLibrary.BEDROCK );
+    int waterFlow = BrushManager.getLineIndexByThName( SymbolLibrary.WATER_FLOW );
+    int pillar = BrushManager.getPointIndexByThName( SymbolLibrary.PILLAR );
+
+    assertTrue( "Missing wall line", wall >= 0 );
+    assertTrue( "Missing NSS pit line", pit >= 0 );
+    assertTrue( "Missing NSS flowstone line", flowstone >= 0 );
+    assertTrue( "Missing NSS clay point", clay >= 0 );
+    assertTrue( "Missing NSS bedrock point", bedrock >= 0 );
+    assertTrue( "Missing Speleo water-flow placeholder", waterFlow >= 0 );
+    assertTrue( "Missing Speleo pillar placeholder", pillar >= 0 );
+    assertEquals( "pit", BrushManager.getLineName( pit ) );
+    assertEquals( "flowstone", BrushManager.getLineName( flowstone ) );
+    assertEquals( "clay", BrushManager.getPointName( clay ) );
+    assertEquals( "bedrock", BrushManager.getPointName( bedrock ) );
+    assertEquals( 0xffffffff, BrushManager.getLineColor( wall ) );
+
+    Symbol flowstoneSymbol = BrushManager.getLineByThName( SymbolLibrary.FLOWSTONE );
+    RectF previewBounds = new RectF();
+    flowstoneSymbol.getPath().computeBounds( previewBounds, true );
+    assertTrue( "Flowstone preview should use visible stroked sketch arcs", previewBounds.height() > 1.0f );
+    assertTrue( "Flowstone preview should not use the legacy path effect",
+                flowstoneSymbol.getPreviewPaint().getPathEffect() == null );
   }
 
   @Test

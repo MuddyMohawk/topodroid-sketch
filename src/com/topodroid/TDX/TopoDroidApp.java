@@ -2213,14 +2213,20 @@ public class TopoDroidApp extends Application
     return files != null && files.length > 0;
   }
 
-  /** install default (speleo) symbols
+  /** install default NSS symbols with Speleo placeholders
    * @param overwrite whether to overwrite existing files
    */
   static void installSymbols( boolean overwrite )
   {
     deleteObsoleteSymbols();
     // TDLog.v("PATH " + "install symbol version " + TDVersion.SYMBOL_VERSION );
-    installSymbols( R.raw.symbols_speleo, overwrite );
+    if ( overwrite ) {
+      installSymbols( R.raw.symbols_speleo, true );
+      installSymbols( R.raw.symbols_nss, true );
+    } else {
+      installSymbols( R.raw.symbols_nss, false );
+      installSymbols( R.raw.symbols_speleo, false );
+    }
     if ( mDData != null ) mDData.setValue( "symbol_version", TDVersion.SYMBOL_VERSION );
   }
 

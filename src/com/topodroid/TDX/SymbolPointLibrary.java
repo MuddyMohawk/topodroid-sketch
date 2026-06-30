@@ -30,8 +30,8 @@ import android.content.res.Resources;
 public class SymbolPointLibrary extends SymbolLibrary
 {
   static final private String[] DefaultPoints = {
-    AIR_DRAUGHT, BLOCKS, CLAY, CONTINUATION, DANGER, DEBRIS, DIG, ENTRANCE, HELICTITE, ICE, PEBBLES, PILLAR, POPCORN,
-    ROOT, SAND, SECTION, SNOW, STALACTITE, STALAGMITE, WATER_FLOW
+    AIR_DRAUGHT, BEDROCK, BLOCKS, CLAY, CONTINUATION, DANGER, DEBRIS, DIG, ENTRANCE, HELICTITE, ICE, PEBBLES, PILLAR, POPCORN,
+    ROOT, SAND, SECTION, SLOPE, SNOW, STALACTITE, STALAGMITE, WATER_FLOW
   };
 
   // ArrayList< SymbolPoint > mPoint;    // enabled points

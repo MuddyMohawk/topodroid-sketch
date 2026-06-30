@@ -28,7 +28,7 @@ import android.content.res.Resources;
 public class SymbolLineLibrary extends SymbolLibrary
 {
   static final private String[] DefaultLines = {
-    ARROW, BORDER, CHIMNEY, PIT, WALL_PRESUMED, ROCK_BORDER, SLOPE
+    ARROW, BORDER, CHIMNEY, FLOWSTONE, PIT, WALL_PRESUMED, ROCK_BORDER, SLOPE
   };
 
   int mLineUserIndex; // PRIVATE
@@ -106,7 +106,7 @@ public class SymbolLineLibrary extends SymbolLibrary
     addSymbol( symbol );
 
     // String wall = res.getString ( R.string.p_wall );
-    symbol = new SymbolLine( res.getString( R.string.thl_wall ), WALL, WALL, WALL, 0xffff0000, 2, DrawingLevel.LEVEL_WALL, Symbol.W2D_WALLS_SHP );
+    symbol = new SymbolLine( res.getString( R.string.thl_wall ), WALL, WALL, WALL, 0xffffffff, 2, DrawingLevel.LEVEL_WALL, Symbol.W2D_WALLS_SHP );
     addSymbol( symbol );
 
     float[] x = new float[2];
