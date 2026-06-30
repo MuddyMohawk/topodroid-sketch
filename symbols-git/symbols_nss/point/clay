@@ -1,0 +1,16 @@
+encoding utf-8
+symbol point
+name NSS_Clay
+th_name clay
+group clay
+orientation no
+color 0xffffff
+path
+  moveTo -12 -5
+  lineTo -3 -5
+  moveTo 5 -5
+  lineTo 14 -5
+  moveTo -4 5
+  lineTo 8 5
+endpath
+endsymbol

@@ -1,0 +1,16 @@
+encoding utf-8
+symbol point
+name NSS_Slope
+th_name slope
+group slope
+orientation yes
+color 0xffffff
+path
+  moveTo -12 -5
+  lineTo -7 8
+  moveTo 0 -8
+  lineTo 0 7
+  moveTo 13 -5
+  lineTo 8 8
+endpath
+endsymbol

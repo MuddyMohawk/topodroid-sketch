@@ -4,6 +4,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 
 ## TODO
 - Add safety warnings when importing vanilla TopoDroid stuff
+- per-symbol defaults? locking?
 - Option for rearranging render order (eg, survey station designations on top)
 - Change the update check and versioning to track something besides `https://raw.githubusercontent.com/marcocorvi/speleoapks/main/tdversion.txt`
 

@@ -1,0 +1,16 @@
+encoding utf-8
+symbol point
+name NSS_Bedrock
+th_name bedrock
+group bedrock
+orientation no
+color 0xffffff
+path
+  moveTo -12 0
+  lineTo 12 0
+  moveTo -4 0
+  lineTo -4 -8
+  moveTo 6 0
+  lineTo 6 8
+endpath
+endsymbol
