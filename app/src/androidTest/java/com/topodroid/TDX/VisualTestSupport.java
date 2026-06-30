@@ -668,27 +668,42 @@ final class VisualTestSupport
     tapChildInContainer( R.id.layout_tool_preset, preset - 1, "preset bar" );
   }
 
+  void tapStyleButton( int style )
+  {
+    tapChildInContainer( R.id.layout_tool_style, style - 1, "style bar" );
+  }
+
   void assertDefaultSketchToolbarVisible()
   {
     assertPresetBarVisible( "Fine", "Smooth", "Straight", "Snap" );
     assertManualToolbarVisible( 8 );
   }
 
+  void assertStyleBarVisible( String... expectedLabels )
+  {
+    assertButtonBarVisible( R.id.layout_tool_style, "Style", expectedLabels );
+  }
+
   private void assertPresetBarVisible( String... expectedLabels )
   {
-    onView( withId( R.id.layout_tool_preset ) ).check( ( View view, NoMatchingViewException error ) -> {
+    assertButtonBarVisible( R.id.layout_tool_preset, "Preset", expectedLabels );
+  }
+
+  private void assertButtonBarVisible( int barId, String label, String... expectedLabels )
+  {
+    onView( withId( barId ) ).check( ( View view, NoMatchingViewException error ) -> {
       if ( error != null ) throw error;
-      assertTrue( "Preset bar is not a ViewGroup", view instanceof ViewGroup );
-      assertTrue( "Preset bar is not visible",
+      assertTrue( label + " bar is not a ViewGroup", view instanceof ViewGroup );
+      assertTrue( label + " bar is not visible",
         view.getVisibility() == View.VISIBLE && view.getWidth() > 0 && view.getHeight() > 0 );
       ViewGroup group = (ViewGroup)view;
-      assertEquals( "Unexpected preset button count", expectedLabels.length, group.getChildCount() );
+      assertEquals( "Unexpected " + label + " button count", expectedLabels.length, group.getChildCount() );
       for ( int index = 0; index < expectedLabels.length; ++index ) {
         View child = group.getChildAt( index );
-        assertTrue( "Preset button " + index + " is not visible",
+        assertTrue( label + " button " + index + " is not visible",
           child.getVisibility() == View.VISIBLE && child.getWidth() > 0 && child.getHeight() > 0 );
-        assertTrue( "Preset button " + index + " has no text", child instanceof TextView );
-        assertEquals( "Preset button " + index + " label",
+        assertTrue( label + " button " + index + " has no text", child instanceof TextView );
+        assertEquals( label + " button " + index + " label",
           expectedLabels[index], ((TextView)child).getText().toString() );
       }
     } );
@@ -797,6 +812,88 @@ final class VisualTestSupport
       window.notifyReferencePointChanged( reference );
     } );
     waitForIdle();
+  }
+
+  void selectFirstOrdinaryPointTool()
+  {
+    mInstrumentation.runOnMainSync( () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      for ( int index = 0; index < BrushManager.getPointLibSize(); ++index ) {
+        if ( BrushManager.isPointLabel( index ) || BrushManager.isPointPhoto( index )
+          || BrushManager.isPointAudio( index ) || BrushManager.isPointSection( index )
+          || BrushManager.isPointPicture( index ) || BrushManager.isPointReference( index )
+          || BrushManager.pointHasTextOrValue( index ) ) {
+          continue;
+        }
+        window.pointSelected( index, true );
+        return;
+      }
+      fail( "No ordinary point symbol found" );
+    } );
+    waitForIdle();
+  }
+
+  void assertLatestLineBrushWeight( float expectedWeight )
+  {
+    final SketchBrushStyle[] style = new SketchBrushStyle[1];
+    mInstrumentation.runOnMainSync( () -> {
+      DrawingLinePath line = findLatestLinePath();
+      assertNotNull( "No line path found", line );
+      style[0] = SketchBrushStyleCodec.fromOptions( line.getOptions() );
+    } );
+    assertNotNull( "Latest line does not have a sketch brush style", style[0] );
+    assertEquals( expectedWeight, style[0].weightOr( 0.0f ), 0.0001f );
+  }
+
+  void assertLatestPointBrushWeight( float expectedWeight )
+  {
+    final SketchBrushStyle[] style = new SketchBrushStyle[1];
+    mInstrumentation.runOnMainSync( () -> {
+      DrawingPointPath point = findLatestOrdinaryPointPath();
+      assertNotNull( "No ordinary point path found", point );
+      style[0] = SketchBrushStyleCodec.fromOptions( point.getOptions() );
+    } );
+    assertNotNull( "Latest point does not have a sketch brush style", style[0] );
+    assertEquals( expectedWeight, style[0].weightOr( 0.0f ), 0.0001f );
+  }
+
+  private DrawingLinePath findLatestLinePath()
+  {
+    DrawingWindow window = requireCurrentDrawingWindow();
+    DrawingCommandManager manager = requireCurrentDrawingManager( window );
+    DrawingLinePath latest = null;
+    for ( Scrap scrap : manager.getScraps() ) {
+      synchronized ( TDPath.mCommandsLock ) {
+        for ( ICanvasCommand command : scrap.mCurrentStack ) {
+          if ( command instanceof DrawingLinePath ) latest = (DrawingLinePath)command;
+        }
+      }
+    }
+    return latest;
+  }
+
+  private DrawingPointPath findLatestOrdinaryPointPath()
+  {
+    DrawingWindow window = requireCurrentDrawingWindow();
+    DrawingCommandManager manager = requireCurrentDrawingManager( window );
+    DrawingPointPath latest = null;
+    for ( Scrap scrap : manager.getScraps() ) {
+      synchronized ( TDPath.mCommandsLock ) {
+        for ( ICanvasCommand command : scrap.mCurrentStack ) {
+          if ( command instanceof DrawingPointPath && ! ( command instanceof DrawingReferencePath ) ) {
+            DrawingPointPath point = (DrawingPointPath)command;
+            if ( BrushManager.isPointLabel( point.mPointType ) || BrushManager.isPointPhoto( point.mPointType )
+              || BrushManager.isPointAudio( point.mPointType ) || BrushManager.isPointSection( point.mPointType )
+              || BrushManager.isPointPicture( point.mPointType ) || BrushManager.isPointReference( point.mPointType )
+              || BrushManager.pointHasTextOrValue( point.mPointType ) ) {
+              continue;
+            }
+            latest = point;
+          }
+        }
+      }
+    }
+    return latest;
   }
 
   void dragFirstReferenceHandle( int handleRole, float dx, float dy )

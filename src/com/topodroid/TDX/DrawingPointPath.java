@@ -26,7 +26,7 @@ import com.topodroid.types.PointScale;
 import com.topodroid.num.TDNum;
 
 import android.graphics.Canvas;
-// import android.graphics.Paint;
+import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Matrix;
@@ -49,6 +49,7 @@ public class DrawingPointPath extends DrawingPath
   public double mOrientation; // orientation [degrees]
   public String mPointText;   // point text value (if any)
   public IDrawingLink mLink;  // linked drawing item
+  private SketchBrushStyle mSketchBrushStyle;
 
   // FIXME-COPYPATH
   // @Override
@@ -124,7 +125,7 @@ public class DrawingPointPath extends DrawingPath
     setCenter( x, y );
     // mScale   = PointScale.SCALE_NONE;
     mOrientation = 0.0;
-    mOptions   = BrushManager.getPointDefaultOptions( mPointType );
+    setOptions( BrushManager.getPointDefaultOptions( mPointType ) );
     mPointText = null; // getTextFromOptions( options ); // this can also reset mOptions
     mLevel     = BrushManager.getPointLevel( mPointType );
 
@@ -154,7 +155,7 @@ public class DrawingPointPath extends DrawingPath
     setCenter( x, y );
     // mScale   = PointScale.SCALE_NONE;
     mOrientation = 0.0;
-    mOptions   = options;
+    setOptions( options );
     mPointText = text; // getTextFromOptions( options ); // this can also reset mOptions
     mLevel     = BrushManager.getPointLevel( type );
 
@@ -430,7 +431,7 @@ public class DrawingPointPath extends DrawingPath
 	mTransformedPath.transform( rot );
       }
       mTransformedPath.transform( matrix );
-      drawPath( mTransformedPath, canvas );
+      drawSketchStyledPath( mTransformedPath, canvas );
       if ( mLink != null ) {
         Path link = new Path();
         link.moveTo( cx, cy );
@@ -469,7 +470,7 @@ public class DrawingPointPath extends DrawingPath
 	mTransformedPath.transform( rot );
       }
       mTransformedPath.transform( matrix );
-      drawPath( mTransformedPath, canvas, xor_color );
+      drawSketchStyledPath( mTransformedPath, canvas, xor_color );
       if ( mLink != null ) {
         Path link = new Path();
         link.moveTo( cx, cy );
@@ -514,6 +515,55 @@ public class DrawingPointPath extends DrawingPath
     }
     return 1;
   }
+
+  /** @return exact Sketch point footprint scale with legacy bucket fallback
+   */
+  public float getSketchPointScaleValue()
+  {
+    return ( mSketchBrushStyle != null ) ? mSketchBrushStyle.pointScaleOr( getScaleValue() ) : getScaleValue();
+  }
+
+  /** @return exact Sketch point footprint scale, expanded with W for stroked NSS point stamps
+   */
+  private float getSketchPointFootprintScaleValue()
+  {
+    float scale = getSketchPointScaleValue();
+    if ( mSketchBrushStyle != null && shouldScalePointFootprintWithWeight() ) {
+      scale *= SketchBrushRenderer.effectScale( mSketchBrushStyle );
+    }
+    return scale;
+  }
+
+  private boolean shouldScalePointFootprintWithWeight()
+  {
+    String th_name = getThName();
+    return th_name == null || ! th_name.equals( SymbolLibrary.SAND );
+  }
+
+  /** set Sketch brush-style metadata for this placement
+   * @param style  Sketch brush style, or null to clear it
+   */
+  void setSketchBrushStyle( SketchBrushStyle style )
+  {
+    mSketchBrushStyle = style;
+    mOptions = SketchBrushStyleCodec.storeInOptions( mOptions, style );
+    if ( mPath != null ) resetPath( 1.0f );
+  }
+
+  /** @return Sketch brush-style metadata, or null if this placement has none
+   */
+  SketchBrushStyle getSketchBrushStyle() { return mSketchBrushStyle; }
+
+  /** set the options string and refresh Sketch brush metadata
+   * @param options   new options string
+   */
+  @Override
+  public void setOptions( String options )
+  {
+    super.setOptions( options );
+    mSketchBrushStyle = SketchBrushStyleCodec.fromOptions( mOptions );
+    if ( mPath != null ) resetPath( 1.0f );
+  }
       
   /** recreate the symbol path
    * @param f   post-scale factor
@@ -526,14 +576,36 @@ public class DrawingPointPath extends DrawingPath
       if ( BrushManager.isPointOrientable( mPointType ) ) {
         m.postRotate( (float)mOrientation );
       }
-      switch ( mScale ) {
-        case PointScale.SCALE_XS: f *= 0.50f; break;
-        case PointScale.SCALE_S:  f *= 0.72f; break;
-        case PointScale.SCALE_L:  f *= 1.41f; break;
-        case PointScale.SCALE_XL: f *= 2.00f; break;
-      }
+      f *= getSketchPointFootprintScaleValue();
       m.postScale(f,f);
       makePath( BrushManager.getPointOrigPath( mPointType ), m, cx, cy );
+    }
+  }
+
+  private Paint getSketchPointPaint()
+  {
+    return SketchBrushRenderer.pointPaint( mPaint, mSketchBrushStyle );
+  }
+
+  private void drawSketchStyledPath( Path path, Canvas canvas )
+  {
+    Paint paint = mPaint;
+    mPaint = getSketchPointPaint();
+    try {
+      drawPath( path, canvas );
+    } finally {
+      mPaint = paint;
+    }
+  }
+
+  private void drawSketchStyledPath( Path path, Canvas canvas, int xor_color )
+  {
+    Paint paint = mPaint;
+    mPaint = getSketchPointPaint();
+    try {
+      drawPath( path, canvas, xor_color );
+    } finally {
+      mPaint = paint;
     }
   }
 
@@ -755,9 +827,10 @@ public class DrawingPointPath extends DrawingPath
     }
   }
 
-  private String getExportOptions()
+  String getExportOptions()
   {
-    return BrushManager.isPointSection( mPointType ) ? SectionPointHelper.stripPlacementOptions( mOptions ) : mOptions;
+    String options = BrushManager.isPointSection( mPointType ) ? SectionPointHelper.stripPlacementOptions( mOptions ) : mOptions;
+    return SketchBrushStyleCodec.stripOptions( options );
   }
 
   /** write options in therion format

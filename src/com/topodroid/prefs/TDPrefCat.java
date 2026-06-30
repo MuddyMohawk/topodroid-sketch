@@ -74,9 +74,20 @@ public class TDPrefCat
   public static final int PREF_PRESET_7          = 50;
   public static final int PREF_PRESET_8          = 51;
   public static final int PREF_PRESET_LAST       = 51;
-  public static final int PREF_CATEGORY_SPEN      = 52;
+  public static final int PREF_TOOL_STYLE        = 52;
+  public static final int PREF_STYLE_FIRST       = 53;
+  public static final int PREF_STYLE_1           = 53;
+  public static final int PREF_STYLE_2           = 54;
+  public static final int PREF_STYLE_3           = 55;
+  public static final int PREF_STYLE_4           = 56;
+  public static final int PREF_STYLE_5           = 57;
+  public static final int PREF_STYLE_6           = 58;
+  public static final int PREF_STYLE_7           = 59;
+  public static final int PREF_STYLE_8           = 60;
+  public static final int PREF_STYLE_LAST        = 60;
+  public static final int PREF_CATEGORY_SPEN      = 61;
   // public static final int PREF_CATEGORY_LOG       = 42; // this must be the last NO_LOGS
-  public static final int PREF_CATEGORY_MAX = 52; // last category
+  public static final int PREF_CATEGORY_MAX = 61; // last category
 
   public static int presetCategory( int preset )
   {
@@ -87,6 +98,17 @@ public class TDPrefCat
   {
     if ( cat < PREF_PRESET_FIRST || cat > PREF_PRESET_LAST ) return 0;
     return cat - PREF_PRESET_FIRST + 1;
+  }
+
+  public static int styleCategory( int style )
+  {
+    return PREF_STYLE_FIRST + style - 1;
+  }
+
+  public static int styleFromCategory( int cat )
+  {
+    if ( cat < PREF_STYLE_FIRST || cat > PREF_STYLE_LAST ) return 0;
+    return cat - PREF_STYLE_FIRST + 1;
   }
 
   // the order must be the same as TDPrefKey.mKeySet as above
@@ -145,6 +167,15 @@ public class TDPrefCat
     R.string.title_settings_preset,
     R.string.title_settings_preset,
     R.string.title_settings_preset,
+    R.string.title_settings_styles,
+    R.string.title_settings_style,
+    R.string.title_settings_style,
+    R.string.title_settings_style,
+    R.string.title_settings_style,
+    R.string.title_settings_style,
+    R.string.title_settings_style,
+    R.string.title_settings_style,
+    R.string.title_settings_style,
     R.string.title_settings_spen,
     // R.string.title_settings_log       // 43
   };

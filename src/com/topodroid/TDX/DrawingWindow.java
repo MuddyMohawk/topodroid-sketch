@@ -598,9 +598,12 @@ public class DrawingWindow extends ItemDrawer
   private LinearLayout mLayoutToolsL;
   private LinearLayout mLayoutToolsA;
   private LinearLayout mLayoutToolsPreset;
+  private LinearLayout mLayoutToolsStyle;
   private LinearLayout mLayoutScale;
   private Button[] mBtnPreset;
+  private Button[] mBtnStyle;
   private int mPendingSketchPreset = 0;
+  private int mPendingSketchStyle = 0;
   // private ItemButton[] mBtnRecent;
   private ItemButton[] mBtnRecentP;
   private ItemButton[] mBtnRecentL;
@@ -2671,7 +2674,9 @@ public class DrawingWindow extends ItemDrawer
     setToolbarLayoutHeight( mLayoutToolsL, rowHeight );
     setToolbarLayoutHeight( mLayoutToolsA, rowHeight );
     setToolbarLayoutHeight( mLayoutToolsPreset, rowHeight );
+    setToolbarLayoutHeight( mLayoutToolsStyle, rowHeight );
     rebuildSketchPresetButtons();
+    rebuildSketchStyleButtons();
 
     mLayoutToolsP.removeAllViews( );
     mLayoutToolsL.removeAllViews( );
@@ -3092,9 +3097,11 @@ public class DrawingWindow extends ItemDrawer
     mLayoutToolsL = (LinearLayout) findViewById( R.id.layout_tool_l );
     mLayoutToolsA = (LinearLayout) findViewById( R.id.layout_tool_a );
     mLayoutToolsPreset = (LinearLayout) findViewById( R.id.layout_tool_preset );
+    mLayoutToolsStyle = (LinearLayout) findViewById( R.id.layout_tool_style );
     mLayoutScale  = (LinearLayout) findViewById( R.id.layout_scale  );
     mScaleBar     = (SeekBar)findViewById( R.id.scalebar );
     rebuildSketchPresetButtons();
+    rebuildSketchStyleButtons();
     mScaleBar.setOnSeekBarChangeListener( new SeekBar.OnSeekBarChangeListener() {
       public void onProgressChanged( SeekBar seekbar, int progress, boolean fromUser) {
         if ( fromUser ) {
@@ -3339,6 +3346,100 @@ public class DrawingWindow extends ItemDrawer
     } else {
       updateSketchPresetButtons();
     }
+  }
+
+  private int getDisplayedSketchStyle()
+  {
+    return TDSetting.normalizeSketchStyle( ( mPendingSketchStyle != 0 ) ? mPendingSketchStyle : TDSetting.getActiveSketchStyle() );
+  }
+
+  private void rebuildSketchStyleButtons()
+  {
+    if ( mLayoutToolsStyle == null ) return;
+    mLayoutToolsStyle.removeAllViews();
+    int slots = TDSetting.getSketchStyleSlotCount();
+    mBtnStyle = new Button[ slots ];
+    for ( int index = 0; index < slots; ++ index ) {
+      final int style = index + 1;
+      Button button = new Button( this );
+      button.setSingleLine( true );
+      button.setEllipsize( TextUtils.TruncateAt.END );
+      button.setOnClickListener( new View.OnClickListener() {
+        @Override public void onClick( View v ) { requestSketchStyleSelection( style ); }
+      } );
+      mBtnStyle[index] = button;
+      mLayoutToolsStyle.addView( button, makePresetButtonParams() );
+    }
+    updateSketchStyleButtons();
+  }
+
+  private void updateSketchStyleButton( Button button, int style, boolean active )
+  {
+    if ( button == null ) return;
+    String name = TDSetting.getSketchStyleName( style );
+    button.setText( name );
+    button.setContentDescription( getString( R.string.desc_style, style, name ) );
+    button.setBackgroundColor( active ? 0xffd9d9d9 : 0xff7a7a7a );
+    button.setTextColor( active ? 0xff111111 : 0xffffffff );
+  }
+
+  private void updateSketchStyleButtons()
+  {
+    if ( mBtnStyle == null ) return;
+    int style = getDisplayedSketchStyle();
+    for ( int index = 0; index < mBtnStyle.length; ++ index ) {
+      int buttonStyle = index + 1;
+      updateSketchStyleButton( mBtnStyle[index], buttonStyle, style == buttonStyle );
+    }
+  }
+
+  private void applySketchStyleSelection( int style )
+  {
+    int normalized = TDSetting.normalizeSketchStyle( style );
+    mPendingSketchStyle = 0;
+    TDSetting.selectSketchStyle( TDInstance.getPrefs(), normalized );
+    setToolsToolbars();
+    updateSketchStyleButtons();
+  }
+
+  private void requestSketchStyleSelection( int style )
+  {
+    int normalized = TDSetting.normalizeSketchStyle( style );
+    int active = TDSetting.getActiveSketchStyle();
+    if ( hasPendingSketchStroke() ) {
+      mPendingSketchStyle = ( normalized == active ) ? 0 : normalized;
+      updateSketchStyleButtons();
+      return;
+    }
+    if ( normalized != active ) {
+      applySketchStyleSelection( normalized );
+    } else {
+      updateSketchStyleButtons();
+    }
+  }
+
+  private void applyPendingSketchStyleSelection()
+  {
+    if ( mPendingSketchStyle != 0 ) {
+      applySketchStyleSelection( mPendingSketchStyle );
+    } else {
+      updateSketchStyleButtons();
+    }
+  }
+
+  private SketchBrushStyle getActiveSketchBrushStyle()
+  {
+    return TDSetting.getSketchStyle( TDSetting.getActiveSketchStyle() );
+  }
+
+  private void applySketchBrushStyle( DrawingLinePath path, SketchBrushStyle style )
+  {
+    if ( path != null ) path.setSketchBrushStyle( style );
+  }
+
+  private void applySketchBrushStyle( DrawingPointPath path )
+  {
+    if ( path != null ) path.setSketchBrushStyle( getActiveSketchBrushStyle() );
   }
 
   // ------------------------------------- PUSH / POP INFO --------------------------------
@@ -5276,6 +5377,7 @@ public class DrawingWindow extends ItemDrawer
 
                     DrawingLinePath lp1 = new DrawingLinePath( mCurrentLine, mDrawingSurface.scrapIndex() );
                     lp1.setOptions( BrushManager.getLineDefaultOptions( mCurrentLine ) );
+                    applySketchBrushStyle( lp1, mCurrentLinePath.getSketchBrushStyle() );
                     if ( BrushManager.isLineStraight( mCurrentLine ) ) {
                       lp1.addStartPoint( mCurrentLinePath.mFirst.x, mCurrentLinePath.mFirst.y );
                       float nx = BrushManager.getLineStyleX( mCurrentLine ) * 2.0f;
@@ -5549,6 +5651,7 @@ public class DrawingWindow extends ItemDrawer
               } else {
     	        if ( mLandscape ) {
                   DrawingPointPath point = new DrawingPointPath( mCurrentPoint, -ys, xs, mPointScale, mDrawingSurface.scrapIndex() );
+                  applySketchBrushStyle( point );
     	          if ( BrushManager.isPointOrientable( mCurrentPoint ) ) {
 		    if ( shift > TDSetting.mPointingRadius ) {
 		      float angle = TDMath.atan2d( x_shift, -y_shift );
@@ -5560,6 +5663,7 @@ public class DrawingWindow extends ItemDrawer
                   mDrawingSurface.addDrawingPath( point );
     	        } else {
                   DrawingPointPath point = new DrawingPointPath( mCurrentPoint, xs, ys, mPointScale, mDrawingSurface.scrapIndex() ); // no text, no options
+                  applySketchBrushStyle( point );
     	          if ( BrushManager.isPointOrientable( mCurrentPoint ) ) {
 		    if ( shift > TDSetting.mPointingRadius ) {
 		      float angle = TDMath.atan2d( x_shift, -y_shift );
@@ -5579,6 +5683,7 @@ public class DrawingWindow extends ItemDrawer
         mPointerDown = false;
         if ( ! defer_modified ) modified();
         applyPendingSketchPresetSelection();
+        applyPendingSketchStyleSelection();
       } else if ( mMode == MODE_PLACE_SECTION ) {
         if ( Math.abs(mSaveX - xc) < TDSetting.mPointingRadius
           && Math.abs(mSaveY - yc) < TDSetting.mPointingRadius ) {
@@ -5715,6 +5820,7 @@ public class DrawingWindow extends ItemDrawer
       if ( mSymbol == SymbolType.LINE ) {
         mCurrentLinePath = new DrawingLinePath( mCurrentLine, mDrawingSurface.scrapIndex() );
         // mCurrentLinePat.setOptions( BrushManager.getLineDefaultOptions( mCurrentLine ) );
+        applySketchBrushStyle( mCurrentLinePath, getActiveSketchBrushStyle() );
         mCurrentLinePath.addStartPoint( xs, ys );
         mCurrentBrush.mouseDown( mDrawingSurface.getPreviewPath(), xc, yc );
       } else if ( mSymbol == SymbolType.AREA ) {
@@ -5871,6 +5977,7 @@ public class DrawingWindow extends ItemDrawer
                 } else {
                   if ( mLandscape ) {
                     DrawingPointPath point = new DrawingPointPath( mCurrentPoint, -ys, xs, mPointScale, mDrawingSurface.scrapIndex() );
+                    applySketchBrushStyle( point );
                     if ( BrushManager.isPointOrientable( mCurrentPoint ) ) {
                       if ( shift > TDSetting.mPointingRadius ) {
                         angle = TDMath.atan2d( x_shift, -y_shift );
@@ -5894,6 +6001,7 @@ public class DrawingWindow extends ItemDrawer
                     }
                   } else {
                     DrawingPointPath point = new DrawingPointPath( mCurrentPoint, xs, ys, mPointScale, mDrawingSurface.scrapIndex() ); // no text, no options
+                    applySketchBrushStyle( point );
                     if ( BrushManager.isPointOrientable( mCurrentPoint ) ) {
                       if ( shift > TDSetting.mPointingRadius ) {
                         angle = TDMath.atan2d( x_shift, -y_shift );
@@ -11258,11 +11366,13 @@ public class DrawingWindow extends ItemDrawer
       mLayoutToolsL.setVisibility( View.GONE );
       mLayoutToolsA.setVisibility( View.GONE );
       mLayoutToolsPreset.setVisibility( View.VISIBLE );
+      mLayoutToolsStyle.setVisibility( View.VISIBLE );
       mLayoutScale.setVisibility( View.GONE );
       setManualToolbarRowsVisibility( View.VISIBLE );
       redrawManualToolbars();
       setButtonTool();
       updateSketchPresetButtons();
+      updateSketchStyleButtons();
       mLayoutTools.invalidate();
       return;
     }
@@ -11272,6 +11382,7 @@ public class DrawingWindow extends ItemDrawer
       mLayoutToolsL.setVisibility( View.GONE );
       mLayoutToolsA.setVisibility( View.GONE );
       mLayoutToolsPreset.setVisibility( View.VISIBLE );
+      mLayoutToolsStyle.setVisibility( View.VISIBLE );
       mLayoutScale.setVisibility( View.GONE );
       k = getCurrentPointIndex();
       // TDLog.v("Set tools toolbars: Current point index " + k );
@@ -11283,6 +11394,7 @@ public class DrawingWindow extends ItemDrawer
       mLayoutToolsL.setVisibility( View.VISIBLE );
       mLayoutToolsA.setVisibility( View.GONE );
       mLayoutToolsPreset.setVisibility( View.VISIBLE );
+      mLayoutToolsStyle.setVisibility( View.VISIBLE );
       mLayoutScale.setVisibility( View.GONE );
       k = getCurrentLineIndex();
       // TDLog.v("Set tools toolbars: Current line index " + k );
@@ -11294,6 +11406,7 @@ public class DrawingWindow extends ItemDrawer
       mLayoutToolsL.setVisibility( View.GONE );
       mLayoutToolsA.setVisibility( View.VISIBLE );
       mLayoutToolsPreset.setVisibility( View.VISIBLE );
+      mLayoutToolsStyle.setVisibility( View.VISIBLE );
       mLayoutScale.setVisibility( View.GONE );
       k = getCurrentAreaIndex();
       // TDLog.v("Set tools toolbars: Current area index " + k );
@@ -11302,6 +11415,7 @@ public class DrawingWindow extends ItemDrawer
       setButton2( BTN_TOOL, mDrawingState.isRetraceArea() ? mBMtoolsAreaCont : mBMtoolsArea );
     }
     updateSketchPresetButtons();
+    updateSketchStyleButtons();
     mLayoutTools.invalidate();
   }
 
@@ -11320,6 +11434,7 @@ public class DrawingWindow extends ItemDrawer
       mLayoutToolsA.setVisibility( View.GONE );
       setManualToolbarRowsVisibility( View.GONE );
       mLayoutToolsPreset.setVisibility( View.GONE );
+      mLayoutToolsStyle.setVisibility( View.GONE );
       mLayoutScale.setVisibility( View.VISIBLE );
     } else {
       // TDLog.v("set scale bar - invisible " );
@@ -11475,6 +11590,7 @@ public class DrawingWindow extends ItemDrawer
       setHighlight( mActiveToolbarRow, mActiveToolbarType, mActiveToolbarSlot );
       setButtonTool();
       updateSketchPresetButtons();
+      updateSketchStyleButtons();
       if ( mLayoutTools != null ) mLayoutTools.invalidate();
       return;
     }

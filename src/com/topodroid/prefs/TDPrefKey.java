@@ -210,6 +210,7 @@ class TDPrefKey
     new TDPrefKey( B,       NON, "DISTOX_TOOL_POINT",     R.string.pref_tool_point_title  ),
     new TDPrefKey( N,       NON, "DISTOX_TOOL_LINE",      R.string.pref_tool_line_title   ),
     new TDPrefKey( B,       NON, "DISTOX_TOOL_PRESET",   R.string.pref_tool_preset_title ),
+    new TDPrefKey( B,       NON, "DISTOX_TOOL_STYLE",    R.string.pref_tool_style_title ),
     new TDPrefKey( B,       NON, "DISTOX_PLOT_SCREEN",    R.string.pref_plot_screen_title )
   };
 
@@ -730,6 +731,80 @@ class TDPrefKey
   static TDPrefKey[] mPreset7 = mPreset[6];
   static TDPrefKey[] mPreset8 = mPreset[7];
 
+  /** sketch style settings
+   * styles define brush weight, point footprint scale, opacity, and optional color
+   */
+  static String styleScreenKey( int style )        { return String.format( Locale.US, "DISTOX_STYLE_%d_SCREEN", style ); }
+  static String styleNameKey( int style )          { return String.format( Locale.US, "DISTOX_STYLE_%d_NAME", style ); }
+  static String styleWeightKey( int style )        { return String.format( Locale.US, "DISTOX_STYLE_%d_WEIGHT", style ); }
+  static String stylePointScaleKey( int style )    { return String.format( Locale.US, "DISTOX_STYLE_%d_POINT_SCALE", style ); }
+  static String styleOpacityKey( int style )       { return String.format( Locale.US, "DISTOX_STYLE_%d_OPACITY", style ); }
+  static String styleColorEnabledKey( int style )  { return String.format( Locale.US, "DISTOX_STYLE_%d_COLOR_ENABLED", style ); }
+  static String styleColorKey( int style )         { return String.format( Locale.US, "DISTOX_STYLE_%d_COLOR", style ); }
+
+  private static String styleDefaultName( int style )
+  {
+    if ( style == TDSetting.SKETCH_STYLE_THIN ) return "Thin";
+    if ( style == TDSetting.SKETCH_STYLE_STANDARD ) return "Standard";
+    if ( style == TDSetting.SKETCH_STYLE_THICK ) return "Thick";
+    return "S" + style;
+  }
+
+  private static String styleDefaultWeight( int style )
+  {
+    if ( style == TDSetting.SKETCH_STYLE_THIN ) return "1.0";
+    if ( style == TDSetting.SKETCH_STYLE_THICK ) return "5.0";
+    return "2.0";
+  }
+
+  private static TDPrefKey[] makeToolStyleKeys()
+  {
+    TDPrefKey[] ret = new TDPrefKey[ TDSetting.SKETCH_STYLE_MAX + 1 ];
+    ret[0] = new TDPrefKey( B, LONG, DR, "DISTOX_STYLE_SLOTS", R.string.pref_style_slots_title, R.string.pref_style_slots_summary, "3" );
+    for ( int style = 1; style <= TDSetting.SKETCH_STYLE_MAX; ++ style ) {
+      ret[style] = new TDPrefKey( B, NON, styleScreenKey( style ), R.string.title_settings_style );
+    }
+    return ret;
+  }
+
+  private static TDPrefKey[] makeStyleKeys( int style )
+  {
+    return new TDPrefKey[] {
+      new TDPrefKey( B, STR,  DR, styleNameKey( style ),         R.string.pref_style_name_title,          R.string.pref_style_name_summary,          styleDefaultName( style ) ),
+      new TDPrefKey( B, FLT,  DR, styleWeightKey( style ),       R.string.pref_style_weight_title,        R.string.pref_style_weight_summary,        styleDefaultWeight( style ) ),
+      new TDPrefKey( B, FLT,  DR, stylePointScaleKey( style ),   R.string.pref_style_point_scale_title,   R.string.pref_style_point_scale_summary,   "1.0" ),
+      new TDPrefKey( B, FLT,  DR, styleOpacityKey( style ),      R.string.pref_style_opacity_title,       R.string.pref_style_opacity_summary,       "1.0" ),
+      new TDPrefKey( B, BOOL, DR, styleColorEnabledKey( style ), R.string.pref_style_color_enabled_title, R.string.pref_style_color_enabled_summary, FALSE ),
+      new TDPrefKey( B, COL,  DR, styleColorKey( style ),        R.string.pref_style_color_title,         R.string.pref_style_color_summary,         "16777215" )
+    };
+  }
+
+  private static TDPrefKey[][] makeStyleKeySets()
+  {
+    TDPrefKey[][] ret = new TDPrefKey[ TDSetting.SKETCH_STYLE_MAX ][];
+    for ( int style = 1; style <= TDSetting.SKETCH_STYLE_MAX; ++ style ) {
+      ret[style - 1] = makeStyleKeys( style );
+    }
+    return ret;
+  }
+
+  static TDPrefKey[] mToolStyle = makeToolStyleKeys();
+  static TDPrefKey[][] mStyle = makeStyleKeySets();
+  static TDPrefKey[] mStyle1 = mStyle[0];
+  static TDPrefKey[] mStyle2 = mStyle[1];
+  static TDPrefKey[] mStyle3 = mStyle[2];
+  static TDPrefKey[] mStyle4 = mStyle[3];
+  static TDPrefKey[] mStyle5 = mStyle[4];
+  static TDPrefKey[] mStyle6 = mStyle[5];
+  static TDPrefKey[] mStyle7 = mStyle[6];
+  static TDPrefKey[] mStyle8 = mStyle[7];
+
+  static TDPrefKey[] styleKeys( int style )
+  {
+    if ( style < 1 || style > TDSetting.SKETCH_STYLE_MAX ) style = 1;
+    return mStyle[style - 1];
+  }
+
   static TDPrefKey[] presetKeys( int preset )
   {
     if ( preset < 1 || preset > TDSetting.SKETCH_PRESET_MAX ) preset = 1;
@@ -1082,6 +1157,15 @@ class TDPrefKey
     mPreset6,
     mPreset7,
     mPreset8,
+    mToolStyle,
+    mStyle1,
+    mStyle2,
+    mStyle3,
+    mStyle4,
+    mStyle5,
+    mStyle6,
+    mStyle7,
+    mStyle8,
     mSPen,
     null
   };

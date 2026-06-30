@@ -36,6 +36,7 @@
     <string name="desc_menu" copyable="fr es it pt sk">Menu</string>
     <string name="desc_preset_1">Sketch preset 1</string>
     <string name="desc_preset_2">Sketch preset 2</string>
+    <string name="desc_style">Sketch style %1$d: %2$s</string>
 
   <string name="r_title">Android-13+ WARNING</string>
   <!-- UNUSED string name="r_dialog_1">
@@ -1496,6 +1497,8 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="title_settings_point">Sketch points settings</string>
     <string name="title_settings_line">Sketch lines settings</string>
     <string name="title_settings_presets">Sketch presets settings</string>
+    <string name="title_settings_styles">Sketch styles settings</string>
+    <string name="title_settings_style">Sketch style settings</string>
     <string name="title_settings_preset_1">Sketch preset 1 settings</string>
     <string name="title_settings_preset_2">Sketch preset 2 settings</string>
    <string name="title_settings_spen">ACTION KEY BINDINGS</string>
@@ -1804,6 +1807,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_tool_line_title">LINES</string>
   <string name="pref_tool_point_title" copyable="fr">POINTS</string>
   <string name="pref_tool_preset_title">PRESETS</string>
+  <string name="pref_tool_style_title">STYLES</string>
   <string name="pref_preset_1_title">PRESET 1</string>
   <string name="pref_preset_2_title">PRESET 2</string>
   <string name="pref_location_title">LOCATION</string>
@@ -1954,6 +1958,20 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="preset_1_short" translatable="false">P1</string>
   <string name="preset_2_short" translatable="false">P2</string>
   <string name="desc_preset">Sketch preset %1$d: %2$s</string>
+  <string name="pref_style_slots_title">Style slots</string>
+  <string name="pref_style_slots_summary">Number of style buttons on the sketch style bar</string>
+  <string name="pref_style_name_title">Style name</string>
+  <string name="pref_style_name_summary">Label shown on the sketch style bar</string>
+  <string name="pref_style_weight_title">Line weight</string>
+  <string name="pref_style_weight_summary">Brush stroke width</string>
+  <string name="pref_style_point_scale_title">Point scale</string>
+  <string name="pref_style_point_scale_summary">Point symbol footprint scale</string>
+  <string name="pref_style_opacity_title">Opacity</string>
+  <string name="pref_style_opacity_summary">Brush opacity from 0 to 1</string>
+  <string name="pref_style_color_enabled_title">Override color</string>
+  <string name="pref_style_color_enabled_summary">Use a style color instead of the symbol default</string>
+  <string name="pref_style_color_title">Style color</string>
+  <string name="pref_style_color_summary">Color used when override color is enabled</string>
   <!-- UNUSED string name="pref_linecontinue_title">Line continue</string -->
   <!-- UNUSED string name="pref_linecontinue_summary">Line default continue-mode</string -->
   <string name="pref_lineacc_title">Interpolation accuracy</string>

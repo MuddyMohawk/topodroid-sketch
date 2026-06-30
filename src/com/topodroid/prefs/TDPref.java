@@ -793,6 +793,13 @@ public class TDPref implements AdapterView.OnItemSelectedListener
     for ( int preset = 1; preset < count; ++ preset ) ret[preset].setTitle( TDSetting.getSketchPresetSettingsTitle( preset ) );
     return ret;
   }
+  static TDPref[] makeToolStylePrefs( Context ctx, TDPrefHelper hlp )
+  {
+    int count = 1 + TDSetting.getSketchStyleSlotCount();
+    TDPref[] ret = makePrefs( TDPrefKey.mToolStyle, ctx, hlp, count );
+    for ( int style = 1; style < count; ++ style ) ret[style].setTitle( TDSetting.getSketchStyleSettingsTitle( style ) );
+    return ret;
+  }
   static TDPref[] makeCalibPrefs( Context ctx, TDPrefHelper hlp )  { return makePrefs( TDPrefKey.mCalib, ctx, hlp ); }
   static TDPref[] makeDevicePrefs( Context ctx, TDPrefHelper hlp ) { return makePrefs( TDPrefKey.mDevice, ctx, hlp ); }
   static TDPref[] makeExportPrefs( Context ctx, TDPrefHelper hlp ) { return makePrefs( TDPrefKey.mExport, ctx, hlp ); }
@@ -823,6 +830,7 @@ public class TDPref implements AdapterView.OnItemSelectedListener
   static TDPref[] makePresetPrefs( Context ctx, TDPrefHelper hlp, int preset ) { return makePrefs( TDPrefKey.presetKeys( preset ), ctx, hlp ); }
   static TDPref[] makePreset1Prefs( Context ctx, TDPrefHelper hlp )     { return makePresetPrefs( ctx, hlp, 1 ); }
   static TDPref[] makePreset2Prefs( Context ctx, TDPrefHelper hlp )     { return makePresetPrefs( ctx, hlp, 2 ); }
+  static TDPref[] makeStylePrefs( Context ctx, TDPrefHelper hlp, int style ) { return makePrefs( TDPrefKey.styleKeys( style ), ctx, hlp ); }
   static TDPref[] makeSPenPrefs( Context ctx, TDPrefHelper hlp )         { return makePrefs( TDPrefKey.mSPen, ctx, hlp ); }
   static TDPref[] makeErasePrefs( Context ctx, TDPrefHelper hlp )        { return makePrefs( TDPrefKey.mErase, ctx, hlp ); }
   static TDPref[] makeEditPrefs( Context ctx, TDPrefHelper hlp )         { return makePrefs( TDPrefKey.mEdit, ctx, hlp ); }

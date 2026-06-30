@@ -219,6 +219,7 @@ public class SymbolLine extends Symbol
     final Path path_dir = new Path();
     final Path path_rev = new Path();
     final ArrayList< LineSymbolEffect.Carrier > carriers = new ArrayList<>();
+    boolean strokeStamp = false;
   }
 
   private SketchEffectData readSketchEffect( BufferedReader br, String filename, float unit ) throws IOException
@@ -236,6 +237,8 @@ public class SymbolLine extends Symbol
 
       if ( vals[k].equals("stamp") ) {
         in_stamp = true;
+      } else if ( vals[k].equals("stroke") ) {
+        data.strokeStamp = true;
       } else if ( vals[k].equals("endstamp") ) {
         in_stamp = false;
       } else if ( vals[k].equals("endsketch_effect") ) {
@@ -306,6 +309,7 @@ public class SymbolLine extends Symbol
    *        command: moveTo lineTo cubicTo addCircle
    *      endeffect
    *      sketch_effect 1
+   *        stroke
    *        carrier Y0 Y1
    *        stamp
    *          command: moveTo lineTo cubicTo addCircle
@@ -642,7 +646,8 @@ public class SymbolLine extends Symbol
                     preview_rev_effect = new PathDashPathEffect( scaledPath( path_rev, preview_scale ), (xmax-xmin) * preview_scale, 0, PathDashPathEffect.Style.MORPH );
                     mLineEffect = new LineSymbolEffect( path_dir, path_rev, xmax - xmin, dash_values );
                     if ( sketch_effect != null ) {
-                      mLineEffect.setSketchEffect( sketch_effect.path_dir, sketch_effect.path_rev, sketch_effect.carriers );
+                      mLineEffect.setSketchEffect( sketch_effect.path_dir, sketch_effect.path_rev,
+                                                   sketch_effect.carriers, sketch_effect.strokeStamp );
                     }
                     break;
                   }
@@ -651,7 +656,8 @@ public class SymbolLine extends Symbol
   	    } else if ( vals[k].equals("sketch_effect") ) {
               sketch_effect = readSketchEffect( br, filename, unit );
               if ( mLineEffect != null ) {
-                mLineEffect.setSketchEffect( sketch_effect.path_dir, sketch_effect.path_rev, sketch_effect.carriers );
+                mLineEffect.setSketchEffect( sketch_effect.path_dir, sketch_effect.path_rev,
+                                             sketch_effect.carriers, sketch_effect.strokeStamp );
               }
   	    } else if ( vals[k].equals("endsymbol") ) {
   	      if ( name != null && th_name != null ) { 

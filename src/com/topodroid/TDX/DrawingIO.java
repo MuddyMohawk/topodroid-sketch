@@ -2899,7 +2899,7 @@ public class DrawingIO
                     String station = scrap.substring( prefix.length() );
                     if ( station.length() > 0 ) {
                       for ( StationMap sm : name_map ) if ( sm.mFrom.equals( station ) ) {
-                        point_path.mOptions = TDString.OPTION_SCRAP + " " + prefix + sm.mTo;
+                        point_path.setOptions( TDString.OPTION_SCRAP + " " + prefix + sm.mTo );
                         break;
                       }
                     }

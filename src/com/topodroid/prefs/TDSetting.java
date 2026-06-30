@@ -41,6 +41,7 @@ import com.topodroid.TDX.GlRenderer;
 import com.topodroid.TDX.GlModel;
 import com.topodroid.TDX.GlNames;
 import com.topodroid.TDX.TglParser;
+import com.topodroid.TDX.SketchBrushStyle;
 import com.topodroid.TDX.R;
 import com.topodroid.dev.bric.BricMode; // MODE
 
@@ -688,6 +689,16 @@ public class TDSetting
   private static final String PRESET_1_LINE_SEGMENT_KEY  = "DISTOX_PRESET_1_LINE_SEGMENT";
   private static final String PRESET_2_LINE_STYLE_KEY    = "DISTOX_PRESET_2_LINE_STYLE";
   private static final String PRESET_2_LINE_SEGMENT_KEY  = "DISTOX_PRESET_2_LINE_SEGMENT";
+  public static final int SKETCH_STYLE_THIN     = 1;
+  public static final int SKETCH_STYLE_STANDARD = 2;
+  public static final int SKETCH_STYLE_THICK    = 3;
+  public static final int SKETCH_STYLE_MIN      = 1;
+  public static final int SKETCH_STYLE_MAX      = 8;
+  public static final int SKETCH_STYLE_DEFAULT  = 3;
+  private static final String STYLE_SLOTS_KEY           = "DISTOX_STYLE_SLOTS";
+  private static final String STYLE_DEFAULTS_VERSION_KEY = "DISTOX_STYLE_DEFAULTS_VERSION";
+  private static final int SKETCH_STYLE_DEFAULTS_VERSION = 1;
+  private static final String ACTIVE_SKETCH_STYLE_KEY    = "DISTOX_ACTIVE_SKETCH_STYLE";
   // private static final String LINE_STYLE     = TDString.TWO;     // LINE_STYLE_TWO NORMAL
   public static int   mLineStyle = LINE_STYLE_ONE;    
   public static int   mLineType;        // line type:  1       1     2    3
@@ -702,6 +713,14 @@ public class TDSetting
   public static int   mSketchPreset1LineSegment = 1;
   public static int   mSketchPreset2LineStyle   = LINE_STYLE_BEZIER;
   public static int   mSketchPreset2LineSegment = 10;
+  public static int   mSketchStyleSlots         = SKETCH_STYLE_DEFAULT;
+  public static int   mActiveSketchStyle        = SKETCH_STYLE_STANDARD;
+  private static String[]  mSketchStyleName         = new String[ SKETCH_STYLE_MAX ];
+  private static float[]   mSketchStyleWeight       = new float[ SKETCH_STYLE_MAX ];
+  private static float[]   mSketchStylePointScale   = new float[ SKETCH_STYLE_MAX ];
+  private static float[]   mSketchStyleOpacity      = new float[ SKETCH_STYLE_MAX ];
+  private static boolean[] mSketchStyleColorEnabled = new boolean[ SKETCH_STYLE_MAX ];
+  private static int[]     mSketchStyleColor        = new int[ SKETCH_STYLE_MAX ];
   public static float mLineAccuracy  = 1f;
   public static float mLineCorner    = 20;    // corner threshold
   // public static int   mContinueLine  = DrawingWindow.CONT_NONE; // 0
@@ -1689,6 +1708,45 @@ public class TDSetting
     if ( needsPresetPersist || ! hasActivePreset || rawActivePreset != mActiveSketchPreset ) {
       persistSketchPresetState( prefs );
     }
+    int rawStyleSlots = tryInt( prefs, STYLE_SLOTS_KEY, Integer.toString( SKETCH_STYLE_DEFAULT ) );
+    boolean resetStyleDefaults = tryInt( prefs, STYLE_DEFAULTS_VERSION_KEY, TDString.ZERO ) < SKETCH_STYLE_DEFAULTS_VERSION;
+    if ( resetStyleDefaults ) rawStyleSlots = SKETCH_STYLE_DEFAULT;
+    mSketchStyleSlots = normalizeSketchStyleSlots( rawStyleSlots );
+    boolean needsStylePersist = resetStyleDefaults || ! prefs.contains( STYLE_SLOTS_KEY ) || rawStyleSlots != mSketchStyleSlots;
+    for ( int style = SKETCH_STYLE_MIN; style <= SKETCH_STYLE_MAX; ++ style ) {
+      String nameKey         = sketchStyleNameKey( style );
+      String weightKey       = sketchStyleWeightKey( style );
+      String pointScaleKey   = sketchStylePointScaleKey( style );
+      String opacityKey      = sketchStyleOpacityKey( style );
+      String colorEnabledKey = sketchStyleColorEnabledKey( style );
+      String colorKey        = sketchStyleColorKey( style );
+      boolean useDefaultStyle = resetStyleDefaults && style <= SKETCH_STYLE_DEFAULT;
+      boolean hasName         = ! useDefaultStyle && prefs.contains( nameKey );
+      boolean hasWeight       = ! useDefaultStyle && prefs.contains( weightKey );
+      boolean hasPointScale   = ! useDefaultStyle && prefs.contains( pointScaleKey );
+      boolean hasOpacity      = ! useDefaultStyle && prefs.contains( opacityKey );
+      boolean hasColorEnabled = ! useDefaultStyle && prefs.contains( colorEnabledKey );
+      boolean hasColor        = ! useDefaultStyle && prefs.contains( colorKey );
+      mSketchStyleName[style - 1] = normalizeSketchStyleName( style,
+          hasName ? prefs.getString( nameKey, defaultSketchStyleName( style ) ) : defaultSketchStyleName( style ) );
+      mSketchStyleWeight[style - 1] = normalizeSketchStylePositive(
+          hasWeight ? tryFloat( prefs, weightKey, formatLineWidthValue( defaultSketchStyleWeight( style ) ) ) : defaultSketchStyleWeight( style ),
+          defaultSketchStyleWeight( style ) );
+      mSketchStylePointScale[style - 1] = normalizeSketchStylePositive(
+          hasPointScale ? tryFloat( prefs, pointScaleKey, formatLineWidthValue( defaultSketchStylePointScale( style ) ) ) : defaultSketchStylePointScale( style ),
+          defaultSketchStylePointScale( style ) );
+      mSketchStyleOpacity[style - 1] = normalizeSketchStyleOpacity(
+          hasOpacity ? tryFloat( prefs, opacityKey, formatLineWidthValue( defaultSketchStyleOpacity( style ) ) ) : defaultSketchStyleOpacity( style ) );
+      mSketchStyleColorEnabled[style - 1] = hasColorEnabled ? prefs.getBoolean( colorEnabledKey, defaultSketchStyleColorEnabled( style ) ) : defaultSketchStyleColorEnabled( style );
+      mSketchStyleColor[style - 1] = ( hasColor ? tryColor( prefs, colorKey, Integer.toString( defaultSketchStyleColor( style ) ) ) : defaultSketchStyleColor( style ) ) & 0x00ffffff;
+      needsStylePersist |= ! hasName || ! hasWeight || ! hasPointScale || ! hasOpacity || ! hasColorEnabled || ! hasColor;
+    }
+    boolean hasActiveStyle = prefs.contains( ACTIVE_SKETCH_STYLE_KEY );
+    int rawActiveStyle = tryInt( prefs, ACTIVE_SKETCH_STYLE_KEY, Integer.toString( SKETCH_STYLE_STANDARD ) );
+    mActiveSketchStyle = normalizeSketchStyle( rawActiveStyle );
+    if ( needsStylePersist || ! hasActiveStyle || rawActiveStyle != mActiveSketchStyle ) {
+      persistSketchStyleState( prefs );
+    }
     // mContinueLine  = tryInt(   prefs,  key[7].key,      key[7].dflt );   // DISTOX_LINE_CONTINUE
     // mWithLineJoin  = prefs.getBoolean( key[8].key, bool(key[8].dflt) );  // DISTOX_WITH_CONTINUE_LINE
 
@@ -1725,6 +1783,8 @@ public class TDSetting
     // TDLog.v("SETTINGS update cat " + cat + " pref " + k + " val " + v );
     int preset = TDPrefCat.presetFromCategory( cat );
     if ( preset > 0 ) return updatePrefPreset( hlp, k, v, preset );
+    int style = TDPrefCat.styleFromCategory( cat );
+    if ( style > 0 ) return updatePrefStyle( hlp, k, v, style );
     switch ( cat ) {
       case TDPrefCat.PREF_CATEGORY_ALL:    return updatePrefMain( hlp, k, v );
       case TDPrefCat.PREF_CATEGORY_SURVEY: return updatePrefSurvey( hlp, k, v );
@@ -1754,6 +1814,7 @@ public class TDSetting
       case TDPrefCat.PREF_LOCATION:        return updatePrefLocation( hlp, k, v );
       case TDPrefCat.PREF_PLOT_SCREEN:     return updatePrefScreen( hlp, k, v );
       case TDPrefCat.PREF_TOOL_PRESET:     return updatePrefToolPreset( hlp, k, v );
+      case TDPrefCat.PREF_TOOL_STYLE:      return updatePrefToolStyle( hlp, k, v );
       case TDPrefCat.PREF_TOOL_LINE:       return updatePrefLine( hlp, k, v );
       case TDPrefCat.PREF_TOOL_POINT:      return updatePrefPoint( hlp, k, v );
       // case TDPrefCat.PREF_PLOT_WALLS:      return updatePrefWalls( hlp, k, v ); // AUTOWALLS
@@ -3331,6 +3392,65 @@ public class TDSetting
     return ret;
   }
 
+  private static String updatePrefToolStyle( TDPrefHelper hlp, String k, String v )
+  {
+    String ret = null;
+    TDPrefKey[] key = TDPrefKey.mToolStyle;
+    if ( k.equals( key[0].key ) ) { // DISTOX_STYLE_SLOTS
+      int value = tryIntValue( hlp, k, v, key[0].dflt );
+      int slots = normalizeSketchStyleSlots( value );
+      mSketchStyleSlots = slots;
+      if ( mActiveSketchStyle > mSketchStyleSlots ) mActiveSketchStyle = mSketchStyleSlots;
+      persistSketchStyleState( hlp.getSharedPrefs() );
+      TopoDroidApp.resetRecentTools();
+      if ( slots != value ) ret = Integer.toString( slots );
+    } else {
+      TDLog.e("missing STYLE TOOL key: " + k );
+    }
+    if ( ret != null ) TDPrefHelper.update( k, ret );
+    return ret;
+  }
+
+  private static String updatePrefStyle( TDPrefHelper hlp, String k, String v, int style )
+  {
+    String ret = null;
+    boolean refreshStyleButtons = false;
+    style = normalizeSketchStyleDefinition( style );
+    TDPrefKey[] key = TDPrefKey.styleKeys( style );
+    if ( k.equals( key[0].key ) ) {
+      String name = tryStringValue( hlp, k, v, defaultSketchStyleName( style ) );
+      setSketchStyleName( style, name );
+      String normalizedName = getSketchStyleName( style );
+      if ( ! normalizedName.equals( name ) ) ret = normalizedName;
+      refreshStyleButtons = true;
+    } else if ( k.equals( key[1].key ) ) {
+      float weight = tryFloatValue( hlp, k, v, key[1].dflt );
+      float normalized = normalizeSketchStylePositive( weight, defaultSketchStyleWeight( style ) );
+      setSketchStyleWeight( style, normalized );
+      if ( normalized != weight ) ret = formatLineWidthValue( normalized );
+    } else if ( k.equals( key[2].key ) ) {
+      float point_scale = tryFloatValue( hlp, k, v, key[2].dflt );
+      float normalized = normalizeSketchStylePositive( point_scale, defaultSketchStylePointScale( style ) );
+      setSketchStylePointScale( style, normalized );
+      if ( normalized != point_scale ) ret = formatLineWidthValue( normalized );
+    } else if ( k.equals( key[3].key ) ) {
+      float opacity = tryFloatValue( hlp, k, v, key[3].dflt );
+      float normalized = normalizeSketchStyleOpacity( opacity );
+      setSketchStyleOpacity( style, normalized );
+      if ( normalized != opacity ) ret = formatLineWidthValue( normalized );
+    } else if ( k.equals( key[4].key ) ) {
+      setSketchStyleColorEnabled( style, tryBooleanValue( hlp, k, v, bool(key[4].dflt) ) );
+    } else if ( k.equals( key[5].key ) ) {
+      setSketchStyleColor( style, tryColorValue( hlp, k, v, key[5].dflt ) );
+    } else {
+      TDLog.e("missing STYLE key: " + k );
+    }
+    persistSketchStyleState( hlp.getSharedPrefs() );
+    if ( refreshStyleButtons ) TopoDroidApp.resetRecentTools();
+    if ( ret != null ) TDPrefHelper.update( k, ret );
+    return ret;
+  }
+
   private static String updatePrefPreset( TDPrefHelper hlp, String k, String v, int preset )
   {
     String ret = null;
@@ -3797,6 +3917,305 @@ public class TDSetting
         || sketchPresetForKey( key, "NAME" ) > 0
         || sketchPresetForKey( key, "LINE_STYLE" ) > 0
         || sketchPresetForKey( key, "LINE_SEGMENT" ) > 0;
+  }
+
+  public static String sketchStyleNameKey( int style )
+  {
+    return String.format( Locale.US, "DISTOX_STYLE_%d_NAME", normalizeSketchStyleDefinition( style ) );
+  }
+
+  public static String sketchStyleWeightKey( int style )
+  {
+    return String.format( Locale.US, "DISTOX_STYLE_%d_WEIGHT", normalizeSketchStyleDefinition( style ) );
+  }
+
+  public static String sketchStylePointScaleKey( int style )
+  {
+    return String.format( Locale.US, "DISTOX_STYLE_%d_POINT_SCALE", normalizeSketchStyleDefinition( style ) );
+  }
+
+  public static String sketchStyleOpacityKey( int style )
+  {
+    return String.format( Locale.US, "DISTOX_STYLE_%d_OPACITY", normalizeSketchStyleDefinition( style ) );
+  }
+
+  public static String sketchStyleColorEnabledKey( int style )
+  {
+    return String.format( Locale.US, "DISTOX_STYLE_%d_COLOR_ENABLED", normalizeSketchStyleDefinition( style ) );
+  }
+
+  public static String sketchStyleColorKey( int style )
+  {
+    return String.format( Locale.US, "DISTOX_STYLE_%d_COLOR", normalizeSketchStyleDefinition( style ) );
+  }
+
+  private static int normalizeSketchStyleSlots( int slots )
+  {
+    if ( slots < SKETCH_STYLE_MIN ) return SKETCH_STYLE_MIN;
+    if ( slots > SKETCH_STYLE_MAX ) return SKETCH_STYLE_MAX;
+    return slots;
+  }
+
+  private static int normalizeSketchStyleDefinition( int style )
+  {
+    if ( style < SKETCH_STYLE_MIN ) return SKETCH_STYLE_MIN;
+    if ( style > SKETCH_STYLE_MAX ) return SKETCH_STYLE_MAX;
+    return style;
+  }
+
+  public static int normalizeSketchStyle( int style )
+  {
+    if ( style < SKETCH_STYLE_MIN ) return SKETCH_STYLE_MIN;
+    if ( style > mSketchStyleSlots ) return mSketchStyleSlots;
+    return style;
+  }
+
+  public static int getSketchStyleSlotCount()
+  {
+    return mSketchStyleSlots;
+  }
+
+  public static int getNextSketchStyle( int style )
+  {
+    if ( mSketchStyleSlots <= SKETCH_STYLE_MIN ) return normalizeSketchStyle( style );
+    style = normalizeSketchStyle( style );
+    return ( style >= mSketchStyleSlots ) ? SKETCH_STYLE_MIN : style + 1;
+  }
+
+  private static String defaultSketchStyleName( int style )
+  {
+    style = normalizeSketchStyleDefinition( style );
+    if ( style == SKETCH_STYLE_THIN ) return "Thin";
+    if ( style == SKETCH_STYLE_STANDARD ) return "Standard";
+    if ( style == SKETCH_STYLE_THICK ) return "Thick";
+    return "S" + style;
+  }
+
+  private static float defaultSketchStyleWeight( int style )
+  {
+    style = normalizeSketchStyleDefinition( style );
+    if ( style == SKETCH_STYLE_THIN ) return DEFAULT_USER_LINE_FINE_WIDTH;
+    if ( style == SKETCH_STYLE_THICK ) return DEFAULT_USER_LINE_THICK_WIDTH;
+    return DEFAULT_USER_LINE_STANDARD_WIDTH;
+  }
+
+  private static float defaultSketchStylePointScale( int style ) { return SketchBrushStyle.DEFAULT_POINT_SCALE; }
+
+  private static float defaultSketchStyleOpacity( int style ) { return SketchBrushStyle.DEFAULT_OPACITY; }
+
+  private static boolean defaultSketchStyleColorEnabled( int style ) { return false; }
+
+  private static int defaultSketchStyleColor( int style ) { return TDColor.WHITE & 0x00ffffff; }
+
+  private static String normalizeSketchStyleName( int style, String name )
+  {
+    if ( name == null ) return defaultSketchStyleName( style );
+    name = name.trim();
+    return TDString.isNullOrEmpty( name ) ? defaultSketchStyleName( style ) : name;
+  }
+
+  private static float normalizeSketchStylePositive( float value, float dflt )
+  {
+    return ( value > 0.0f && ! Float.isNaN( value ) && ! Float.isInfinite( value ) ) ? value : dflt;
+  }
+
+  private static float normalizeSketchStyleOpacity( float value )
+  {
+    if ( Float.isNaN( value ) || Float.isInfinite( value ) ) return SketchBrushStyle.DEFAULT_OPACITY;
+    if ( value < 0.0f ) return 0.0f;
+    if ( value > 1.0f ) return 1.0f;
+    return value;
+  }
+
+  private static void setSketchStyleName( int style, String name )
+  {
+    mSketchStyleName[ normalizeSketchStyleDefinition( style ) - 1 ] = normalizeSketchStyleName( style, name );
+  }
+
+  public static String getSketchStyleName( int style )
+  {
+    style = normalizeSketchStyleDefinition( style );
+    return normalizeSketchStyleName( style, mSketchStyleName[style - 1] );
+  }
+
+  public static String getSketchStyleSettingsTitle( int style )
+  {
+    style = normalizeSketchStyleDefinition( style );
+    return String.format( Locale.US, "STYLE %d - %s", style, getSketchStyleName( style ) );
+  }
+
+  private static float getSketchStyleWeight( int style )
+  {
+    return mSketchStyleWeight[ normalizeSketchStyleDefinition( style ) - 1 ];
+  }
+
+  private static float getSketchStylePointScale( int style )
+  {
+    return mSketchStylePointScale[ normalizeSketchStyleDefinition( style ) - 1 ];
+  }
+
+  private static float getSketchStyleOpacity( int style )
+  {
+    return mSketchStyleOpacity[ normalizeSketchStyleDefinition( style ) - 1 ];
+  }
+
+  private static boolean getSketchStyleColorEnabled( int style )
+  {
+    return mSketchStyleColorEnabled[ normalizeSketchStyleDefinition( style ) - 1 ];
+  }
+
+  private static int getSketchStyleColor( int style )
+  {
+    return mSketchStyleColor[ normalizeSketchStyleDefinition( style ) - 1 ] & 0x00ffffff;
+  }
+
+  private static void setSketchStyleWeight( int style, float weight )
+  {
+    style = normalizeSketchStyleDefinition( style );
+    mSketchStyleWeight[style - 1] = normalizeSketchStylePositive( weight, defaultSketchStyleWeight( style ) );
+  }
+
+  private static void setSketchStylePointScale( int style, float point_scale )
+  {
+    style = normalizeSketchStyleDefinition( style );
+    mSketchStylePointScale[style - 1] = normalizeSketchStylePositive( point_scale, defaultSketchStylePointScale( style ) );
+  }
+
+  private static void setSketchStyleOpacity( int style, float opacity )
+  {
+    mSketchStyleOpacity[ normalizeSketchStyleDefinition( style ) - 1 ] = normalizeSketchStyleOpacity( opacity );
+  }
+
+  private static void setSketchStyleColorEnabled( int style, boolean enabled )
+  {
+    mSketchStyleColorEnabled[ normalizeSketchStyleDefinition( style ) - 1 ] = enabled;
+  }
+
+  private static void setSketchStyleColor( int style, int color )
+  {
+    mSketchStyleColor[ normalizeSketchStyleDefinition( style ) - 1 ] = color & 0x00ffffff;
+  }
+
+  public static int getActiveSketchStyle()
+  {
+    return mActiveSketchStyle;
+  }
+
+  public static SketchBrushStyle getSketchStyle( int style )
+  {
+    style = normalizeSketchStyleDefinition( style );
+    return SketchBrushStyle.fromFields( true, getSketchStyleWeight( style ),
+                                        true, getSketchStylePointScale( style ),
+                                        true, getSketchStyleOpacity( style ),
+                                        getSketchStyleColorEnabled( style ), getSketchStyleColor( style ) );
+  }
+
+  public static boolean selectSketchStyle( SharedPreferences prefs, int style )
+  {
+    mActiveSketchStyle = normalizeSketchStyle( style );
+    Editor editor = prefs.edit();
+    storeSketchStyleState( editor );
+    return commitEditor( editor );
+  }
+
+  private static void storeSketchStyleDefinition( Editor editor, int style )
+  {
+    style = normalizeSketchStyleDefinition( style );
+    setPreference( editor, sketchStyleNameKey( style ), getSketchStyleName( style ) );
+    setPreference( editor, sketchStyleWeightKey( style ), getSketchStyleWeight( style ) );
+    setPreference( editor, sketchStylePointScaleKey( style ), getSketchStylePointScale( style ) );
+    setPreference( editor, sketchStyleOpacityKey( style ), getSketchStyleOpacity( style ) );
+    setPreference( editor, sketchStyleColorEnabledKey( style ), getSketchStyleColorEnabled( style ) );
+    setPreference( editor, sketchStyleColorKey( style ), getSketchStyleColor( style ) );
+  }
+
+  private static void storeSketchStyleState( Editor editor )
+  {
+    mSketchStyleSlots = normalizeSketchStyleSlots( mSketchStyleSlots );
+    mActiveSketchStyle = normalizeSketchStyle( mActiveSketchStyle );
+    setPreference( editor, STYLE_SLOTS_KEY, mSketchStyleSlots );
+    setPreference( editor, STYLE_DEFAULTS_VERSION_KEY, SKETCH_STYLE_DEFAULTS_VERSION );
+    for ( int style = SKETCH_STYLE_MIN; style <= SKETCH_STYLE_MAX; ++ style ) storeSketchStyleDefinition( editor, style );
+    setPreference( editor, ACTIVE_SKETCH_STYLE_KEY, mActiveSketchStyle );
+  }
+
+  private static void persistSketchStyleState( SharedPreferences prefs )
+  {
+    Editor editor = prefs.edit();
+    storeSketchStyleState( editor );
+    commitEditor( editor );
+  }
+
+  private static int sketchStyleForKey( String key, String suffix )
+  {
+    for ( int style = SKETCH_STYLE_MIN; style <= SKETCH_STYLE_MAX; ++ style ) {
+      if ( String.format( Locale.US, "DISTOX_STYLE_%d_%s", style, suffix ).equals( key ) ) return style;
+    }
+    return 0;
+  }
+
+  private static boolean importSketchStyleKey( Editor editor, String key, String value )
+  {
+    if ( STYLE_SLOTS_KEY.equals( key ) ) {
+      mSketchStyleSlots = normalizeSketchStyleSlots( Integer.parseInt( value ) );
+      if ( mActiveSketchStyle > mSketchStyleSlots ) mActiveSketchStyle = mSketchStyleSlots;
+      setPreference( editor, STYLE_SLOTS_KEY, mSketchStyleSlots );
+      return true;
+    }
+    if ( ACTIVE_SKETCH_STYLE_KEY.equals( key ) ) {
+      mActiveSketchStyle = normalizeSketchStyle( Integer.parseInt( value ) );
+      setPreference( editor, ACTIVE_SKETCH_STYLE_KEY, mActiveSketchStyle );
+      return true;
+    }
+    int style = sketchStyleForKey( key, "NAME" );
+    if ( style > 0 ) {
+      setSketchStyleName( style, value );
+      setPreference( editor, sketchStyleNameKey( style ), getSketchStyleName( style ) );
+      return true;
+    }
+    style = sketchStyleForKey( key, "WEIGHT" );
+    if ( style > 0 ) {
+      setSketchStyleWeight( style, Float.parseFloat( value ) );
+      setPreference( editor, sketchStyleWeightKey( style ), getSketchStyleWeight( style ) );
+      return true;
+    }
+    style = sketchStyleForKey( key, "POINT_SCALE" );
+    if ( style > 0 ) {
+      setSketchStylePointScale( style, Float.parseFloat( value ) );
+      setPreference( editor, sketchStylePointScaleKey( style ), getSketchStylePointScale( style ) );
+      return true;
+    }
+    style = sketchStyleForKey( key, "OPACITY" );
+    if ( style > 0 ) {
+      setSketchStyleOpacity( style, Float.parseFloat( value ) );
+      setPreference( editor, sketchStyleOpacityKey( style ), getSketchStyleOpacity( style ) );
+      return true;
+    }
+    style = sketchStyleForKey( key, "COLOR_ENABLED" );
+    if ( style > 0 ) {
+      setSketchStyleColorEnabled( style, Boolean.parseBoolean( value ) );
+      setPreference( editor, sketchStyleColorEnabledKey( style ), getSketchStyleColorEnabled( style ) );
+      return true;
+    }
+    style = sketchStyleForKey( key, "COLOR" );
+    if ( style > 0 ) {
+      setSketchStyleColor( style, Integer.parseInt( value ) );
+      setPreference( editor, sketchStyleColorKey( style ), getSketchStyleColor( style ) );
+      return true;
+    }
+    return false;
+  }
+
+  private static boolean isSketchStyleImportKey( String key )
+  {
+    return ACTIVE_SKETCH_STYLE_KEY.equals( key )
+        || STYLE_SLOTS_KEY.equals( key )
+        || sketchStyleForKey( key, "NAME" ) > 0
+        || sketchStyleForKey( key, "WEIGHT" ) > 0
+        || sketchStyleForKey( key, "POINT_SCALE" ) > 0
+        || sketchStyleForKey( key, "OPACITY" ) > 0
+        || sketchStyleForKey( key, "COLOR_ENABLED" ) > 0
+        || sketchStyleForKey( key, "COLOR" ) > 0;
   }
 
   public static boolean isLineStyleComplex() 
@@ -4361,6 +4780,7 @@ public class TDSetting
       }
       if ( ( flag & (1 << TDPrefKey.DR) ) != 0 ) {
         pw.printf( Locale.US, "I %s %d\n", ACTIVE_SKETCH_PRESET_KEY, mActiveSketchPreset );
+        pw.printf( Locale.US, "I %s %d\n", ACTIVE_SKETCH_STYLE_KEY, mActiveSketchStyle );
       }
       // TDLog.v("Printed " + cnt + " settings");
 /*
@@ -4803,11 +5223,12 @@ B DISTOX_SAP5_BIT16_BUG true
         String kay   = vals[1];
         String value = vals[2];
         // int group    = TDPrefKey.getKeyGroup( kay ); // FIXME TODO
-        boolean allowImport = isSketchPresetImportKey( kay )
+        boolean allowImport = ( isSketchPresetImportKey( kay ) || isSketchStyleImportKey( kay ) )
                            ? ( ( flag & (1 << TDPrefKey.DR) ) != 0 )
                            : TDPrefKey.checkKeyGroup( kay, flag );
         if ( allowImport ) {
           if ( isSketchPresetImportKey( kay ) && importSketchPresetKey( editor, kay, value ) ) continue;
+          if ( isSketchStyleImportKey( kay ) && importSketchStyleKey( editor, kay, value ) ) continue;
           switch ( kay ) {
             case "DISTOX_SIZE_BUTTONS":
               size = Integer.parseInt( value );
@@ -5615,6 +6036,8 @@ B DISTOX_SAP5_BIT16_BUG true
       }
       applySketchPreset( mActiveSketchPreset );
       storeSketchPresetState( editor );
+      mActiveSketchStyle = normalizeSketchStyle( mActiveSketchStyle );
+      storeSketchStyleState( editor );
       fr.close();
     } catch ( IOException e ) { 
       TDLog.e("failed to import settings"); 

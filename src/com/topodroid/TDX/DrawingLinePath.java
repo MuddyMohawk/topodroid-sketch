@@ -52,6 +52,7 @@ public class DrawingLinePath extends DrawingPointLinePath
   public int mOutline; // TH2EDIT package
   private boolean mReversed;
   private int mLSide = -1;
+  private SketchBrushStyle mSketchBrushStyle;
 
   // FIXME-COPYPATH
   // @Override 
@@ -87,6 +88,7 @@ public class DrawingLinePath extends DrawingPointLinePath
     mOutline  = ( BrushManager.isLineWall(mLineType) )? OUTLINE_OUT : OUTLINE_NONE;
     setPathPaint( BrushManager.getLinePaint( mLineType, mReversed ) );
     mLevel     = BrushManager.getLineLevel( mLineType );
+    mSketchBrushStyle = null;
   }
 
   /** factory: deserialize a line from a data stream
@@ -129,7 +131,7 @@ public class DrawingLinePath extends DrawingPointLinePath
       DrawingLinePath ret = new DrawingLinePath( type, scrap );
       ret.mOutline  = outline;
       ret.mLevel    = level;
-      ret.mOptions  = options;
+      ret.setOptions( options );
       ret.setReversed( reversed );
       ret.setLSide( lside );
 
@@ -250,9 +252,11 @@ public class DrawingLinePath extends DrawingPointLinePath
   {
     line1.mOutline  = mOutline;
     line1.mOptions  = mOptions;
+    line1.mSketchBrushStyle = mSketchBrushStyle;
     line1.mReversed = mReversed;
     line2.mOutline  = mOutline;
     line2.mOptions  = mOptions;
+    line2.mSketchBrushStyle = mSketchBrushStyle;
     line2.mReversed = mReversed;
 
     // int k0 = mPoints.indexOf( lp0 );
@@ -410,16 +414,51 @@ public class DrawingLinePath extends DrawingPointLinePath
    */
   public String getFullThNameEscapedColon() { return  BrushManager.getLineFullThNameEscapedColon( mLineType ); }
 
+  /** set Sketch brush-style metadata for this placement
+   * @param style  Sketch brush style, or null to clear it
+   */
+  void setSketchBrushStyle( SketchBrushStyle style )
+  {
+    mSketchBrushStyle = style;
+    mOptions = SketchBrushStyleCodec.storeInOptions( mOptions, style );
+  }
+
+  /** @return Sketch brush-style metadata, or null if this placement has none
+   */
+  SketchBrushStyle getSketchBrushStyle() { return mSketchBrushStyle; }
+
+  /** set the options string and refresh Sketch brush metadata
+   * @param options   new options string
+   */
+  @Override
+  public void setOptions( String options )
+  {
+    super.setOptions( options );
+    mSketchBrushStyle = SketchBrushStyleCodec.fromOptions( mOptions );
+  }
+
+  private String getExportOptions()
+  {
+    return SketchBrushStyleCodec.stripOptions( mOptions );
+  }
+
   private boolean useFixedPatternDensity()
   {
     return TDSetting.mFixedLinePatterns && BrushManager.hasLinePathEffect( mLineType );
+  }
+
+  private Paint getSketchLinePaint( boolean fixed_density )
+  {
+    Paint paint = fixed_density ? BrushManager.getLineFixedPaint( mLineType, mReversed ) : mPaint;
+    float scale = fixed_density ? SymbolLine.FIXED_PATTERN_SCALE : 1.0f;
+    return SketchBrushRenderer.linePaint( paint, mSketchBrushStyle, scale );
   }
 
   private void drawFixedPatternDensity( Canvas canvas, Matrix matrix )
   {
     int save = canvas.save();
     Paint paint = mPaint;
-    mPaint = BrushManager.getLineFixedPaint( mLineType, mReversed );
+    mPaint = getSketchLinePaint( true );
     try {
       canvas.concat( matrix );
       drawPath( mPath, canvas );
@@ -433,7 +472,7 @@ public class DrawingLinePath extends DrawingPointLinePath
   {
     int save = canvas.save();
     Paint paint = mPaint;
-    mPaint = BrushManager.getLineFixedPaint( mLineType, mReversed );
+    mPaint = getSketchLinePaint( true );
     try {
       canvas.concat( matrix );
       drawPath( mPath, canvas, xor_color );
@@ -460,7 +499,7 @@ public class DrawingLinePath extends DrawingPointLinePath
     if ( effect == null || drawPathUsesPaintOverride( with_xor ) ) return false;
 
     boolean fixed_density = useFixedPatternDensity();
-    Paint paint = fixed_density ? BrushManager.getLineFixedPaint( mLineType, mReversed ) : mPaint;
+    Paint paint = getSketchLinePaint( fixed_density );
     if ( paint == null ) return false;
     if ( with_xor ) paint = DrawingPath.xorPaint( paint, xor_color );
 
@@ -468,16 +507,38 @@ public class DrawingLinePath extends DrawingPointLinePath
       int save = canvas.save();
       try {
         canvas.concat( matrix );
-        effect.draw( canvas, mPath, paint, mReversed, true );
+        effect.draw( canvas, mPath, paint, mReversed, true, mSketchBrushStyle );
       } finally {
         canvas.restoreToCount( save );
       }
     } else {
       mTransformedPath = new Path( mPath );
       mTransformedPath.transform( matrix );
-      effect.draw( canvas, mTransformedPath, paint, mReversed, false );
+      effect.draw( canvas, mTransformedPath, paint, mReversed, false, mSketchBrushStyle );
     }
     return true;
+  }
+
+  private void drawSketchStyled( Canvas canvas, Matrix matrix, RectF bbox )
+  {
+    Paint paint = mPaint;
+    mPaint = getSketchLinePaint( false );
+    try {
+      super.draw( canvas, matrix, bbox );
+    } finally {
+      mPaint = paint;
+    }
+  }
+
+  private void drawSketchStyled( Canvas canvas, Matrix matrix, RectF bbox, int xor_color )
+  {
+    Paint paint = mPaint;
+    mPaint = getSketchLinePaint( false );
+    try {
+      super.draw( canvas, matrix, bbox, xor_color );
+    } finally {
+      mPaint = paint;
+    }
   }
 
   /** draw the line path on a canvas
@@ -493,7 +554,7 @@ public class DrawingLinePath extends DrawingPointLinePath
     if ( useFixedPatternDensity() ) {
       drawFixedPatternDensity( canvas, matrix );
     } else {
-      super.draw( canvas, matrix, bbox );
+      drawSketchStyled( canvas, matrix, bbox );
     }
   }
 
@@ -511,7 +572,7 @@ public class DrawingLinePath extends DrawingPointLinePath
     if ( useFixedPatternDensity() ) {
       drawFixedPatternDensity( canvas, matrix, xor_color );
     } else {
-      super.draw( canvas, matrix, bbox, xor_color );
+      drawSketchStyled( canvas, matrix, bbox, xor_color );
     }
   }
 
@@ -588,9 +649,10 @@ public class DrawingLinePath extends DrawingPointLinePath
   {
     // linetype: 0 line, 1 spline, 2 bezier
     String name = getThName();
+    String options = getExportOptions();
     pw.format("          <item type=\"line\" name=\"%s\" cave=\"%s\" branch=\"%s\" reversed=\"%d\" closed=\"%d\" outline=\"%d\" options=\"%s\" ",
       name, cave, branch, (mReversed ? 1 : 0), (isClosed() ? 1 : 0), mOutline, 
-      ((mOptions   == null)? "" : mOptions)
+      ((options == null)? "" : options)
     );
     if ( bind != null ) pw.format(" bind=\"%s\"", bind );
     pw.format(" >\n" );
@@ -627,8 +689,9 @@ public class DrawingLinePath extends DrawingPointLinePath
     if ( mReversed ) {
       pw.format(" -reverse on");
     }
-    if ( mOptions != null && mOptions.length() > 0 ) {
-      pw.format(" %s", mOptions );
+    String options = getExportOptions();
+    if ( options != null && options.length() > 0 ) {
+      pw.format(" %s", options );
     }
     pw.format("\n");
 

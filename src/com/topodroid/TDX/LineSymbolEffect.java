@@ -68,6 +68,7 @@ class LineSymbolEffect
   private float mSketchRevAnchor;
   private float mSketchFixedAnchor;
   private float mSketchRevFixedAnchor;
+  private boolean mSketchStroke;
   private Carrier[] mCarriers;
   private Carrier[] mRevCarriers;
   private Carrier[] mFixedCarriers;
@@ -91,6 +92,7 @@ class LineSymbolEffect
     mFixedDash = scaledDash( dash, SymbolLine.FIXED_PATTERN_SCALE );
     mHasSketchEffect = false;
     mHasSketchStamp = false;
+    mSketchStroke = false;
     mSketchAnchor = 0;
     mSketchRevAnchor = 0;
     mSketchFixedAnchor = 0;
@@ -99,7 +101,13 @@ class LineSymbolEffect
 
   void setSketchEffect( Path path, Path rev_path, ArrayList< Carrier > carriers )
   {
+    setSketchEffect( path, rev_path, carriers, false );
+  }
+
+  void setSketchEffect( Path path, Path rev_path, ArrayList< Carrier > carriers, boolean stroke_stamp )
+  {
     mHasSketchEffect = true;
+    mSketchStroke = stroke_stamp;
     mSketchPath = copyPath( path );
     mSketchRevPath = copyPath( rev_path );
     mSketchFixedPath = scaledPath( mSketchPath, SymbolLine.FIXED_PATTERN_SCALE );
@@ -123,22 +131,39 @@ class LineSymbolEffect
 
   boolean draw( Canvas canvas, Path line_path, Paint paint, boolean reversed, boolean fixed_density )
   {
+    return draw( canvas, line_path, paint, reversed, fixed_density, null );
+  }
+
+  boolean draw( Canvas canvas, Path line_path, Paint paint, boolean reversed, boolean fixed_density, SketchBrushStyle style )
+  {
     if ( canvas == null || line_path == null || paint == null ) return false;
 
-    Path pattern = getPatternPath( reversed, fixed_density );
-    RectF pattern_bounds = getPatternBounds( reversed, fixed_density );
-    float anchor = getPatternAnchor( reversed, fixed_density );
-    Carrier[] carriers = getCarriers( reversed, fixed_density );
-    float advance = fixed_density ? mFixedAdvance : mAdvance;
-    float[] dash = fixed_density ? mFixedDash : mDash;
+    float style_scale = SketchBrushRenderer.effectScale( style );
+    Path pattern = getScaledPatternPath( reversed, fixed_density, style_scale );
+    RectF pattern_bounds = getScaledPatternBounds( reversed, fixed_density, style_scale );
+    float anchor = getPatternAnchor( reversed, fixed_density ) * style_scale;
+    Carrier[] carriers = getScaledCarriers( reversed, fixed_density, style_scale );
+    float advance = ( fixed_density ? mFixedAdvance : mAdvance ) * style_scale;
+    float[] dash = scaledDash( fixed_density ? mFixedDash : mDash, style_scale );
     if ( advance <= 0 ) return false;
 
-    Paint draw_paint = new Paint( paint );
-    draw_paint.setPathEffect( null );
-    // The effect path already encodes the stamp thickness; the line paint
-    // stroke width is only the carrier width used by Android PathEffect.
-    draw_paint.setStyle( Paint.Style.FILL );
-    draw_paint.setStrokeWidth( 0 );
+    Paint carrier_paint = new Paint( paint );
+    carrier_paint.setPathEffect( null );
+    // Carrier ribbons encode their own thickness; stroked sketch stamps use
+    // the active line paint width.
+    carrier_paint.setStyle( Paint.Style.FILL );
+    carrier_paint.setStrokeWidth( 0 );
+
+    Paint stamp_paint = new Paint( paint );
+    stamp_paint.setPathEffect( null );
+    if ( mHasSketchEffect && mSketchStroke ) {
+      stamp_paint.setStyle( Paint.Style.STROKE );
+      stamp_paint.setStrokeCap( Paint.Cap.ROUND );
+      stamp_paint.setStrokeJoin( Paint.Join.ROUND );
+    } else {
+      stamp_paint.setStyle( Paint.Style.FILL );
+      stamp_paint.setStrokeWidth( 0 );
+    }
 
     Rect clip = new Rect();
     RectF clip_bounds = new RectF();
@@ -151,7 +176,7 @@ class LineSymbolEffect
     RectF stamp_bounds = new RectF();
     float[] pos = new float[2];
     float[] tan = new float[2];
-    float pad = 2.0f;
+    float pad = 2.0f * Math.max( 1.0f, style_scale ) + Math.max( 0.0f, stamp_paint.getStrokeWidth() );
     boolean drew = false;
 
     do {
@@ -161,20 +186,20 @@ class LineSymbolEffect
       if ( carriers != null && carriers.length > 0 ) {
         if ( dash_cycle > 0 ) {
           drew |= drawDashedCarriers( canvas, measure, length, dash, dash_cycle, carriers,
-                                      draw_paint, has_clip, clip_bounds );
+                                      carrier_paint, has_clip, clip_bounds );
         } else {
           for ( int c = 0; c < carriers.length; ++c ) {
-            drew |= drawCarrierSegment( canvas, measure, 0, length, carriers[c], draw_paint, has_clip, clip_bounds );
+            drew |= drawCarrierSegment( canvas, measure, 0, length, carriers[c], carrier_paint, has_clip, clip_bounds );
           }
         }
       }
       if ( mHasSketchEffect && ! mHasSketchStamp ) continue;
       if ( dash_cycle > 0 ) {
         drew |= drawDashedContour( canvas, measure, length, dash, dash_cycle, pattern, pattern_bounds,
-                                   draw_paint, matrix, stamp, stamp_bounds, pos, tan, has_clip, clip_bounds, pad, advance, anchor );
+                                   stamp_paint, matrix, stamp, stamp_bounds, pos, tan, has_clip, clip_bounds, pad, advance, anchor );
       } else {
         drew |= drawStampSegment( canvas, measure, 0, length, advance, pattern, pattern_bounds,
-                                  draw_paint, matrix, stamp, stamp_bounds, pos, tan, has_clip, clip_bounds, pad, anchor );
+                                  stamp_paint, matrix, stamp, stamp_bounds, pos, tan, has_clip, clip_bounds, pad, anchor );
       }
     } while ( measure.nextContour() );
 
@@ -191,6 +216,12 @@ class LineSymbolEffect
     return reversed ? mRevPath : mPath;
   }
 
+  private Path getScaledPatternPath( boolean reversed, boolean fixed_density, float style_scale )
+  {
+    Path path = getPatternPath( reversed, fixed_density );
+    return isUnitScale( style_scale ) ? path : scaledPath( path, style_scale );
+  }
+
   private RectF getPatternBounds( boolean reversed, boolean fixed_density )
   {
     if ( mHasSketchEffect ) {
@@ -201,11 +232,24 @@ class LineSymbolEffect
     return reversed ? mRevBounds : mBounds;
   }
 
+  private RectF getScaledPatternBounds( boolean reversed, boolean fixed_density, float style_scale )
+  {
+    if ( isUnitScale( style_scale ) ) return getPatternBounds( reversed, fixed_density );
+    return boundsOf( scaledPath( getPatternPath( reversed, fixed_density ), style_scale ) );
+  }
+
   private Carrier[] getCarriers( boolean reversed, boolean fixed_density )
   {
     if ( ! mHasSketchEffect ) return null;
     if ( fixed_density ) return reversed ? mRevFixedCarriers : mFixedCarriers;
     return reversed ? mRevCarriers : mCarriers;
+  }
+
+  private Carrier[] getScaledCarriers( boolean reversed, boolean fixed_density, float style_scale )
+  {
+    Carrier[] carriers = getCarriers( reversed, fixed_density );
+    if ( carriers == null || isUnitScale( style_scale ) ) return carriers;
+    return scaledCarriers( carriers, style_scale );
   }
 
   private float getPatternAnchor( boolean reversed, boolean fixed_density )
@@ -262,6 +306,19 @@ class LineSymbolEffect
     float[] ret = new float[dash.length];
     for ( int k = 0; k < dash.length; ++k ) ret[k] = Math.max( 0, dash[k] * scale );
     return ret;
+  }
+
+  private static Carrier[] scaledCarriers( Carrier[] carriers, float scale )
+  {
+    if ( carriers == null || carriers.length == 0 ) return null;
+    Carrier[] ret = new Carrier[carriers.length];
+    for ( int k = 0; k < carriers.length; ++k ) ret[k] = new Carrier( carriers[k].y0 * scale, carriers[k].y1 * scale );
+    return ret;
+  }
+
+  private static boolean isUnitScale( float scale )
+  {
+    return Math.abs( scale - 1.0f ) < 1.0e-4f;
   }
 
   private static Carrier[] makeCarriers( ArrayList< Carrier > carriers, float scale, boolean reversed )
