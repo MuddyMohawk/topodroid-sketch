@@ -83,6 +83,22 @@ public class SketchBrushStyle
   public float opacityOr( float fallback ) { return mHasOpacity ? mOpacity : fallback; }
   public int colorOr( int fallback ) { return mHasColor ? mColor : fallback; }
 
+  SketchBrushStyle withPointScale( float point_scale )
+  {
+    return new SketchBrushStyle( mHasWeight, mWeight,
+                                 true, normalizePositive( point_scale, DEFAULT_POINT_SCALE ),
+                                 mHasOpacity, mOpacity,
+                                 mHasColor, mColor );
+  }
+
+  static SketchBrushStyle pointScaleOnly( float point_scale )
+  {
+    return new SketchBrushStyle( false, DEFAULT_WEIGHT_STANDARD,
+                                 true, normalizePositive( point_scale, DEFAULT_POINT_SCALE ),
+                                 false, DEFAULT_OPACITY,
+                                 false, 0 );
+  }
+
   public boolean isEmpty()
   {
     return ! mHasWeight && ! mHasPointScale && ! mHasOpacity && ! mHasColor;

@@ -251,6 +251,11 @@ public class SymbolLibrary
    */
   boolean isSymbolDeclinable( int k )   { return k >= 0 && k < mSymbols.size() && mSymbols.get( k ).isDeclinable(); }
 
+  /** #return true if the k-th symbol is scalable
+   * @param k  symbol index
+   */
+  boolean isSymbolScalable( int k )     { return k < 0 || k >= mSymbols.size() || mSymbols.get( k ).isScalable(); }
+
   /** #return true if the k-th symbol is enabled
    * @param k  symbol index
    */

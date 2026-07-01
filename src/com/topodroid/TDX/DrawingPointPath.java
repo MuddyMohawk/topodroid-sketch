@@ -491,10 +491,30 @@ public class DrawingPointPath extends DrawingPath
    */
   void setScale( int scale )
   {
+    if ( ! BrushManager.isPointScalable( mPointType ) ) return;
     if ( scale != mScale ) {
       mScale = scale;
+      if ( mSketchBrushStyle != null ) {
+        mSketchBrushStyle = mSketchBrushStyle.withPointScale( SketchPointScale.legacyScaleValue( scale ) );
+        mOptions = SketchBrushStyleCodec.storeInOptions( mOptions, mSketchBrushStyle );
+      }
       resetPath( 1.0f );
     }
+  }
+
+  /** set the exact Sketch point scale and keep the legacy scale bucket as fallback
+   * @param scale exact Sketch point scale
+   * @return true when the scale was accepted
+   */
+  boolean setExactPointScale( float scale )
+  {
+    if ( ! BrushManager.isPointScalable( mPointType ) ) return false;
+    float normalized = SketchPointScale.normalize( scale, getSketchPointScaleValue() );
+    mScale = SketchPointScale.nearestLegacyScale( normalized );
+    mSketchBrushStyle = ( mSketchBrushStyle == null ) ? SketchBrushStyle.pointScaleOnly( normalized ) : mSketchBrushStyle.withPointScale( normalized );
+    mOptions = SketchBrushStyleCodec.storeInOptions( mOptions, mSketchBrushStyle );
+    resetPath( 1.0f );
+    return true;
   }
 
   /** get the scale index
@@ -507,13 +527,7 @@ public class DrawingPointPath extends DrawingPath
    */
   public float getScaleValue() // FIX Asenov
   {
-    switch ( mScale ) {
-      case PointScale.SCALE_XS: return 0.50f;
-      case PointScale.SCALE_S:  return 0.72f;
-      case PointScale.SCALE_L:  return 1.41f;
-      case PointScale.SCALE_XL: return 2.00f;
-    }
-    return 1;
+    return SketchPointScale.legacyScaleValue( mScale );
   }
 
   /** @return exact Sketch point footprint scale with legacy bucket fallback
@@ -546,6 +560,7 @@ public class DrawingPointPath extends DrawingPath
   void setSketchBrushStyle( SketchBrushStyle style )
   {
     mSketchBrushStyle = style;
+    if ( style != null && style.hasPointScale() ) mScale = SketchPointScale.nearestLegacyScale( style.pointScaleOr( getScaleValue() ) );
     mOptions = SketchBrushStyleCodec.storeInOptions( mOptions, style );
     if ( mPath != null ) resetPath( 1.0f );
   }
@@ -562,6 +577,9 @@ public class DrawingPointPath extends DrawingPath
   {
     super.setOptions( options );
     mSketchBrushStyle = SketchBrushStyleCodec.fromOptions( mOptions );
+    if ( mSketchBrushStyle != null && mSketchBrushStyle.hasPointScale() ) {
+      mScale = SketchPointScale.nearestLegacyScale( mSketchBrushStyle.pointScaleOr( getScaleValue() ) );
+    }
     if ( mPath != null ) resetPath( 1.0f );
   }
       

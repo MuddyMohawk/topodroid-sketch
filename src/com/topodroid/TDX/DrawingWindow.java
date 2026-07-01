@@ -553,6 +553,7 @@ public class DrawingWindow extends ItemDrawer
 
   private boolean mRotateAzimuth; // whether to rotate azimuth button
   private boolean mPointerDown = false;
+  private float mPointDragBaseScale = SketchBrushStyle.DEFAULT_POINT_SCALE;
   private boolean mTouchActive = false;
   private boolean mEditMove;      // whether moving the selected point
   private boolean mShiftMove;     // whether to move the canvas in point-shift mode
@@ -3442,6 +3443,38 @@ public class DrawingWindow extends ItemDrawer
     if ( path != null ) path.setSketchBrushStyle( getActiveSketchBrushStyle() );
   }
 
+  private boolean isSmoothScalablePoint( int point )
+  {
+    return BrushManager.isPointScalable( point )
+        && ! BrushManager.isPointLabel( point )
+        && ! BrushManager.isPointPhoto( point )
+        && ! BrushManager.isPointAudio( point )
+        && ! BrushManager.isPointSection( point )
+        && ! BrushManager.isPointPicture( point )
+        && ! BrushManager.isPointReference( point )
+        && ! BrushManager.pointHasTextOrValue( point );
+  }
+
+  private void capturePointDragBaseScale()
+  {
+    SketchBrushStyle style = getActiveSketchBrushStyle();
+    mPointDragBaseScale = ( style == null ) ? SketchBrushStyle.DEFAULT_POINT_SCALE : style.pointScaleOr( SketchBrushStyle.DEFAULT_POINT_SCALE );
+  }
+
+  private void updatePointFromPlacementDrag( DrawingPointPath point, float x_shift, float y_shift, boolean landscape )
+  {
+    if ( point == null ) return;
+    if ( isSmoothScalablePoint( point.mPointType ) ) {
+      float distance = (float)Math.sqrt( x_shift * x_shift + y_shift * y_shift );
+      point.setExactPointScale( mPointDragBaseScale * SketchPointScale.scaleFromDragDistance( distance ) );
+    }
+    if ( BrushManager.isPointOrientable( point.mPointType ) ) {
+      float angle = TDMath.atan2d( x_shift, -y_shift );
+      if ( landscape ) angle = TDMath.in360( angle + 90.0f );
+      point.setOrientation( angle );
+    }
+  }
+
   // ------------------------------------- PUSH / POP INFO --------------------------------
   private long mSavedType;
   private int mSavedMode;
@@ -5830,9 +5863,8 @@ public class DrawingWindow extends ItemDrawer
         mCurrentAreaPath.addStartPoint( xs, ys );
         // TDLog.v( "start area start " + xs + " " + ys );
         mCurrentBrush.mouseDown( mDrawingSurface.getPreviewPath(), xc, yc );
-      // } else { // SymbolType.POINT
-        // mSaveX = xc; // FIXME-000
-        // mSaveY = yc;
+      } else { // SymbolType.POINT
+        capturePointDragBaseScale();
       }
       mSaveX = xc; // FIXME-000
       mSaveY = yc;
@@ -5956,7 +5988,6 @@ public class DrawingWindow extends ItemDrawer
           { // SymbolType.POINT
             // mLastLinePath = null;
             if ( ! mPointerDown ) {
-              float angle = 0;
               float radius = ( ( BrushManager.isPointOrientable( mCurrentPoint ) )? 6 : 2 ) * TDSetting.mPointingRadius;
               float shift = Math.abs( x_shift ) + Math.abs( y_shift );
               if ( shift > radius ) { // HBXP if big move, short move is original function
@@ -5978,14 +6009,7 @@ public class DrawingWindow extends ItemDrawer
                   if ( mLandscape ) {
                     DrawingPointPath point = new DrawingPointPath( mCurrentPoint, -ys, xs, mPointScale, mDrawingSurface.scrapIndex() );
                     applySketchBrushStyle( point );
-                    if ( BrushManager.isPointOrientable( mCurrentPoint ) ) {
-                      if ( shift > TDSetting.mPointingRadius ) {
-                        angle = TDMath.atan2d( x_shift, -y_shift );
-                        point.setOrientation( angle );
-                        //TDLog.v(" HBXP L orientation " + angle + " shift " + shift + " radius " + radius );
-                      }
-                      if ( ! BrushManager.isPointLabel( mCurrentPoint ) ) point.rotateBy( 90 );
-                    }
+                    updatePointFromPlacementDrag( point, x_shift, y_shift, true );
                     if ( !HBXP_PointDown ){ // HBXP To put it down just once
                       mDrawingSurface.addDrawingPath( point );
                       HBXP_PointDown = true;
@@ -5993,22 +6017,13 @@ public class DrawingWindow extends ItemDrawer
                     } else {
                       if ( mHotPath != null )
                         if ( mHotPath instanceof DrawingPointPath ) {
-                          int scale = (int) (shift / 150) - 2; if (scale>2)scale =2;// HBXP ?150
-                          //TDLog.v(" HBXP orientation " + angle + " shift " + shift + " radius " + radius + " scale " + scale );
-                          ((DrawingPointPath) mHotPath).setScale(scale);
-                          ((DrawingPointPath) mHotPath).setOrientation( angle );
+                          updatePointFromPlacementDrag( (DrawingPointPath)mHotPath, x_shift, y_shift, true );
                         }
                     }
                   } else {
                     DrawingPointPath point = new DrawingPointPath( mCurrentPoint, xs, ys, mPointScale, mDrawingSurface.scrapIndex() ); // no text, no options
                     applySketchBrushStyle( point );
-                    if ( BrushManager.isPointOrientable( mCurrentPoint ) ) {
-                      if ( shift > TDSetting.mPointingRadius ) {
-                        angle = TDMath.atan2d( x_shift, -y_shift );
-                        point.setOrientation( angle );
-                        // TDLog.v("P orientation " + angle + " shift " + shift + " radius " + radius );
-                      }
-                    }
+                    updatePointFromPlacementDrag( point, x_shift, y_shift, false );
                     if ( !HBXP_PointDown ){
                       mDrawingSurface.addDrawingPath( point );
                       HBXP_PointDown = true;
@@ -6016,10 +6031,7 @@ public class DrawingWindow extends ItemDrawer
                     } else {
                       if ( mHotPath != null )
                         if ( mHotPath instanceof DrawingPointPath ) {
-                          int scale = (int) (shift / 150) - 2; if (scale>2) scale = 2;// HBXP ?150
-                          //TDLog.v(" HBXP 2 orientation " + angle + " shift " + shift + " radius " + radius + " scale " + scale );
-                          ((DrawingPointPath) mHotPath).setScale(scale);
-                          ((DrawingPointPath) mHotPath).setOrientation( angle );
+                          updatePointFromPlacementDrag( (DrawingPointPath)mHotPath, x_shift, y_shift, false );
                         }
                     }
                   }
@@ -11424,9 +11436,10 @@ public class DrawingWindow extends ItemDrawer
    */
   private void setScaleToolbar( DrawingPointPath path )
   {
-    if ( path != null && ! ( path instanceof DrawingReferencePath ) ) {
-      int progress = 20 + 35 * ( 2 + path.getScale() );
-      mScaleBar.setProgress( progress );
+    if ( path != null && ! ( path instanceof DrawingReferencePath ) && BrushManager.isPointScalable( path.mPointType ) ) {
+      int progress = isSmoothScalablePoint( path.mPointType ) ? SketchPointScale.editProgressFromScale( path.getSketchPointScaleValue() )
+                                                             : 20 + 35 * ( 2 + path.getScale() );
+      mScaleBar.setProgress( Math.max( 0, Math.min( mScaleBar.getMax(), progress ) ) );
       // TDLog.v("set scale bar - progress " + progress + " scale " + path.getScale() + " visible " );
       mLayoutTools.setVisibility( View.VISIBLE );
       mLayoutToolsP.setVisibility( View.GONE );
@@ -11457,8 +11470,14 @@ public class DrawingWindow extends ItemDrawer
     } else if ( mHotPath instanceof DrawingReferencePath ) {
       return true;
     } else if ( mHotPath instanceof DrawingPointPath ) {
-      int scale = (int)((progress-1)/ 40) - 2;
-      ((DrawingPointPath)mHotPath).setScale( scale );
+      DrawingPointPath point = (DrawingPointPath)mHotPath;
+      if ( ! BrushManager.isPointScalable( point.mPointType ) ) return false;
+      if ( isSmoothScalablePoint( point.mPointType ) ) {
+        point.setExactPointScale( SketchPointScale.scaleFromEditProgress( progress ) );
+      } else {
+        int scale = (int)((progress-1)/ 40) - 2;
+        point.setScale( scale );
+      }
       // TDLog.v("set point scale " + progress + " scale " + scale );
     }
     return false;

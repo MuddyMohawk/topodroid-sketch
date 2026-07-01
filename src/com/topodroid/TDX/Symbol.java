@@ -233,6 +233,10 @@ public class Symbol implements SymbolInterface
    */
   public boolean isDeclinable() { return false; }
 
+  /** @return true if the symbol can be user-scaled - default to true
+   */
+  public boolean isScalable() { return true; }
+
   /** @return the symbol color - either the paint color of full white
    */
   public int getColor( ) { return getColor( 0xffffffff ); }

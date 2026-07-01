@@ -62,6 +62,7 @@ public class SymbolPoint extends Symbol
 
   int mHasText;                // whether the point has a text (1), value (2), or none (0)
   boolean mOrientable;         // PRIVATE
+  boolean mScalable = true;    // whether the user can scale point placements
   double mOrientation;         // orientation [degrees]
   boolean mDeclinable = false; // whether the symbol should be rotated by the declination (must be orientable)
   // SymbolPointBasic mPoint1; // basic point
@@ -76,6 +77,10 @@ public class SymbolPoint extends Symbol
   /** @return true if the point is declinable
    */
   @Override public boolean isDeclinable() { return mDeclinable; }
+
+  /** @return true if the point is scalable
+   */
+  @Override public boolean isScalable() { return mScalable; }
 
   // @Override public boolean isEnabled() { return mEnabled; }
   // @Override public void setEnabled( boolean enabled ) { mEnabled = enabled; }
@@ -161,6 +166,7 @@ public class SymbolPoint extends Symbol
   {
     super( Symbol.TYPE_POINT, null, null, fname, Symbol.W2D_DETAIL_SYM );
     mOrientable = false;
+    mScalable = true;
     mHasText = 0;
     mOrientation = 0.0;
     readFile( pathname, locale, iso );
@@ -189,6 +195,7 @@ public class SymbolPoint extends Symbol
     // mScaledPath = makeScaledPath( path, TDSetting.mSymbolSize );
     
     mOrientable  = orientable;
+    mScalable    = true;
     mHasText     = 0;
     mOrientation = 0.0;
     mDeclinable  = mOrientable && ( mHasText == 0 );
@@ -219,6 +226,7 @@ public class SymbolPoint extends Symbol
     // mScaledPath = makeScaledPath( path, TDSetting.mSymbolSize );
 
     mOrientable  = orientable;
+    mScalable    = true;
     mHasText     = has_text;
     mDeclinable  = mOrientable && ( mHasText == 0 );
     mOrientation = 0.0;
@@ -264,6 +272,7 @@ public class SymbolPoint extends Symbol
    *      has_text yes | NO
    *      has_value yes | NO
    *      orientation yes | NO
+   *      scalable yes | NO
    *      color 0xHHHHHH_COLOR
    *      style fill | STROKE 
    *      path
@@ -306,6 +315,7 @@ public class SymbolPoint extends Symbol
               th_name = null;
               color = TDColor.TRANSPARENT;
               path = null;
+              mScalable = true;
               in_symbol = true;
             }
           } else {
@@ -362,6 +372,13 @@ public class SymbolPoint extends Symbol
                 ++k; while ( k < s && vals[k].length() == 0 ) ++k;
                 if ( k < s ) {
                   mOrientable = ( vals[k].equals("yes") || vals[k].equals( TDString.ONE ) );
+                }
+              }
+            } else if ( vals[k].equals("scalable") ) {
+              if ( cnt == 0 ) {
+                ++k; while ( k < s && vals[k].length() == 0 ) ++k;
+                if ( k < s ) {
+                  mScalable = ( vals[k].equals("yes") || vals[k].equals( TDString.ONE ) );
                 }
               }
             } else if ( vals[k].equals("declination") ) {

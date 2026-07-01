@@ -57,6 +57,7 @@ import androidx.test.uiautomator.Until;
 import com.topodroid.prefs.TDSetting;
 import com.topodroid.prefs.TDPrefHelper;
 import com.topodroid.types.PointScale;
+import com.topodroid.ui.MotionEventWrap;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -858,6 +859,50 @@ final class VisualTestSupport
     waitForIdle();
   }
 
+  void dragPlaceOrdinaryPointWithActiveStyle( boolean orientable, double startX, double startY, float dx, float dy )
+  {
+    final Throwable[] error = new Throwable[1];
+    mInstrumentation.runOnMainSync( () -> {
+      try {
+        DrawingWindow window = requireCurrentDrawingWindow();
+        DrawingSurface surface = requireCurrentDrawingSurface( window );
+        int pointIndex = findOrdinaryPointIndex( orientable );
+        window.pointSelected( pointIndex, true );
+
+        float zoom = getPrivateFloat( window, "mZoom" );
+        PointF offset = (PointF)getPrivateField( window, "mOffset" );
+        assertNotNull( "DrawingWindow offset is null", offset );
+
+        float x0 = (float)( surface.getWidth() * startX );
+        float y0 = (float)( surface.getHeight() * startY );
+        float x1 = x0 + dx;
+        float y1 = y0 + dy;
+        float xs0 = x0 / zoom - offset.x;
+        float ys0 = y0 / zoom - offset.y;
+        float xs1 = x1 / zoom - offset.x;
+        float ys1 = y1 / zoom - offset.y;
+
+        Method down = DrawingWindow.class.getDeclaredMethod( "onTouchDown", float.class, float.class, float.class, float.class );
+        Method move = DrawingWindow.class.getDeclaredMethod( "onTouchMove", float.class, float.class, float.class, float.class, MotionEventWrap.class );
+        Method up = DrawingWindow.class.getDeclaredMethod( "onTouchUp", float.class, float.class, float.class, float.class );
+        down.setAccessible( true );
+        move.setAccessible( true );
+        up.setAccessible( true );
+        down.invoke( window, x0, y0, xs0, ys0 );
+        move.invoke( window, x1, y1, xs1, ys1, null );
+        up.invoke( window, x1, y1, xs1, ys1 );
+      } catch ( Throwable t ) {
+        error[0] = t;
+      }
+    } );
+    if ( error[0] != null ) {
+      Throwable cause = error[0].getCause();
+      if ( cause != null ) error[0] = cause;
+      throw new AssertionFailedError( "Unable to drag-place ordinary point: " + error[0].getMessage() );
+    }
+    waitForIdle();
+  }
+
   private boolean isOrdinaryPointIndex( int index )
   {
     return ! BrushManager.isPointLabel( index ) && ! BrushManager.isPointPhoto( index )
@@ -868,8 +913,13 @@ final class VisualTestSupport
 
   private int findOrdinaryPointIndex()
   {
+    return findOrdinaryPointIndex( false );
+  }
+
+  private int findOrdinaryPointIndex( boolean orientable )
+  {
     for ( int index = 0; index < BrushManager.getPointLibSize(); ++index ) {
-      if ( isOrdinaryPointIndex( index ) && ! BrushManager.isPointOrientable( index ) ) return index;
+      if ( isOrdinaryPointIndex( index ) && BrushManager.isPointOrientable( index ) == orientable ) return index;
     }
     for ( int index = 0; index < BrushManager.getPointLibSize(); ++index ) {
       if ( isOrdinaryPointIndex( index ) ) return index;
@@ -900,6 +950,51 @@ final class VisualTestSupport
     } );
     assertNotNull( "Latest point does not have a sketch brush style", style[0] );
     assertEquals( expectedWeight, style[0].weightOr( 0.0f ), 0.0001f );
+  }
+
+  void assertLatestPointBrushScale( float expectedScale, float delta )
+  {
+    final SketchBrushStyle[] style = new SketchBrushStyle[1];
+    mInstrumentation.runOnMainSync( () -> {
+      DrawingPointPath point = findLatestOrdinaryPointPath();
+      assertNotNull( "No ordinary point path found", point );
+      style[0] = SketchBrushStyleCodec.fromOptions( point.getOptions() );
+    } );
+    assertNotNull( "Latest point does not have a sketch brush style", style[0] );
+    assertEquals( expectedScale, style[0].pointScaleOr( 0.0f ), delta );
+  }
+
+  void assertLatestPointOrientation( float expectedOrientation, float delta )
+  {
+    final double[] orientation = new double[1];
+    mInstrumentation.runOnMainSync( () -> {
+      DrawingPointPath point = findLatestOrdinaryPointPath();
+      assertNotNull( "No ordinary point path found", point );
+      orientation[0] = point.mOrientation;
+    } );
+    assertEquals( expectedOrientation, (float)orientation[0], delta );
+  }
+
+  void setLatestPointEditScaleProgress( int progress )
+  {
+    final Throwable[] error = new Throwable[1];
+    mInstrumentation.runOnMainSync( () -> {
+      try {
+        DrawingWindow window = requireCurrentDrawingWindow();
+        DrawingPointPath point = findLatestOrdinaryPointPath();
+        assertNotNull( "No ordinary point path found", point );
+        setPrivateField( window, "mHotPath", point );
+        window.setPointScaleProgress( progress );
+      } catch ( Throwable t ) {
+        error[0] = t;
+      }
+    } );
+    if ( error[0] != null ) {
+      Throwable cause = error[0].getCause();
+      if ( cause != null ) error[0] = cause;
+      throw new AssertionFailedError( "Unable to set latest point scale progress: " + error[0].getMessage() );
+    }
+    waitForIdle();
   }
 
   private DrawingLinePath findLatestLinePath()

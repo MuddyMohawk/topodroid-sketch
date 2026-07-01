@@ -3,6 +3,11 @@
 The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles. 
 
 ## TODO
+- Area/fill 
+- Smooth point symbol stylus-drag scaling
+- Bake-to-vanilla export 
+- Make those toolbars less uggo.
+- more symbol behavior (sand/silt stamps, slope line)
 - Add safety warnings when importing vanilla TopoDroid stuff
 - per-symbol defaults? locking?
 - Option for rearranging render order (eg, survey station designations on top)
@@ -21,6 +26,8 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Had a bug where I placed a section cross-section but then couldn't select it via the edit tool. Wasn't replicable but noted here.
 
 ## Future possible features / brainstorming
+- 
+- UI/look-and-feel overhaul
 - Line-following for fast water area drawing
 - shadow sketching/cosurvey
 - investigate text-to-speech options
