@@ -190,6 +190,31 @@ public class SketchStyleBarInstrumentedTest
     }
   }
 
+  @Test
+  public void drawingWindow_shortLineTapDoesNotDelayNextStyleSelection() throws Exception
+  {
+    VisualTestSupport support = new VisualTestSupport( "style_bar_short_line_tap" );
+    try {
+      support.prepareForPhysicalCompatCase();
+      support.launchMainWindowOnAnyDevice();
+      support.deleteGeneratedSurveyAndArtifacts( SURVEY_STYLE_BAR );
+      support.createSurveyAndOpenShots( SURVEY_STYLE_BAR, "Style Test Team", "1", "style bar regression" );
+      support.addManualShot( "1", "2", "10.0", "90.0", "0.0", true );
+      support.openNewPlotFromShotWindow( PLOT_NAME, "1" );
+      support.enterDrawMode();
+
+      support.assertStyleBarVisible( "Thin", "Standard", "Thick" );
+      support.clickRecentLineByThName( SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD );
+      support.tapDrawingSurfaceNormalized( 0.50, 0.50 );
+      support.tapStyleButton( 3 );
+
+      support.drawCurveStrokeNormalized( 0.25, 0.45, 0.75, 0.48, 0.08, 8, 20 );
+      support.assertLatestLineBrushWeight( 5.0f );
+    } finally {
+      support.finish();
+    }
+  }
+
   private void assertStyle( int style, float weight, float pointScale, float opacity, boolean hasColor, int color )
   {
     SketchBrushStyle brushStyle = TDSetting.getSketchStyle( style );

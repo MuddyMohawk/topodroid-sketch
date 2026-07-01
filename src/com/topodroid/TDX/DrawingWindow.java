@@ -3270,6 +3270,12 @@ public class DrawingWindow extends ItemDrawer
     return mCurrentLinePath != null || mCurrentAreaPath != null;
   }
 
+  private void clearPendingSketchStroke()
+  {
+    mCurrentLinePath = null;
+    mCurrentAreaPath = null;
+  }
+
   private int getDisplayedSketchPreset()
   {
     return TDSetting.normalizeSketchPreset( ( mPendingSketchPreset != 0 ) ? mPendingSketchPreset : TDSetting.getActiveSketchPreset() );
@@ -5317,6 +5323,10 @@ public class DrawingWindow extends ItemDrawer
       if ( mMode == MODE_ERASE ) {
         finishErasing();
       }
+      clearPendingSketchStroke();
+      mDrawingSurface.resetPreviewPath();
+      updateSketchPresetButtons();
+      updateSketchStyleButtons();
       return true;
     } else {
       TDLog.e("on touch - unhandled action " + action );
@@ -5649,6 +5659,10 @@ public class DrawingWindow extends ItemDrawer
             // undoBtn.setEnabled(true);
             // redoBtn.setEnabled(false);
             // canRedo = false;
+          } else {
+            // A tap or too-short swipe should not leave the style/preset bars
+            // thinking that a stroke is still in progress.
+            clearPendingSketchStroke();
           }
         }
         else
