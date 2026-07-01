@@ -17,7 +17,7 @@ class SketchPointScale
 {
   private static final float MIN_SCALE = 0.05f;
   private static final float DEFAULT_SCALE = 1.0f;
-  private static final float DRAG_STEP = 150.0f;
+  private static final float DRAG_STEP = 75.0f;
 
   private static final float[] LEGACY_VALUES = { 0.50f, 0.72f, 1.0f, 1.41f, 2.0f };
   private static final int[] LEGACY_SCALES = {
