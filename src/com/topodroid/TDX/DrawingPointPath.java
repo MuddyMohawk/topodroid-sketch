@@ -830,7 +830,7 @@ public class DrawingPointPath extends DrawingPath
   String getExportOptions()
   {
     String options = BrushManager.isPointSection( mPointType ) ? SectionPointHelper.stripPlacementOptions( mOptions ) : mOptions;
-    return SketchBrushStyleCodec.stripOptions( options );
+    return SketchBrushStyleCodec.exportOptions( options );
   }
 
   /** write options in therion format

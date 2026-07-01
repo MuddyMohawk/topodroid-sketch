@@ -56,6 +56,7 @@ import androidx.test.uiautomator.Until;
 
 import com.topodroid.prefs.TDSetting;
 import com.topodroid.prefs.TDPrefHelper;
+import com.topodroid.types.PointScale;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -744,7 +745,7 @@ final class VisualTestSupport
     assertNotNull( "Missing drawing surface", surface );
     int tapX = surface.getVisibleBounds().left + (int)Math.round( surface.getVisibleBounds().width() * x );
     int tapY = surface.getVisibleBounds().top + (int)Math.round( surface.getVisibleBounds().height() * y );
-    mDevice.swipe( tapX, tapY, tapX, tapY, 120 );
+    mDevice.click( tapX, tapY );
     waitForIdle();
   }
 
@@ -819,18 +820,62 @@ final class VisualTestSupport
     mInstrumentation.runOnMainSync( () -> {
       DrawingWindow window = requireCurrentDrawingWindow();
       for ( int index = 0; index < BrushManager.getPointLibSize(); ++index ) {
-        if ( BrushManager.isPointLabel( index ) || BrushManager.isPointPhoto( index )
-          || BrushManager.isPointAudio( index ) || BrushManager.isPointSection( index )
-          || BrushManager.isPointPicture( index ) || BrushManager.isPointReference( index )
-          || BrushManager.pointHasTextOrValue( index ) ) {
-          continue;
+        if ( isOrdinaryPointIndex( index ) && ! BrushManager.isPointOrientable( index ) ) {
+          window.pointSelected( index, true );
+          return;
         }
+      }
+      for ( int index = 0; index < BrushManager.getPointLibSize(); ++index ) {
+        if ( ! isOrdinaryPointIndex( index ) ) continue;
         window.pointSelected( index, true );
         return;
       }
       fail( "No ordinary point symbol found" );
     } );
     waitForIdle();
+  }
+
+  void addOrdinaryPointWithActiveStyle( float x, float y )
+  {
+    final Throwable[] error = new Throwable[1];
+    mInstrumentation.runOnMainSync( () -> {
+      try {
+        DrawingWindow window = requireCurrentDrawingWindow();
+        DrawingSurface surface = requireCurrentDrawingSurface( window );
+        int pointIndex = findOrdinaryPointIndex();
+        DrawingPointPath point = new DrawingPointPath( pointIndex, x, y, PointScale.SCALE_M, surface.scrapIndex() );
+        Method applyStyle = DrawingWindow.class.getDeclaredMethod( "applySketchBrushStyle", DrawingPointPath.class );
+        applyStyle.setAccessible( true );
+        applyStyle.invoke( window, point );
+        surface.addDrawingPath( point );
+      } catch ( Throwable t ) {
+        error[0] = t;
+      }
+    } );
+    if ( error[0] != null ) {
+      throw new AssertionFailedError( "Unable to add styled ordinary point: " + error[0].getMessage() );
+    }
+    waitForIdle();
+  }
+
+  private boolean isOrdinaryPointIndex( int index )
+  {
+    return ! BrushManager.isPointLabel( index ) && ! BrushManager.isPointPhoto( index )
+      && ! BrushManager.isPointAudio( index ) && ! BrushManager.isPointSection( index )
+      && ! BrushManager.isPointPicture( index ) && ! BrushManager.isPointReference( index )
+      && ! BrushManager.pointHasTextOrValue( index );
+  }
+
+  private int findOrdinaryPointIndex()
+  {
+    for ( int index = 0; index < BrushManager.getPointLibSize(); ++index ) {
+      if ( isOrdinaryPointIndex( index ) && ! BrushManager.isPointOrientable( index ) ) return index;
+    }
+    for ( int index = 0; index < BrushManager.getPointLibSize(); ++index ) {
+      if ( isOrdinaryPointIndex( index ) ) return index;
+    }
+    fail( "No ordinary point symbol found" );
+    return -1;
   }
 
   void assertLatestLineBrushWeight( float expectedWeight )

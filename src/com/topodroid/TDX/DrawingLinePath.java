@@ -439,7 +439,7 @@ public class DrawingLinePath extends DrawingPointLinePath
 
   private String getExportOptions()
   {
-    return SketchBrushStyleCodec.stripOptions( mOptions );
+    return SketchBrushStyleCodec.exportOptions( mOptions );
   }
 
   private boolean useFixedPatternDensity()

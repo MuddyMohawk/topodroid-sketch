@@ -183,8 +183,7 @@ public class SketchStyleBarInstrumentedTest
       support.drawCurveStrokeNormalized( 0.25, 0.45, 0.75, 0.48, 0.08, 8, 20 );
       support.assertLatestLineBrushWeight( 5.0f );
 
-      support.selectFirstOrdinaryPointTool();
-      support.tapDrawingSurfaceNormalized( 0.52, 0.62 );
+      support.addOrdinaryPointWithActiveStyle( 80.0f, 120.0f );
       support.assertLatestPointBrushWeight( 5.0f );
     } finally {
       support.finish();

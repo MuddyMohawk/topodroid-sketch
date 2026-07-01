@@ -129,11 +129,11 @@ These sort into three execution tiers (see §6): **CI** (L1 + L2 Robolectric, ev
 
 Found while reading the import and upgrade paths. These are implementation items, separate from the test plan; several are prerequisites for the data-safety contract above. Ordered by priority.
 
-### 1. Add a pre-import snapshot (enables "back up, then overwrite")
+### 1. Add a pre-import snapshot (deferred beyond Phase 7)
 
 `Archiver.unArchive` decompresses `points.zip` / `lines.zip` / `areas.zip` straight into the **app-wide** symbol directories (`TDPath.getSymbolLineDirname()` and siblings) and then calls `BrushManager.reloadLineLibrary()` and `SketchLineSymbolManager.syncPrefsFromSymbolFiles()`. There is no backup: importing any survey that carries symbols overwrites the user's global symbols and resets the sketch-line width prefs. For a self-export this is the intended round-trip; for a foreign or older ZIP it silently clobbers the in-app-symbol-editor work.
 
-Suggested: before unzipping, copy the symbol dirs and sketch-line prefs to a restore folder, and keep it after import so the user can roll back. Guards invariant 2.
+Suggested for a later data-safety/compatibility sprint: before unzipping, copy the symbol dirs and sketch-line prefs to a restore folder, and keep it after import so the user can roll back. Phase 7 intentionally does not implement this because current field testers are alpha users and the NSS brush work needs only graceful vanilla degradation. Guards invariant 2 when revisited.
 
 ### 2. Warn on foreign-symbol import
 

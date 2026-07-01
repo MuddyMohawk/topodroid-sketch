@@ -8,13 +8,15 @@ The current tests are intended to catch obviously destructive TopoDroid Sketch r
 - Accidental storage-root mixups between `Documents/TopoDroid Sketch/` and vanilla `Documents/TDX/`.
 - Broken default Sketch drawing UI: 8 manual toolbar slots, 1 toolbar row, and presets `Fine`, `Smooth`, and `Straight`.
 - Sketch line drawing, visual rendering, ZIP export, and Sketch -> Sketch ZIP import regressions.
+- Sketch brush-style metadata staying private: `-tdx-brush` survives Sketch save/load and Sketch ZIP round trips, while Therion and cSurvey-style exports strip it.
 - Reference image visibility, transform, erasing, PNG export, and ZIP round-trip regressions.
 - Real Sketch -> vanilla -> Sketch ZIP compatibility on the physical ARM tablet using vanilla TopoDroid `6.4.53`.
 
 **What This Does Not Cover**
 - No automated S Pen, hardware button, Active Key, volume/action-binding, or Bluetooth-device testing. Hardware support is hard.
 - No vanilla-specific workflow correctness beyond install/launch/storage-root and the Sketch -> vanilla -> Sketch ZIP compatibility round trip.
-- No completed protection yet for failed DB migrations or the foreign ZIP symbol overwrite policy. Haven't made a decision for these yet.
+- No clean vanilla visual-conversion export for styled Sketch drawings; that is deferred to a future compatibility sprint.
+- No completed protection yet for failed DB migrations or the foreign ZIP symbol overwrite policy. Phase 7 intentionally defers symbol backup/staging because current testers are alpha users.
 
 *Nerd Stuff*
 
@@ -250,7 +252,7 @@ Physical compatibility test case:
   - Launches Sketch on the physical tablet without enforcing the emulator golden profile.
   - Creates the canonical survey with three shots: `1 -> 2`, `2 -> 3`, and a splay `2 -> 4`.
   - Opens plan sketch `1`.
-  - Draws six curved Sketch strokes covering presets `Fine` and `Smooth` across `user-fine`, `user-standard`, and `user-thick`.
+  - Draws styled Sketch content: Thin/Standard/Thick style strokes on the user line plus an ordinary styled point.
   - Exports a Sketch ZIP with personal symbols enabled.
   - Verifies the ZIP contains `lines.zip` and the expected Sketch line symbol entries.
   - Copies the ZIP to Downloads and starts vanilla through the exported ZIP import intent.
@@ -259,3 +261,4 @@ Physical compatibility test case:
   - Deletes only the generated Sketch survey/artifacts for that unique run name so the round-trip import is not blocked by a duplicate survey row.
   - Starts Sketch through the ZIP import intent with the vanilla-exported ZIP.
   - Waits for the survey to reappear in Sketch, opens the survey, opens plan sketch `1`, and captures `roundtrip-opened-in-sketch.png`.
+  - Does not assert style preservation through vanilla; successful open is the graceful-degradation contract.

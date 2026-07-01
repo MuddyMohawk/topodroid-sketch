@@ -82,7 +82,7 @@ public class PhysicalCompatInstrumentedTest
 
     progress( "create canonical Sketch survey" );
     createCanonicalSurveyAndOpenSketch( mSurveyName );
-    progress( "draw canonical Sketch lines" );
+    progress( "draw styled Sketch compatibility probe" );
     drawCanonicalSketch();
     progress( "export Sketch ZIP with symbols" );
     File sketchZip = exportSketchZip( mSurveyName );
@@ -155,26 +155,24 @@ public class PhysicalCompatInstrumentedTest
 
   private void drawCanonicalSketch()
   {
-    drawUserLineCurve( 1, SketchLineSymbolManager.LEGACY_TH_NAME_FINE,
-      0.08, 0.14, 0.48, 0.14,  0.04 );
-    drawUserLineCurve( 2, SketchLineSymbolManager.LEGACY_TH_NAME_FINE,
-      0.08, 0.26, 0.48, 0.26, -0.04 );
-    drawUserLineCurve( 1, SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD,
-      0.08, 0.38, 0.48, 0.38,  0.05 );
-    drawUserLineCurve( 2, SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD,
-      0.08, 0.50, 0.48, 0.50, -0.05 );
-    drawUserLineCurve( 1, SketchLineSymbolManager.LEGACY_TH_NAME_THICK,
-      0.08, 0.62, 0.48, 0.62,  0.06 );
-    drawUserLineCurve( 2, SketchLineSymbolManager.LEGACY_TH_NAME_THICK,
-      0.08, 0.74, 0.48, 0.74, -0.06 );
+    mSupport.assertStyleBarVisible( "Thin", "Standard", "Thick" );
+    drawStyledUserLineCurve( 1, 1, 0.08, 0.18, 0.48, 0.18,  0.04 );
+    drawStyledUserLineCurve( 2, 2, 0.08, 0.34, 0.48, 0.34, -0.05 );
+    drawStyledUserLineCurve( 3, 1, 0.08, 0.50, 0.48, 0.50,  0.06 );
+    mSupport.assertLatestLineBrushWeight( 5.0f );
+
+    mSupport.tapStyleButton( 3 );
+    mSupport.addOrdinaryPointWithActiveStyle( 80.0f, 120.0f );
+    mSupport.assertLatestPointBrushWeight( 5.0f );
     mSupport.setCanonicalToolbarState();
   }
 
-  private void drawUserLineCurve( int preset, String lineThName,
+  private void drawStyledUserLineCurve( int style, int preset,
     double startX, double startY, double endX, double endY, double curveOffset )
   {
+    mSupport.tapStyleButton( style );
     mSupport.tapPresetButton( preset );
-    mSupport.clickRecentLineByThName( lineThName );
+    mSupport.clickRecentLineByThName( SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD );
     mSupport.drawCurveStrokeNormalized( startX, startY, endX, endY, curveOffset, 30, 6 );
   }
 

@@ -50,7 +50,36 @@ public class SketchBrushStyleInstrumentedTest
     String options = SketchBrushStyleCodec.storeInOptions( "-scrap cave-1 -scale l", style );
 
     assertEquals( "-scrap cave-1 -scale l", SketchBrushStyleCodec.stripOptions( options ) );
+    assertEquals( "-scrap cave-1 -scale l", SketchBrushStyleCodec.exportOptions( options ) );
     assertNull( SketchBrushStyleCodec.fromOptions( SketchBrushStyleCodec.stripOptions( options ) ) );
+  }
+
+  @Test
+  public void storeInOptions_replacesExistingBrushTokens()
+  {
+    String messy = "-foo bar -tdx-brush w=1.0000,s=1.0000 -baz qux -tdx-brush w=2.0000";
+    String options = SketchBrushStyleCodec.storeInOptions( messy, SketchBrushStyle.of( 5.0f, 1.2f, 0.75f ) );
+
+    assertEquals( 1, countToken( options, "-tdx-brush" ) );
+    assertTrue( options.contains( "-foo bar" ) );
+    assertTrue( options.contains( "-baz qux" ) );
+    SketchBrushStyle parsed = SketchBrushStyleCodec.fromOptions( options );
+    assertNotNull( parsed );
+    assertEquals( 5.0f, parsed.weightOr( 0.0f ), 0.0001f );
+    assertEquals( 1.2f, parsed.pointScaleOr( 0.0f ), 0.0001f );
+    assertEquals( 0.75f, parsed.opacityOr( 0.0f ), 0.0001f );
+  }
+
+  @Test
+  public void fromOptions_duplicateBrushTokensUsesLastToken()
+  {
+    SketchBrushStyle parsed = SketchBrushStyleCodec.fromOptions(
+      "-tdx-brush w=1.0000,s=1.0000 -foo bar -tdx-brush w=5.0000,s=1.5000,o=0.5000" );
+
+    assertNotNull( parsed );
+    assertEquals( 5.0f, parsed.weightOr( 0.0f ), 0.0001f );
+    assertEquals( 1.5f, parsed.pointScaleOr( 0.0f ), 0.0001f );
+    assertEquals( 0.5f, parsed.opacityOr( 0.0f ), 0.0001f );
   }
 
   @Test
@@ -140,5 +169,14 @@ public class SketchBrushStyleInstrumentedTest
       inRun = foreground;
     }
     return runs;
+  }
+
+  private static int countToken( String options, String token )
+  {
+    int count = 0;
+    for ( String part : options.split( "\\s+" ) ) {
+      if ( token.equals( part ) ) ++count;
+    }
+    return count;
   }
 }

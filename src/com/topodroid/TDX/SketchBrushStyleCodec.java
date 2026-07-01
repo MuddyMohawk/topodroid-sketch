@@ -76,11 +76,16 @@ class SketchBrushStyleCodec
 
   static String storeInOptions( String options, SketchBrushStyle style )
   {
-    String stripped = stripOptions( options );
+    String stripped = exportOptions( options );
     if ( style == null || style.isEmpty() ) return stripped;
     String value = toOptionValue( style );
     if ( value == null || value.length() == 0 ) return stripped;
     return appendOption( stripped, OPTION_BRUSH, value );
+  }
+
+  static String exportOptions( String options )
+  {
+    return stripOptions( options );
   }
 
   static String stripOptions( String options )
@@ -137,15 +142,19 @@ class SketchBrushStyleCodec
   private static String getOptionValue( String options, String key )
   {
     if ( options == null ) return null;
+    String value = null;
     String[] tokens = options.trim().split( "\\s+" );
     for ( int i = 0; i < tokens.length; ++i ) {
       if ( key.equals( tokens[i] ) ) {
         while ( ++i < tokens.length ) {
-          if ( tokens[i].length() > 0 ) return tokens[i];
+          if ( tokens[i].length() > 0 ) {
+            if ( ! isOptionToken( tokens[i] ) ) value = tokens[i];
+            break;
+          }
         }
       }
     }
-    return null;
+    return value;
   }
 
   private static boolean isOptionToken( String token )
