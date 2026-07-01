@@ -1274,12 +1274,14 @@ public class TopoDroidApp extends Application
     }
 
     // Self-healing symbol install (no longer gated on the app-version change):
-    // run on first start (symbol_version null) and whenever the installed symbol files
+    // run on first start (symbol_version null), whenever the installed symbol files
     // have gone missing while the device DB survived (e.g. Android/data cleanup tools,
-    // install-over-existing). Without this the palette stays broken with only the
-    // built-in points and no discoverable recovery.
+    // install-over-existing), and whenever the packaged symbol set is newer than the
+    // installed one (SYMBOL_VERSION bump) so retuned symbol files reach devices.
+    // Without this the palette stays broken with only the built-in points and no
+    // discoverable recovery.
     String symbol_version = mDData.getValue( "symbol_version" );
-    if ( symbol_version == null || ! hasInstalledSymbolFiles() ) {
+    if ( symbol_version == null || ! TDVersion.SYMBOL_VERSION.equals( symbol_version ) || ! hasInstalledSymbolFiles() ) {
       installSymbols( true );
     }
 

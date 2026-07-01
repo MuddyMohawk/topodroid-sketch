@@ -4,25 +4,26 @@ name pit
 th_name pit
 group floor
 color 0xffffff 0xff
-width 8
+width 2
+# units: line-widths (1 = ink thickness); carrier/tick width 1 = line weight
 effect
   moveTo 0 1
-  lineTo 15 1
-  lineTo 15 0
-  lineTo 7 0
-  lineTo 7 -12
-  lineTo 6 -12
-  lineTo 6 0
+  lineTo 4.2 1
+  lineTo 4.2 0
+  lineTo 2.7 0
+  lineTo 2.7 -3.4
+  lineTo 1.7 -3.4
+  lineTo 1.7 0
   lineTo 0 0
 endeffect
 sketch_effect 1
   carrier 0 1
   stamp
-    moveTo 6 0
-    lineTo 7 0
-    lineTo 7 -12
-    lineTo 6 -12
-    lineTo 6 0
+    moveTo 1.7 0
+    lineTo 2.7 0
+    lineTo 2.7 -3.4
+    lineTo 1.7 -3.4
+    lineTo 1.7 0
   endstamp
 endsketch_effect
 endsymbol

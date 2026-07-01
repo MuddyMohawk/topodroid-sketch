@@ -4,20 +4,21 @@ name flowstone
 th_name flowstone
 group floor
 color 0xffffff 0xff
-width 0.2
+width 2
+# units: line-widths (1 = ink thickness); arcs stroke at the line weight
 effect
   moveTo 0 0
-  cubicTo 2 6 10 6 12 0
-  moveTo 12 0
-  cubicTo 14 6 22 6 24 0
+  cubicTo 0.56 1.68 2.8 1.68 3.36 0
+  moveTo 3.36 0
+  cubicTo 3.92 1.68 6.16 1.68 6.72 0
 endeffect
 sketch_effect 1
   stroke
   stamp
     moveTo 0 0
-    cubicTo 2 6 10 6 12 0
-    moveTo 12 0
-    cubicTo 14 6 22 6 24 0
+    cubicTo 0.56 1.68 2.8 1.68 3.36 0
+    moveTo 3.36 0
+    cubicTo 3.92 1.68 6.16 1.68 6.72 0
   endstamp
 endsketch_effect
 endsymbol
