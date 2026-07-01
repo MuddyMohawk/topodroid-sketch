@@ -604,8 +604,7 @@ class TDPrefKey
     new TDPrefKey( A, BOOL, UI, "DISTOX_AUTO_SECTION_PT", R.string.pref_auto_section_pt_title,R.string.pref_auto_section_pt_summary, TRUE ),
     new TDPrefKey( N, BOOL, UI, "DISTOX_AREA_BORDER",     R.string.pref_area_border_title,    R.string.pref_area_border_summary,     TRUE ),
     new TDPrefKey( N, FLT,  DR, "DISTOX_LINE_UNITS",      R.string.pref_line_units_title,     R.string.pref_line_units_summary,      "1.4" ),
-    new TDPrefKey( A, LONG, UI, "DISTOX_SLOPE_LSIDE",     R.string.pref_slope_lside_title,    R.string.pref_slope_lside_summary,     "20" ),
-    new TDPrefKey( N, BOOL, UI, "DISTOX_FIXED_LINE_PATTERNS", R.string.pref_fixed_line_patterns_title, R.string.pref_fixed_line_patterns_summary, TRUE )
+    new TDPrefKey( A, LONG, UI, "DISTOX_SLOPE_LSIDE",     R.string.pref_slope_lside_title,    R.string.pref_slope_lside_summary,     "20" )
   };
 
   /** point settings
@@ -655,8 +654,7 @@ class TDPrefKey
     new TDPrefKey( N, LONG, DR, "DISTOX_LINE_SEGMENT",    R.string.pref_segment_title,         R.string.pref_segment_message,         TDString.ONE ),
     new TDPrefKey( A, FLT,  UI, "DISTOX_ARROW_LENGTH",    R.string.pref_arrow_length_title,    R.string.pref_arrow_length_message,    "8" ),
     new TDPrefKey( A, BOOL, DR, "DISTOX_AUTO_SECTION_PT", R.string.pref_auto_section_pt_title, R.string.pref_auto_section_pt_summary, FALSE ),
-    new TDPrefKey( N, BOOL, UI, "DISTOX_AREA_BORDER",     R.string.pref_area_border_title,     R.string.pref_area_border_summary,     TRUE ),
-    new TDPrefKey( N, BOOL, UI, "DISTOX_FIXED_LINE_PATTERNS", R.string.pref_fixed_line_patterns_title, R.string.pref_fixed_line_patterns_summary, TRUE )
+    new TDPrefKey( N, BOOL, UI, "DISTOX_AREA_BORDER",     R.string.pref_area_border_title,     R.string.pref_area_border_summary,     TRUE )
   };
 
   /** sketch preset settings

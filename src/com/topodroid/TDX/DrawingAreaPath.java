@@ -340,34 +340,17 @@ public class DrawingAreaPath extends DrawingPointLinePath
     resetPathPaint();
   }
 
-  void shiftShaderBy( float dx, float dy, float s )
-  {
-    if ( mLocalShader != null ) {
-      // TDLog.v( "shift shader by " + dx + " " + dy + " scale " + s + " orient " + mOrientation );
-      Matrix mat = new Matrix();
-      // shader.getLocalMatrix( mat ); // set shader matrix even if shader did not have one
-      mat.postRotate( (float)mOrientation );
-      mat.postTranslate( 4*dx, 4*dy );
-      mat.postScale( s/4, s/4 );
-      mLocalShader.setLocalMatrix( mat );
-    }
-  }
-
+  // WORLD-SPACE INK: the shader local matrix is constant (rotation + 1/4 base
+  // scale, since shader bitmaps are 4x supersampled). Scene anchoring and zoom
+  // magnification come from the canvas scene->screen transform (canvas.concat),
+  // so there is no per-frame shader shifting anymore.
   private void resetPathPaint()
   {
     // TDLog.v( "area path reset paint orientation " + mOrientation );
-    // Bitmap bitmap = BrushManager.getAreaBitmap( mAreaType );
-    // if ( bitmap != null )
     if ( mLocalShader != null ) {
       Matrix mat = new Matrix();
       mat.postRotate( (float)mOrientation );
-      // int w = bitmap.getWidth();
-      // int h = bitmap.getHeight();
-      // Bitmap bitmap1 = Bitmap.createBitmap( bitmap, 0, 0, w, h, mat, true );
-      // Bitmap bitmap2 = Bitmap.createBitmap( bitmap1, w/4, h/4, w/2, h/2 );
-      // BitmapShader shader = new BitmapShader( bitmap2,
-      //   BrushManager.getAreaXMode( mAreaType ), BrushManager.getAreaYMode( mAreaType ) );
-      // mPaint.setShader( shader );
+      mat.postScale( 0.25f, 0.25f );
       mLocalShader.setLocalMatrix( mat );
     }
   }

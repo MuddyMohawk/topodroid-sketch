@@ -749,7 +749,6 @@ public class TDSetting
   public static int   mSketchGridColor = DEFAULT_SKETCH_GRID_COLOR;
   public static boolean mAreaOverlapDarken = true;
   public static float mLineThickness   = 1;    // width of drawing lines
-  public static boolean mFixedLinePatterns = true; // whether line path effects scale with the sketch
   public static final float DEFAULT_USER_LINE_FINE_WIDTH     = 1.0f;
   public static final float DEFAULT_USER_LINE_STANDARD_WIDTH = 2.0f;
   public static final float DEFAULT_USER_LINE_THICK_WIDTH    = 5.0f;
@@ -1678,7 +1677,6 @@ public class TDSetting
     mAreaBorder    = prefs.getBoolean( key[12].key, bool(key[12].dflt) );// DISTOX_AREA_BORDER
     mUnitLines     = tryFloat( prefs,  key[13].key,     key[13].dflt );  // DISTOX_LINE_UNITS
     mSlopeLSide    = tryInt(   prefs,  key[14].key,     key[14].dflt );  // DISTOX_SLOPE_LSIDE
-    mFixedLinePatterns = prefs.getBoolean( key[15].key, bool(key[15].dflt) ); // DISTOX_FIXED_LINE_PATTERNS
     int rawPresetSlots = tryInt( prefs, PRESET_SLOTS_KEY, TDString.FOUR );
     boolean resetPresetDefaults = tryInt( prefs, PRESET_DEFAULTS_VERSION_KEY, TDString.ZERO ) < SKETCH_PRESET_DEFAULTS_VERSION;
     if ( resetPresetDefaults ) rawPresetSlots = SKETCH_PRESET_DEFAULT;
@@ -3218,9 +3216,6 @@ public class TDSetting
       }
     } else if ( k.equals( key[ 14 ].key ) ) { // DISTOX_SLOPE_LSIDE
       ret = setSlopeLSide( tryIntValue( hlp, k, v, key[14].dflt ) );
-    } else if ( k.equals( key[ 15 ].key ) ) { // DISTOX_FIXED_LINE_PATTERNS
-      mFixedLinePatterns = tryBooleanValue( hlp, k, v, bool(key[15].dflt) );
-      TopoDroidApp.refreshDrawingAfterGridSettingsChange( false );
     } else {
       TDLog.e("missing LINE key: " + k );
     }
@@ -3357,9 +3352,6 @@ public class TDSetting
     //   mContinueLine  = tryIntValue( hlp, k, v, key[8].dflt );
     } else if ( k.equals( key[ 15 ].key ) ) { // DISTOX_AREA_BORDER (bool)
       mAreaBorder = tryBooleanValue( hlp, k, v, bool(key[15].dflt) );
-    } else if ( k.equals( key[ 16 ].key ) ) { // DISTOX_FIXED_LINE_PATTERNS
-      mFixedLinePatterns = tryBooleanValue( hlp, k, v, bool(key[16].dflt) );
-      TopoDroidApp.refreshDrawingAfterGridSettingsChange( false );
     // } else if ( k.equals( key[ 10 ].key ) ) { // DISTOX_REDUCE_ANGLE
     //   ret = setReduceAngle( tryFloatValue( hlp, k, v, key[10] ) );
     } else {
@@ -5046,7 +5038,6 @@ B DISTOX_SAP5_BIT16_BUG true
       k="DISTOX_USER_LINE_STANDARD_COLOR"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mUserLineStandardColor );
       k="DISTOX_USER_LINE_THICK_WIDTH"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mUserLineThickWidth );
       k="DISTOX_USER_LINE_THICK_COLOR"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mUserLineThickColor );
-      k="DISTOX_FIXED_LINE_PATTERNS";    if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mFixedLinePatterns) );
       k="DISTOX_SCALABLE_LABEL";        if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, mScalableLabel );
       k="DISTOX_XSECTION_OFFSET";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mXSectionOffset );
       k="DISTOX_CLOSENESS";             if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mSelectness );
@@ -5402,9 +5393,6 @@ B DISTOX_SAP5_BIT16_BUG true
               break;
             case "DISTOX_USER_LINE_THICK_COLOR":
               setUserLineThickColor( value ); setPreference( editor, kay, mUserLineThickColor );
-              break;
-            case "DISTOX_FIXED_LINE_PATTERNS":
-              mFixedLinePatterns = Boolean.parseBoolean( value ); setPreference( editor, kay, mFixedLinePatterns );
               break;
             case "DISTOX_SCALABLE_LABEL":
               mScalableLabel = Boolean.parseBoolean( value ); setPreference( editor, kay, mScalableLabel );

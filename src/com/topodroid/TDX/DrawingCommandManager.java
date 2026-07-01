@@ -1173,7 +1173,7 @@ public class DrawingCommandManager
     mOffy = dy * s;
 
     synchronized( mSyncScrap ) {
-      for ( Scrap scrap : mScraps ) scrap.shiftAreaShaders( dx, dy, s, landscape );
+      for ( Scrap scrap : mScraps ) scrap.setPathsLandscape( landscape );
     }
 
     // FIXME 

@@ -63,13 +63,14 @@ public class SymbolArea extends Symbol
   // @Override public void toggleEnabled() { mEnabled = ! mEnabled; }
 
   // FIXME AREA_ORIENT
-  @Override public boolean setAngle( float angle ) 
+  @Override public boolean setAngle( float angle )
   {
     if ( mBitmap == null ) return false;
     mOrientation = angle;
     // TDLog.e( "ERROR area symbol set orientation " + angle + " not supported" );
     android.graphics.Matrix m = new android.graphics.Matrix();
     m.preRotate( (float)mOrientation );
+    m.postScale( 0.25f, 0.25f ); // shader bitmaps are 4x supersampled
     mShader.setLocalMatrix( m );
     return true;
   }
@@ -119,6 +120,7 @@ public class SymbolArea extends Symbol
       if ( mShader != null ) {
         android.graphics.Matrix m = new android.graphics.Matrix();
         m.preRotate( (float)mOrientation );
+        m.postScale( 0.25f, 0.25f ); // shader bitmaps are 4x supersampled
         mShader.setLocalMatrix( m );
       }
     }
@@ -187,6 +189,9 @@ public class SymbolArea extends Symbol
         mShaderBitmap = Bitmap.createBitmap( bitmap, w1/2, h1/2, w1, h1 );
       }
       mShader = new BitmapShader( mShaderBitmap, x_mode, y_mode );
+      android.graphics.Matrix m = new android.graphics.Matrix();
+      m.postScale( 0.25f, 0.25f ); // shader bitmaps are 4x supersampled
+      mShader.setLocalMatrix( m );
       mPaint.setShader( mShader );
     }
   }

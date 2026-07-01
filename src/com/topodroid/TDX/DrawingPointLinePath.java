@@ -20,7 +20,10 @@ import com.topodroid.math.Point2D;
 import com.topodroid.math.BezierCurve;
 import com.topodroid.prefs.TDSetting;
 
+import android.graphics.Canvas;
+import android.graphics.Matrix;
 import android.graphics.Path;
+import android.graphics.RectF;
 import java.util.ArrayList;
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -736,10 +739,64 @@ public class DrawingPointLinePath extends DrawingPath
 
   /** close the path
    */
-  void closePath() 
+  void closePath()
   {
     mPath.close();
     // TDLog.v( "area close path" );
+  }
+
+  // ------------------------------------------------------------------
+  // WORLD-SPACE INK: sketch line/area geometry draws under the scene->screen
+  // transform (canvas.concat), so stroke widths [scene units] and patterns
+  // magnify uniformly with zoom / export scale.
+
+  /** draw in scene space
+   * @param canvas   canvas
+   * @param matrix   scene-to-screen transform
+   * @param bbox     clipping rectangle [scene coords]
+   */
+  @Override
+  public void draw( Canvas canvas, Matrix matrix, RectF bbox )
+  {
+    if ( ! intersects( bbox ) ) return;
+    int save = canvas.save();
+    try {
+      canvas.concat( matrix );
+      drawPath( mPath, canvas );
+    } finally {
+      canvas.restoreToCount( save );
+    }
+  }
+
+  /** draw in scene space, xoring the colors
+   * @param canvas   canvas
+   * @param matrix   scene-to-screen transform
+   * @param bbox     clipping rectangle [scene coords]
+   * @param xor_color xoring color
+   */
+  @Override
+  public void draw( Canvas canvas, Matrix matrix, RectF bbox, int xor_color )
+  {
+    if ( ! intersects( bbox ) ) return;
+    int save = canvas.save();
+    try {
+      canvas.concat( matrix );
+      drawPath( mPath, canvas, xor_color );
+    } finally {
+      canvas.restoreToCount( save );
+    }
+  }
+
+  @Override
+  public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox )
+  {
+    draw( canvas, matrix, bbox );
+  }
+
+  @Override
+  public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox, int xor_color )
+  {
+    draw( canvas, matrix, bbox, xor_color );
   }
 
   // ArrayList< LinePoint > getPoints() { return mPoints; }

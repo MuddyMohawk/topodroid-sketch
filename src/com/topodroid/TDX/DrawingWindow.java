@@ -5485,7 +5485,6 @@ public class DrawingWindow extends ItemDrawer
                     }
                     if ( add && ap != null && ap.size() > 2 ) {
                       ap.closePath();
-                      ap.shiftShaderBy( mOffset.x, mOffset.y, mZoom );
                       mDrawingSurface.addDrawingPath( ap );
                     }
                   }
@@ -5549,7 +5548,6 @@ public class DrawingWindow extends ItemDrawer
                         }
                         if ( ! tryAndJoin( ap, mCurrentAreaPath ) ) {
                           ap.closePath();
-                          ap.shiftShaderBy( mOffset.x, mOffset.y, mZoom );
                           mDrawingSurface.addDrawingPath( ap );
                         }
                         mLastLinePath = null;
@@ -5600,7 +5598,6 @@ public class DrawingWindow extends ItemDrawer
                         }
                         if ( ! tryAndJoin( ap, mCurrentAreaPath ) ) {
                           ap.closePath();
-                          ap.shiftShaderBy( mOffset.x, mOffset.y, mZoom );
                           mDrawingSurface.addDrawingPath( ap );
                         }
                         mLastLinePath = null;
@@ -5640,7 +5637,6 @@ public class DrawingWindow extends ItemDrawer
                   if ( mCurrentAreaPath != null ) {
                     if ( ! tryAndJoin( mCurrentAreaPath, mCurrentAreaPath ) ) {
                       mCurrentAreaPath.closePath();
-                      mCurrentAreaPath.shiftShaderBy( mOffset.x, mOffset.y, mZoom );
                       mDrawingSurface.addDrawingPath( mCurrentAreaPath );
                     }
                     mCurrentAreaPath = null;

@@ -18,7 +18,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import com.topodroid.prefs.TDSetting;
 import com.topodroid.types.PointScale;
 
 import org.junit.After;
@@ -45,17 +44,14 @@ public class NssSymbolSliceInstrumentedTest
   private Context mContext;
   private Context mPreviousContext;
   private Instrumentation mInstrumentation;
-  private boolean mPreviousFixedLinePatterns;
 
   @Before
   public void setUp()
   {
     mPreviousContext = TDInstance.context;
-    mPreviousFixedLinePatterns = TDSetting.mFixedLinePatterns;
     mInstrumentation = InstrumentationRegistry.getInstrumentation();
     mContext = mInstrumentation.getTargetContext().getApplicationContext();
     TDInstance.setContext( mContext );
-    TDSetting.mFixedLinePatterns = false;
     TopoDroidApp.installSymbols( R.raw.symbols_nss, true );
     BrushManager.reloadPointLibrary( mContext, mContext.getResources() );
     BrushManager.reloadLineLibrary( mContext.getResources() );
@@ -67,7 +63,6 @@ public class NssSymbolSliceInstrumentedTest
     TopoDroidApp.installSymbols( true );
     BrushManager.reloadPointLibrary( mContext, mContext.getResources() );
     BrushManager.reloadLineLibrary( mContext.getResources() );
-    TDSetting.mFixedLinePatterns = mPreviousFixedLinePatterns;
     TDInstance.context = mPreviousContext;
   }
 

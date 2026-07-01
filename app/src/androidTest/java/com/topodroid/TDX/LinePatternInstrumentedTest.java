@@ -16,15 +16,16 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import com.topodroid.prefs.TDSetting;
-
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 
+/** World-space ink model invariants:
+ *  - dash/pattern repeat count along a line is independent of zoom (patterns are scene geometry)
+ *  - ink thickness on screen scales linearly with zoom (pure magnification)
+ */
 @RunWith( AndroidJUnit4.class )
 @LargeTest
 public class LinePatternInstrumentedTest
@@ -36,42 +37,32 @@ public class LinePatternInstrumentedTest
   private static final float ORIGIN_X = 40.0f;
   private static final float ORIGIN_Y = 60.0f;
 
-  private boolean mPreviousFixedLinePatterns;
-
   @Before
   public void setUp()
   {
-    mPreviousFixedLinePatterns = TDSetting.mFixedLinePatterns;
     BrushManager.reloadLineLibrary( InstrumentationRegistry.getInstrumentation().getTargetContext().getResources() );
   }
 
-  @After
-  public void tearDown()
-  {
-    TDSetting.mFixedLinePatterns = mPreviousFixedLinePatterns;
-  }
-
   @Test
-  public void fixedLinePatternDensity_keepsDashRepeatCountStableAcrossZoom() throws Exception
+  public void dashRepeatCountIsStableAcrossZoom() throws Exception
   {
-    TDSetting.mFixedLinePatterns = true;
-
     int zoom1Runs = renderSectionLineAndCountRuns( 1.0f );
     int zoom4Runs = renderSectionLineAndCountRuns( 4.0f );
 
-    assertEquals( "Fixed-density dashed line repeat count changed across zoom", zoom1Runs, zoom4Runs, 1 );
+    assertEquals( "Dashed line repeat count changed across zoom", zoom1Runs, zoom4Runs, 1 );
   }
 
   @Test
-  public void legacyLinePatternDensity_changesDashRepeatCountAcrossZoom() throws Exception
+  public void inkThicknessScalesLinearlyWithZoom() throws Exception
   {
-    TDSetting.mFixedLinePatterns = false;
+    int lineType = BrushManager.getLineIndexByThName( SymbolLibrary.WALL );
+    assertTrue( "Wall line symbol is missing", lineType >= 0 );
 
-    int zoom1Runs = renderSectionLineAndCountRuns( 1.0f );
-    int zoom4Runs = renderSectionLineAndCountRuns( 4.0f );
+    int zoom1Thickness = renderPlainLineAndMeasureThickness( lineType, 1.0f );
+    int zoom4Thickness = renderPlainLineAndMeasureThickness( lineType, 4.0f );
 
-    assertTrue( "Legacy dashed line repeat count should grow when zooming in: "
-              + zoom1Runs + " -> " + zoom4Runs, zoom4Runs >= zoom1Runs * 2 );
+    assertTrue( "Ink thickness should magnify with zoom: " + zoom1Thickness + " -> " + zoom4Thickness,
+                zoom4Thickness >= 3 * zoom1Thickness && zoom4Thickness <= 5 * zoom1Thickness + 2 );
   }
 
   @Test
@@ -91,7 +82,7 @@ public class LinePatternInstrumentedTest
     Bitmap bitmap = Bitmap.createBitmap( 300, 260, Bitmap.Config.ARGB_8888 );
     bitmap.eraseColor( Color.BLACK );
     Canvas canvas = new Canvas( bitmap );
-    assertTrue( "Sketch carrier effect did not draw", effect.draw( canvas, line, whitePaint(), false, false ) );
+    assertTrue( "Sketch carrier effect did not draw", effect.draw( canvas, line, whitePaint(), false ) );
 
     PathMeasure measure = new PathMeasure( line, false );
     float[] pos = new float[2];
@@ -127,7 +118,7 @@ public class LinePatternInstrumentedTest
     Bitmap bitmap = Bitmap.createBitmap( 200, 120, Bitmap.Config.ARGB_8888 );
     bitmap.eraseColor( Color.BLACK );
     Canvas canvas = new Canvas( bitmap );
-    assertTrue( "Sketch dashed effect did not draw", effect.draw( canvas, line, whitePaint(), false, false ) );
+    assertTrue( "Sketch dashed effect did not draw", effect.draw( canvas, line, whitePaint(), false ) );
 
     assertEquals( "Dashed sketch stamps should reset once per dash-on segment",
                   5, countForegroundRuns( bitmap, 80 ) );
@@ -151,7 +142,7 @@ public class LinePatternInstrumentedTest
     Bitmap bitmap = Bitmap.createBitmap( 140, 140, Bitmap.Config.ARGB_8888 );
     bitmap.eraseColor( Color.BLACK );
     Canvas canvas = new Canvas( bitmap );
-    assertTrue( "Sketch curved dashed effect did not draw", effect.draw( canvas, line, whitePaint(), false, false ) );
+    assertTrue( "Sketch curved dashed effect did not draw", effect.draw( canvas, line, whitePaint(), false ) );
 
     PathMeasure measure = new PathMeasure( line, false );
     float[] pos = new float[2];
@@ -170,7 +161,7 @@ public class LinePatternInstrumentedTest
   {
     int lineType = BrushManager.getLineIndexByThName( SymbolLibrary.WALL_PRESUMED );
     assertTrue( "Presumed wall line symbol is missing", lineType >= 0 );
-    assertTrue( "Presumed wall line should be detected by actual paint path effect", BrushManager.hasLinePathEffect( lineType ) );
+    assertTrue( "Presumed wall line should have a pattern effect", BrushManager.hasLinePathEffect( lineType ) );
 
     DrawingLinePath line = new DrawingLinePath( lineType, 0 );
     line.addStartPoint( 0.0f, LINE_Y );
@@ -184,12 +175,49 @@ public class LinePatternInstrumentedTest
     Bitmap bitmap = Bitmap.createBitmap( WIDTH, HEIGHT, Bitmap.Config.ARGB_8888 );
     bitmap.eraseColor( Color.BLACK );
     Canvas canvas = new Canvas( bitmap );
-    line.draw( canvas, matrix, zoom, new RectF( -10.0f, -10.0f, LINE_LENGTH + 10.0f, LINE_Y + 10.0f ) );
+    line.draw( canvas, matrix, 1.0f / zoom, new RectF( -10.0f, -10.0f, LINE_LENGTH + 10.0f, LINE_Y + 10.0f ) );
 
     float[] points = new float[] { 0.0f, LINE_Y };
     matrix.mapPoints( points );
     int y = Math.max( 0, Math.min( HEIGHT - 1, Math.round( points[1] ) ) );
     return countForegroundRuns( bitmap, y );
+  }
+
+  private int renderPlainLineAndMeasureThickness( int lineType, float zoom )
+  {
+    DrawingLinePath line = new DrawingLinePath( lineType, 0 );
+    line.addStartPoint( 0.0f, LINE_Y );
+    line.addPoint( LINE_LENGTH, LINE_Y );
+    line.computeUnitNormal();
+
+    Matrix matrix = new Matrix();
+    matrix.setScale( zoom, zoom );
+    matrix.postTranslate( ORIGIN_X, ORIGIN_Y );
+
+    Bitmap bitmap = Bitmap.createBitmap( WIDTH, HEIGHT, Bitmap.Config.ARGB_8888 );
+    bitmap.eraseColor( Color.BLACK );
+    Canvas canvas = new Canvas( bitmap );
+    line.draw( canvas, matrix, 1.0f / zoom, new RectF( -10.0f, -10.0f, LINE_LENGTH + 10.0f, LINE_Y + 10.0f ) );
+
+    float[] points = new float[] { LINE_LENGTH * 0.5f, LINE_Y };
+    matrix.mapPoints( points );
+    int x = Math.max( 0, Math.min( WIDTH - 1, Math.round( points[0] ) ) );
+    return countVerticalThickness( bitmap, x );
+  }
+
+  private int countVerticalThickness( Bitmap bitmap, int x )
+  {
+    int best = 0;
+    int run = 0;
+    for ( int y = 0; y < bitmap.getHeight(); ++y ) {
+      if ( bitmap.getPixel( x, y ) != Color.BLACK ) {
+        ++run;
+        if ( run > best ) best = run;
+      } else {
+        run = 0;
+      }
+    }
+    return best;
   }
 
   private int countForegroundRuns( Bitmap bitmap, int y )
@@ -209,6 +237,7 @@ public class LinePatternInstrumentedTest
     Paint paint = new Paint();
     paint.setColor( Color.WHITE );
     paint.setStyle( Paint.Style.STROKE );
+    paint.setStrokeWidth( 1.0f ); // pattern unit: test geometry is authored 1:1
     return paint;
   }
 

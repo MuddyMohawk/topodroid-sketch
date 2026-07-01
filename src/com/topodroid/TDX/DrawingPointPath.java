@@ -424,25 +424,23 @@ public class DrawingPointPath extends DrawingPath
       if ( TDSetting.mUnscaledPoints ) {
         resetPath( 4 * scale );
       }
-      mTransformedPath = new Path( mPath );
-      if ( mLandscape && ! BrushManager.isPointOrientable( mPointType ) ) {
-	Matrix rot = new Matrix();
-	rot.postRotate( 90, cx, cy );
-	mTransformedPath.transform( rot );
-      }
-      mTransformedPath.transform( matrix );
-      drawSketchStyledPath( mTransformedPath, canvas );
-      if ( mLink != null ) {
-        Path link = new Path();
-        link.moveTo( cx, cy );
-	link.lineTo( mLink.getLinkX(), mLink.getLinkY() );
-        if ( mLandscape ) {
-	  Matrix rot = new Matrix();
-	  rot.postRotate( 90, cx, cy );
-	  link.transform( rot );
-	}
-        link.transform( matrix );
-        canvas.drawPath( link, BrushManager.fixedOrangePaint );
+      // WORLD-SPACE INK: draw in scene space; stroke widths [scene units]
+      // magnify with zoom / export scale via the canvas transform
+      int save = canvas.save();
+      try {
+        canvas.concat( matrix );
+        if ( mLandscape && ! BrushManager.isPointOrientable( mPointType ) ) {
+          canvas.rotate( 90, cx, cy );
+        }
+        drawSketchStyledPath( mPath, canvas );
+        if ( mLink != null ) {
+          Path link = new Path();
+          link.moveTo( cx, cy );
+          link.lineTo( mLink.getLinkX(), mLink.getLinkY() );
+          canvas.drawPath( link, BrushManager.fixedOrangePaint );
+        }
+      } finally {
+        canvas.restoreToCount( save );
       }
     }
   }
@@ -463,25 +461,21 @@ public class DrawingPointPath extends DrawingPath
       if ( TDSetting.mUnscaledPoints ) {
         resetPath( 4 * scale );
       }
-      mTransformedPath = new Path( mPath );
-      if ( mLandscape && ! BrushManager.isPointOrientable( mPointType ) ) {
-	Matrix rot = new Matrix();
-	rot.postRotate( 90, cx, cy );
-	mTransformedPath.transform( rot );
-      }
-      mTransformedPath.transform( matrix );
-      drawSketchStyledPath( mTransformedPath, canvas, xor_color );
-      if ( mLink != null ) {
-        Path link = new Path();
-        link.moveTo( cx, cy );
-	link.lineTo( mLink.getLinkX(), mLink.getLinkY() );
-        if ( mLandscape ) {
-	  Matrix rot = new Matrix();
-	  rot.postRotate( 90, cx, cy );
-	  link.transform( rot );
-	}
-        link.transform( matrix );
-        canvas.drawPath( link, BrushManager.fixedOrangePaint );
+      int save = canvas.save();
+      try {
+        canvas.concat( matrix );
+        if ( mLandscape && ! BrushManager.isPointOrientable( mPointType ) ) {
+          canvas.rotate( 90, cx, cy );
+        }
+        drawSketchStyledPath( mPath, canvas, xor_color );
+        if ( mLink != null ) {
+          Path link = new Path();
+          link.moveTo( cx, cy );
+          link.lineTo( mLink.getLinkX(), mLink.getLinkY() );
+          canvas.drawPath( link, BrushManager.fixedOrangePaint );
+        }
+      } finally {
+        canvas.restoreToCount( save );
       }
     }
   }

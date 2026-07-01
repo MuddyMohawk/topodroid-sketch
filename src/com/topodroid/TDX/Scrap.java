@@ -3092,17 +3092,14 @@ public class Scrap
 
   // AREA ACTIONS ----------------------------------------------------
 
-  void shiftAreaShaders( float dx, float dy, float s, boolean landscape )
+  // WORLD-SPACE INK: area shaders no longer shift per pan/zoom (the canvas
+  // transform anchors them to the scene); only the landscape flag propagates.
+  void setPathsLandscape( boolean landscape )
   {
     synchronized ( TDPath.mCommandsLock ) {
       for ( ICanvasCommand c : mCurrentStack ) {
         if ( c.commandType() == 0 ) {
-          DrawingPath path = (DrawingPath)c;
-          path.mLandscape = landscape;
-          if ( path.isArea() ) { // path instanceof DrawingAreaPath
-            DrawingAreaPath area = (DrawingAreaPath)path;
-            area.shiftShaderBy( dx, dy, s );
-          }
+          ((DrawingPath)c).mLandscape = landscape;
         }
       }
     }

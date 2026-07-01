@@ -122,18 +122,26 @@ public class SketchBrushStyleInstrumentedTest
   @Test
   public void lineSymbolEffect_scalesRepeatAdvanceFromWeight()
   {
-    LineSymbolEffect effect = new LineSymbolEffect( rectanglePath( 0.0f, 0.0f, 8.0f, 2.0f ),
-                                                    rectanglePath( 0.0f, 0.0f, 8.0f, -2.0f ),
-                                                    10.0f, null );
-    Path line = new Path();
-    line.moveTo( 10.0f, 20.0f );
-    line.lineTo( 160.0f, 20.0f );
+    // world-space ink model: the paint stroke width (weight * line thickness)
+    // is the pattern unit, so a heavier weight enlarges stamps and advance
+    float previous = TDSetting.mLineThickness;
+    TDSetting.mLineThickness = 1.0f;
+    try {
+      LineSymbolEffect effect = new LineSymbolEffect( rectanglePath( 0.0f, 0.0f, 8.0f, 2.0f ),
+                                                      rectanglePath( 0.0f, 0.0f, 8.0f, -2.0f ),
+                                                      10.0f, null );
+      Path line = new Path();
+      line.moveTo( 10.0f, 20.0f );
+      line.lineTo( 160.0f, 20.0f );
 
-    int standard = renderEffectAndCountRuns( effect, line, SketchBrushStyle.of( 2.0f, 1.0f, 1.0f ) );
-    int thick = renderEffectAndCountRuns( effect, line, SketchBrushStyle.of( 5.0f, 1.0f, 1.0f ) );
+      int standard = renderEffectAndCountRuns( effect, line, SketchBrushStyle.of( 2.0f, 1.0f, 1.0f ) );
+      int thick = renderEffectAndCountRuns( effect, line, SketchBrushStyle.of( 5.0f, 1.0f, 1.0f ) );
 
-    assertTrue( "Thick style should reduce repeat count by increasing advance: " + standard + " -> " + thick,
-                thick < standard );
+      assertTrue( "Thick style should reduce repeat count by increasing advance: " + standard + " -> " + thick,
+                  thick < standard );
+    } finally {
+      TDSetting.mLineThickness = previous;
+    }
   }
 
   private static int renderEffectAndCountRuns( LineSymbolEffect effect, Path line, SketchBrushStyle style )
@@ -144,7 +152,9 @@ public class SketchBrushStyleInstrumentedTest
     Paint paint = new Paint();
     paint.setColor( Color.WHITE );
     paint.setStyle( Paint.Style.STROKE );
-    assertTrue( effect.draw( canvas, line, paint, false, false, style ) );
+    paint.setStrokeWidth( 1.0f );
+    Paint styled = SketchBrushRenderer.linePaint( paint, style );
+    assertTrue( effect.draw( canvas, line, styled, false ) );
     return countForegroundRuns( bitmap, 20 );
   }
 

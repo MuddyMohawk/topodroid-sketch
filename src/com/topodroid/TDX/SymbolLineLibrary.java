@@ -22,7 +22,6 @@ import com.topodroid.util.TDLocale;
 import java.io.File; // external app files
 
 import android.graphics.Paint;
-import android.graphics.DashPathEffect;
 import android.content.res.Resources;
 
 public class SymbolLineLibrary extends SymbolLibrary
@@ -77,9 +76,14 @@ public class SymbolLineLibrary extends SymbolLibrary
 
   boolean hasPathEffect( int k )
   {
-    if ( k < 0 || k >= size() ) return false;
-    SymbolLine symbol = (SymbolLine)mSymbols.get(k);
-    return symbol.mPaint.getPathEffect() != null || symbol.mRevPaint.getPathEffect() != null;
+    return hasEffect( k );
+  }
+
+  /** @return dash intervals [line-width units] of the symbol, or null */
+  float[] getLineDashBase( int k )
+  {
+    if ( k < 0 || k >= size() ) return null;
+    return ((SymbolLine)mSymbols.get(k)).getDashBase();
   }
 
   Paint getLinePaint( int k, boolean reversed )
@@ -87,13 +91,6 @@ public class SymbolLineLibrary extends SymbolLibrary
     if ( k < 0 || k >= size() ) return BrushManager.errorPaint;
     SymbolLine s = (SymbolLine)mSymbols.get(k);
     return reversed ? s.mRevPaint : s.mPaint;
-  }
-
-  Paint getLineFixedPaint( int k, boolean reversed )
-  {
-    if ( k < 0 || k >= size() ) return BrushManager.errorPaint;
-    SymbolLine s = (SymbolLine)mSymbols.get(k);
-    return s.getFixedPaint( reversed );
   }
 
   // ========================================================================
@@ -109,16 +106,12 @@ public class SymbolLineLibrary extends SymbolLibrary
     symbol = new SymbolLine( res.getString( R.string.thl_wall ), WALL, WALL, WALL, 0xffffffff, 2, DrawingLevel.LEVEL_WALL, Symbol.W2D_WALLS_SHP );
     addSymbol( symbol );
 
+    // dash intervals in line-width units: 3 and 6 line-widths (0.75 / 1.5 scene units at width 0.25)
     float[] x = new float[2];
-    x[0] = 0.75f;
-    x[1] = 1.5f;
-    DashPathEffect dash = new DashPathEffect( x, 0 );
-    float[] fixed_x = new float[2];
-    fixed_x[0] = x[0] * SymbolLine.FIXED_PATTERN_SCALE;
-    fixed_x[1] = x[1] * SymbolLine.FIXED_PATTERN_SCALE;
-    DashPathEffect fixed_dash = new DashPathEffect( fixed_x, 0 );
+    x[0] = 3.0f;
+    x[1] = 6.0f;
     // String section = res.getString ( R.string.p_section );
-    symbol = new SymbolLine( res.getString( R.string.thl_section ), SECTION, null, SECTION, 0xbfcccccc, 0.25f, dash, dash, fixed_dash, fixed_dash, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SHP );
+    symbol = new SymbolLine( res.getString( R.string.thl_section ), SECTION, null, SECTION, 0xbfcccccc, 0.25f, x, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SHP );
     addSymbol( symbol );
 
     // mSymbolNr = mSymbols.size();

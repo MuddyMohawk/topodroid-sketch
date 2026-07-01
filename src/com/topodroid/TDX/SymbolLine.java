@@ -3,7 +3,12 @@
  * @author marco corvi
  * @date dec 2012
  *
- * @brief TopoDroid drawing: line symbol
+ * @brief TopoDroid drawing: line symbol (world-space ink model)
+ *
+ * Pattern geometry in symbol files (effect, sketch_effect, dash) is authored in
+ * LINE-WIDTH UNITS: a value of 1 equals one ink thickness. Rendering scales the
+ * pattern by the placement stroke width (scene units), so patterns follow the
+ * line weight, and follow zoom / export scale via the canvas transform.
  * --------------------------------------------------------
  *  Copyright This software is distributed under GPL-3.0 or later
  *  See the file COPYING.
@@ -23,7 +28,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 
-
 import android.graphics.Path;
 import android.graphics.Paint;
 import android.graphics.PathEffect;
@@ -31,28 +35,27 @@ import android.graphics.ComposePathEffect;
 import android.graphics.DashPathEffect;
 import android.graphics.PathDashPathEffect;
 import android.graphics.RectF;
-// import android.graphics.PathDashPathEffect.Style;
 import android.graphics.Matrix;
 
 public class SymbolLine extends Symbol
 {
-  static final float FIXED_PATTERN_SCALE = 0.4f;
+  // preview pattern unit [scene units per line-width unit] - toolbar/palette eye-candy only
   private static final float PREVIEW_PATTERN_UNIT_LINES = 1.4f;
 
   String mName;       // local name
-  Paint  mPaint;      // forward paint
+  Paint  mPaint;      // forward paint - stroke width [scene units] = width * TDSetting.mLineThickness
   Paint  mRevPaint;   // reverse paint
-  Paint  mFixedPaint; // forward fixed-density paint
-  Paint  mRevFixedPaint; // reverse fixed-density paint
-  Paint  mPreviewPaint; // preview paint independent of line-style scale
-  Paint  mRevPreviewPaint; // reverse preview paint independent of line-style scale
-  boolean mHasEffect; // whether the line paint has path-effect
+  Paint  mPreviewPaint; // preview paint independent of scene scaling
+  Paint  mRevPreviewPaint; // reverse preview paint
+  boolean mHasEffect; // whether the line has a pattern effect
   LineSymbolEffect mLineEffect;
   Path mPath;
   Path mPreviewPath;
   boolean mStyleStraight;
   boolean mClosed;
   int mStyleX;            // X times (one out of how many point to use)
+  private float[] mDashBase; // dash intervals [line-width units], or null
+  private float mWidth = 1;  // declared line width [line-width units]
 
   @Override public String getName()  { return mName; }
   // @Override public String getThName( ) { return mThName; } // same as in Symbol.java
@@ -64,24 +67,17 @@ public class SymbolLine extends Symbol
     return ( mPreviewPaint != null )? mPreviewPaint : mPaint;
   }
 
-  Paint getFixedPaint( boolean reversed )
-  {
-    Paint paint = reversed ? mRevFixedPaint : mFixedPaint;
-    return ( paint != null )? paint : ( reversed ? mRevPaint : mPaint );
-  }
+  /** @return dash intervals in line-width units, or null */
+  float[] getDashBase() { return mDashBase; }
+
+  /** @return the declared line width [line-width units] */
+  float getWidth() { return mWidth; }
 
   // /** @return the line color - default to black = use Symbol::getColor
   //  */
   // @Override public int getColor() { return (mPaint == null)? 0 : mPaint.getColor(); }
 
   @Override public Path   getPath()  { return ( mPreviewPath != null )? mPreviewPath : mPath; }
-
-  // @Override public boolean isOrientable() { return false; }
-  // @Override public boolean isEnabled() { return mEnabled; }
-  // @Override public void setEnabled( boolean enabled ) { mEnabled = enabled; }
-  // @Override public void toggleEnabled() { mEnabled = ! mEnabled; }
-  // @Override public boolean setAngle( float angle ) { }
-  // @Override public int getAngle() { return 0; }
 
   // width = 1;
   // no effect
@@ -91,7 +87,6 @@ public class SymbolLine extends Symbol
     init( name, color, 1 );
     makeLinePath();
     mLevel = level;
-    // TDLog.v("LINE-1 " + th_name + " group " + group );
   }
 
   // no effect
@@ -101,24 +96,16 @@ public class SymbolLine extends Symbol
     init( name, color, width );
     makeLinePath();
     mLevel = level;
-    // TDLog.v("LINE-2 " + th_name + " group " + group );
   }
 
-  SymbolLine( String name, String th_name, String group, String fname, int color, float width, PathEffect effect_dir, PathEffect effect_rev, int level, int rt )
-  {
-    this( name, th_name, group, fname, color, width, effect_dir, effect_rev, effect_dir, effect_rev, level, rt );
-  }
-
-  SymbolLine( String name, String th_name, String group, String fname, int color, float width,
-              PathEffect effect_dir, PathEffect effect_rev, PathEffect fixed_effect_dir, PathEffect fixed_effect_rev,
-              int level, int rt )
+  /** dashed line
+   * @param dash_lw  dash intervals [line-width units]
+   */
+  SymbolLine( String name, String th_name, String group, String fname, int color, float width, float[] dash_lw, int level, int rt )
   {
     super( Symbol.TYPE_LINE, th_name, group, fname, rt );
     init( name, color, width );
-    mPaint.setPathEffect( effect_dir );
-    mRevPaint.setPathEffect( effect_rev );
-    setFixedPatternPaints( fixed_effect_dir, fixed_effect_rev );
-    mHasEffect = true;
+    setDash( dash_lw );
     makeLinePath();
     mLevel = level;
   }
@@ -126,27 +113,46 @@ public class SymbolLine extends Symbol
   private void init( String name, int color, float width )
   {
     mName   = name;
+    mWidth  = ( width > 0 )? width : 1;
     mPaint  = new Paint();
     mPaint.setDither(true);
     mPaint.setColor( color );
     mPaint.setStyle(Paint.Style.STROKE);
     mPaint.setStrokeJoin(Paint.Join.ROUND);
     mPaint.setStrokeCap(Paint.Cap.ROUND);
-    mPaint.setStrokeWidth( width * TDSetting.mLineThickness );
+    mPaint.setStrokeWidth( mWidth * TDSetting.mLineThickness );
     mRevPaint = new Paint (mPaint );
-    mFixedPaint = null;
-    mRevFixedPaint = null;
     mPreviewPaint = null;
     mRevPreviewPaint = null;
     mPreviewPath = null;
     mHasEffect = false;
     mLineEffect = null;
+    mDashBase = null;
     mStyleStraight = false;
     mClosed = false;
     mStyleX = 1;
   }
 
-  SymbolLine( String filepath, String fname, String locale, String iso ) 
+  private void setDash( float[] dash_lw )
+  {
+    if ( dash_lw == null || dash_lw.length < 2 ) return;
+    mDashBase = dash_lw;
+    mHasEffect = true;
+    float unit = mPaint.getStrokeWidth();
+    mPaint.setPathEffect( scaledDashEffect( dash_lw, unit ) );
+    mRevPaint.setPathEffect( scaledDashEffect( dash_lw, unit ) );
+  }
+
+  /** @return a DashPathEffect with intervals scaled by the given unit, or null */
+  static DashPathEffect scaledDashEffect( float[] dash_lw, float unit )
+  {
+    if ( dash_lw == null || dash_lw.length < 2 || unit <= 0 ) return null;
+    float[] x = new float[ dash_lw.length ];
+    for ( int k = 0; k < dash_lw.length; ++k ) x[k] = Math.max( 0.01f, dash_lw[k] * unit );
+    return new DashPathEffect( x, 0 );
+  }
+
+  SymbolLine( String filepath, String fname, String locale, String iso )
   {
     super( Symbol.TYPE_LINE, null, null, fname, Symbol.W2D_DETAIL_SHP );
     mStyleStraight = false;
@@ -167,16 +173,6 @@ public class SymbolLine extends Symbol
 
   private int k_val; // index in array vals[]
 
-  private void setFixedPatternPaints( PathEffect effect_dir, PathEffect effect_rev )
-  {
-    mFixedPaint = new Paint( mPaint );
-    mFixedPaint.setStrokeWidth( mPaint.getStrokeWidth() * FIXED_PATTERN_SCALE );
-    mFixedPaint.setPathEffect( effect_dir );
-    mRevFixedPaint = new Paint( mRevPaint );
-    mRevFixedPaint.setStrokeWidth( mRevPaint.getStrokeWidth() * FIXED_PATTERN_SCALE );
-    mRevFixedPaint.setPathEffect( effect_rev );
-  }
-
   private void setPreviewPatternPaints( PathEffect effect_dir, PathEffect effect_rev, float stroke_width )
   {
     mPreviewPaint = new Paint( mPaint );
@@ -187,18 +183,19 @@ public class SymbolLine extends Symbol
     mRevPreviewPaint.setPathEffect( effect_rev );
   }
 
-  private void setSketchStrokePreview( SketchEffectData sketch_effect, float stroke_width )
+  private void setSketchStrokePreview( SketchEffectData sketch_effect, float preview_unit, float stroke_width )
   {
     if ( sketch_effect == null || ! sketch_effect.strokeStamp || sketch_effect.path_dir == null ) return;
+    Path scaled = scaledPath( sketch_effect.path_dir, preview_unit );
     RectF bounds = new RectF();
-    sketch_effect.path_dir.computeBounds( bounds, true );
+    scaled.computeBounds( bounds, true );
     if ( bounds.isEmpty() || bounds.width() <= 0 ) return;
 
     Path preview = new Path();
     float advance = Math.max( 1.0f, bounds.width() );
     float y_offset = -0.5f * ( bounds.top + bounds.bottom );
     for ( float x = -50.0f; x < 50.0f; x += advance ) {
-      Path stamp = new Path( sketch_effect.path_dir );
+      Path stamp = new Path( scaled );
       stamp.offset( x - bounds.left, y_offset );
       preview.addPath( stamp );
     }
@@ -252,7 +249,7 @@ public class SymbolLine extends Symbol
     boolean strokeStamp = false;
   }
 
-  private SketchEffectData readSketchEffect( BufferedReader br, String filename, float unit ) throws IOException
+  private SketchEffectData readSketchEffect( BufferedReader br, String filename ) throws IOException
   {
     SketchEffectData data = new SketchEffectData();
     boolean in_stamp = false;
@@ -276,47 +273,47 @@ public class SymbolLine extends Symbol
       } else if ( vals[k].equals("carrier") ) {
         try {
           k_val = k;
-          float y0 = nextFloat( vals, s, unit );
-          float y1 = nextFloat( vals, s, unit );
+          float y0 = nextFloat( vals, s, 1.0f );
+          float y1 = nextFloat( vals, s, 1.0f );
           data.carriers.add( new LineSymbolEffect.Carrier( y0, y1 ) );
         } catch ( NumberFormatException e ) {
           TDLog.e( filename + " parse sketch carrier error: " + line );
         }
       } else if ( in_stamp ) {
-        readSketchEffectPathCommand( filename, line, vals, s, k, data.path_dir, data.path_rev, unit );
+        readSketchEffectPathCommand( filename, line, vals, s, k, data.path_dir, data.path_rev );
       }
     }
     return data;
   }
 
   private void readSketchEffectPathCommand( String filename, String line, String[] vals, int s, int k,
-                                            Path path_dir, Path path_rev, float unit )
+                                            Path path_dir, Path path_rev )
   {
     try {
       k_val = k;
       if ( vals[k].equals("moveTo") ) {
-        float x = nextFloat( vals, s, unit );
-        float y = nextFloat( vals, s, unit );
+        float x = nextFloat( vals, s, 1.0f );
+        float y = nextFloat( vals, s, 1.0f );
         path_dir.moveTo( x, y );
         path_rev.moveTo( x, -y );
       } else if ( vals[k].equals("lineTo") ) {
-        float x = nextFloat( vals, s, unit );
-        float y = nextFloat( vals, s, unit );
+        float x = nextFloat( vals, s, 1.0f );
+        float y = nextFloat( vals, s, 1.0f );
         path_dir.lineTo( x, y );
         path_rev.lineTo( x, -y );
       } else if ( vals[k].equals("cubicTo") ) {
-        float x1 = nextFloat( vals, s, unit );
-        float y1 = nextFloat( vals, s, unit );
-        float x2 = nextFloat( vals, s, unit );
-        float y2 = nextFloat( vals, s, unit );
-        float x3 = nextFloat( vals, s, unit );
-        float y3 = nextFloat( vals, s, unit );
+        float x1 = nextFloat( vals, s, 1.0f );
+        float y1 = nextFloat( vals, s, 1.0f );
+        float x2 = nextFloat( vals, s, 1.0f );
+        float y2 = nextFloat( vals, s, 1.0f );
+        float x3 = nextFloat( vals, s, 1.0f );
+        float y3 = nextFloat( vals, s, 1.0f );
         path_dir.cubicTo( x1,  y1, x2,  y2, x3,  y3 );
         path_rev.cubicTo( x1, -y1, x2, -y2, x3, -y3 );
       } else if ( vals[k].equals("addCircle") ) {
-        float x = nextFloat( vals, s, unit );
-        float y = nextFloat( vals, s, unit );
-        float r = nextFloat( vals, s, unit );
+        float x = nextFloat( vals, s, 1.0f );
+        float y = nextFloat( vals, s, 1.0f );
+        float r = nextFloat( vals, s, 1.0f );
         path_dir.addCircle( x,  y, r, Path.Direction.CCW );
         path_rev.addCircle( x, -y, r, Path.Direction.CCW );
       }
@@ -326,19 +323,19 @@ public class SymbolLine extends Symbol
   }
 
   /** create a symbol reading it from a file
-   *  The file syntax is 
+   *  The file syntax is
    *      symbol line
    *      name NAME
    *      th_name THERION_NAME
    *      group GROUP_NAME
    *      color 0xHHHHHH_COLOR 0xAA_ALPHA
    *      width WIDTH
-   *      dash x1 y1 x2 y2 ...
+   *      dash x1 y1 x2 y2 ...        [line-width units]
    *      style straight | xN
-   *      effect
+   *      effect                      [line-width units]
    *        command: moveTo lineTo cubicTo addCircle
    *      endeffect
-   *      sketch_effect 1
+   *      sketch_effect 1             [line-width units]
    *        stroke
    *        carrier Y0 Y1
    *        stamp
@@ -350,8 +347,7 @@ public class SymbolLine extends Symbol
   private void readFile( String filename, String locale, String iso )
   {
     // TDLog.v( "SL load line file " + filename );
-    float unit = TDSetting.mUnitLines * TDSetting.mLineThickness;
-    float preview_scale = PREVIEW_PATTERN_UNIT_LINES / TDSetting.mUnitLines;
+    float preview_unit = PREVIEW_PATTERN_UNIT_LINES * TDSetting.mLineThickness;
     String name    = null;
     String th_name = null;
     String group   = null;
@@ -362,14 +358,7 @@ public class SymbolLine extends Symbol
     Path path_dir = null;
     Path path_rev = null;
     SketchEffectData sketch_effect = null;
-    DashPathEffect dash = null;
-    DashPathEffect fixed_dash = null;
-    DashPathEffect preview_dash = null;
     float[] dash_values = null;
-    PathDashPathEffect effect = null;
-    PathDashPathEffect rev_effect = null;
-    PathDashPathEffect fixed_effect = null;
-    PathDashPathEffect fixed_rev_effect = null;
     PathDashPathEffect preview_effect = null;
     PathDashPathEffect preview_rev_effect = null;
     float xmin=0, xmax=0;
@@ -377,13 +366,11 @@ public class SymbolLine extends Symbol
     String options = null;
 
     try {
-      // FileReader fr = TDFile.getFileReader( filename );
       // TDLog.Log( TDLog.LOG_IO, "read symbol line file <" + filename + ">" );
       FileInputStream fr = TDFile.getFileInputStream( filename );
       BufferedReader br = new BufferedReader( new InputStreamReader( fr, iso ) );
       String line;
-      boolean in_symbol = false; // 20230118 local var
-      // TDLog.v( "read symbol line file <" + filename + "> in_symbol " + in_symbol );
+      boolean in_symbol = false;
       while ( (line = br.readLine()) != null ) {
         line = line.trim();
         String[] vals = line.split(" ");
@@ -392,14 +379,12 @@ public class SymbolLine extends Symbol
   	  if ( vals[k].startsWith( "#" ) ) break;
           if ( vals[k].length() == 0 ) continue;
           if ( ! in_symbol ) {
-            // TDLog.v("SL not in symbol " + line );
   	    if ( vals[k].equals("symbol" ) ) {
   	      name    = null;
   	      th_name = null;
               group   = null;
   	      color   = TDColor.TRANSPARENT;
               in_symbol = true;
-              // TDLog.v("SL " + filename + " in symbol" );
               break;
             }
           } else {
@@ -408,11 +393,9 @@ public class SymbolLine extends Symbol
   	      if ( k < s ) {
                 name = (new String( vals[k].getBytes(iso) )).replace("_", " ");
   	      }
-              // TDLog.v("SL " + filename + " name " + name );
   	    } else if ( vals[k].equals("th_name") ) {
   	      ++k; while ( k < s && vals[k].length() == 0 ) ++k;
   	      if ( k < s ) {
-                // 2023-01-31 th_name = deprefix_u( vals[k] );
                 th_name = vals[k];
   	      }
   	    } else if ( vals[k].equals("group") ) {
@@ -476,10 +459,6 @@ public class SymbolLine extends Symbol
               try {
                 k_val = k;
                 width = nextFloat( vals, s, 1.0f );
-  	        // ++k; while ( k < s && vals[k].length() == 0 ) ++k;    
-  	        // if ( k < s ) {
-  	        //   width = Integer.parseInt( vals[k] ) * TDSetting.mLineThickness;
-                // }
               } catch ( NumberFormatException e ) {
                 TDLog.e( filename + " parse width error: " + line );
               }
@@ -487,7 +466,7 @@ public class SymbolLine extends Symbol
   	      ++k; while ( k < s && vals[k].length() == 0 ) ++k;
   	      if ( k < s ) {
                 int k1 = k;
-                int n_dash = 0; // 20230118 local var number of dash+space
+                int n_dash = 0; // number of dash+space values
                 while ( k1 < s ) {
                   while ( k1 < s && vals[k1].length() == 0 ) ++k1;
                   ++ n_dash;
@@ -497,22 +476,11 @@ public class SymbolLine extends Symbol
                 if ( n_dash > 0 ) {
                   try {
                     float[] x = new float[n_dash];
-                    float[] fixed_x = new float[n_dash];
-                    float[] preview_x = new float[n_dash];
-  	            x[0] = Float.parseFloat( vals[k] ) * unit;
-                    fixed_x[0] = x[0] * FIXED_PATTERN_SCALE;
-                    preview_x[0] = x[0] * preview_scale;
+  	            x[0] = Float.parseFloat( vals[k] );
                     k_val = k;
                     for (int n=1; n<n_dash; ++n ) {
-  	              x[n] = nextFloat( vals, s, unit );
-                      fixed_x[n] = x[n] * FIXED_PATTERN_SCALE;
-                      preview_x[n] = x[n] * preview_scale;
-                      // ++k; while ( k < s && vals[k].length() == 0 ) ++k;
-  	              // x[n] = Float.parseFloat( vals[k] ) * unit;
-                    }  
-                    dash = new DashPathEffect( x, 0 );
-                    fixed_dash = new DashPathEffect( fixed_x, 0 );
-                    preview_dash = new DashPathEffect( preview_x, 0 );
+  	              x[n] = nextFloat( vals, s, 1.0f );
+                    }
                     dash_values = x;
                   } catch ( NumberFormatException e ) {
                    TDLog.e( filename + " parse dash error: " + line );
@@ -534,11 +502,8 @@ public class SymbolLine extends Symbol
                 }
               }
   	    } else if ( vals[k].equals("effect") ) {
-              // TDLog.v("SL effect begins");
               path_dir = new Path();
               path_rev = new Path();
-              // path_dir.moveTo(0,0);
-              // path_rev.moveTo(0,0);
               boolean moved_to = false;
               while ( (line = br.readLine() ) != null ) {
                 line = line.trim();
@@ -549,66 +514,40 @@ public class SymbolLine extends Symbol
                 if ( k < s ) {
                   if ( vals[k].equals("moveTo") ) {
                     try {
-                      // if ( ! moved_to ) {
-                        k_val = k;
-                        float x = nextFloat( vals, s, unit );
-                        float y = nextFloat( vals, s, unit );
-                        path_dir.moveTo( x, y );
-                        path_rev.moveTo( x, -y );
-                        if ( ! moved_to ) {
-                          xmin = xmax = x;
-                          moved_to = true;
-                        }
-	                if ( y > ymax ) { ymax = y; } else if ( y < ymin ) { ymin = y; }
-  	                // ++k; while ( k < s && vals[k].length() == 0 ) ++k;
-  	                // if ( k < s ) {
-  	                //   float x = Float.parseFloat( vals[k] ) * unit;
-  	                //   ++k; while ( k < s && vals[k].length() == 0 ) ++k;
-  	                //   if ( k < s ) {
-  	                //      float y = Float.parseFloat( vals[k] ) * unit;
-                        //      path_dir.moveTo( x, y );
-                        //      path_rev.moveTo( x, -y );
-                        //      xmin = xmax = x;
-                        //      moved_to = true;
-                        //   }
-                        // }
-                      // }
+                      k_val = k;
+                      float x = nextFloat( vals, s, 1.0f );
+                      float y = nextFloat( vals, s, 1.0f );
+                      path_dir.moveTo( x, y );
+                      path_rev.moveTo( x, -y );
+                      if ( ! moved_to ) {
+                        xmin = xmax = x;
+                        moved_to = true;
+                      }
+	              if ( y > ymax ) { ymax = y; } else if ( y < ymin ) { ymin = y; }
                     } catch ( NumberFormatException e ) {
                       TDLog.e( filename + " parse moveTo point error: " + line );
                     }
-                  } else if ( vals[k].equals("lineTo") ) { 
+                  } else if ( vals[k].equals("lineTo") ) {
                     try {
                       k_val = k;
-                      float x = nextFloat( vals, s, unit );
-                      float y = nextFloat( vals, s, unit );
+                      float x = nextFloat( vals, s, 1.0f );
+                      float y = nextFloat( vals, s, 1.0f );
                       path_dir.lineTo( x, y );
                       path_rev.lineTo( x, -y );
                       if ( x < xmin ) xmin = x; else if ( x > xmax ) xmax = x;
 	              if ( y > ymax ) { ymax = y; } else if ( y < ymin ) { ymin = y; }
-
-  	              // ++k; while ( k < s && vals[k].length() == 0 ) ++k;
-  	              // if ( k < s ) {
-  	              //   float x = Float.parseFloat( vals[k] ) * unit;
-  	              //   ++k; while ( k < s && vals[k].length() == 0 ) ++k;
-  	              //   if ( k < s ) {
-  	              //     float y = Float.parseFloat( vals[k] ) * unit;
-                      //     path_dir.lineTo( x, y );
-                      //     path_rev.lineTo( x, -y );
-                      //     if ( x < xmin ) xmin = x; else if ( x > xmax ) xmax = x;
-                      //   }
-                      // }
                     } catch ( NumberFormatException e ) {
                       TDLog.e( filename + " parse lineTo point error: " + line );
                     }
-                  } else if ( vals[k].equals("cubicTo") ) { 
+                  } else if ( vals[k].equals("cubicTo") ) {
                     try {
                       k_val = k;
-                      float x1 = nextFloat( vals, s, unit );
-                      float y1 = nextFloat( vals, s, unit );
-                      float x2 = nextFloat( vals, s, unit );
-                      float y2 = nextFloat( vals, s, unit );
-                      float x3 = nextFloat( vals, s, unit );
-                      float y3 = nextFloat( vals, s, unit );
+                      float x1 = nextFloat( vals, s, 1.0f );
+                      float y1 = nextFloat( vals, s, 1.0f );
+                      float x2 = nextFloat( vals, s, 1.0f );
+                      float y2 = nextFloat( vals, s, 1.0f );
+                      float x3 = nextFloat( vals, s, 1.0f );
+                      float y3 = nextFloat( vals, s, 1.0f );
                       path_dir.cubicTo( x1,  y1, x2,  y2, x3,  y3 );
                       path_rev.cubicTo( x1, -y1, x2, -y2, x3, -y3 );
                       if ( x1 < xmin ) xmin = x1; else if ( x1 > xmax ) xmax = x1;
@@ -617,63 +556,26 @@ public class SymbolLine extends Symbol
 	              if ( y1 > ymax ) { ymax = y1; } else if ( y1 < ymin ) { ymin = y1; }
 	              if ( y2 > ymax ) { ymax = y2; } else if ( y2 < ymin ) { ymin = y2; }
 	              if ( y3 > ymax ) { ymax = y3; } else if ( y3 < ymin ) { ymin = y3; }
-
-  	              // ++k; while ( k < s && vals[k].length() == 0 ) ++k;
-  	              // if ( k < s ) {
-  	              //   float x1 = Float.parseFloat( vals[k] ) * unit;
-  	              //   ++k; while ( k < s && vals[k].length() == 0 ) ++k;
-  	              //   if ( k < s ) {
-  	              //     float y1 = Float.parseFloat( vals[k] ) * unit;
-  	              //     ++k; while ( k < s && vals[k].length() == 0 ) ++k;
-  	              //     if ( k < s ) {
-  	              //       float x2 = Float.parseFloat( vals[k] ) * unit;
-  	              //       ++k; while ( k < s && vals[k].length() == 0 ) ++k;
-  	              //       if ( k < s ) {
-  	              //         float y2 = Float.parseFloat( vals[k] ) * unit;
-  	              //         ++k; while ( k < s && vals[k].length() == 0 ) ++k;
-  	              //         if ( k < s ) {
-  	              //           float x3 = Float.parseFloat( vals[k] ) * unit;
-  	              //           ++k; while ( k < s && vals[k].length() == 0 ) ++k;
-  	              //           if ( k < s ) {
-  	              //             float y3 = Float.parseFloat( vals[k] ) * unit;
-                      //             path_dir.cubicTo( x1, y1, x2, y2, x3, y3 );
-                      //             path_rev.cubicTo( x1, -y1, x2, -y2, x3, -y3 );
-                      //             if ( x1 < xmin ) xmin = x1; else if ( x1 > xmax ) xmax = x1;
-                      //             if ( x2 < xmin ) xmin = x2; else if ( x2 > xmax ) xmax = x2;
-                      //             if ( x3 < xmin ) xmin = x3; else if ( x3 > xmax ) xmax = x3;
-                      //           }
-                      //         }
-                      //       }
-                      //     }
-                      //   }
-                      // }
                     } catch ( NumberFormatException e ) {
-                      TDLog.e( filename + " parse lineTo point error: " + line );
+                      TDLog.e( filename + " parse cubicTo point error: " + line );
                     }
-                  } else if ( vals[k].equals("addCircle") ) { 
+                  } else if ( vals[k].equals("addCircle") ) {
                     try {
                       k_val = k;
-                      float x = nextFloat( vals, s, unit );
-                      float y = nextFloat( vals, s, unit );
-                      float r = nextFloat( vals, s, unit );
+                      float x = nextFloat( vals, s, 1.0f );
+                      float y = nextFloat( vals, s, 1.0f );
+                      float r = nextFloat( vals, s, 1.0f );
                       path_dir.addCircle( x,  y, r, Path.Direction.CCW );
                       path_rev.addCircle( x, -y, r, Path.Direction.CCW );
                       if ( x-r < xmin ) xmin = x-r;
                       if ( x+r > xmax ) xmax = x+r;
 	              if ( y+r > ymax ) { ymax = y+r; } else if ( y-r < ymin ) { ymin = y-r; }
                     } catch ( NumberFormatException e ) {
-                      TDLog.e( filename + " parse lineTo point error: " + line );
+                      TDLog.e( filename + " parse addCircle point error: " + line );
                     }
                   } else if ( vals[k].equals("endeffect") ) {
-                    // TDLog.v("SL effect ends");
-                    // path_dir.close();
-                    // path_rev.close();
-                    effect     = new PathDashPathEffect( path_dir, (xmax-xmin), 0, PathDashPathEffect.Style.MORPH );
-                    rev_effect = new PathDashPathEffect( path_rev, (xmax-xmin), 0, PathDashPathEffect.Style.MORPH );
-                    fixed_effect     = new PathDashPathEffect( scaledPath( path_dir, FIXED_PATTERN_SCALE ), (xmax-xmin) * FIXED_PATTERN_SCALE, 0, PathDashPathEffect.Style.MORPH );
-                    fixed_rev_effect = new PathDashPathEffect( scaledPath( path_rev, FIXED_PATTERN_SCALE ), (xmax-xmin) * FIXED_PATTERN_SCALE, 0, PathDashPathEffect.Style.MORPH );
-                    preview_effect     = new PathDashPathEffect( scaledPath( path_dir, preview_scale ), (xmax-xmin) * preview_scale, 0, PathDashPathEffect.Style.MORPH );
-                    preview_rev_effect = new PathDashPathEffect( scaledPath( path_rev, preview_scale ), (xmax-xmin) * preview_scale, 0, PathDashPathEffect.Style.MORPH );
+                    preview_effect     = new PathDashPathEffect( scaledPath( path_dir, preview_unit ), (xmax-xmin) * preview_unit, 0, PathDashPathEffect.Style.MORPH );
+                    preview_rev_effect = new PathDashPathEffect( scaledPath( path_rev, preview_unit ), (xmax-xmin) * preview_unit, 0, PathDashPathEffect.Style.MORPH );
                     mLineEffect = new LineSymbolEffect( path_dir, path_rev, xmax - xmin, dash_values );
                     if ( sketch_effect != null ) {
                       mLineEffect.setSketchEffect( sketch_effect.path_dir, sketch_effect.path_rev,
@@ -684,18 +586,19 @@ public class SymbolLine extends Symbol
                 }
               }
   	    } else if ( vals[k].equals("sketch_effect") ) {
-              sketch_effect = readSketchEffect( br, filename, unit );
+              sketch_effect = readSketchEffect( br, filename );
               if ( mLineEffect != null ) {
                 mLineEffect.setSketchEffect( sketch_effect.path_dir, sketch_effect.path_rev,
                                              sketch_effect.carriers, sketch_effect.strokeStamp );
               }
   	    } else if ( vals[k].equals("endsymbol") ) {
-  	      if ( name != null && th_name != null ) { 
-                // TDLog.v("SL " + filename + " end-symbol is ok");
+  	      if ( name != null && th_name != null ) {
                 mName   = name;
                 setThName( th_name );
                 mGroup  = group;
                 mDefaultOptions = options;
+                mWidth  = ( width > 0 )? width : 1;
+                float unit = mWidth * TDSetting.mLineThickness; // default ink thickness [scene units]
                 mPaint  = new Paint();
                 mPaint.setDither(true);
                 mPaint.setColor( color );
@@ -703,53 +606,32 @@ public class SymbolLine extends Symbol
                 mPaint.setStyle(Paint.Style.STROKE);
                 mPaint.setStrokeJoin(Paint.Join.ROUND);
                 mPaint.setStrokeCap(Paint.Cap.ROUND);
+                mPaint.setStrokeWidth( unit );
                 mRevPaint = new Paint( mPaint );
-                if ( effect != null ) {
-                  mHasEffect = true;
-                  // mPaint.setStrokeWidth( 4 );
-                  // mRevPaint.setStrokeWidth( 4 );
-                  if ( dash != null ) {
-                    mPaint.setPathEffect( new ComposePathEffect( effect, dash ) );
-                    mRevPaint.setPathEffect( new ComposePathEffect( rev_effect, dash ) );
+                mDashBase = dash_values;
+                mHasEffect = ( mLineEffect != null ) || ( dash_values != null );
+                if ( mLineEffect == null && dash_values != null ) {
+                  // dash-only line: default dash effect at the symbol's own width
+                  mPaint.setPathEffect( scaledDashEffect( dash_values, unit ) );
+                  mRevPaint.setPathEffect( scaledDashEffect( dash_values, unit ) );
+                }
+                // preview paints (palette buttons): screen-space eye-candy
+                float preview_dy = (ymax - ymin) * preview_unit + 1;
+                float preview_stroke = preview_dy * mWidth * TDSetting.mLineThickness;
+                if ( preview_effect != null ) {
+                  DashPathEffect preview_dash = scaledDashEffect( dash_values, preview_unit );
+                  if ( preview_dash != null ) {
+                    setPreviewPatternPaints( new ComposePathEffect( preview_effect, preview_dash ),
+                                             new ComposePathEffect( preview_rev_effect, preview_dash ),
+                                             preview_stroke );
                   } else {
-                    mPaint.setPathEffect( effect );
-                    mRevPaint.setPathEffect( rev_effect );
+                    setPreviewPatternPaints( preview_effect, preview_rev_effect, preview_stroke );
                   }
-                } else if ( dash != null ) {
-                  mPaint.setPathEffect( dash );
-                  mRevPaint.setPathEffect( dash );
-                // } else {
-                //   mPaint.setStrokeWidth( width * TDSetting.mLineThickness );
-                //   mRevPaint.setStrokeWidth( width * TDSetting.mLineThickness );
+                } else if ( dash_values != null ) {
+                  DashPathEffect preview_dash = scaledDashEffect( dash_values, preview_unit );
+                  setPreviewPatternPaints( preview_dash, preview_dash, mWidth * TDSetting.mLineThickness );
                 }
-	        float dy = ymax - ymin + 1;
-                float preview_dy = (ymax - ymin) * preview_scale + 1;
-                mPaint.setStrokeWidth( dy * width * TDSetting.mLineThickness );
-                mRevPaint.setStrokeWidth( dy * width * TDSetting.mLineThickness );
-                if ( mPaint.getPathEffect() != null ) {
-                  PathEffect preview_dir = null;
-                  PathEffect preview_rev = null;
-                  if ( fixed_effect != null ) {
-                    if ( fixed_dash != null ) {
-                      setFixedPatternPaints( new ComposePathEffect( fixed_effect, fixed_dash ),
-                                             new ComposePathEffect( fixed_rev_effect, fixed_dash ) );
-                      preview_dir = new ComposePathEffect( preview_effect, preview_dash );
-                      preview_rev = new ComposePathEffect( preview_rev_effect, preview_dash );
-                    } else {
-                      setFixedPatternPaints( fixed_effect, fixed_rev_effect );
-                      preview_dir = preview_effect;
-                      preview_rev = preview_rev_effect;
-                    }
-                  } else if ( fixed_dash != null ) {
-                    setFixedPatternPaints( fixed_dash, fixed_dash );
-                    preview_dir = preview_dash;
-                    preview_rev = preview_dash;
-                  }
-                  if ( preview_dir != null ) {
-                    setPreviewPatternPaints( preview_dir, preview_rev, preview_dy * width * TDSetting.mLineThickness );
-                  }
-                }
-                setSketchStrokePreview( sketch_effect, preview_dy * width * TDSetting.mLineThickness );
+                setSketchStrokePreview( sketch_effect, preview_unit, preview_stroke );
   	      }
               in_symbol = false;
             }

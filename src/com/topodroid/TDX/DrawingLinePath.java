@@ -367,17 +367,19 @@ public class DrawingLinePath extends DrawingPointLinePath
       mReversed = reversed;
       // retracePath();
       setPathPaint( BrushManager.getLinePaint( mLineType, mReversed ) );
+      resetScenePaint();
       computeUnitNormal();
     }
   }
 
   /** flip the reversed attribute
    */
-  void flipReversed() 
+  void flipReversed()
   {
     mReversed = ! mReversed;
     // retracePath();
     setPathPaint( BrushManager.getLinePaint( mLineType, mReversed ) );
+    resetScenePaint();
     computeUnitNormal();
   }
 
@@ -398,6 +400,7 @@ public class DrawingLinePath extends DrawingPointLinePath
   {
     mLineType = type;
     setPathPaint( BrushManager.getLinePaint( mLineType, mReversed ) );
+    resetScenePaint();
   }
   
   /** get the therion name
@@ -421,6 +424,7 @@ public class DrawingLinePath extends DrawingPointLinePath
   {
     mSketchBrushStyle = style;
     mOptions = SketchBrushStyleCodec.storeInOptions( mOptions, style );
+    resetScenePaint();
   }
 
   /** @return Sketch brush-style metadata, or null if this placement has none
@@ -435,6 +439,7 @@ public class DrawingLinePath extends DrawingPointLinePath
   {
     super.setOptions( options );
     mSketchBrushStyle = SketchBrushStyleCodec.fromOptions( mOptions );
+    resetScenePaint();
   }
 
   private String getExportOptions()
@@ -442,44 +447,29 @@ public class DrawingLinePath extends DrawingPointLinePath
     return SketchBrushStyleCodec.exportOptions( mOptions );
   }
 
-  private boolean useFixedPatternDensity()
-  {
-    return TDSetting.mFixedLinePatterns && BrushManager.hasLinePathEffect( mLineType );
-  }
+  private Paint mScenePaint = null;     // cached resolved ink paint [scene units]
+  private Paint mScenePaintSrc = null;  // source paint the cache was derived from
 
-  private Paint getSketchLinePaint( boolean fixed_density )
-  {
-    Paint paint = fixed_density ? BrushManager.getLineFixedPaint( mLineType, mReversed ) : mPaint;
-    float scale = fixed_density ? SymbolLine.FIXED_PATTERN_SCALE : 1.0f;
-    return SketchBrushRenderer.linePaint( paint, mSketchBrushStyle, scale );
-  }
+  /** invalidate the cached scene paint (call whenever paint/style/type changes) */
+  private void resetScenePaint() { mScenePaint = null; mScenePaintSrc = null; }
 
-  private void drawFixedPatternDensity( Canvas canvas, Matrix matrix )
+  /** @return the resolved ink paint: brush style applied, stroke width and dash in scene units */
+  private Paint sceneLinePaint()
   {
-    int save = canvas.save();
-    Paint paint = mPaint;
-    mPaint = getSketchLinePaint( true );
-    try {
-      canvas.concat( matrix );
-      drawPath( mPath, canvas );
-    } finally {
-      mPaint = paint;
-      canvas.restoreToCount( save );
+    if ( mScenePaint == null || mScenePaintSrc != mPaint ) {
+      Paint paint = SketchBrushRenderer.linePaint( mPaint, mSketchBrushStyle );
+      // dash-only lines: dash intervals follow the placement ink thickness
+      if ( BrushManager.getLineEffect( mLineType ) == null ) {
+        float[] dash = BrushManager.getLineDashBase( mLineType );
+        if ( dash != null && paint != null ) {
+          if ( paint == mPaint ) paint = new Paint( mPaint );
+          paint.setPathEffect( SymbolLine.scaledDashEffect( dash, paint.getStrokeWidth() ) );
+        }
+      }
+      mScenePaint = paint;
+      mScenePaintSrc = mPaint;
     }
-  }
-
-  private void drawFixedPatternDensity( Canvas canvas, Matrix matrix, int xor_color )
-  {
-    int save = canvas.save();
-    Paint paint = mPaint;
-    mPaint = getSketchLinePaint( true );
-    try {
-      canvas.concat( matrix );
-      drawPath( mPath, canvas, xor_color );
-    } finally {
-      mPaint = paint;
-      canvas.restoreToCount( save );
-    }
+    return mScenePaint;
   }
 
   private boolean drawPathUsesPaintOverride( boolean with_xor )
@@ -493,51 +483,37 @@ public class DrawingLinePath extends DrawingPointLinePath
     return ! with_xor && mBlock.isCommented();
   }
 
-  private boolean drawLineEffect( Canvas canvas, Matrix matrix, int xor_color, boolean with_xor )
+  /** draw the line in scene space: canvas carries the scene->screen transform,
+   *  so ink thickness and symbol patterns magnify uniformly with zoom / export scale
+   */
+  private void drawScene( Canvas canvas, Matrix matrix, float pixel_size, RectF bbox, int xor_color, boolean with_xor )
   {
-    LineSymbolEffect effect = BrushManager.getLineEffect( mLineType );
-    if ( effect == null || drawPathUsesPaintOverride( with_xor ) ) return false;
+    if ( ! intersects( bbox ) ) return;
+    Paint paint = sceneLinePaint();
+    if ( paint == null ) return;
+    LineSymbolEffect effect = drawPathUsesPaintOverride( with_xor ) ? null : BrushManager.getLineEffect( mLineType );
 
-    boolean fixed_density = useFixedPatternDensity();
-    Paint paint = getSketchLinePaint( fixed_density );
-    if ( paint == null ) return false;
-    if ( with_xor ) paint = DrawingPath.xorPaint( paint, xor_color );
-
-    if ( fixed_density ) {
-      int save = canvas.save();
-      try {
-        canvas.concat( matrix );
-        effect.draw( canvas, mPath, paint, mReversed, true, mSketchBrushStyle );
-      } finally {
-        canvas.restoreToCount( save );
+    int save = canvas.save();
+    try {
+      canvas.concat( matrix );
+      if ( effect != null ) {
+        Paint ink = with_xor ? DrawingPath.xorPaint( paint, xor_color ) : paint;
+        effect.draw( canvas, mPath, ink, mReversed, pixel_size );
+      } else {
+        Paint keep = mPaint;
+        mPaint = paint;
+        try {
+          if ( with_xor ) {
+            drawPath( mPath, canvas, xor_color );
+          } else {
+            drawPath( mPath, canvas );
+          }
+        } finally {
+          mPaint = keep;
+        }
       }
-    } else {
-      mTransformedPath = new Path( mPath );
-      mTransformedPath.transform( matrix );
-      effect.draw( canvas, mTransformedPath, paint, mReversed, false, mSketchBrushStyle );
-    }
-    return true;
-  }
-
-  private void drawSketchStyled( Canvas canvas, Matrix matrix, RectF bbox )
-  {
-    Paint paint = mPaint;
-    mPaint = getSketchLinePaint( false );
-    try {
-      super.draw( canvas, matrix, bbox );
     } finally {
-      mPaint = paint;
-    }
-  }
-
-  private void drawSketchStyled( Canvas canvas, Matrix matrix, RectF bbox, int xor_color )
-  {
-    Paint paint = mPaint;
-    mPaint = getSketchLinePaint( false );
-    try {
-      super.draw( canvas, matrix, bbox, xor_color );
-    } finally {
-      mPaint = paint;
+      canvas.restoreToCount( save );
     }
   }
 
@@ -549,13 +525,7 @@ public class DrawingLinePath extends DrawingPointLinePath
   @Override
   public void draw( Canvas canvas, Matrix matrix, RectF bbox )
   {
-    if ( ! intersects( bbox ) ) return;
-    if ( drawLineEffect( canvas, matrix, 0, false ) ) return;
-    if ( useFixedPatternDensity() ) {
-      drawFixedPatternDensity( canvas, matrix );
-    } else {
-      drawSketchStyled( canvas, matrix, bbox );
-    }
+    drawScene( canvas, matrix, 1.0f, bbox, 0, false );
   }
 
   /** draw the line path on a canvas
@@ -567,41 +537,35 @@ public class DrawingLinePath extends DrawingPointLinePath
   @Override
   public void draw( Canvas canvas, Matrix matrix, RectF bbox, int xor_color )
   {
-    if ( ! intersects( bbox ) ) return;
-    if ( drawLineEffect( canvas, matrix, xor_color, true ) ) return;
-    if ( useFixedPatternDensity() ) {
-      drawFixedPatternDensity( canvas, matrix, xor_color );
-    } else {
-      drawSketchStyled( canvas, matrix, bbox, xor_color );
-    }
+    drawScene( canvas, matrix, 1.0f, bbox, xor_color, true );
   }
 
   /** draw the line path on a canvas
    * @param canvas   canvas - N.B. canvas is guaranteed not null
    * @param matrix   transform matrix
-   * @param scale    rescaling factor - used only for point items
+   * @param scale    scene units per screen pixel (sampling quality hint)
    * @param bbox     clipping rectangle
    */
   @Override
   public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox )
   {
-    draw( canvas, matrix, bbox );
+    drawScene( canvas, matrix, scale, bbox, 0, false );
   }
 
   /** draw the line path on a canvas
    * @param canvas   canvas - N.B. canvas is guaranteed not null
    * @param matrix   transform matrix
-   * @param scale    rescaling factor - used only for point items
+   * @param scale    scene units per screen pixel (sampling quality hint)
    * @param bbox     clipping rectangle
    * @param xor_color xoring color
    */
   @Override
   public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox, int xor_color )
   {
-    draw( canvas, matrix, bbox, xor_color );
+    drawScene( canvas, matrix, scale, bbox, xor_color, true );
   }
 
-  /** draw the line with the specified paint
+  /** draw the line with the specified paint (outlines etc.); paint width is in scene units
    * @param canvas   canvas
    * @param matrix   transform matrix
    * @param bbox     clipping rectangle
@@ -611,11 +575,15 @@ public class DrawingLinePath extends DrawingPointLinePath
    */
   public void drawWithPaint( Canvas canvas, Matrix matrix, RectF bbox, Paint paint )
   {
-    if ( intersects( bbox ) ) 
+    if ( intersects( bbox ) )
     {
-      mTransformedPath = new Path( mPath );
-      mTransformedPath.transform( matrix );
-      canvas.drawPath( mTransformedPath, paint );
+      int save = canvas.save();
+      try {
+        canvas.concat( matrix );
+        canvas.drawPath( mPath, paint );
+      } finally {
+        canvas.restoreToCount( save );
+      }
     }
   }
 

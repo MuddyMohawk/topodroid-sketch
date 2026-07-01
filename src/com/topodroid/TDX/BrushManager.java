@@ -198,7 +198,7 @@ public class BrushManager
   static Paint getPointPaint( int idx ) { return (mPointLib == null)? errorPaint : mPointLib.getSymbolPaint( idx ); }
   static Paint getLinePaint(  int idx ) { return (mLineLib  == null)? errorPaint : mLineLib.getSymbolPaint( idx ); }
   static Paint getLinePaint(  int idx, boolean reversed ) { return (mLineLib  == null)? errorPaint : mLineLib.getLinePaint( idx, reversed ); }
-  static Paint getLineFixedPaint( int idx, boolean reversed ) { return (mLineLib == null)? errorPaint : mLineLib.getLineFixedPaint( idx, reversed ); }
+  static float[] getLineDashBase( int idx ) { return (mLineLib == null)? null : mLineLib.getLineDashBase( idx ); }
   static LineSymbolEffect getLineEffect( int idx ) { return (mLineLib == null)? null : mLineLib.getLineEffect( idx ); }
   static Paint getAreaPaint(  int idx ) { return (mAreaLib  == null)? errorPaint : mAreaLib.getSymbolPaint( idx ); }
 
