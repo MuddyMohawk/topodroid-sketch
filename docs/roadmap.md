@@ -3,8 +3,7 @@
 The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles. 
 
 ## TODO
-- Area/fill 
-- Smooth point symbol stylus-drag scaling
+- Area/fill
 - Bake-to-vanilla export 
 - Make those toolbars less uggo.
 - more symbol behavior (sand/silt stamps, slope line)
@@ -24,6 +23,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Taking screenshot with volume-up doesn't work. Vanilla bug.
 - Seems like the scaling of dashed line is odd, like it has a minimum size? Vanilla bug.
 - Had a bug where I placed a section cross-section but then couldn't select it via the edit tool. Wasn't replicable but noted here.
+- If you don't give TopoDroid all the perms it can get into a bugged state where it immediately closes upon opening the app. Vanilla bug.
 
 ## Future possible features / brainstorming
 - 

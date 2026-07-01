@@ -273,7 +273,7 @@ public class SymbolPoint extends Symbol
    *      has_value yes | NO
    *      orientation yes | NO
    *      scalable yes | NO
-   *      color 0xHHHHHH_COLOR
+   *      color 0xHHHHHH_COLOR 0xAA_ALPHA
    *      style fill | STROKE 
    *      path
    *        MULTILINE_PATH_STRING
@@ -288,7 +288,7 @@ public class SymbolPoint extends Symbol
     String th_name = null;
     String group   = null;
     int color      = 0;
-    int color2     = 0; // HBX
+    int alpha      = 0xff;
     Paint.Style style = Paint.Style.STROKE;
     String path    = null;
     String options = null;
@@ -314,6 +314,7 @@ public class SymbolPoint extends Symbol
               name = null;
               th_name = null;
               color = TDColor.TRANSPARENT;
+              alpha = 0xff;
               path = null;
               mScalable = true;
               in_symbol = true;
@@ -419,11 +420,20 @@ public class SymbolPoint extends Symbol
               ++k; while ( k < s && vals[k].length() == 0 ) ++k;
               if ( k < s ) {
                 try {
-                  color = Integer.decode( vals[k] ) | 0xff000000;
+                  color = Integer.decode( vals[k] ) & 0x00ffffff;
                 } catch ( NumberFormatException e ) {
                   TDLog.e("Non-integer color");
                 }
               }
+              ++k; while ( k < s && vals[k].length() == 0 ) ++k;
+              if ( k < s ) {
+                try {
+                  alpha = Integer.decode( vals[k] ) & 0xff;
+                } catch ( NumberFormatException e ) {
+                  TDLog.e("Non-integer alpha");
+                }
+              }
+              color = ( color & 0x00ffffff ) | ( alpha << 24 );
             } else if ( vals[k].equals("csurvey") ) {
               // ignore
             } else if ( vals[k].equals("path") ) {
