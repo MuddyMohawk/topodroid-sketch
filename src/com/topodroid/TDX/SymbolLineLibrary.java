@@ -27,7 +27,8 @@ import android.content.res.Resources;
 public class SymbolLineLibrary extends SymbolLibrary
 {
   static final private String[] DefaultLines = {
-    ARROW, BORDER, CHIMNEY, FLOWSTONE, PIT, WALL_PRESUMED, ROCK_BORDER, SLOPE
+    ARROW, BORDER, CHIMNEY, "ceiling-meander", "dripline", FLOWSTONE, PIT, WALL_PRESUMED, ROCK_BORDER, SLOPE,
+    "water-flow:intermittent"
   };
 
   int mLineUserIndex; // PRIVATE

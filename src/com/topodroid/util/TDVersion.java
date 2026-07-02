@@ -32,8 +32,8 @@ public class TDVersion
 
   // symbol version of installed symbols is stored in the database
   // symbol version of the current  symbols is in the app
-  // 46: NSS line symbols retuned to line-width units for the world-space ink model
-  public static final String SYMBOL_VERSION = "46";
+  // 47: first expanded NSS 1979 phase-1 symbol batch
+  public static final String SYMBOL_VERSION = "47";
 
   // increase to install last version of DistoX2 firmware
   public static final String FIRMWARE_VERSION = "28";

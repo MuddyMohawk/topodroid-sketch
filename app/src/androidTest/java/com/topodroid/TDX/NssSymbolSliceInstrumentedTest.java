@@ -34,11 +34,12 @@ import java.io.OutputStream;
 @LargeTest
 public class NssSymbolSliceInstrumentedTest
 {
-  private static final int WIDTH = 1280;
-  private static final int HEIGHT = 1040;
-  private static final float LEFT = 180.0f;
-  private static final float COL = 330.0f;
-  private static final float ROW = 76.0f;
+  private static final int WIDTH = 1440;
+  private static final int HEIGHT = 3120;
+  private static final float LEFT = 260.0f;
+  private static final float COL = 370.0f;
+  private static final float LINE_ROW = 70.0f;
+  private static final float POINT_ROW = 58.0f;
   private static final RectF BBOX = new RectF( -20.0f, -20.0f, WIDTH + 20.0f, HEIGHT + 20.0f );
 
   private Context mContext;
@@ -80,20 +81,53 @@ public class NssSymbolSliceInstrumentedTest
 
     drawHeaders( canvas, label );
 
-    drawLineRow( canvas, label, "Wall", SymbolLibrary.WALL, 90.0f );
-    drawLineRow( canvas, label, "User detail", SymbolLibrary.USER, 166.0f );
-    drawLineRow( canvas, label, "Ledge/Pit", "pit", 242.0f );
-    drawLineRow( canvas, label, "Ceiling ledge", "chimney", 318.0f );
-    drawLineRow( canvas, label, "Flowstone", "flowstone", 394.0f );
+    float y = 90.0f;
+    drawLineRow( canvas, label, "Wall", SymbolLibrary.WALL, y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "User detail", SymbolLibrary.USER, y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Ledge/Pit", "pit", y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Ceiling ledge", "chimney", y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Flowstone", "flowstone", y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Ceiling channel", "ceiling-meander", y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Presumed wall", "wall:presumed", y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Dripline", "dripline", y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Conj. stream", "water-flow:intermittent", y ); y += LINE_ROW + 32.0f;
 
-    drawPointRow( canvas, label, "Sand", "sand", 512.0f, 0.0 );
-    drawPointRow( canvas, label, "Clay", "clay", 588.0f, 0.0 );
-    drawPointRow( canvas, label, "Bedrock", "bedrock", 664.0f, 0.0 );
-    drawPointRow( canvas, label, "Slope", "slope", 740.0f, 35.0 );
-    drawOpacityRow( canvas, label, 842.0f );
-    drawScaleRow( canvas, label, 950.0f );
+    drawPointRow( canvas, label, "Sand", "sand", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Clay", "clay", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Bedrock", "bedrock", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Slope", "slope", y, 35.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Air draught", "air-draught", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Anchor", "anchor", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Anastomosis", "anastomosis", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Anthodites", "anthodites", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Aragonite", "aragonite", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Archeo exc.", "archeo-excavation", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Blocks", "blocks", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Small rocks", "debris:small", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Pebbles", "pebbles", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Bones", "bones", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Boxwork", "boxwork", y, 0.0, false ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Calcite crust", "calcite-crust", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Calcite spar", "calcite-spar", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Cave pearl", "cave-pearl", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Chert", "chert", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Column", "column", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Crystal", "crystal", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Guano", "guano", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Helictite", "helictite", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Lead", "continuation", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Popcorn", "popcorn", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Soda straw", "soda-straw", y, 0.0, false ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Stalactite", "stalactite", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Stalagmite", "stalagmite", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Stal. profile", "stalactite:profile", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Stalg. profile", "stalagmite:profile", y, 25.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Water flow", "water-flow", y, 25.0 ); y += POINT_ROW + 34.0f;
 
-    assertTrue( "NSS contact sheet is unexpectedly sparse", countForeground( bitmap ) > 15000 );
+    drawOpacityRow( canvas, label, y ); y += 108.0f;
+    drawScaleRow( canvas, label, y );
+
+    assertTrue( "NSS contact sheet is unexpectedly sparse", countForeground( bitmap ) > 45000 );
     File externalArtifact = new File( getExternalArtifactDir(), "nss-vertical-slice.png" );
     File internalArtifact = new File( getInternalArtifactDir(), "nss-vertical-slice.png" );
     byte[] png = encodeBitmap( bitmap );
@@ -134,8 +168,15 @@ public class NssSymbolSliceInstrumentedTest
 
   private void drawPointRow( Canvas canvas, Paint label, String title, String thName, float y, double orientation )
   {
+    drawPointRow( canvas, label, title, thName, y, orientation, true );
+  }
+
+  private void drawPointRow( Canvas canvas, Paint label, String title, String thName, float y, double orientation, boolean expectOrientable )
+  {
     int pointType = BrushManager.getPointIndexByThName( thName );
     assertTrue( "Missing NSS point symbol " + thName, pointType >= 0 );
+    assertTrue( "Unexpected orientable state for NSS point " + thName,
+      BrushManager.isPointOrientable( pointType ) == expectOrientable );
     canvas.drawText( title, 18.0f, y + 7.0f, label );
     drawStyledPoint( canvas, pointType, LEFT + 105.0f, y, style( SketchBrushStyle.DEFAULT_WEIGHT_THIN, 1.0f ), orientation );
     drawStyledPoint( canvas, pointType, LEFT + COL + 105.0f, y, style( SketchBrushStyle.DEFAULT_WEIGHT_STANDARD, 1.0f ), orientation );

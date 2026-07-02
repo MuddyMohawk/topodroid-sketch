@@ -26,7 +26,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - If you don't give TopoDroid all the perms it can get into a bugged state where it immediately closes upon opening the app. Vanilla bug.
 
 ## Future possible features / brainstorming
-- 
+- snap mode affects rotation?
 - UI/look-and-feel overhaul
 - Line-following for fast water area drawing
 - shadow sketching/cosurvey

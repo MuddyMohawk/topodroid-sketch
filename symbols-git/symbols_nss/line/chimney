@@ -1,6 +1,6 @@
 encoding utf-8
 symbol line
-name chimney
+name ceiling_ledge
 th_name chimney
 group ceiling
 color 0xffffff 0xff
