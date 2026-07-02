@@ -3,7 +3,7 @@ symbol point
 name clay
 th_name clay
 group clay
-orientation yes
+orientation no
 color 0xffffff
 path
   moveTo -18 -5

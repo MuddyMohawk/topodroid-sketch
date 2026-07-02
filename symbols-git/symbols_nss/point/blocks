@@ -6,21 +6,27 @@ group blocks
 orientation yes
 color 0xffffff
 path
-  moveTo -11 -4
-  lineTo -5 -8
-  lineTo -1 -3
-  lineTo -4 2
-  lineTo -10 2
-  lineTo -11 -4
-  moveTo 3 -9
-  lineTo 10 -7
-  lineTo 12 -2
-  lineTo 7 1
-  lineTo 2 -3
-  lineTo 3 -9
+  moveTo -11 -5
+  lineTo -5 -9
+  lineTo 0 -4
+  lineTo -3 1
+  lineTo -9 2
+  lineTo -11 -5
+  moveTo -8 -4
+  lineTo -3 -7
+  moveTo -3 -7
+  lineTo -1 -4
+  moveTo 3 -8
+  cubicTo 6 -11 12 -8 12 -4
+  cubicTo 9 0 5 1 2 -2
+  cubicTo 1 -4 1 -6 3 -8
+  moveTo 5 -7
+  cubicTo 8 -8 11 -6 11 -4
   moveTo -3 6
-  cubicTo -1 1 7 1 9 5
-  cubicTo 11 10 3 12 -2 10
-  cubicTo -5 9 -5 7 -3 6
+  cubicTo -1 1 7 1 10 5
+  cubicTo 13 10 6 13 0 11
+  cubicTo -4 10 -5 8 -3 6
+  moveTo 0 7
+  cubicTo 3 4 8 5 10 8
 endpath
 endsymbol

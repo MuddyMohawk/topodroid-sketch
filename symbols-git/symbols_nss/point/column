@@ -7,16 +7,13 @@ orientation yes
 color 0xffffff
 style fill
 path
-  moveTo -5 -14
-  lineTo 5 -14
-  lineTo 2 -2
-  lineTo 0 0
-  lineTo 2 2
-  lineTo 5 14
-  lineTo -5 14
-  lineTo -2 2
-  lineTo 0 0
-  lineTo -2 -2
-  lineTo -5 -14
+  moveTo -5 -11
+  lineTo 0 2
+  lineTo 5 -11
+  lineTo -5 -11
+  moveTo -5 11
+  lineTo 5 11
+  lineTo 0 -2
+  lineTo -5 11
 endpath
 endsymbol

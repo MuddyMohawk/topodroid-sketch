@@ -3,7 +3,7 @@ symbol point
 name archeo-excavation
 th_name archeo-excavation
 group archeo
-orientation yes
+orientation no
 color 0xffffff
 path
   moveTo -8 -8
@@ -19,10 +19,16 @@ path
   lineTo 15 15
   moveTo -8 8
   lineTo -15 15
-  moveTo 4 -5
-  lineTo -3 2
-  moveTo -3 2
-  cubicTo -6 1 -8 5 -5 7
-  cubicTo -1 6 0 4 -3 2
+  moveTo 3 -6
+  lineTo 6 -3
+  moveTo 4.5 -4.5
+  lineTo -1 1
+  moveTo 0 0
+  lineTo 2 2
+  moveTo -1 1
+  cubicTo -4 0 -7 3 -6 6
+  cubicTo -3 8 1 5 -1 1
+  moveTo -4 2
+  cubicTo -5 3 -5 5 -4 6
 endpath
 endsymbol

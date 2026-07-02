@@ -6,8 +6,8 @@ group popcorn
 orientation yes
 color 0xffffff
 path
-  moveTo 0 9
-  lineTo 0 0
-  addCircle 0 -4 3.5
+  moveTo 0 0
+  lineTo 0 -9
+  addCircle 0 -13 3.5
 endpath
 endsymbol

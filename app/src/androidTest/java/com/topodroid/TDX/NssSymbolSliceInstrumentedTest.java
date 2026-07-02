@@ -93,21 +93,21 @@ public class NssSymbolSliceInstrumentedTest
     drawLineRow( canvas, label, "Conj. stream", "water-flow:intermittent", y ); y += LINE_ROW + 32.0f;
 
     drawPointRow( canvas, label, "Sand", "sand", y, 0.0 ); y += POINT_ROW;
-    drawPointRow( canvas, label, "Clay", "clay", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Clay", "clay", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Bedrock", "bedrock", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Slope", "slope", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Air draught", "air-draught", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Anchor", "anchor", y, 0.0 ); y += POINT_ROW;
-    drawPointRow( canvas, label, "Anastomosis", "anastomosis", y, 0.0, false ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Anastomosis", "anastomosis", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Anthodites", "anthodites", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Aragonite", "aragonite", y, 0.0 ); y += POINT_ROW;
-    drawPointRow( canvas, label, "Archeo exc.", "archeo-excavation", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Archeo exc.", "archeo-excavation", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Blocks", "blocks", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Small rocks", "debris:small", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Pebbles", "pebbles", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Bones", "bones", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Boxwork", "boxwork", y, 0.0, false ); y += POINT_ROW;
-    drawPointRow( canvas, label, "Calcite crust", "calcite-crust", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Calcite crust", "calcite-crust", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Calcite spar", "calcite-spar", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Cave pearl", "cave-pearl", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Chert", "chert", y, 0.0 ); y += POINT_ROW;
