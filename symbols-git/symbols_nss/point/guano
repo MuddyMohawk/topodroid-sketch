@@ -6,10 +6,17 @@ group guano
 orientation yes
 color 0xffffff
 path
-  moveTo -6 -3
-  cubicTo -5 -5 -1 -5 0 -2
-  lineTo 0 7
-  moveTo 6 -3
-  cubicTo 5 -5 1 -5 0 -2
+  moveTo 2.565 -4.29
+  cubicTo 1.003 -5.034 -0.164 -2.369 -0.153 -1.166
+  moveTo -2.871 -4.29
+  cubicTo -1.309 -5.034 -0.148 -2.369 -0.153 -1.166
+  moveTo 8 0.285
+  cubicTo 6.438 -0.454 5.277 2.206 5.282 3.409
+  moveTo 2.565 0.285
+  cubicTo 4.127 -0.454 5.288 2.206 5.282 3.409
+  moveTo -2.565 1.91
+  cubicTo -4.121 1.166 -5.288 3.831 -5.282 5.034
+  moveTo -8 1.91
+  cubicTo -6.438 1.166 -5.277 3.831 -5.277 5.034
 endpath
 endsymbol

@@ -31,7 +31,7 @@ public class SymbolPointLibrary extends SymbolLibrary
 {
   static final private String[] DefaultPoints = {
     AIR_DRAUGHT, "anchor", "anastomosis", "anthodites", "aragonite", "archeo-excavation", BEDROCK, BLOCKS, "bones",
-    "boxwork", "calcite-crust", "calcite-spar", "cave-pearl", "chert", CLAY, "column", CONTINUATION, "crystal",
+    "boxwork", "calcite-crust", "calcite-spar", "cave-pearl", "chert", CLAY, "column", CONTINUATION, "gypsum-crystals",
     DANGER, DEBRIS, "debris:small", DIG, ENTRANCE, GUANO, HELICTITE, ICE, PEBBLES, PILLAR, POPCORN, ROOT, SAND,
     SECTION, SLOPE, SNOW, SODA_STRAW, STALACTITE, "stalactite:alternate", STALAGMITE, "stalagmite:alternate", WATER_FLOW
   };

@@ -112,7 +112,7 @@ public class NssSymbolSliceInstrumentedTest
     drawPointRow( canvas, label, "Cave pearl", "cave-pearl", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Chert", "chert", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Column", "column", y, 0.0 ); y += POINT_ROW;
-    drawPointRow( canvas, label, "Crystal", "crystal", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Gypsum crystals", "gypsum-crystals", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Guano", "guano", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Helictite", "helictite", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Lead", "continuation", y, 0.0 ); y += POINT_ROW;
