@@ -120,8 +120,8 @@ public class NssSymbolSliceInstrumentedTest
     drawPointRow( canvas, label, "Soda straw", "soda-straw", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Stalactite", "stalactite", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Stalagmite", "stalagmite", y, 0.0, false ); y += POINT_ROW;
-    drawPointRow( canvas, label, "Stal. profile", "stalactite:profile", y, 0.0, false ); y += POINT_ROW;
-    drawPointRow( canvas, label, "Stalg. profile", "stalagmite:profile", y, 0.0, false ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Stal. alt", "stalactite:alternate", y, 0.0, false ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Stalg. alt", "stalagmite:alternate", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Water flow", "water-flow", y, 0.0 ); y += POINT_ROW + 34.0f;
 
     drawOpacityRow( canvas, label, y ); y += 108.0f;

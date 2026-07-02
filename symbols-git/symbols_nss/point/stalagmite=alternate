@@ -1,0 +1,15 @@
+encoding utf-8
+symbol point
+name stalagmite_alternate
+th_name stalagmite:alternate
+group stalagmite
+orientation no
+color 0xffffff
+path
+  moveTo -4 4
+  lineTo 0 0
+  lineTo 4 4
+  moveTo 0 0
+  lineTo 0 -6
+endpath
+endsymbol

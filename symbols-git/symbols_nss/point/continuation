@@ -12,7 +12,7 @@ path
   cubicTo 0 -1 2 -2 3 -4
   cubicTo 5 -8 1 -11 -3 -9
   cubicTo -5 -8 -6 -5 -5 -4
-  moveTo 0 8
-  lineTo 0 6
+  moveTo 0 7
+  lineTo 0.01 7
 endpath
 endsymbol

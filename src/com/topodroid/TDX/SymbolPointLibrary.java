@@ -33,7 +33,7 @@ public class SymbolPointLibrary extends SymbolLibrary
     AIR_DRAUGHT, "anchor", "anastomosis", "anthodites", "aragonite", "archeo-excavation", BEDROCK, BLOCKS, "bones",
     "boxwork", "calcite-crust", "calcite-spar", "cave-pearl", "chert", CLAY, "column", CONTINUATION, "crystal",
     DANGER, DEBRIS, "debris:small", DIG, ENTRANCE, GUANO, HELICTITE, ICE, PEBBLES, PILLAR, POPCORN, ROOT, SAND,
-    SECTION, SLOPE, SNOW, SODA_STRAW, STALACTITE, "stalactite:profile", STALAGMITE, "stalagmite:profile", WATER_FLOW
+    SECTION, SLOPE, SNOW, SODA_STRAW, STALACTITE, "stalactite:alternate", STALAGMITE, "stalagmite:alternate", WATER_FLOW
   };
 
   // ArrayList< SymbolPoint > mPoint;    // enabled points

@@ -5,11 +5,11 @@ th_name stalactite
 group stalactite
 orientation no
 color 0xffffff
+style fill
 path
-  moveTo -4 -4
-  lineTo 0 0
-  lineTo 4 -4
-  moveTo 0 0
-  lineTo 0 6
+  moveTo -3.5 -7
+  lineTo 3.5 -7
+  lineTo 0 8
+  lineTo -3.5 -7
 endpath
 endsymbol
