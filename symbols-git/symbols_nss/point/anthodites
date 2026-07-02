@@ -1,0 +1,20 @@
+encoding utf-8
+symbol point
+name anthodites
+th_name anthodites
+group mineral
+orientation yes
+color 0xffffff
+style fill
+path
+  moveTo -11 -9
+  lineTo 11 -9
+  lineTo 11 -8
+  lineTo -11 -8
+  lineTo -11 -9
+  moveTo 0 -8
+  lineTo -8 10
+  lineTo 8 10
+  lineTo 0 -8
+endpath
+endsymbol

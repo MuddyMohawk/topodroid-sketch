@@ -1,0 +1,28 @@
+encoding utf-8
+symbol point
+name archeo-excavation
+th_name archeo-excavation
+group archeo
+orientation yes
+color 0xffffff
+path
+  moveTo -8 -8
+  lineTo 8 -8
+  lineTo 8 8
+  lineTo -8 8
+  lineTo -8 -8
+  moveTo -8 -8
+  lineTo -15 -15
+  moveTo 8 -8
+  lineTo 15 -15
+  moveTo 8 8
+  lineTo 15 15
+  moveTo -8 8
+  lineTo -15 15
+  moveTo 4 -5
+  lineTo -3 2
+  moveTo -3 2
+  cubicTo -6 1 -8 5 -5 7
+  cubicTo -1 6 0 4 -3 2
+endpath
+endsymbol

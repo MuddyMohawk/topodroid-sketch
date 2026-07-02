@@ -1,0 +1,22 @@
+encoding utf-8
+symbol point
+name column
+th_name column
+group pillar
+orientation yes
+color 0xffffff
+style fill
+path
+  moveTo -5 -14
+  lineTo 5 -14
+  lineTo 2 -2
+  lineTo 0 0
+  lineTo 2 2
+  lineTo 5 14
+  lineTo -5 14
+  lineTo -2 2
+  lineTo 0 0
+  lineTo -2 -2
+  lineTo -5 -14
+endpath
+endsymbol

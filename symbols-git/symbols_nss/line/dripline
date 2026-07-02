@@ -1,0 +1,30 @@
+encoding utf-8
+symbol line
+name dripline
+th_name dripline
+group wall
+color 0xffffff 0xff
+width 2
+dash 1.8 0.8 1.8 0.8 0.6 1.2
+effect
+  moveTo 0 0
+  lineTo 6.8 0
+  lineTo 6.8 1
+  lineTo 4.0 1
+  lineTo 4.0 3.2
+  lineTo 3.0 3.2
+  lineTo 3.0 1
+  lineTo 0 1
+  lineTo 0 0
+endeffect
+sketch_effect 1
+  carrier 0 1
+  stamp
+    moveTo 3.0 1
+    lineTo 4.0 1
+    lineTo 4.0 3.2
+    lineTo 3.0 3.2
+    lineTo 3.0 1
+  endstamp
+endsketch_effect
+endsymbol

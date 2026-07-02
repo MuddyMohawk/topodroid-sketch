@@ -1,0 +1,15 @@
+encoding utf-8
+symbol point
+name guano
+th_name guano
+group guano
+orientation yes
+color 0xffffff
+path
+  moveTo -6 -3
+  cubicTo -5 -5 -1 -5 0 -2
+  lineTo 0 7
+  moveTo 6 -3
+  cubicTo 5 -5 1 -5 0 -2
+endpath
+endsymbol

@@ -1,0 +1,13 @@
+encoding utf-8
+symbol point
+name popcorn
+th_name popcorn
+group popcorn
+orientation yes
+color 0xffffff
+path
+  moveTo 0 9
+  lineTo 0 0
+  addCircle 0 -4 3.5
+endpath
+endsymbol

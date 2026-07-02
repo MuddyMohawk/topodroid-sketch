@@ -1,0 +1,27 @@
+encoding utf-8
+symbol point
+name helictite
+th_name helictite
+group helictite
+orientation yes
+color 0xffffff
+path
+  moveTo -14 -8
+  lineTo 14 -8
+  moveTo -11 -8
+  cubicTo -11 -3 -12 -1 -14 -1
+  cubicTo -16 -1 -16 2 -16 5
+  moveTo -6 -8
+  cubicTo -6 -4 -4 -4 -5 -1
+  cubicTo -8 1 -6 4 -5 7
+  moveTo 0 -8
+  lineTo 0 2
+  cubicTo 0 5 -2 5 -2 8
+  moveTo 5 -8
+  cubicTo 5 -3 7 -3 6 1
+  cubicTo 4 3 5 5 6 8
+  moveTo 12 -8
+  cubicTo 12 -4 10 -4 10 -1
+  lineTo 10 3
+endpath
+endsymbol

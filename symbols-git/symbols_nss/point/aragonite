@@ -1,0 +1,20 @@
+encoding utf-8
+symbol point
+name aragonite
+th_name aragonite
+group mineral
+orientation yes
+color 0xffffff
+path
+  moveTo 0 8
+  lineTo 0 -6
+  moveTo 0 -5
+  cubicTo -3 -8 -6 -9 -9 -7
+  moveTo 0 -5
+  cubicTo 3 -8 6 -9 9 -7
+  moveTo 0 -1
+  cubicTo -3 -4 -6 -4 -8 -2
+  moveTo 0 -1
+  cubicTo 3 -4 6 -4 8 -2
+endpath
+endsymbol

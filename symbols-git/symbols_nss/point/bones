@@ -1,0 +1,17 @@
+encoding utf-8
+symbol point
+name bones
+th_name bones
+group bones
+orientation yes
+color 0xffffff
+path
+  moveTo -4 -2
+  lineTo 4 -2
+  cubicTo 5 -6 10 -2 6 0
+  cubicTo 10 2 5 6 4 2
+  lineTo -4 2
+  cubicTo -5 6 -10 2 -6 0
+  cubicTo -10 -2 -5 -6 -4 -2
+endpath
+endsymbol

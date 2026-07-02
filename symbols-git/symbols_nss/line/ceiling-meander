@@ -1,0 +1,43 @@
+encoding utf-8
+symbol line
+name ceiling_channel
+th_name ceiling-meander
+group ceiling
+color 0xffffff 0xff
+width 2
+dash 4.2 1.4
+effect
+  moveTo 0 1.2
+  lineTo 5.2 1.2
+  lineTo 5.2 2.2
+  lineTo 3.2 2.2
+  lineTo 3.2 4.3
+  lineTo 2.2 4.3
+  lineTo 2.2 2.2
+  lineTo 0 2.2
+  moveTo 0 -1.2
+  lineTo 5.2 -1.2
+  lineTo 5.2 -2.2
+  lineTo 3.2 -2.2
+  lineTo 3.2 -4.3
+  lineTo 2.2 -4.3
+  lineTo 2.2 -2.2
+  lineTo 0 -2.2
+endeffect
+sketch_effect 1
+  carrier 1.2 2.2
+  carrier -2.2 -1.2
+  stamp
+    moveTo 2.2 2.2
+    lineTo 3.2 2.2
+    lineTo 3.2 4.3
+    lineTo 2.2 4.3
+    lineTo 2.2 2.2
+    moveTo 2.2 -2.2
+    lineTo 3.2 -2.2
+    lineTo 3.2 -4.3
+    lineTo 2.2 -4.3
+    lineTo 2.2 -2.2
+  endstamp
+endsketch_effect
+endsymbol

@@ -1,0 +1,34 @@
+encoding utf-8
+symbol point
+name crystal
+th_name crystal
+group mineral
+orientation yes
+color 0xffffff
+path
+  moveTo -11 -8
+  lineTo -3 -8
+  moveTo -7 -12
+  lineTo -7 -4
+  moveTo -10 -11
+  lineTo -4 -5
+  moveTo -4 -11
+  lineTo -10 -5
+  moveTo 5 -3
+  lineTo 13 -3
+  moveTo 9 -7
+  lineTo 9 1
+  moveTo 6 -6
+  lineTo 12 0
+  moveTo 12 -6
+  lineTo 6 0
+  moveTo -5 7
+  lineTo 3 7
+  moveTo -1 3
+  lineTo -1 11
+  moveTo -4 4
+  lineTo 2 10
+  moveTo 2 4
+  lineTo -4 10
+endpath
+endsymbol

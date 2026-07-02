@@ -1,0 +1,25 @@
+encoding utf-8
+symbol point
+name debris_small
+th_name debris:small
+group debris
+orientation yes
+color 0xffffff
+path
+  moveTo -9 -4
+  lineTo -4 -6
+  lineTo -1 -2
+  lineTo -6 1
+  lineTo -9 -4
+  moveTo 3 -7
+  lineTo 8 -6
+  lineTo 10 -2
+  lineTo 6 1
+  lineTo 2 -2
+  lineTo 3 -7
+  moveTo -3 6
+  cubicTo -1 2 6 2 8 5
+  cubicTo 9 9 2 10 -2 8
+  cubicTo -4 8 -4 7 -3 6
+endpath
+endsymbol

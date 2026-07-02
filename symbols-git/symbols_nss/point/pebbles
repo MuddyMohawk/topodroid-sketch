@@ -1,0 +1,13 @@
+encoding utf-8
+symbol point
+name pebbles
+th_name pebbles
+group pebbles
+orientation yes
+color 0xffffff
+path
+  addCircle -3 1 2
+  addCircle 4 3 2
+  addCircle 3 -3 2
+endpath
+endsymbol

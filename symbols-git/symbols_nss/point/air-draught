@@ -1,0 +1,18 @@
+encoding utf-8
+symbol point
+name air-draught
+th_name air-draught
+group air-draught
+orientation yes
+color 0xffffff
+path
+  moveTo -4 7
+  lineTo 0 3
+  lineTo 0 -10
+  lineTo 4 -6
+  moveTo 0 -10
+  lineTo -4 -6
+  moveTo -4 4
+  lineTo 0 0
+endpath
+endsymbol

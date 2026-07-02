@@ -1,0 +1,13 @@
+encoding utf-8
+symbol point
+name anchor
+th_name anchor
+group anchor
+orientation yes
+color 0xffffff
+path
+  moveTo 5 0
+  lineTo -5 0
+  addCircle 0 0 5
+endpath
+endsymbol

@@ -1,0 +1,17 @@
+encoding utf-8
+symbol point
+name calcite_crust
+th_name calcite-crust
+group mineral
+orientation yes
+color 0xffffff
+style fill
+path
+  moveTo -12 0
+  lineTo 12 0
+  addCircle -17 0 1
+  addCircle 17 0 1
+  addCircle 0 -5 1
+  addCircle 0 5 1
+endpath
+endsymbol

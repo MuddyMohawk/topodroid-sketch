@@ -1,0 +1,28 @@
+encoding utf-8
+symbol point
+name boxwork
+th_name boxwork
+group mineral
+orientation no
+color 0xffffff
+path
+  moveTo -10 -6
+  lineTo 10 -6
+  moveTo -8 0
+  lineTo 11 0
+  moveTo -9 6
+  lineTo 8 6
+  moveTo -6 -9
+  lineTo -6 1
+  moveTo 1 -8
+  lineTo 1 9
+  moveTo 7 -6
+  lineTo 7 1
+  moveTo -3 0
+  lineTo -3 9
+  moveTo -6 1
+  lineTo 1 1
+  moveTo 1 8
+  lineTo 11 8
+endpath
+endsymbol

@@ -1,0 +1,22 @@
+encoding utf-8
+symbol point
+name soda-straw
+th_name soda-straw
+group stalactite
+orientation no
+color 0xffffff
+path
+  moveTo -14 -8
+  lineTo 14 -8
+  moveTo -11 -8
+  lineTo -11 2
+  moveTo -5 -8
+  lineTo -5 8
+  moveTo 1 -8
+  lineTo 1 4
+  moveTo 8 -8
+  lineTo 8 12
+  moveTo 13 -8
+  lineTo 13 1
+endpath
+endsymbol

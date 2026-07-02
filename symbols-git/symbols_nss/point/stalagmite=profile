@@ -1,0 +1,15 @@
+encoding utf-8
+symbol point
+name stalagmite_profile
+th_name stalagmite:profile
+group stalagmite
+orientation no
+color 0xffffff
+style fill
+path
+  moveTo -3.5 7
+  lineTo 3.5 7
+  lineTo 0 -8
+  lineTo -3.5 7
+endpath
+endsymbol

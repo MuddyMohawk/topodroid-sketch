@@ -1,0 +1,22 @@
+encoding utf-8
+symbol point
+name anastomosis
+th_name anastomosis
+group passage
+orientation no
+color 0xffffff
+path
+  moveTo -6 3
+  cubicTo -6 4 -4 4 -4 3
+  lineTo -4 -3
+  cubicTo -4 -4 -2 -4 -2 -3
+  lineTo -2 3
+  cubicTo -2 4 0 4 0 3
+  lineTo 0 -3
+  cubicTo 0 -4 2 -4 2 -3
+  lineTo 2 3
+  cubicTo 2 4 4 4 4 3
+  lineTo 4 -3
+  cubicTo 4 -4 6 -4 6 -3
+endpath
+endsymbol

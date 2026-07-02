@@ -1,0 +1,18 @@
+encoding utf-8
+symbol point
+name continuation
+th_name continuation
+group continuation
+orientation yes
+has_text yes
+color 0xffffff
+path
+  moveTo 0 3
+  lineTo 0 1
+  cubicTo 0 -1 2 -2 3 -4
+  cubicTo 5 -8 1 -11 -3 -9
+  cubicTo -5 -8 -6 -5 -5 -4
+  moveTo 0 8
+  lineTo 0 6
+endpath
+endsymbol

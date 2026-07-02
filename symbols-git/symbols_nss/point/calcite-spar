@@ -1,0 +1,16 @@
+encoding utf-8
+symbol point
+name calcite_spar
+th_name calcite-spar
+group mineral
+orientation no
+color 0xffffff
+style fill
+path
+  moveTo 0 -7
+  lineTo 3.5 0
+  lineTo 0 7
+  lineTo -3.5 0
+  lineTo 0 -7
+endpath
+endsymbol
