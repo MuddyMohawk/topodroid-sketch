@@ -6,29 +6,17 @@ group debris
 orientation yes
 color 0xffffff
 path
-  moveTo -9 -5
-  lineTo -4 -8
-  lineTo 0 -4
-  lineTo 1 -1
-  lineTo -6 2
-  lineTo -9 -5
-  moveTo -8 -3
-  lineTo 2 -4
-  moveTo 4 -8
-  cubicTo 6 -10 11 -8 12 -4
-  cubicTo 12 -1 9 1 6 1
-  cubicTo 2 0 1 -4 4 -8
-  moveTo 6 -6
-  cubicTo 9 -7 12 -5 12 -2
-  cubicTo 11 0 9 1 7 0
-  moveTo -2 6
-  cubicTo 0 2 6 1 9 4
-  cubicTo 12 8 7 12 2 11
-  cubicTo -4 10 -6 7 -5 4
-  cubicTo -4 2 -3 2 -1 2
-  moveTo -5 7
-  cubicTo -2 4 5 4 10 7
-  moveTo -3 9
-  cubicTo -1 6 3 6 6 7
+  moveTo -2.284 -4.659
+  cubicTo -3.023 -4.534 -5.852 -4.045 -6.5 -3.318
+  cubicTo -5.659 -1.841 -3.932 -0.807 -2.648 -1.068
+  cubicTo -2.455 -2.045 -2.216 -3.443 -2.227 -4.545
+  moveTo 2.42 0.773
+  cubicTo 0.693 0.966 -0.159 2.375 0.409 4.148
+  cubicTo 1.193 4.568 2.25 4.659 3.045 4.409
+  cubicTo 3.773 3 4.239 1.261 2.807 0.795
+  moveTo 4.239 -4.011
+  cubicTo 3.5 -2.511 4.182 -1.227 5.773 -1.023
+  cubicTo 6.057 -1.648 6.318 -2.432 6.5 -3.091
+  cubicTo 5.716 -3.375 5.011 -3.625 4.239 -4.011
 endpath
 endsymbol
