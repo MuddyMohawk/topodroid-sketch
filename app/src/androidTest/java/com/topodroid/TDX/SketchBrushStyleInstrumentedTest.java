@@ -120,6 +120,26 @@ public class SketchBrushStyleInstrumentedTest
   }
 
   @Test
+  public void pointRendererPaint_usesHalfWeightStroke()
+  {
+    float previous = TDSetting.mLineThickness;
+    TDSetting.mLineThickness = 1.0f;
+    try {
+      Paint source = new Paint();
+      source.setColor( 0xffffffff );
+      source.setStyle( Paint.Style.STROKE );
+      source.setStrokeWidth( 2.0f );
+
+      Paint styled = SketchBrushRenderer.pointPaint( source, SketchBrushStyle.of( 5.0f, 1.0f, 1.0f ) );
+
+      assertEquals( 2.0f, source.getStrokeWidth(), 0.0001f );
+      assertEquals( 2.5f, styled.getStrokeWidth(), 0.0001f );
+    } finally {
+      TDSetting.mLineThickness = previous;
+    }
+  }
+
+  @Test
   public void lineSymbolEffect_scalesRepeatAdvanceFromWeight()
   {
     // world-space ink model: the paint stroke width (weight * line thickness)

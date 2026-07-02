@@ -22,17 +22,18 @@ import android.graphics.Paint;
 class SketchBrushRenderer
 {
   private static final float EPS = 1.0e-4f;
+  private static final float POINT_STROKE_WEIGHT_SCALE = 0.5f;
 
   private SketchBrushRenderer() { }
 
   static Paint linePaint( Paint source, SketchBrushStyle style )
   {
-    return paint( source, style );
+    return paint( source, style, 1.0f );
   }
 
   static Paint pointPaint( Paint source, SketchBrushStyle style )
   {
-    return paint( source, style );
+    return paint( source, style, POINT_STROKE_WEIGHT_SCALE );
   }
 
   /** @return the ink thickness [scene units] for a brush style (fallback: standard weight) */
@@ -52,7 +53,7 @@ class SketchBrushRenderer
                             SketchBrushStyle.DEFAULT_WEIGHT_STANDARD );
   }
 
-  private static Paint paint( Paint source, SketchBrushStyle style )
+  private static Paint paint( Paint source, SketchBrushStyle style, float stroke_scale )
   {
     if ( source == null || style == null || style.isEmpty() ) return source;
 
@@ -64,7 +65,7 @@ class SketchBrushRenderer
     }
     paint.setColor( ( alpha << 24 ) | rgb );
     if ( style.hasWeight() ) {
-      paint.setStrokeWidth( style.weightOr( SketchBrushStyle.DEFAULT_WEIGHT_STANDARD ) * TDSetting.mLineThickness );
+      paint.setStrokeWidth( style.weightOr( SketchBrushStyle.DEFAULT_WEIGHT_STANDARD ) * TDSetting.mLineThickness * stroke_scale );
     }
     return paint;
   }
