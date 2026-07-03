@@ -5,6 +5,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 ## TODO
 - fix the display of symbols in the toolset, toolbar, and palette
 - toolbar defaults
+- the fiddlyness of tweaking the line previews suggests it needs a deeper refactor to mirror the sketch canvas instead of madness
 - Area/fill
   - area will need a second pass for the fancier chop/cut/push tools
 - Rename the nss-symbol stuff to topodroid sketch

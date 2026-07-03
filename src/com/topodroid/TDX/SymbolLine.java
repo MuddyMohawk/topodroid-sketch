@@ -41,6 +41,11 @@ public class SymbolLine extends Symbol
 {
   // preview pattern unit [scene units per line-width unit] - toolbar/palette eye-candy only
   private static final float PREVIEW_PATTERN_UNIT_LINES = 1.4f;
+  private static final float PREVIEW_TARGET_FILL = 3.0f / 8.0f;
+  private static final float PREVIEW_MAX_SCALE = 3.25f;
+  private static final float PREVIEW_BUTTON_HALF_HEIGHT_UNITS = 4.0f; // ItemButton.H4
+  private static final float FLAT_PREVIEW_STROKE_SCALE = 1.5f;
+  private static final float FLAT_PREVIEW_MIN_STROKE_LINES = 2.0f;
 
   String mName;       // local name
   Paint  mPaint;      // forward paint - stroke width [scene units] = width * TDSetting.mLineThickness
@@ -78,6 +83,22 @@ public class SymbolLine extends Symbol
   // @Override public int getColor() { return (mPaint == null)? 0 : mPaint.getColor(); }
 
   @Override public Path   getPath()  { return ( mPreviewPath != null )? mPreviewPath : mPath; }
+
+  @Override public Path getScaledPath()
+  {
+    Path path = getPath();
+    if ( path == null ) return null;
+    RectF bounds = new RectF();
+    path.computeBounds( bounds, true );
+    float scale = previewScaleForHeight( bounds.height() );
+    if ( scale <= 1.0f ) return path;
+
+    Path ret = new Path( path );
+    Matrix matrix = new Matrix();
+    matrix.setScale( scale, scale, bounds.centerX(), bounds.centerY() );
+    ret.transform( matrix );
+    return ret;
+  }
 
   // width = 1;
   // no effect
@@ -131,6 +152,7 @@ public class SymbolLine extends Symbol
     mStyleStraight = false;
     mClosed = false;
     mStyleX = 1;
+    setFlatPreviewPaints( null );
   }
 
   private void setDash( float[] dash_lw )
@@ -141,6 +163,7 @@ public class SymbolLine extends Symbol
     float unit = mPaint.getStrokeWidth();
     mPaint.setPathEffect( scaledDashEffect( dash_lw, unit ) );
     mRevPaint.setPathEffect( scaledDashEffect( dash_lw, unit ) );
+    setFlatPreviewPaints( dash_lw );
   }
 
   /** @return a DashPathEffect with intervals scaled by the given unit, or null */
@@ -183,31 +206,136 @@ public class SymbolLine extends Symbol
     mRevPreviewPaint.setPathEffect( effect_rev );
   }
 
-  private void setSketchStrokePreview( SketchEffectData sketch_effect, float preview_unit, float stroke_width )
+  private void setFlatPreviewPaints( float[] dash_lw )
   {
-    if ( sketch_effect == null || ! sketch_effect.strokeStamp || sketch_effect.path_dir == null ) return;
-    Path scaled = scaledPath( sketch_effect.path_dir, preview_unit );
+    if ( mPaint == null ) return;
+
+    float preview_stroke = Math.max( mPaint.getStrokeWidth() * FLAT_PREVIEW_STROKE_SCALE,
+                                     TDSetting.mLineThickness * FLAT_PREVIEW_MIN_STROKE_LINES );
+    PathEffect preview_dash = scaledDashEffect( dash_lw, preview_stroke );
+
+    mPreviewPaint = new Paint( mPaint );
+    mPreviewPaint.setStrokeWidth( preview_stroke );
+    mPreviewPaint.setPathEffect( preview_dash );
+
+    mRevPreviewPaint = new Paint( mRevPaint );
+    mRevPreviewPaint.setStrokeWidth( preview_stroke );
+    mRevPreviewPaint.setPathEffect( preview_dash );
+  }
+
+  private void setSketchPreview( SketchEffectData sketch_effect, float preview_unit, float stroke_width, float advance_lw,
+                                 float[] dash_lw )
+  {
+    if ( sketch_effect == null || sketch_effect.path_dir == null ) return;
+
+    float advance = Math.max( 1.0f, advance_lw * preview_unit );
+    float repeat = previewRepeatLength( dash_lw, advance, preview_unit );
+    Path unit_path = new Path();
+
+    if ( sketch_effect.carriers != null && sketch_effect.carriers.size() > 0 && sketch_effect.strokeStamp ) {
+      addPreviewCarrierCenterLines( unit_path, sketch_effect.carriers, dash_lw, advance, preview_unit );
+    } else if ( sketch_effect.carriers != null && sketch_effect.carriers.size() > 0 ) {
+      addPreviewCarriers( unit_path, sketch_effect.carriers, dash_lw, advance, preview_unit );
+    }
+
+    Path scaled_stamp = scaledPath( sketch_effect.path_dir, preview_unit );
+    unit_path.addPath( scaled_stamp );
+
     RectF bounds = new RectF();
-    scaled.computeBounds( bounds, true );
-    if ( bounds.isEmpty() || bounds.width() <= 0 ) return;
+    unit_path.computeBounds( bounds, true );
+    if ( bounds.isEmpty() ) return;
 
     Path preview = new Path();
-    float advance = Math.max( 1.0f, bounds.width() );
     float y_offset = -0.5f * ( bounds.top + bounds.bottom );
-    for ( float x = -50.0f; x < 50.0f; x += advance ) {
-      Path stamp = new Path( scaled );
-      stamp.offset( x - bounds.left, y_offset );
-      preview.addPath( stamp );
+    for ( float x = -50.0f; x < 50.0f; x += repeat ) {
+      Path sample = new Path( unit_path );
+      sample.offset( x, y_offset );
+      preview.addPath( sample );
     }
     mPreviewPath = preview;
 
     mPreviewPaint = new Paint( mPaint );
     mPreviewPaint.setPathEffect( null );
-    mPreviewPaint.setStyle( Paint.Style.STROKE );
-    mPreviewPaint.setStrokeCap( Paint.Cap.ROUND );
-    mPreviewPaint.setStrokeJoin( Paint.Join.ROUND );
-    mPreviewPaint.setStrokeWidth( Math.max( 1.0f, stroke_width ) );
+    if ( sketch_effect.strokeStamp ) {
+      mPreviewPaint.setStyle( Paint.Style.STROKE );
+      mPreviewPaint.setStrokeCap( Paint.Cap.ROUND );
+      mPreviewPaint.setStrokeJoin( Paint.Join.ROUND );
+      mPreviewPaint.setStrokeWidth( Math.max( 1.0f, stroke_width ) );
+    } else {
+      mPreviewPaint.setStyle( Paint.Style.FILL );
+      mPreviewPaint.setStrokeWidth( 0 );
+    }
     mRevPreviewPaint = new Paint( mPreviewPaint );
+  }
+
+  private static void addPreviewCarriers( Path path, ArrayList< LineSymbolEffect.Carrier > carriers, float[] dash_lw,
+                                          float advance, float unit )
+  {
+    if ( dash_lw == null || dash_lw.length < 2 ) {
+      addPreviewCarrierRun( path, carriers, 0.0f, advance, unit );
+      return;
+    }
+
+    float offset = 0.0f;
+    for ( int k = 0; k < dash_lw.length; ++k ) {
+      float next = offset + Math.max( 0.0f, dash_lw[k] * unit );
+      if ( next > offset && ( k % 2 ) == 0 ) addPreviewCarrierRun( path, carriers, offset, next, unit );
+      offset = next;
+    }
+  }
+
+  private static void addPreviewCarrierCenterLines( Path path, ArrayList< LineSymbolEffect.Carrier > carriers,
+                                                   float[] dash_lw, float advance, float unit )
+  {
+    if ( dash_lw == null || dash_lw.length < 2 ) {
+      addPreviewCarrierCenterRun( path, carriers, 0.0f, advance, unit );
+      return;
+    }
+
+    float offset = 0.0f;
+    for ( int k = 0; k < dash_lw.length; ++k ) {
+      float next = offset + Math.max( 0.0f, dash_lw[k] * unit );
+      if ( next > offset && ( k % 2 ) == 0 ) addPreviewCarrierCenterRun( path, carriers, offset, next, unit );
+      offset = next;
+    }
+  }
+
+  private static void addPreviewCarrierCenterRun( Path path, ArrayList< LineSymbolEffect.Carrier > carriers, float start,
+                                                  float end, float unit )
+  {
+    if ( end <= start ) return;
+    for ( int k = 0; k < carriers.size(); ++k ) {
+      LineSymbolEffect.Carrier carrier = carriers.get( k );
+      float y = 0.5f * ( carrier.y0 + carrier.y1 ) * unit;
+      path.moveTo( start, y );
+      path.lineTo( end, y );
+    }
+  }
+
+  private static void addPreviewCarrierRun( Path path, ArrayList< LineSymbolEffect.Carrier > carriers, float start,
+                                            float end, float unit )
+  {
+    if ( end <= start ) return;
+    for ( int k = 0; k < carriers.size(); ++k ) {
+      LineSymbolEffect.Carrier carrier = carriers.get( k );
+      path.addRect( start, carrier.y0 * unit, end, carrier.y1 * unit, Path.Direction.CW );
+    }
+  }
+
+  private static float previewRepeatLength( float[] dash_lw, float fallback, float unit )
+  {
+    if ( dash_lw == null || dash_lw.length < 2 ) return fallback;
+    float cycle = 0.0f;
+    for ( int k = 0; k < dash_lw.length; ++k ) cycle += Math.max( 0.0f, dash_lw[k] * unit );
+    return ( cycle > 0.0f ) ? Math.max( 1.0f, cycle ) : fallback;
+  }
+
+  private static float previewScaleForHeight( float height )
+  {
+    if ( height <= 0.0f || Float.isNaN( height ) || Float.isInfinite( height ) ) return 1.0f;
+    float target = 2.0f * PREVIEW_BUTTON_HALF_HEIGHT_UNITS * TDSetting.mItemButtonSize * PREVIEW_TARGET_FILL;
+    if ( target <= height ) return 1.0f;
+    return Math.min( PREVIEW_MAX_SCALE, target / height );
   }
 
   private Path scaledPath( Path path, float scale )
@@ -361,6 +489,7 @@ public class SymbolLine extends Symbol
     float[] dash_values = null;
     PathDashPathEffect preview_effect = null;
     PathDashPathEffect preview_rev_effect = null;
+    float preview_effect_unit = preview_unit;
     float xmin=0, xmax=0;
     float ymin=0, ymax=0;
     String options = null;
@@ -574,8 +703,9 @@ public class SymbolLine extends Symbol
                       TDLog.e( filename + " parse addCircle point error: " + line );
                     }
                   } else if ( vals[k].equals("endeffect") ) {
-                    preview_effect     = new PathDashPathEffect( scaledPath( path_dir, preview_unit ), (xmax-xmin) * preview_unit, 0, PathDashPathEffect.Style.MORPH );
-                    preview_rev_effect = new PathDashPathEffect( scaledPath( path_rev, preview_unit ), (xmax-xmin) * preview_unit, 0, PathDashPathEffect.Style.MORPH );
+                    preview_effect_unit = preview_unit * previewScaleForHeight( ( ymax - ymin ) * preview_unit );
+                    preview_effect     = new PathDashPathEffect( scaledPath( path_dir, preview_effect_unit ), (xmax-xmin) * preview_effect_unit, 0, PathDashPathEffect.Style.MORPH );
+                    preview_rev_effect = new PathDashPathEffect( scaledPath( path_rev, preview_effect_unit ), (xmax-xmin) * preview_effect_unit, 0, PathDashPathEffect.Style.MORPH );
                     mLineEffect = new LineSymbolEffect( path_dir, path_rev, xmax - xmin, dash_values );
                     if ( sketch_effect != null ) {
                       mLineEffect.setSketchEffect( sketch_effect.path_dir, sketch_effect.path_rev,
@@ -619,7 +749,7 @@ public class SymbolLine extends Symbol
                 float preview_dy = (ymax - ymin) * preview_unit + 1;
                 float preview_stroke = preview_dy * mWidth * TDSetting.mLineThickness;
                 if ( preview_effect != null ) {
-                  DashPathEffect preview_dash = scaledDashEffect( dash_values, preview_unit );
+                  DashPathEffect preview_dash = scaledDashEffect( dash_values, preview_effect_unit );
                   if ( preview_dash != null ) {
                     setPreviewPatternPaints( new ComposePathEffect( preview_effect, preview_dash ),
                                              new ComposePathEffect( preview_rev_effect, preview_dash ),
@@ -628,10 +758,11 @@ public class SymbolLine extends Symbol
                     setPreviewPatternPaints( preview_effect, preview_rev_effect, preview_stroke );
                   }
                 } else if ( dash_values != null ) {
-                  DashPathEffect preview_dash = scaledDashEffect( dash_values, preview_unit );
-                  setPreviewPatternPaints( preview_dash, preview_dash, mWidth * TDSetting.mLineThickness );
+                  setFlatPreviewPaints( dash_values );
+                } else {
+                  setFlatPreviewPaints( null );
                 }
-                setSketchStrokePreview( sketch_effect, preview_unit, preview_stroke );
+                setSketchPreview( sketch_effect, preview_unit, preview_stroke, xmax - xmin, dash_values );
   	      }
               in_symbol = false;
             }
