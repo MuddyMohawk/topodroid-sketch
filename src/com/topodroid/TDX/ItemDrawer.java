@@ -525,7 +525,6 @@ abstract class ItemDrawer extends Activity
         if ( name.length() == 0 ) continue;
         Symbol symbol = getSymbolByThName( type, name );
         if ( symbol == null || ! symbol.isEnabled() ) continue;
-        if ( hasSymbol( symbols, symbol, index ) ) continue;
         symbols[index++] = symbol;
         if ( index >= NR_RECENT ) break;
       }

@@ -5,6 +5,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 ## TODO
 - fix the display of symbols in the toolset, toolbar, and palette
 - toolbar defaults
+  - additional toolbars should fill with something else? 
 - the fiddlyness of tweaking the line previews suggests it needs a deeper refactor to mirror the sketch canvas instead of madness
 - Area/fill
   - area will need a second pass for the fancier chop/cut/push tools
@@ -28,6 +29,15 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - need a talus symbol
   - rename this meander nonsense
   - all the water symbols 
+  - I don't like the boulder symbol and it needs to be stackable
+  - need a loose flowstone or point flowstone
+  - overhaul slope line
+  - make the sand stamp uneven?
+  - pebbles look like cave pearls
+  - I think I've seen better broken formation symbols?
+  - bones could be bonier
+  - leaves, organic detritus
+  - stackable boulders, rocks?
 
 ## Known bugs
 - Large reference images, and reference images in general, are kinda low and cause lag
