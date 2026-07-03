@@ -4,7 +4,9 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 
 ## TODO
 - Area/fill
-- Bake-to-vanilla export 
+- Rename the nss-symbol stuff to topodroid sketch
+- Refactor away from the -tdx-brush options and into dedicated symbol terminology?
+- Bake/export-to-vanilla export 
 - Make those toolbars less uggo.
 - more symbol behavior (sand/silt stamps, slope line)
 - Add safety warnings when importing vanilla TopoDroid stuff
