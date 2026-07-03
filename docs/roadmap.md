@@ -25,7 +25,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - calcite crust needs a different line length to dot ratio
   - clay needs to be better
   - top horizontal bar of anthodite ain't right
-  - need a talus symbol
+  - need a talus symbol, probably line and point
   - rename this meander nonsense
   - all the water symbols 
   - I don't like the boulder symbol and it needs to be stackable
