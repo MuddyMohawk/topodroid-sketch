@@ -15,7 +15,6 @@ import com.topodroid.util.TDLog;
 import com.topodroid.util.TDString;
 import com.topodroid.ui.MyDialog;
 import com.topodroid.prefs.TDSetting;
-import com.topodroid.prefs.TDPrefHelper;
 
 // import android.app.Dialog;
 // import android.app.Activity;
@@ -418,8 +417,8 @@ public class ExportDialogShot extends MyDialog
     switch ( mSelectedPos ) {
       case TDConst.SURVEY_POS_ZIP: // Zip 
         {
-          TDSetting.mZipWithSymbols = ((CheckBox) findViewById( R.id.zip_symbols )).isChecked();
-          TDPrefHelper.update( "DISTOX_ZIP_WITH_SYMBOLS", TDSetting.mZipWithSymbols );
+          // TODO_COMPAT: reuse the retired sketch-symbol checkbox space for a
+          // dedicated "Export for Vanilla TopoDroid" flow during the compat sprint.
           // TDSetting.mZipShare = ((CheckBox) findViewById( R.id.zip_share )).isChecked();
           TDSetting.mZipOverwrite = ((CheckBox) findViewById( R.id.zip_overwrite )).isChecked();
         }
@@ -545,7 +544,6 @@ public class ExportDialogShot extends MyDialog
   {
     ((CheckBox) findViewById( R.id.export_share )).setChecked( TDSetting.mExportDataShare );
     // ((CheckBox) findViewById( R.id.zip_share )).setChecked( TDSetting.mZipShare );
-    ((CheckBox) findViewById( R.id.zip_symbols )).setChecked( TDSetting.mZipWithSymbols );
     ((CheckBox) findViewById( R.id.zip_overwrite )).setChecked( TDSetting.mZipOverwrite );
 
     // ((CheckBox) findViewById( R.id.compass_prefix )).setChecked( TDSetting.mExportStationsPrefix );

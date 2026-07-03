@@ -446,9 +446,7 @@ public class BrushManager
   public static void reloadLineLibrary( Resources res )
   {
     // TDLog.v("BRUSH load line library" );
-    SketchLineSymbolManager.ensureLineSymbols();
     mLineLib = new SymbolLineLibrary( res );
-    SketchLineSymbolManager.onLineLibraryLoaded();
     TopoDroidApp.refreshDrawingAfterLineLibraryReload();
   }
 
@@ -461,16 +459,6 @@ public class BrushManager
     mAreaLib = new SymbolAreaLibrary( res );
     // mAreaLib.loadUserAreas();
     TopoDroidApp.refreshDrawingAfterSymbolLibraryReload( SymbolType.AREA );
-  }
-
-  public static void writeSketchLineSymbolFromSettings( int which )
-  {
-    SketchLineSymbolManager.writeLineSymbolFromSettings( which );
-  }
-
-  public static void syncSketchLinePrefsFromSymbolFiles()
-  {
-    SketchLineSymbolManager.syncPrefsFromSymbolFiles();
   }
 
   /** make the list of enabled symbols starting from a palette

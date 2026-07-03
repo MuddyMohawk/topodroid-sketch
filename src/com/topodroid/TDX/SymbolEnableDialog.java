@@ -263,7 +263,6 @@ class SymbolEnableDialog extends MyDialog
         BrushManager.reloadPointLibrary( mContext, mContext.getResources() );
         break;
       case SymbolType.LINE:
-        BrushManager.syncSketchLinePrefsFromSymbolFiles();
         BrushManager.reloadLineLibrary( mContext.getResources() );
         break;
       case SymbolType.AREA:

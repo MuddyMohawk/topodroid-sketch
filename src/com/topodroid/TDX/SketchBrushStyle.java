@@ -15,9 +15,9 @@ import com.topodroid.prefs.TDSetting;
 
 public class SketchBrushStyle
 {
-  public static final float DEFAULT_WEIGHT_THIN     = TDSetting.DEFAULT_USER_LINE_FINE_WIDTH;
-  public static final float DEFAULT_WEIGHT_STANDARD = TDSetting.DEFAULT_USER_LINE_STANDARD_WIDTH;
-  public static final float DEFAULT_WEIGHT_THICK    = TDSetting.DEFAULT_USER_LINE_THICK_WIDTH;
+  public static final float DEFAULT_WEIGHT_THIN     = TDSetting.DEFAULT_SKETCH_STYLE_WEIGHT_THIN;
+  public static final float DEFAULT_WEIGHT_STANDARD = TDSetting.DEFAULT_SKETCH_STYLE_WEIGHT_STANDARD;
+  public static final float DEFAULT_WEIGHT_THICK    = TDSetting.DEFAULT_SKETCH_STYLE_WEIGHT_THICK;
   public static final float DEFAULT_POINT_SCALE     = 1.0f;
   public static final float DEFAULT_OPACITY         = 1.0f;
 

@@ -34,11 +34,6 @@
       android:layout_height="wrap_content"
       android:text="@string/export_share"
       / -->
-    <CheckBox android:id="@+id/zip_symbols"
-      android:layout_width="match_parent" 
-      android:layout_height="wrap_content"
-      android:text="@string/export_sketch_line_symbols"
-      />
   </LinearLayout>
 
   <LinearLayout android:id="@+id/layout_compass"

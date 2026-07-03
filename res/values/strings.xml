@@ -1338,7 +1338,6 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="export_share">Share</string>
   <string name="export_overwrite">Overwrite</string>
   <string name="export_file_exists">File already exists: %1$s</string>
-  <string name="export_sketch_line_symbols">Include TopoDroid Sketch-specific symbology</string>
   <string name="export_png_scale">PNG scale</string>
   <!-- UNUSED string name="export_scale_png">Resolution</string -->
     <string name="export_png_filename">PNG filename</string>
@@ -2016,18 +2015,6 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_dot_radius_message">Size of the green dots</string>
   <string name="pref_line_thickness_title">Line width</string>
   <string name="pref_line_thickness_summary">Drawing line width</string>
-  <string name="pref_sketch_line_fine_width_title">Fine sketch line width</string>
-  <string name="pref_sketch_line_fine_width_summary">Width multiplier for the fine sketch line</string>
-  <string name="pref_sketch_line_fine_color_title">Fine sketch line color</string>
-  <string name="pref_sketch_line_fine_color_summary">Color of the fine sketch line</string>
-  <string name="pref_sketch_line_standard_width_title">Standard sketch line width</string>
-  <string name="pref_sketch_line_standard_width_summary">Width multiplier for the standard sketch line</string>
-  <string name="pref_sketch_line_standard_color_title">Standard sketch line color</string>
-  <string name="pref_sketch_line_standard_color_summary">Color of the standard sketch line</string>
-  <string name="pref_sketch_line_thick_width_title">Thick sketch line width</string>
-  <string name="pref_sketch_line_thick_width_summary">Width multiplier for the thick sketch line</string>
-  <string name="pref_sketch_line_thick_color_title">Thick sketch line color</string>
-  <string name="pref_sketch_line_thick_color_summary">Color of the thick sketch line</string>
   <string name="pref_line_units_title">Line style scale</string>
   <string name="pref_line_units_summary">Scale of line drawing styles</string>
   <string name="pref_line_close_title">Close closed lines</string>

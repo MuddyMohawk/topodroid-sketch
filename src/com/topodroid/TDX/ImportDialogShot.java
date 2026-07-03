@@ -198,7 +198,6 @@ public class ImportDialogShot extends MyDialog
     switch ( mSelectedPos ) {
       // case 0: // Zip GEEK
       //   {
-      //     TDSetting.mZipWithSymbols = ((CheckBox) findViewById( R.id.zip_symbols )).isChecked();
       //   }
       //   break;
       case 1: // Compass
@@ -279,5 +278,4 @@ public class ImportDialogShot extends MyDialog
   }
 
 }
-
 

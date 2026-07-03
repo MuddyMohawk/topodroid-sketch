@@ -344,31 +344,6 @@ public class Archiver
     return true;
   }
 
-  /** compress only the sketch line symbols
-   * @param zipfile  compressed zip file
-   * @return true if successful
-   */
-  private boolean compressSketchLineSymbols( File zipfile )
-  {
-    ZipOutputStream zos = null;
-    boolean ret = false;
-    try {
-      zos = new ZipOutputStream( new BufferedOutputStream( new FileOutputStream( zipfile ) ) );
-      for ( String filename : SketchLineSymbolManager.getLineFilenames() ) {
-        File file = TDPath.getLineFile( filename );
-        if ( file.exists() ) {
-          addOptionalEntry( zos, file, file.getPath() );
-          ret = true;
-        }
-      }
-    } catch ( FileNotFoundException e ) {
-      return false;
-    } finally {
-      if ( zos != null ) try { zos.close(); } catch ( IOException e ) { TDLog.e("ZIP-sketch-line close error"); }
-    }
-    return ret;
-  }
-
   /** uncompress symbol files
    * @param zin      compressed input stream
    * @param type     symbols type
@@ -488,11 +463,6 @@ public class Archiver
       pathname = TDPath.getSurveyNoteFile( survey );
       TDLog.v("ZIP note file " + pathname );
       addOptionalEntry( zos, TDFile.getTopoDroidFile( pathname ), pathname );
-
-      File sketchLineSymbolsZip = TDFile.getPrivateFile( null, "lines.zip" );
-      if ( compressSketchLineSymbols( sketchLineSymbolsZip ) )  {
-        addOptionalEntry( zos, sketchLineSymbolsZip, sketchLineSymbolsZip.getPath() );
-      }
 
 /* FIXME_SKETCH_3D *
       List< Sketch3dInfo > sketches  = app_data.selectAllSketches( TDInstance.sid, TDStatus.NORMAL );
@@ -832,7 +802,6 @@ public class Archiver
             }
           } else if ( ze.getName().equals( "lines.zip" ) ) { // LINES
             if ( uncompressSymbols( zin, TDPath.getSymbolLineDirname(), "l_", true, true ) ) {
-      SketchLineSymbolManager.syncPrefsFromSymbolFiles();
               BrushManager.reloadLineLibrary( app.getResources() );
             }
           } else if ( ze.getName().equals( "areas.zip" ) ) { // AREAS
@@ -993,7 +962,6 @@ public class Archiver
             }
           } else if ( ze.getName().equals( "lines.zip" ) ) { // LINES
             if ( uncompressSymbols( zin, TDPath.getSymbolLineDirname(), "l_", true, true ) ) {
-      SketchLineSymbolManager.syncPrefsFromSymbolFiles();
               BrushManager.reloadLineLibrary( app.getResources() );
             }
           } else if ( ze.getName().equals( "areas.zip" ) ) { // AREAS

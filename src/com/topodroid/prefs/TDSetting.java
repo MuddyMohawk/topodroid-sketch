@@ -749,18 +749,9 @@ public class TDSetting
   public static int   mSketchGridColor = DEFAULT_SKETCH_GRID_COLOR;
   public static boolean mAreaOverlapDarken = true;
   public static float mLineThickness   = 1;    // width of drawing lines
-  public static final float DEFAULT_USER_LINE_FINE_WIDTH     = 1.0f;
-  public static final float DEFAULT_USER_LINE_STANDARD_WIDTH = 2.0f;
-  public static final float DEFAULT_USER_LINE_THICK_WIDTH    = 5.0f;
-  public static final int   DEFAULT_USER_LINE_FINE_COLOR     = TDColor.WHITE & 0x00ffffff;
-  public static final int   DEFAULT_USER_LINE_STANDARD_COLOR = TDColor.WHITE & 0x00ffffff;
-  public static final int   DEFAULT_USER_LINE_THICK_COLOR    = TDColor.WHITE & 0x00ffffff;
-  public static float mUserLineFineWidth     = DEFAULT_USER_LINE_FINE_WIDTH;
-  public static float mUserLineStandardWidth = DEFAULT_USER_LINE_STANDARD_WIDTH;
-  public static float mUserLineThickWidth    = DEFAULT_USER_LINE_THICK_WIDTH;
-  public static int   mUserLineFineColor     = DEFAULT_USER_LINE_FINE_COLOR;
-  public static int   mUserLineStandardColor = DEFAULT_USER_LINE_STANDARD_COLOR;
-  public static int   mUserLineThickColor    = DEFAULT_USER_LINE_THICK_COLOR;
+  public static final float DEFAULT_SKETCH_STYLE_WEIGHT_THIN     = 1.0f;
+  public static final float DEFAULT_SKETCH_STYLE_WEIGHT_STANDARD = 2.0f;
+  public static final float DEFAULT_SKETCH_STYLE_WEIGHT_THICK    = 5.0f;
   public static boolean mAutoSectionPt = false;
   public static int   mBackupNumber    = 5;
   public static int   mBackupInterval  = 60;
@@ -1663,20 +1654,14 @@ public class TDSetting
 
     key = TDPrefKey.mLine;
     mLineThickness = tryFloat( prefs,  key[0].key,      key[0].dflt );   // DISTOX_LINE_THICKNESS
-    mUserLineFineWidth     = positiveOrDefault( tryFloat( prefs, key[1].key, key[1].dflt ), DEFAULT_USER_LINE_FINE_WIDTH );
-    mUserLineFineColor     = tryColor( prefs, key[2].key, key[2].dflt ) & 0x00ffffff;
-    mUserLineStandardWidth = positiveOrDefault( tryFloat( prefs, key[3].key, key[3].dflt ), DEFAULT_USER_LINE_STANDARD_WIDTH );
-    mUserLineStandardColor = tryColor( prefs, key[4].key, key[4].dflt ) & 0x00ffffff;
-    mUserLineThickWidth    = positiveOrDefault( tryFloat( prefs, key[5].key, key[5].dflt ), DEFAULT_USER_LINE_THICK_WIDTH );
-    mUserLineThickColor    = tryColor( prefs, key[6].key, key[6].dflt ) & 0x00ffffff;
-    setLineStyleAndType( prefs.getString( key[7].key,   key[7].dflt ) ); // DISTOX_LINE_STYLE
-    setLineSegment( tryInt(    prefs,  key[8].key,      key[8].dflt ) ); // DISTOX_LINE_SEGMENT
-    mLineClose     = prefs.getBoolean( key[9].key, bool(key[9].dflt) );  // DISTOX_LINE_CLOSE
-    mArrowLength   = tryFloat( prefs,  key[10].key,     key[10].dflt );  // DISTOX_ARROW_LENGTH
-    mAutoSectionPt = prefs.getBoolean( key[11].key, bool(key[11].dflt) );// DISTOX_AUTO_SECTION_PT
-    mAreaBorder    = prefs.getBoolean( key[12].key, bool(key[12].dflt) );// DISTOX_AREA_BORDER
-    mUnitLines     = tryFloat( prefs,  key[13].key,     key[13].dflt );  // DISTOX_LINE_UNITS
-    mSlopeLSide    = tryInt(   prefs,  key[14].key,     key[14].dflt );  // DISTOX_SLOPE_LSIDE
+    setLineStyleAndType( prefs.getString( key[1].key,   key[1].dflt ) ); // DISTOX_LINE_STYLE
+    setLineSegment( tryInt(    prefs,  key[2].key,      key[2].dflt ) ); // DISTOX_LINE_SEGMENT
+    mLineClose     = prefs.getBoolean( key[3].key, bool(key[3].dflt) );  // DISTOX_LINE_CLOSE
+    mArrowLength   = tryFloat( prefs,  key[4].key,      key[4].dflt );   // DISTOX_ARROW_LENGTH
+    mAutoSectionPt = prefs.getBoolean( key[5].key, bool(key[5].dflt) );  // DISTOX_AUTO_SECTION_PT
+    mAreaBorder    = prefs.getBoolean( key[6].key, bool(key[6].dflt) );  // DISTOX_AREA_BORDER
+    mUnitLines     = tryFloat( prefs,  key[7].key,      key[7].dflt );   // DISTOX_LINE_UNITS
+    mSlopeLSide    = tryInt(   prefs,  key[8].key,      key[8].dflt );   // DISTOX_SLOPE_LSIDE
     int rawPresetSlots = tryInt( prefs, PRESET_SLOTS_KEY, TDString.FOUR );
     boolean resetPresetDefaults = tryInt( prefs, PRESET_DEFAULTS_VERSION_KEY, TDString.ZERO ) < SKETCH_PRESET_DEFAULTS_VERSION;
     if ( resetPresetDefaults ) rawPresetSlots = SKETCH_PRESET_DEFAULT;
@@ -3178,44 +3163,32 @@ public class TDSetting
     TDPrefKey[] key = TDPrefKey.mLine;
     if ( k.equals( key[ 0 ].key ) ) { // DISTOX_LINE_THICKNESS
       ret = setLineThickness( tryStringValue( hlp, k, v, key[0].dflt ) );
-    } else if ( k.equals( key[ 1 ].key ) ) { // DISTOX_USER_LINE_FINE_WIDTH
-      ret = setUserLineFineWidth( tryStringValue( hlp, k, v, key[1].dflt ) );
-    } else if ( k.equals( key[ 2 ].key ) ) { // DISTOX_USER_LINE_FINE_COLOR
-      ret = setUserLineFineColor( tryColorValue( hlp, k, v, key[2].dflt ) );
-    } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_USER_LINE_STANDARD_WIDTH
-      ret = setUserLineStandardWidth( tryStringValue( hlp, k, v, key[3].dflt ) );
-    } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_USER_LINE_STANDARD_COLOR
-      ret = setUserLineStandardColor( tryColorValue( hlp, k, v, key[4].dflt ) );
-    } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_USER_LINE_THICK_WIDTH
-      ret = setUserLineThickWidth( tryStringValue( hlp, k, v, key[5].dflt ) );
-    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_USER_LINE_THICK_COLOR
-      ret = setUserLineThickColor( tryColorValue( hlp, k, v, key[6].dflt ) );
-    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_LINE_STYLE (choice)
-      setLineStyleAndType( tryStringValue( hlp, k, v, key[7].dflt ) );
+    } else if ( k.equals( key[ 1 ].key ) ) { // DISTOX_LINE_STYLE (choice)
+      setLineStyleAndType( tryStringValue( hlp, k, v, key[1].dflt ) );
       syncPreset = true;
-    } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_LINE_SEGMENT
-      ret = setLineSegment( tryIntValue(   hlp, k, v, key[8].dflt ) );
+    } else if ( k.equals( key[ 2 ].key ) ) { // DISTOX_LINE_SEGMENT
+      ret = setLineSegment( tryIntValue(   hlp, k, v, key[2].dflt ) );
       syncPreset = true;
-    } else if ( k.equals( key[ 9 ].key ) ) { // DISTOX_LINE_CLOSE
-      mLineClose = tryBooleanValue( hlp, k, v, bool(key[9].dflt) );
-    } else if ( k.equals( key[ 10 ].key ) ) { // DISTOX_ARROW_LENGTH
-      ret = setArrowLength( tryFloatValue( hlp, k, v, key[10].dflt ) );
-    } else if ( k.equals( key[ 11 ].key ) ) { // DISTOX_AUTO_SECTION_PT (bool)
-      mAutoSectionPt = tryBooleanValue( hlp, k, v, bool(key[11].dflt) );
+    } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_LINE_CLOSE
+      mLineClose = tryBooleanValue( hlp, k, v, bool(key[3].dflt) );
+    } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_ARROW_LENGTH
+      ret = setArrowLength( tryFloatValue( hlp, k, v, key[4].dflt ) );
+    } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_AUTO_SECTION_PT (bool)
+      mAutoSectionPt = tryBooleanValue( hlp, k, v, bool(key[5].dflt) );
     // } else if ( k.equals( key[ 9 ].key ) ) { // DISTOX_LINE_CONTINUE (choice)
     //   mContinueLine  = tryIntValue( hlp, k, v, key[7].dflt );
     // } else if ( k.equals( key[ 11 ].key ) ) { // DISTOX_WITH_CONTINUE_LINE (bool)
     //   mWithLineJoin = tryBooleanValue(  hlp, k, v, bool(key[8].dflt) );
-    } else if ( k.equals( key[ 12 ].key ) ) { // DISTOX_AREA_BORDER (bool)
-      mAreaBorder = tryBooleanValue( hlp, k, v, bool(key[12].dflt) );
-    } else if ( k.equals( key[ 13 ].key ) ) { // DISTOX_LINE_UNITS
+    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_AREA_BORDER (bool)
+      mAreaBorder = tryBooleanValue( hlp, k, v, bool(key[6].dflt) );
+    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_LINE_UNITS
       try {
-        setDrawingUnitLines( tryFloatValue( hlp, k, v, key[13].dflt ) );
+        setDrawingUnitLines( tryFloatValue( hlp, k, v, key[7].dflt ) );
       } catch ( NumberFormatException e ) {
         TDLog.e( e.getMessage() );
       }
-    } else if ( k.equals( key[ 14 ].key ) ) { // DISTOX_SLOPE_LSIDE
-      ret = setSlopeLSide( tryIntValue( hlp, k, v, key[14].dflt ) );
+    } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_SLOPE_LSIDE
+      ret = setSlopeLSide( tryIntValue( hlp, k, v, key[8].dflt ) );
     } else {
       TDLog.e("missing LINE key: " + k );
     }
@@ -3324,34 +3297,22 @@ public class TDSetting
       ret = String.format(Locale.US, "%.2f", mLabelSize );
     } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_LINE_THICKNESS
       ret = setLineThickness( tryStringValue( hlp, k, v, key[3].dflt ) );
-    } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_USER_LINE_FINE_WIDTH
-      ret = setUserLineFineWidth( tryStringValue( hlp, k, v, key[4].dflt ) );
-    } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_USER_LINE_FINE_COLOR
-      ret = setUserLineFineColor( tryColorValue( hlp, k, v, key[5].dflt ) );
-    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_USER_LINE_STANDARD_WIDTH
-      ret = setUserLineStandardWidth( tryStringValue( hlp, k, v, key[6].dflt ) );
-    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_USER_LINE_STANDARD_COLOR
-      ret = setUserLineStandardColor( tryColorValue( hlp, k, v, key[7].dflt ) );
-    } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_USER_LINE_THICK_WIDTH
-      ret = setUserLineThickWidth( tryStringValue( hlp, k, v, key[8].dflt ) );
-    } else if ( k.equals( key[ 9 ].key ) ) { // DISTOX_USER_LINE_THICK_COLOR
-      ret = setUserLineThickColor( tryColorValue( hlp, k, v, key[9].dflt ) );
-    } else if ( k.equals( key[ 10 ].key ) ) { // DISTOX_LINE_STYLE (choice)
-      setLineStyleAndType( tryStringValue( hlp, k, v, key[10].dflt ) );
+    } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_LINE_STYLE (choice)
+      setLineStyleAndType( tryStringValue( hlp, k, v, key[4].dflt ) );
       syncPreset = true;
-    } else if ( k.equals( key[ 11 ].key ) ) { // DISTOX_LINE_CLOSE
-      mLineClose = tryBooleanValue( hlp, k, v, bool(key[11].dflt) );
-    } else if ( k.equals( key[ 12 ].key ) ) { // DISTOX_LINE_SEGMENT
-      ret = setLineSegment( tryIntValue(   hlp, k, v, key[12].dflt ) );
+    } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_LINE_CLOSE
+      mLineClose = tryBooleanValue( hlp, k, v, bool(key[5].dflt) );
+    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_LINE_SEGMENT
+      ret = setLineSegment( tryIntValue(   hlp, k, v, key[6].dflt ) );
       syncPreset = true;
-    } else if ( k.equals( key[ 13 ].key ) ) { // DISTOX_ARROW_LENGTH
-      ret = setArrowLength( tryFloatValue( hlp, k, v, key[13].dflt ) );
-    } else if ( k.equals( key[ 14 ].key ) ) { // DISTOX_AUTO_SECTION_PT (bool)
-      mAutoSectionPt = tryBooleanValue( hlp, k, v, bool(key[14].dflt) );
+    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_ARROW_LENGTH
+      ret = setArrowLength( tryFloatValue( hlp, k, v, key[7].dflt ) );
+    } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_AUTO_SECTION_PT (bool)
+      mAutoSectionPt = tryBooleanValue( hlp, k, v, bool(key[8].dflt) );
     // } else if ( k.equals( key[ 11 ].key ) ) { // DISTOX_LINE_CONTINUE (choice)
     //   mContinueLine  = tryIntValue( hlp, k, v, key[8].dflt );
-    } else if ( k.equals( key[ 15 ].key ) ) { // DISTOX_AREA_BORDER (bool)
-      mAreaBorder = tryBooleanValue( hlp, k, v, bool(key[15].dflt) );
+    } else if ( k.equals( key[ 9 ].key ) ) { // DISTOX_AREA_BORDER (bool)
+      mAreaBorder = tryBooleanValue( hlp, k, v, bool(key[9].dflt) );
     // } else if ( k.equals( key[ 10 ].key ) ) { // DISTOX_REDUCE_ANGLE
     //   ret = setReduceAngle( tryFloatValue( hlp, k, v, key[10] ) );
     } else {
@@ -3986,9 +3947,9 @@ public class TDSetting
   private static float defaultSketchStyleWeight( int style )
   {
     style = normalizeSketchStyleDefinition( style );
-    if ( style == SKETCH_STYLE_THIN ) return DEFAULT_USER_LINE_FINE_WIDTH;
-    if ( style == SKETCH_STYLE_THICK ) return DEFAULT_USER_LINE_THICK_WIDTH;
-    return DEFAULT_USER_LINE_STANDARD_WIDTH;
+    if ( style == SKETCH_STYLE_THIN ) return DEFAULT_SKETCH_STYLE_WEIGHT_THIN;
+    if ( style == SKETCH_STYLE_THICK ) return DEFAULT_SKETCH_STYLE_WEIGHT_THICK;
+    return DEFAULT_SKETCH_STYLE_WEIGHT_STANDARD;
   }
 
   private static float defaultSketchStylePointScale( int style ) { return SketchBrushStyle.DEFAULT_POINT_SCALE; }
@@ -4294,112 +4255,6 @@ public class TDSetting
       } 
     } catch ( NumberFormatException e ) { ret = String.format(Locale.US, "%.1f", mLineThickness); }
     return ret;
-  }
-
-  private static String setUserLineFineWidth( String str )
-  {
-    return setUserLineWidth( str, DEFAULT_USER_LINE_FINE_WIDTH, 0 );
-  }
-
-  private static String setUserLineStandardWidth( String str )
-  {
-    return setUserLineWidth( str, DEFAULT_USER_LINE_STANDARD_WIDTH, 1 );
-  }
-
-  private static String setUserLineThickWidth( String str )
-  {
-    return setUserLineWidth( str, DEFAULT_USER_LINE_THICK_WIDTH, 2 );
-  }
-
-  private static String setUserLineFineColor( int color )
-  {
-    return setUserLineColor( color, 0 );
-  }
-
-  private static String setUserLineStandardColor( int color )
-  {
-    return setUserLineColor( color, 1 );
-  }
-
-  private static String setUserLineThickColor( int color )
-  {
-    return setUserLineColor( color, 2 );
-  }
-
-  private static String setUserLineFineColor( String str )
-  {
-    return setUserLineColor( str, 0 );
-  }
-
-  private static String setUserLineStandardColor( String str )
-  {
-    return setUserLineColor( str, 1 );
-  }
-
-  private static String setUserLineThickColor( String str )
-  {
-    return setUserLineColor( str, 2 );
-  }
-
-  private static String setUserLineWidth( String str, float dflt, int which )
-  {
-    float current = ( which == 0 ) ? mUserLineFineWidth
-                  : ( which == 1 ) ? mUserLineStandardWidth
-                  : mUserLineThickWidth;
-    String ret = null;
-    try {
-      float f = Float.parseFloat( str );
-      if ( f <= 0 ) {
-        f = dflt;
-        ret = formatLineWidthValue( f );
-      }
-      if ( f != current ) {
-        if ( which == 0 ) {
-          mUserLineFineWidth = f;
-        } else if ( which == 1 ) {
-          mUserLineStandardWidth = f;
-        } else {
-          mUserLineThickWidth = f;
-        }
-        BrushManager.writeSketchLineSymbolFromSettings( which );
-        reloadLineLibrary();
-      }
-    } catch ( NumberFormatException e ) {
-      ret = formatLineWidthValue( current );
-    }
-    return ret;
-  }
-
-  private static String setUserLineColor( String str, int which )
-  {
-    try {
-      return setUserLineColor( Integer.parseInt( str ), which );
-    } catch ( NumberFormatException e ) {
-      int current = ( which == 0 ) ? mUserLineFineColor
-                    : ( which == 1 ) ? mUserLineStandardColor
-                    : mUserLineThickColor;
-      return Integer.toString( current );
-    }
-  }
-
-  private static String setUserLineColor( int color, int which )
-  {
-    int rgb = color & 0x00ffffff;
-    int current = ( which == 0 ) ? mUserLineFineColor
-                  : ( which == 1 ) ? mUserLineStandardColor
-                  : mUserLineThickColor;
-    if ( rgb != current ) {
-      if ( which == 0 ) {
-        mUserLineFineColor = rgb;
-      } else if ( which == 1 ) {
-        mUserLineStandardColor = rgb;
-      } else {
-        mUserLineThickColor = rgb;
-      }
-      BrushManager.writeSketchLineSymbolFromSettings( which );
-      reloadLineLibrary();
-    }
-    return Integer.toString( rgb );
   }
 
   private static String setLineSegment( int val )
@@ -5032,12 +4887,6 @@ B DISTOX_SAP5_BIT16_BUG true
       k="DISTOX_SKETCH_GRID_COLOR";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mSketchGridColor );
       k="DISTOX_AREA_OVERLAP_DARKEN";   if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mAreaOverlapDarken) );
       k="DISTOX_LINE_THICKNESS";        if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mLineThickness );
-      k="DISTOX_USER_LINE_FINE_WIDTH";  if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mUserLineFineWidth );
-      k="DISTOX_USER_LINE_FINE_COLOR";  if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mUserLineFineColor );
-      k="DISTOX_USER_LINE_STANDARD_WIDTH"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mUserLineStandardWidth );
-      k="DISTOX_USER_LINE_STANDARD_COLOR"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mUserLineStandardColor );
-      k="DISTOX_USER_LINE_THICK_WIDTH"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mUserLineThickWidth );
-      k="DISTOX_USER_LINE_THICK_COLOR"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mUserLineThickColor );
       k="DISTOX_SCALABLE_LABEL";        if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, mScalableLabel );
       k="DISTOX_XSECTION_OFFSET";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mXSectionOffset );
       k="DISTOX_CLOSENESS";             if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mSelectness );
@@ -5375,24 +5224,6 @@ B DISTOX_SAP5_BIT16_BUG true
               break;
             case "DISTOX_LINE_THICKNESS":
               setLineThickness( value ); setPreference( editor, kay, mLineThickness );
-              break;
-            case "DISTOX_USER_LINE_FINE_WIDTH":
-              setUserLineFineWidth( value ); setPreference( editor, kay, mUserLineFineWidth );
-              break;
-            case "DISTOX_USER_LINE_FINE_COLOR":
-              setUserLineFineColor( value ); setPreference( editor, kay, mUserLineFineColor );
-              break;
-            case "DISTOX_USER_LINE_STANDARD_WIDTH":
-              setUserLineStandardWidth( value ); setPreference( editor, kay, mUserLineStandardWidth );
-              break;
-            case "DISTOX_USER_LINE_STANDARD_COLOR":
-              setUserLineStandardColor( value ); setPreference( editor, kay, mUserLineStandardColor );
-              break;
-            case "DISTOX_USER_LINE_THICK_WIDTH":
-              setUserLineThickWidth( value ); setPreference( editor, kay, mUserLineThickWidth );
-              break;
-            case "DISTOX_USER_LINE_THICK_COLOR":
-              setUserLineThickColor( value ); setPreference( editor, kay, mUserLineThickColor );
               break;
             case "DISTOX_SCALABLE_LABEL":
               mScalableLabel = Boolean.parseBoolean( value ); setPreference( editor, kay, mScalableLabel );
