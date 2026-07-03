@@ -1,24 +1,34 @@
 # Roadmap, known bugs, and brainstorming
 
-The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles. 
+The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles.
 
 ## TODO
+- toolbar defaults
 - Area/fill
+  - area will need a second pass for the fancier chop/cut/push tools
 - Rename the nss-symbol stuff to topodroid sketch
 - Refactor away from the -tdx-brush options and into dedicated symbol terminology?
-- Bake/export-to-vanilla export 
+- Bake/export-to-vanilla export
 - Make those toolbars less uggo.
 - more symbol behavior (sand/silt stamps, slope line)
+- symbol rotation obeys snapping?
 - Add safety warnings when importing vanilla TopoDroid stuff
 - per-symbol defaults? locking?
 - Option for rearranging render order (eg, survey station designations on top)
 - Change the update check and versioning to track something besides `https://raw.githubusercontent.com/marcocorvi/speleoapks/main/tdversion.txt`
+- symbol notes:
+  - bedrock point symbol shouldn't be orientable
+  - need the text/special object symbols
+  - need the crack lines
+  - maybe make a popcorn line symbol
+  - calcite crust needs a different line length to dot ratio
+  -
 
 ## Known bugs
 - Large reference images, and reference images in general, are kinda low and cause lag
 - Adjusting the number of preset buttons doesn't update that settings screen, causing the user to have to leave and re-enter that settings page to adjust the new preset bars
-- Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch 
-  - station designation font size does not affect export size 
+- Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch
+  - station designation font size does not affect export size
   - actually all the sketch settings might not be respected (eg leg lines size)?
 - The "location is needed" pop-ups upon install even if permission was granted during installation. Vanilla bug.
 - The `undo` action seems weird over many actions. Potentially vanilla bug
