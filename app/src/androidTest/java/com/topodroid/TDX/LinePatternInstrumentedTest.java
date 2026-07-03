@@ -159,9 +159,9 @@ public class LinePatternInstrumentedTest
 
   private int renderSectionLineAndCountRuns( float zoom )
   {
-    int lineType = BrushManager.getLineIndexByThName( SymbolLibrary.WALL_PRESUMED );
-    assertTrue( "Presumed wall line symbol is missing", lineType >= 0 );
-    assertTrue( "Presumed wall line should have a pattern effect", BrushManager.hasLinePathEffect( lineType ) );
+    int lineType = BrushManager.getLineIndexByThName( SymbolLibrary.SECTION );
+    assertTrue( "Section line symbol is missing", lineType >= 0 );
+    assertTrue( "Section line should have a pattern effect", BrushManager.hasLinePathEffect( lineType ) );
 
     DrawingLinePath line = new DrawingLinePath( lineType, 0 );
     line.addStartPoint( 0.0f, LINE_Y );

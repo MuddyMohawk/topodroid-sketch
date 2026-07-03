@@ -120,29 +120,37 @@ class SymbolReload extends MyDialog
     Button b = (Button) v;
 
     if ( b == mBtnInstall ) {
-      mApp.reloadSymbols( false,  // do not clear first 
-                          mCBspeleo.isChecked(),
-                          mCBextra.isChecked(),
-                          mCBmine.isChecked(),
-                          mCBgeo.isChecked(),
-                          mCBarcheo.isChecked(),
-                          mCBanthro.isChecked(),
-                          mCBpaleo.isChecked(),
-                          mCBbio.isChecked(),
-                          mCBkarst.isChecked()
-                        );
+      if ( mAll ) {
+        mApp.reloadSymbols( false,  // do not clear first
+                            mCBspeleo.isChecked(),
+                            mCBextra.isChecked(),
+                            mCBmine.isChecked(),
+                            mCBgeo.isChecked(),
+                            mCBarcheo.isChecked(),
+                            mCBanthro.isChecked(),
+                            mCBpaleo.isChecked(),
+                            mCBbio.isChecked(),
+                            mCBkarst.isChecked()
+                          );
+      } else {
+        mApp.reloadDefaultSymbols( false, false );
+      }
     } else if ( b == mBtnReplace ) {
-      mApp.reloadSymbols( true, // clear first
-                          mCBspeleo.isChecked(),
-                          mCBextra.isChecked(),
-                          mCBmine.isChecked(),
-                          mCBgeo.isChecked(),
-                          mCBarcheo.isChecked(),
-                          mCBanthro.isChecked(),
-                          mCBpaleo.isChecked(),
-                          mCBbio.isChecked(),
-                          mCBkarst.isChecked()
-                        );
+      if ( mAll ) {
+        mApp.reloadSymbols( true, // clear first
+                            mCBspeleo.isChecked(),
+                            mCBextra.isChecked(),
+                            mCBmine.isChecked(),
+                            mCBgeo.isChecked(),
+                            mCBarcheo.isChecked(),
+                            mCBanthro.isChecked(),
+                            mCBpaleo.isChecked(),
+                            mCBbio.isChecked(),
+                            mCBkarst.isChecked()
+                          );
+      } else {
+        mApp.reloadDefaultSymbols( true, true );
+      }
     }
     dismiss();
   }
@@ -156,4 +164,3 @@ class SymbolReload extends MyDialog
   }
 
 }
-

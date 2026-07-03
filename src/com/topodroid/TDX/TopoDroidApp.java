@@ -2204,7 +2204,7 @@ public class TopoDroidApp extends Application
   /** @return true if installed symbol files are present on disk
    * @note checks the private point-symbol folder: it is populated only by the symbol
    *       install (or user-created symbols), so an empty/missing folder means the
-   *       symbol files have been lost and the speleo set must be re-installed.
+   *       symbol files have been lost and the default set must be re-installed.
    *       A non-empty folder is left alone to respect user curation of the library.
    */
   static private boolean hasInstalledSymbolFiles()
@@ -2215,20 +2215,14 @@ public class TopoDroidApp extends Application
     return files != null && files.length > 0;
   }
 
-  /** install default NSS symbols with Speleo placeholders
+  /** install default NSS symbols
    * @param overwrite whether to overwrite existing files
    */
   static void installSymbols( boolean overwrite )
   {
     deleteObsoleteSymbols();
     // TDLog.v("PATH " + "install symbol version " + TDVersion.SYMBOL_VERSION );
-    if ( overwrite ) {
-      installSymbols( R.raw.symbols_speleo, true );
-      installSymbols( R.raw.symbols_nss, true );
-    } else {
-      installSymbols( R.raw.symbols_nss, false );
-      installSymbols( R.raw.symbols_speleo, false );
-    }
+    installSymbols( R.raw.symbols_nss, overwrite );
     if ( mDData != null ) mDData.setValue( "symbol_version", TDVersion.SYMBOL_VERSION );
   }
 
@@ -2309,6 +2303,17 @@ public class TopoDroidApp extends Application
     BrushManager.setHasSymbolLibraries( false );
     BrushManager.loadAllSymbolLibraries( this, getResources() );
     // BrushManager.doMakePaths( ); // TODO FIXME needed ?
+    BrushManager.setHasSymbolLibraries( true );
+    DrawingSurface.clearManagersCache();
+  }
+
+  /** reload the fork default symbol set */
+  void reloadDefaultSymbols( boolean clear, boolean overwrite )
+  {
+    if ( clear ) TDPath.clearSymbols();
+    installSymbols( overwrite );
+    BrushManager.setHasSymbolLibraries( false );
+    BrushManager.loadAllSymbolLibraries( this, getResources() );
     BrushManager.setHasSymbolLibraries( true );
     DrawingSurface.clearManagersCache();
   }

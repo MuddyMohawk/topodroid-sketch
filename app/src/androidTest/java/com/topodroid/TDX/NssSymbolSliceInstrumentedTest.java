@@ -53,7 +53,8 @@ public class NssSymbolSliceInstrumentedTest
     mInstrumentation = InstrumentationRegistry.getInstrumentation();
     mContext = mInstrumentation.getTargetContext().getApplicationContext();
     TDInstance.setContext( mContext );
-    TopoDroidApp.installSymbols( R.raw.symbols_nss, true );
+    TDPath.clearSymbols();
+    TopoDroidApp.installSymbols( true );
     BrushManager.reloadPointLibrary( mContext, mContext.getResources() );
     BrushManager.reloadLineLibrary( mContext.getResources() );
   }
@@ -61,6 +62,7 @@ public class NssSymbolSliceInstrumentedTest
   @After
   public void tearDown()
   {
+    TDPath.clearSymbols();
     TopoDroidApp.installSymbols( true );
     BrushManager.reloadPointLibrary( mContext, mContext.getResources() );
     BrushManager.reloadLineLibrary( mContext.getResources() );
@@ -82,15 +84,26 @@ public class NssSymbolSliceInstrumentedTest
     drawHeaders( canvas, label );
 
     float y = 90.0f;
+    drawLineRow( canvas, label, "Dashed", "dashed", y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Dotted", "dotted", y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "User", SymbolLibrary.USER, y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Section", SymbolLibrary.SECTION, y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Wall", SymbolLibrary.WALL, y ); y += LINE_ROW;
-    drawLineRow( canvas, label, "User detail", SymbolLibrary.USER, y ); y += LINE_ROW;
-    drawLineRow( canvas, label, "Ledge/Pit", "pit", y ); y += LINE_ROW;
-    drawLineRow( canvas, label, "Ceiling ledge", "chimney", y ); y += LINE_ROW;
-    drawLineRow( canvas, label, "Flowstone", "flowstone", y ); y += LINE_ROW;
-    drawLineRow( canvas, label, "Ceiling channel", "ceiling-meander", y ); y += LINE_ROW;
-    drawLineRow( canvas, label, "Presumed wall", "wall:presumed", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Dripline", "dripline", y ); y += LINE_ROW;
-    drawLineRow( canvas, label, "Conj. stream", "water-flow:intermittent", y ); y += LINE_ROW + 32.0f;
+    drawLineRow( canvas, label, "Flowstone", "flowstone", y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Ceiling ledge", "chimney", y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Ceiling channel", "ceiling-meander", y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Pit", "pit", y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Floor meander", "floor-meander", y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Water flow", "water-flow", y ); y += LINE_ROW + 32.0f;
+    assertLineMissing( "arrow" );
+    assertLineMissing( "border" );
+    assertLineMissing( "rock-border" );
+    assertLineMissing( "slope" );
+    assertLineMissing( "wall:clay" );
+    assertLineMissing( "wall:ice" );
+    assertLineMissing( "wall:presumed" );
+    assertLineMissing( "water-flow:intermittent" );
 
     drawPointRow( canvas, label, "Sand", "sand", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Clay", "clay", y, 0.0, false ); y += POINT_ROW;
@@ -169,6 +182,11 @@ public class NssSymbolSliceInstrumentedTest
     drawStyledLine( canvas, lineType, LEFT, y, lineStyle( thName, SketchBrushStyle.DEFAULT_WEIGHT_THIN ) );
     drawStyledLine( canvas, lineType, LEFT + COL, y, lineStyle( thName, SketchBrushStyle.DEFAULT_WEIGHT_STANDARD ) );
     drawStyledLine( canvas, lineType, LEFT + 2.0f * COL, y, lineStyle( thName, SketchBrushStyle.DEFAULT_WEIGHT_THICK ) );
+  }
+
+  private void assertLineMissing( String thName )
+  {
+    assertTrue( "Unexpected NSS line symbol " + thName, BrushManager.getLineIndexByThName( thName ) < 0 );
   }
 
   private void drawStyledLine( Canvas canvas, int lineType, float x, float y, SketchBrushStyle style )
