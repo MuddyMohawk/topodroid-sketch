@@ -1,39 +1,37 @@
 encoding utf-8
 symbol line
-name floor_meander
+name floor-meander
 th_name floor-meander
 group floor
 color 0xffffff 0xff
 width 2
-# units: line-widths (1 = ink thickness); paired carriers and crossovers scale with W.
+dash 4.2 1.4
 effect
-  moveTo 0 2
-  lineTo 6.2 2
-  lineTo 6.2 1
-  lineTo 3.6 1
-  lineTo 3.6 -1
-  lineTo 6.2 -1
-  lineTo 6.2 -2
-  lineTo 0 -2
-  lineTo 0 -1
-  lineTo 2.6 -1
-  lineTo 2.6 1
-  lineTo 0 1
-  lineTo 0 2
+  moveTo 0 2.7
+  lineTo 4.2 2.7
+  lineTo 4.2 1.7
+  lineTo 0 1.7
+  lineTo 0 2.7
+  moveTo 0 -2.7
+  lineTo 4.2 -2.7
+  lineTo 4.2 -1.7
+  lineTo 0 -1.7
+  lineTo 0 -2.7
+  moveTo 1.7 1.7
+  lineTo 2.7 1.7
+  lineTo 2.7 -1.7
+  lineTo 1.7 -1.7
+  lineTo 1.7 1.7
 endeffect
 sketch_effect 1
-  carrier 1 2
-  carrier -2 -1
+  carrier 1.7 2.7
+  carrier -2.7 -1.7
   stamp
-    moveTo 2.6 1
-    lineTo 3.6 1
-    lineTo 3.6 -1
-    lineTo 6.2 -1
-    lineTo 6.2 -2
-    moveTo 2.6 -1
-    lineTo 2.6 1
-    lineTo 0 1
-    lineTo 0 2
+    moveTo 1.7 1.7
+    lineTo 2.7 1.7
+    lineTo 2.7 -1.7
+    lineTo 1.7 -1.7
+    lineTo 1.7 1.7
   endstamp
 endsketch_effect
 endsymbol

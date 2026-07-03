@@ -3,13 +3,13 @@
 The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles.
 
 ## TODO
+- fix the display of symbols in the toolset, toolbar, and palette
 - toolbar defaults
 - Area/fill
   - area will need a second pass for the fancier chop/cut/push tools
 - Rename the nss-symbol stuff to topodroid sketch
 - Refactor away from the -tdx-brush options and into dedicated symbol terminology?
 - Bake/export-to-vanilla export
-- Make those toolbars less uggo.
 - more symbol behavior (sand/silt stamps, slope line)
 - symbol rotation obeys snapping?
 - Add safety warnings when importing vanilla TopoDroid stuff
@@ -25,6 +25,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - clay needs to be better
   - top horizontal bar of anthodite ain't right
   - need a talus symbol
+  - rename this meander nonsense
 
 ## Known bugs
 - Large reference images, and reference images in general, are kinda low and cause lag
