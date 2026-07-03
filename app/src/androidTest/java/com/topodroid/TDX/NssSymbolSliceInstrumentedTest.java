@@ -35,7 +35,7 @@ import java.io.OutputStream;
 public class NssSymbolSliceInstrumentedTest
 {
   private static final int WIDTH = 1440;
-  private static final int HEIGHT = 4300;
+  private static final int HEIGHT = 5750;
   private static final float LEFT = 260.0f;
   private static final float COL = 370.0f;
   private static final float LINE_ROW = 70.0f;
@@ -123,6 +123,21 @@ public class NssSymbolSliceInstrumentedTest
     drawPointRow( canvas, label, "Stal. alt", "stalactite:alternate", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Stalg. alt", "stalagmite:alternate", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Water flow", "water-flow", y, 0.0 ); y += POINT_ROW + 34.0f;
+    drawPointRow( canvas, label, "Corrosion res.", "corrosion-residue", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Draperies", "curtain", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Broken form.", "broken-formation", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Gyp chandelier", "gypsum-chandelier", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Gypsum flower", "gypsum-flower", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Gypsum needles", "gypsum-needles", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Invert fossils", "invertebrate-fossils", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Moonmilk", "moonmilk", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Pool spar", "pool-spar", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Frostwork", "frostwork", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Conulite", "conulite", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Cave clouds", "mammalaries-cave-clouds", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Raft cone", "raft-cone", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Gypsum hair", "gypsum-hair", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Gyp rim vent", "gypsum-rim-vent", y, 0.0 ); y += POINT_ROW + 34.0f;
 
     drawOpacityRow( canvas, label, y ); y += 108.0f;
     drawScaleRow( canvas, label, y );
