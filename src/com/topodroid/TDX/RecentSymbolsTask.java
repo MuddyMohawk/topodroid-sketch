@@ -125,15 +125,16 @@ class RecentSymbolsTask extends AsyncTask<Void, Integer, Boolean>
   private void loadRecentSymbols()
   {
     // TDLog.v( "load recent symbols"); // ENABLED_LIST
+    if ( ItemDrawer.isManualToolbar() ) {
+      ItemDrawer.loadManualToolbarSymbols( mData );
+      return;
+    }
+
     BrushManager.setRecentPoints( ItemDrawer.mRecentPoint );
     BrushManager.setRecentLines(  ItemDrawer.mRecentLine );
     BrushManager.setRecentAreas(  ItemDrawer.mRecentArea );
 
     if ( mData == null ) return;
-    if ( ItemDrawer.isManualToolbar() ) {
-      ItemDrawer.loadManualToolbarSymbols( mData );
-      return;
-    }
     String names = mData.getValue( "recent_points" );
     if ( names != null ) {
       String[] points = names.split(" ");

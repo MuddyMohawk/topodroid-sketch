@@ -24,12 +24,14 @@ import org.junit.runner.RunWith;
 @LargeTest
 public class ToolbarRowsInstrumentedTest
 {
-  private static final String[] DEFAULT_LINE_NAMES = {
-    "wall", "user", "pit", "chimney", "flowstone"
+  private static final String[] DEFAULT_LINE_NAMES_RIGHT_TO_LEFT = {
+    "wall", "pit", "chimney", "flowstone", "dashed", "dotted", "section", "user",
+    "wall", "pit", "chimney", "flowstone", "dashed", "dotted", "section", "user"
   };
 
-  private static final String[] DEFAULT_POINT_NAMES = {
-    "sand", "clay", "bedrock", "slope"
+  private static final String[] DEFAULT_POINT_NAMES_RIGHT_TO_LEFT = {
+    "blocks", "boulder", "stalagmite", "stalactite", "bedrock", "slope", "clay", "sand",
+    "blocks", "boulder", "stalagmite", "stalactite", "bedrock", "slope", "clay", "sand"
   };
 
   private int mPreviousToolbarUpdate;
@@ -83,6 +85,7 @@ public class ToolbarRowsInstrumentedTest
     int wall = BrushManager.getLineIndexByThName( SymbolLibrary.WALL );
     int clay = BrushManager.getPointIndexByThName( SymbolLibrary.CLAY );
     int bedrock = BrushManager.getPointIndexByThName( SymbolLibrary.BEDROCK );
+    int boulder = BrushManager.getPointIndexByThName( "boulder" );
     int waterFlow = BrushManager.getLineIndexByThName( SymbolLibrary.WATER_FLOW );
     int pillar = BrushManager.getPointIndexByThName( SymbolLibrary.PILLAR );
 
@@ -91,8 +94,13 @@ public class ToolbarRowsInstrumentedTest
     assertTrue( "Missing NSS flowstone line", flowstone >= 0 );
     assertTrue( "Missing NSS clay point", clay >= 0 );
     assertTrue( "Missing NSS bedrock point", bedrock >= 0 );
+    assertTrue( "Missing NSS boulder point", boulder >= 0 );
     assertTrue( "Missing Speleo water-flow placeholder", waterFlow >= 0 );
     assertTrue( "Missing Speleo pillar placeholder", pillar >= 0 );
+    for ( int k = 0; k < BrushManager.getLineLibSize(); ++k ) {
+      assertTrue( "Line should be enabled by default: " + BrushManager.getLineThName( k ),
+                  BrushManager.getLineByIndex( k ).isEnabled() );
+    }
     assertEquals( "pit", BrushManager.getLineName( pit ) );
     assertEquals( "flowstone", BrushManager.getLineName( flowstone ) );
     assertEquals( "clay", BrushManager.getPointName( clay ) );
@@ -169,11 +177,21 @@ public class ToolbarRowsInstrumentedTest
     assertTrue( ! ItemDrawer.isToolbarRowLocked( 1 ) );
     assertEquals( SymbolType.LINE, ItemDrawer.getToolbarDisplayType( 0 ) );
     assertEquals( SymbolType.POINT, ItemDrawer.getToolbarDisplayType( 1 ) );
-    for ( int slot = 0; slot < DEFAULT_LINE_NAMES.length; ++slot ) {
-      assertEquals( DEFAULT_LINE_NAMES[slot], ItemDrawer.mToolbarLine[0][slot].getThName() );
+    for ( int slot = 0; slot < DEFAULT_LINE_NAMES_RIGHT_TO_LEFT.length; ++slot ) {
+      int storageSlot = ItemDrawer.NR_RECENT - slot - 1;
+      assertEquals( DEFAULT_LINE_NAMES_RIGHT_TO_LEFT[slot], ItemDrawer.mToolbarLine[0][storageSlot].getThName() );
     }
-    for ( int slot = 0; slot < DEFAULT_POINT_NAMES.length; ++slot ) {
-      assertEquals( DEFAULT_POINT_NAMES[slot], ItemDrawer.mToolbarPoint[1][slot].getThName() );
+    for ( int slot = 0; slot < ItemDrawer.getToolbarSlotCount(); ++slot ) {
+      int storageSlot = ItemDrawer.getToolbarSlotCount() - slot - 1;
+      assertEquals( DEFAULT_LINE_NAMES_RIGHT_TO_LEFT[slot], ItemDrawer.mToolbarLine[0][storageSlot].getThName() );
+    }
+    for ( int slot = 0; slot < DEFAULT_POINT_NAMES_RIGHT_TO_LEFT.length; ++slot ) {
+      int storageSlot = ItemDrawer.NR_RECENT - slot - 1;
+      assertEquals( DEFAULT_POINT_NAMES_RIGHT_TO_LEFT[slot], ItemDrawer.mToolbarPoint[1][storageSlot].getThName() );
+    }
+    for ( int slot = 0; slot < ItemDrawer.getToolbarSlotCount(); ++slot ) {
+      int storageSlot = ItemDrawer.getToolbarSlotCount() - slot - 1;
+      assertEquals( DEFAULT_POINT_NAMES_RIGHT_TO_LEFT[slot], ItemDrawer.mToolbarPoint[1][storageSlot].getThName() );
     }
   }
 
@@ -182,7 +200,7 @@ public class ToolbarRowsInstrumentedTest
   {
     TDSetting.mToolbarRows = 3;
     assertEquals( 3, ItemDrawer.getToolbarRowCount() );
-    for ( int slot = 0; slot < DEFAULT_LINE_NAMES.length; ++slot ) {
+    for ( int slot = 0; slot < ItemDrawer.NR_RECENT; ++slot ) {
       assertEquals( ItemDrawer.mToolbarLine[0][slot].getFullThName(), ItemDrawer.mToolbarLine[1][slot].getFullThName() );
       assertEquals( ItemDrawer.mToolbarLine[0][slot].getFullThName(), ItemDrawer.mToolbarLine[2][slot].getFullThName() );
     }

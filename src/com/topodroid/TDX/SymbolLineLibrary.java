@@ -26,10 +26,6 @@ import android.content.res.Resources;
 
 public class SymbolLineLibrary extends SymbolLibrary
 {
-  static final private String[] DefaultLines = {
-    "dashed", "dotted", CHIMNEY, "ceiling-meander", "dripline", FLOWSTONE, PIT, FLOOR_MEANDER, WATER_FLOW
-  };
-
   int mLineUserIndex; // PRIVATE
   int mLineWallIndex;
   int mLineSlopeIndex;
@@ -148,13 +144,9 @@ public class SymbolLineLibrary extends SymbolLibrary
           addSymbol( symbol );
           String thname = symbol.getThName();
           String name = mPrefix + thname;
-          // boolean enable = false;
-          boolean enable = symbol.isConfigEnabled();
+          boolean enable = true;
           if ( TopoDroidApp.mData != null ) {
             if ( ! TopoDroidApp.mData.hasSymbolName( name ) ) {
-              for ( int k=0; k<DefaultLines.length; ++k ) { 
-                if ( DefaultLines[k].equals( thname ) ) { enable = true; break; }
-              }
               TopoDroidApp.mData.setSymbolEnabled( name, enable ); // CONFIG_ENABLE
             } else {
               enable = TopoDroidApp.mData.getSymbolEnabled( name );

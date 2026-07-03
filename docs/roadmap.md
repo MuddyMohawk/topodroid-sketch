@@ -27,6 +27,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - top horizontal bar of anthodite ain't right
   - need a talus symbol
   - rename this meander nonsense
+  - all the water symbols 
 
 ## Known bugs
 - Large reference images, and reference images in general, are kinda low and cause lag

@@ -62,16 +62,20 @@ abstract class ItemDrawer extends Activity
   static final String KEY_TOOLBAR_CURRENT_TYPE = "toolbar_current_type";
   static final String KEY_TOOLBAR_SEED = "toolbar_seed_version";
   // Bump only when existing saved toolbars should be intentionally reseeded.
-  static final int TOOLBAR_SEED_VERSION = 2;
+  static final int TOOLBAR_SEED_VERSION = 3;
 
   private static final String[] DEFAULT_ROW0_LINES = {
-    SymbolLibrary.WALL, SymbolLibrary.USER, SymbolLibrary.PIT,
-    SymbolLibrary.CHIMNEY, SymbolLibrary.FLOWSTONE
+    SymbolLibrary.USER, SymbolLibrary.SECTION, "dotted", "dashed",
+    SymbolLibrary.FLOWSTONE, SymbolLibrary.CHIMNEY, SymbolLibrary.PIT, SymbolLibrary.WALL,
+    SymbolLibrary.USER, SymbolLibrary.SECTION, "dotted", "dashed",
+    SymbolLibrary.FLOWSTONE, SymbolLibrary.CHIMNEY, SymbolLibrary.PIT, SymbolLibrary.WALL
   };
 
   private static final String[] DEFAULT_ROW1_POINTS = {
-    SymbolLibrary.SAND, SymbolLibrary.CLAY, SymbolLibrary.BEDROCK,
-    SymbolLibrary.SLOPE
+    SymbolLibrary.SAND, SymbolLibrary.CLAY, SymbolLibrary.SLOPE, SymbolLibrary.BEDROCK,
+    SymbolLibrary.STALACTITE, SymbolLibrary.STALAGMITE, "boulder", SymbolLibrary.BLOCKS,
+    SymbolLibrary.SAND, SymbolLibrary.CLAY, SymbolLibrary.SLOPE, SymbolLibrary.BEDROCK,
+    SymbolLibrary.STALACTITE, SymbolLibrary.STALAGMITE, "boulder", SymbolLibrary.BLOCKS
   };
 
   static Symbol[][] mToolbarPoint = new Symbol[ NR_TOOLBAR_ROWS ][ NR_RECENT ];
@@ -398,6 +402,7 @@ abstract class ItemDrawer extends Activity
     mToolbarCurrentType = SymbolType.POINT;
     if ( needsToolbarSeed( data ) ) {
       if ( canSeedToolbar() ) seedManualToolbarSymbols( data );
+      else clearManualToolbarSymbols();
       return;
     }
 
@@ -439,6 +444,17 @@ abstract class ItemDrawer extends Activity
   private static boolean canSeedToolbar()
   {
     return BrushManager.getPointLibSize() > 0 && BrushManager.getLineLibSize() > 0;
+  }
+
+  private static void clearManualToolbarSymbols()
+  {
+    for ( int row = 0; row < NR_TOOLBAR_ROWS; ++row ) {
+      mToolbarLock[row] = ( row == 0 ) ? SymbolType.LINE : TOOLBAR_LOCK_UNLOCKED;
+      mToolbarActiveSlot[row] = 0;
+      clearToolbarList( mToolbarPoint[row], row == 0 ? mRecentPointAge : null );
+      clearToolbarList( mToolbarLine[row],  row == 0 ? mRecentLineAge  : null );
+      clearToolbarList( mToolbarArea[row],  row == 0 ? mRecentAreaAge  : null );
+    }
   }
 
   private static void seedManualToolbarSymbols( DataHelper data )
@@ -526,7 +542,6 @@ abstract class ItemDrawer extends Activity
       Symbol symbol = getSymbolByThName( type, name );
       if ( symbol == null ) continue;
       enableDefaultToolbarSymbol( type, symbol, data );
-      if ( hasSymbol( symbols, symbol, index ) ) continue;
       symbols[index++] = symbol;
       if ( index >= NR_RECENT ) break;
     }
