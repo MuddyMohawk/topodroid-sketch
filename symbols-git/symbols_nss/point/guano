@@ -3,7 +3,7 @@ symbol point
 name guano
 th_name guano
 group guano
-orientation yes
+orientation no
 color 0xffffff
 path
   moveTo 2.565 -4.29
