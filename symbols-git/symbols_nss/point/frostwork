@@ -1,0 +1,20 @@
+encoding utf-8
+symbol point
+name frostwork
+th_name frostwork
+group aragonite
+orientation yes
+color 0xffffff
+path
+  moveTo -6.417 7.839
+  lineTo 8.101 7.332
+  moveTo -9 -2.689
+  lineTo -4.619 7.839
+  moveTo -4.88 -7.839
+  lineTo -1.545 7.839
+  moveTo 1.545 -3.213
+  lineTo 1.545 7.578
+  moveTo 9 -6.041
+  lineTo 4.635 7.839
+endpath
+endsymbol

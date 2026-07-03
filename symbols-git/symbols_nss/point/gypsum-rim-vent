@@ -1,0 +1,23 @@
+encoding utf-8
+symbol point
+name gypsum_rim_vent
+th_name gypsum-rim-vent
+group gypsum
+orientation no
+color 0xffffff
+path
+  moveTo -3.998 -6.953
+  cubicTo -0.832 -6.447 4.154 0.509 4.385 2.047
+  cubicTo 4.571 3.274 3.671 6.165 0.505 5.667
+  cubicTo -2.661 5.169 -4.756 1.178 -5.262 0.048
+  cubicTo -5.916 -1.416 -7.164 -7.45 -3.998 -6.953
+  moveTo -3.998 -6.953
+  moveTo -9 6.232
+  cubicTo -7.358 5.867 -6.778 4.203 -6.533 3.697
+  cubicTo -6.131 2.887 -6.027 2.152 -5.879 1.156
+  cubicTo -5.73 0.182 -5.715 -0.65 -5.723 -1.223
+  moveTo 9 7.45
+  cubicTo 8.316 7.45 6.793 6.878 5.708 5.726
+  cubicTo 4.838 4.797 4.415 2.739 4.489 2.374
+endpath
+endsymbol

@@ -1,0 +1,27 @@
+encoding utf-8
+symbol line
+name water_flow
+th_name water-flow
+group water-flow
+color 0x6699ff 0xff
+width 2
+# units: line-widths (1 = ink thickness); carrier and arrow stamp scale with W.
+effect
+  moveTo 0 -0.5
+  lineTo 8 0
+  lineTo 0 0.5
+  lineTo 0 -0.5
+  moveTo 5.8 -2.2
+  lineTo 8 0
+  lineTo 5.8 2.2
+endeffect
+sketch_effect 1
+  stroke
+  carrier -0.5 0.5
+  stamp
+    moveTo 5.8 -2.2
+    lineTo 8 0
+    lineTo 5.8 2.2
+  endstamp
+endsketch_effect
+endsymbol

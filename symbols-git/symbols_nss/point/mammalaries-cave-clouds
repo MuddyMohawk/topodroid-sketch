@@ -1,0 +1,16 @@
+encoding utf-8
+symbol point
+name mammalaries_cave_clouds
+th_name mammalaries-cave-clouds
+group speleothem
+orientation yes
+color 0xffffff
+path
+  moveTo -1.931 0.053
+  cubicTo -1.149 -2.08 1.004 -3.604 3.528 -3.604
+  cubicTo 6.065 -3.604 8.218 -2.06 9 0.08
+  moveTo -9 3.584
+  cubicTo -8.218 1.451 -6.065 -0.073 -3.541 -0.073
+  cubicTo -1.004 -0.073 1.149 1.464 1.931 3.604
+endpath
+endsymbol

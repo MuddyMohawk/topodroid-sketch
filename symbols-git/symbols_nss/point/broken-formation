@@ -1,0 +1,15 @@
+encoding utf-8
+symbol point
+name broken_formation
+th_name broken-formation
+group speleothem
+orientation yes
+color 0xffffff
+path
+  moveTo -8 -3.036
+  lineTo -8 3.036
+  lineTo 8 0.435
+  lineTo -8 -3.036
+  moveTo -8 -3.036
+endpath
+endsymbol

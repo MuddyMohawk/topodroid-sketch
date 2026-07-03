@@ -1,0 +1,23 @@
+encoding utf-8
+symbol point
+name gypsum_needles
+th_name gypsum-needles
+group gypsum
+orientation yes
+color 0xffffff
+path
+  moveTo -4.68 -9
+  cubicTo -4.68 -9 -0.808 7.249 -0.479 7.785
+  moveTo -5.772 3.759
+  lineTo -0.345 8.856
+  lineTo -6.163 -2.235
+  moveTo 6.163 -7.836
+  lineTo 0.53 8.66
+  moveTo 0.191 9
+  lineTo 0.86 -5.489
+  moveTo 5.628 1.421
+  lineTo -0.077 8.928
+  moveTo 5.154 4.634
+  lineTo 0.191 8.99
+endpath
+endsymbol

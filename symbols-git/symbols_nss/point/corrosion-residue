@@ -1,0 +1,14 @@
+encoding utf-8
+symbol point
+name corrosion_residue
+th_name corrosion-residue
+group geology
+orientation no
+color 0xffffff
+path
+  moveTo 8 4.67
+  cubicTo 5.694 0.198 -0.524 -5.857 -3.668 -5.042
+  cubicTo -6.463 -4.344 -8 1.223 -4.833 3.575
+  cubicTo 0.734 7.744 4.623 -2.597 7.977 -7.744
+endpath
+endsymbol

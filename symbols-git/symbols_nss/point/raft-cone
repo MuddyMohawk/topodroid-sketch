@@ -1,0 +1,14 @@
+encoding utf-8
+symbol point
+name raft_cone
+th_name raft-cone
+group speleothem
+orientation yes
+color 0xffffff
+path
+  moveTo -4.036 6.193
+  cubicTo -2.409 4.198 -2.049 0.575 -1.69 -1.78
+  cubicTo -1.303 -3.766 -1.519 -5.222 -0.494 -8
+  cubicTo 1.555 -3.479 -0.306 4.198 4.036 8
+endpath
+endsymbol

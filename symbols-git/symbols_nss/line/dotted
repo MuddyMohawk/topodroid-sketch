@@ -1,0 +1,10 @@
+encoding utf-8
+symbol line
+name dotted
+th_name dotted
+group user
+color 0xffffff 0xff
+width 2
+# Tiny on-length plus round caps renders dots whose diameter follows the active brush weight.
+dash 0.01 3
+endsymbol

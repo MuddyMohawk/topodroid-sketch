@@ -1,0 +1,22 @@
+encoding utf-8
+symbol point
+name moonmilk
+th_name moonmilk
+group speleothem
+orientation yes
+color 0xffffff
+path
+  moveTo 4.013 7.67
+  lineTo -0.229 3.721
+  moveTo 4.063 3.492
+  lineTo 0.114 7.733
+  moveTo -3.759 -0.013
+  lineTo -8 -3.962
+  moveTo -3.708 -4.19
+  lineTo -7.644 0.051
+  moveTo 7.937 -3.556
+  lineTo 3.695 -7.505
+  moveTo 8 -7.733
+  lineTo 4.051 -3.492
+endpath
+endsymbol

@@ -1,0 +1,13 @@
+encoding utf-8
+symbol point
+name pool_spar
+th_name pool-spar
+group mineral
+orientation yes
+color 0xffffff
+path
+  moveTo -3.839 6.809
+  lineTo -0.297 -7
+  lineTo 3.839 7
+endpath
+endsymbol

@@ -1,0 +1,16 @@
+encoding utf-8
+symbol point
+name invertebrate_fossils
+th_name invertebrate-fossils
+group organic
+orientation yes
+color 0xffffff
+path
+  moveTo -2.373 -0.378
+  cubicTo -2.373 3.016 5.766 1.266 0.888 -3.904
+  cubicTo -2.983 -8 -6.827 -5.163 -7.251 -0.669
+  cubicTo -7.715 4.129 -2.903 8 1.949 7.377
+  cubicTo 6.098 6.833 7.715 3.215 7.357 -0.457
+  cubicTo 7.238 -1.796 7.026 -2.949 6.283 -4.143
+endpath
+endsymbol

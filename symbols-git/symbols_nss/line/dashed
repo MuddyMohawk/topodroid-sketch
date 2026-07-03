@@ -1,0 +1,10 @@
+encoding utf-8
+symbol line
+name dashed
+th_name dashed
+group user
+color 0xffffff 0xff
+width 2
+# dash intervals are in line-width units, so spacing follows the active brush weight.
+dash 6 4
+endsymbol

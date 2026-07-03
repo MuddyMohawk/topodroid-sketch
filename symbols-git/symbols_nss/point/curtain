@@ -1,0 +1,18 @@
+encoding utf-8
+symbol point
+name draperies
+th_name curtain
+group curtain
+orientation yes
+color 0xffffff
+path
+  moveTo -3.757 -7.616
+  lineTo -0.825 -2.928
+  lineTo 1.903 -8
+  moveTo -1.021 -2.928
+  cubicTo -0.751 -1.123 -3.455 -0.282 -1.217 1.017
+  cubicTo -0.212 1.589 3.757 1.041 1.707 3.459
+  cubicTo 0.727 4.611 -1.821 3.704 -2.54 5.419
+  cubicTo -3.594 7.918 -0.172 7.363 1.127 8
+endpath
+endsymbol
