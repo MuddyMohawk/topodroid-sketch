@@ -3160,17 +3160,12 @@ public class Scrap
     if ( mCurrentStack == null ) return;
     synchronized( TDPath.mCommandsLock ) {
       if ( TDSetting.mAreaOverlapDarken ) {
-        AreaPatternRenderer area_pattern_renderer = new AreaPatternRenderer();
         int areaLayer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
         if ( TDSetting.mWithLevels == 0 ) {
           for ( ICanvasCommand cmd : mCurrentStack  ) {
             if ( cmd.commandType() == 0 ) {
               DrawingPath path = (DrawingPath)cmd;
-              if ( path.isArea() ) {
-                if ( ! drawPatternedArea( area_pattern_renderer, canvas, matrix, bbox, path, xor_color ) ) {
-                  cmd.draw( canvas, matrix, scale, bbox, xor_color );
-                }
-              }
+              if ( path.isArea() ) cmd.draw( canvas, matrix, scale, bbox, xor_color );
             }
           }
         } else {
@@ -3178,24 +3173,19 @@ public class Scrap
             if ( cmd.commandType() == 0 ) {
               DrawingPath path = (DrawingPath)cmd;
               if ( path.isArea() && DrawingLevel.isLevelVisible( path ) ) {
-                if ( ! drawPatternedArea( area_pattern_renderer, canvas, matrix, bbox, path, xor_color ) ) {
-                  cmd.draw( canvas, matrix, scale, bbox, xor_color );
-                }
+                cmd.draw( canvas, matrix, scale, bbox, xor_color );
               }
             }
           }
         }
         canvas.restoreToCount( areaLayer );
       }
-      AreaPatternRenderer area_pattern_renderer = TDSetting.mAreaOverlapDarken ? null : new AreaPatternRenderer();
       if ( TDSetting.mWithLevels == 0 ) { // treat no-levels case by itself
         for ( ICanvasCommand cmd : mCurrentStack  ) {
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
             if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
-            if ( ! drawPatternedArea( area_pattern_renderer, canvas, matrix, bbox, path, xor_color ) ) {
-              cmd.draw( canvas, matrix, scale, bbox, xor_color );
-            }
+            cmd.draw( canvas, matrix, scale, bbox, xor_color );
             if ( path.isLine() ) { // path instanceof DrawingLinePath
               DrawingLinePath line = (DrawingLinePath)path;
               if ( BrushManager.isLineSection( line.mLineType ) ) { // add direction-tick to section-lines
@@ -3219,9 +3209,7 @@ public class Scrap
             DrawingPath path = (DrawingPath)cmd;
             if ( DrawingLevel.isLevelVisible( (DrawingPath)cmd ) ) {
               if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
-              if ( ! drawPatternedArea( area_pattern_renderer, canvas, matrix, bbox, path, xor_color ) ) {
-                cmd.draw( canvas, matrix, scale, bbox, xor_color );
-              }
+              cmd.draw( canvas, matrix, scale, bbox, xor_color );
               if ( path.isLine() ) { // path instanceof DrawingLinePath
                 DrawingLinePath line = (DrawingLinePath)path;
                 if ( BrushManager.isLineSection( line.mLineType ) ) { // add direction-tick to section-lines
@@ -3242,20 +3230,6 @@ public class Scrap
         }
       }
     }
-  }
-
-  private boolean drawPatternedArea( AreaPatternRenderer renderer, Canvas canvas, Matrix matrix,
-                                     RectF bbox, DrawingPath path )
-  {
-    if ( renderer == null || ! ( path instanceof DrawingAreaPath ) ) return false;
-    return renderer.draw( canvas, matrix, bbox, (DrawingAreaPath)path );
-  }
-
-  private boolean drawPatternedArea( AreaPatternRenderer renderer, Canvas canvas, Matrix matrix,
-                                     RectF bbox, DrawingPath path, int xor_color )
-  {
-    if ( renderer == null || ! ( path instanceof DrawingAreaPath ) ) return false;
-    return renderer.draw( canvas, matrix, bbox, (DrawingAreaPath)path, xor_color );
   }
 
   /** draw the direction tick of a section line or the lside tick of a slope line
@@ -3286,17 +3260,12 @@ public class Scrap
     if ( mCurrentStack == null ) return;
     synchronized( TDPath.mCommandsLock ) {
       if ( TDSetting.mAreaOverlapDarken ) {
-        AreaPatternRenderer area_pattern_renderer = new AreaPatternRenderer();
         int areaLayer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
         if ( TDSetting.mWithLevels == 0 ) {
           for ( ICanvasCommand cmd : mCurrentStack  ) {
             if ( cmd.commandType() == 0 ) {
               DrawingPath path = (DrawingPath)cmd;
-              if ( path.isArea() ) {
-                if ( ! drawPatternedArea( area_pattern_renderer, canvas, matrix, bbox, path ) ) {
-                  cmd.draw( canvas, matrix, scale, bbox );
-                }
-              }
+              if ( path.isArea() ) cmd.draw( canvas, matrix, scale, bbox );
             }
           }
         } else {
@@ -3304,24 +3273,19 @@ public class Scrap
             if ( cmd.commandType() == 0 ) {
               DrawingPath path = (DrawingPath)cmd;
               if ( path.isArea() && DrawingLevel.isLevelVisible( path ) ) {
-                if ( ! drawPatternedArea( area_pattern_renderer, canvas, matrix, bbox, path ) ) {
-                  cmd.draw( canvas, matrix, scale, bbox );
-                }
+                cmd.draw( canvas, matrix, scale, bbox );
               }
             }
           }
         }
         canvas.restoreToCount( areaLayer );
       }
-      AreaPatternRenderer area_pattern_renderer = TDSetting.mAreaOverlapDarken ? null : new AreaPatternRenderer();
       if ( TDSetting.mWithLevels == 0 ) { // treat no-levels case by itself
         for ( ICanvasCommand cmd : mCurrentStack  ) {
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
             if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
-            if ( ! drawPatternedArea( area_pattern_renderer, canvas, matrix, bbox, path ) ) {
-              cmd.draw( canvas, matrix, scale, bbox );
-            }
+            cmd.draw( canvas, matrix, scale, bbox );
             if ( path.isLine() ) { // path instanceof DrawingLinePath
               DrawingLinePath line = (DrawingLinePath)path;
               if ( BrushManager.isLineSection( line.mLineType ) ) { // add direction-tick to section-lines
@@ -3339,9 +3303,7 @@ public class Scrap
             DrawingPath path = (DrawingPath)cmd;
             if ( DrawingLevel.isLevelVisible( (DrawingPath)cmd ) ) {
               if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
-              if ( ! drawPatternedArea( area_pattern_renderer, canvas, matrix, bbox, path ) ) {
-                cmd.draw( canvas, matrix, scale, bbox );
-              }
+              cmd.draw( canvas, matrix, scale, bbox );
               if ( path.isLine() ) { // path instanceof DrawingLinePath
                 DrawingLinePath line = (DrawingLinePath)path;
                 if ( BrushManager.isLineSection( line.mLineType ) ) { // add direction-tick to section-lines
