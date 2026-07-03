@@ -3,7 +3,6 @@
 The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles.
 
 ## TODO
-- fix the display of symbols in the toolset, toolbar, and palette
 - toolbar defaults
   - additional toolbars should fill with something else? 
 - the fiddlyness of tweaking the line previews suggests it needs a deeper refactor to mirror the sketch canvas instead of madness
@@ -53,6 +52,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - If you don't give TopoDroid all the perms it can get into a bugged state where it immediately closes upon opening the app. Vanilla bug.
 
 ## Future possible features / brainstorming
+- toolbar/toolset/palette UI/UX overhaul
 - snap mode affects rotation?
 - UI/look-and-feel overhaul
 - Line-following for fast water area drawing
@@ -67,7 +67,6 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Text objects for ceiling height circles
 - Fix the text box/text input scaling. Enhance with fonts (Architects Daughter)?
 - Sketch line collision to prevent sketching through another line
-- Change the user-lines to wall-lines?
 - copy/create new symbols
 - Version control? - file/edit/shot/survey history. Scroll back and pick versions. Check the existing backup feature?
 - Better PDF export
@@ -84,19 +83,13 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - 2,3,4... finger tap and finger drag actions
   - switch between toolsets
   - switch between tools/brushes
+  - switch between line weights
+  - open/close larger toolbar?
 - Pie in the sky: Advanced GPS/gnss tools. RTK when.
 - Inventory/Rope Audit/Vandalism tracking tools
-- Investigate and enhance the point symbols. They could be good. They need to be aligned with the NSS/UIS conventional symbols
-  - Better, finer, sand symbol
-  - Mud symbol in alignment with the NSS symbol
-  - Bedrock symbol
-  - cobbles
-  - Randomized rock symbol?
-  - better size range for symbols
 - In-app symbol editor v2
 - Sketch layers
 - Opacity? that would be useful for doing fade-in-fade-out overlapping layers
-- Opacity in symbol editor
 - Display Cavway line features on the sketch (is this a thing already?)
 - Bulk reassign splays? (I've been told this is a skill issue)
 - Setting to automatically detect if there hasn't been any successful wifi or data connections in the last N minutes, and then toggle airplane mode to save battery?
