@@ -29,7 +29,7 @@ import android.content.res.Resources;
 
 public class SymbolAreaLibrary extends SymbolLibrary
 {
-  static final private String[] DefaultAreas = { BLOCKS, CLAY, DEBRIS, SAND };
+  static final private String[] DefaultAreas = { BLOCKS, CLAY, DEBRIS, SAND, WATER };
 
   /* private */ int mAreaUserIndex;
 
@@ -39,6 +39,7 @@ public class SymbolAreaLibrary extends SymbolLibrary
     mAreaUserIndex = 0;
     loadSystemAreas( res );
     loadUserAreas();
+    ensureWaterFallback( res );
     initIndices();
   }
 
@@ -107,6 +108,12 @@ public class SymbolAreaLibrary extends SymbolLibrary
     SymbolArea s = (SymbolArea)getSymbolByIndex(k);
     return ( s == null )? 0xffffffff : s.mColor;
   }
+
+  AreaLinePattern getAreaLinePattern( int k )
+  {
+    SymbolArea s = (SymbolArea)getSymbolByIndex(k);
+    return ( s == null )? null : s.getLinePattern();
+  }
   
   // ========================================================================
 
@@ -119,11 +126,20 @@ public class SymbolAreaLibrary extends SymbolLibrary
     SymbolArea symbol = new SymbolArea( res.getString( R.string.tha_user ), USER, null, USER, 0x67cccccc, null, TileMode.REPEAT, TileMode.REPEAT, false, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SHP );
     addSymbol( symbol );
 
-    // String water = res.getString( R.string.p_water );
-    symbol = new SymbolArea( res.getString( R.string.tha_water ), WATER, null, WATER, 0x663366ff, null, TileMode.REPEAT, TileMode.REPEAT, true, DrawingLevel.LEVEL_WATER, Symbol.W2D_DETAIL_SHP );
-    addSymbol( symbol );
     if ( TopoDroidApp.mData != null ) {
       TopoDroidApp.mData.setSymbolEnabled( "a_" +  USER, true );
+    }
+  }
+
+  private void ensureWaterFallback( Resources res )
+  {
+    if ( hasSymbolByThName( WATER ) ) return;
+    SymbolArea symbol = new SymbolArea( res.getString( R.string.tha_water ), WATER, null, WATER,
+        0x003366ff, null, TileMode.REPEAT, TileMode.REPEAT, true, DrawingLevel.LEVEL_WATER,
+        Symbol.W2D_DETAIL_SHP,
+        AreaLinePattern.parallel( -35.0f, 0x990099ff, 1.0f, 6.0f ) );
+    addSymbol( symbol );
+    if ( TopoDroidApp.mData != null ) {
       TopoDroidApp.mData.setSymbolEnabled( "a_" + WATER, true );
     }
   }

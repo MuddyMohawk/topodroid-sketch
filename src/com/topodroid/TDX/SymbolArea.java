@@ -45,6 +45,7 @@ public class SymbolArea extends Symbol
   BitmapShader mShader; // paint bitmap shader
   TileMode mXMode;
   TileMode mYMode;
+  private AreaLinePattern mLinePattern = null;
 
   @Override public String getName()  { return mName; }
 
@@ -55,6 +56,8 @@ public class SymbolArea extends Symbol
   // @Override public int getColor() { return (mPaint == null)? 0 : mPaint.getColor(); }
 
   @Override public Path   getPath()  { return mPath; }
+
+  AreaLinePattern getLinePattern() { return mLinePattern; }
 
   @Override public boolean isOrientable() { return mOrientable; }
 
@@ -85,10 +88,17 @@ public class SymbolArea extends Symbol
   SymbolArea( String name, String th_name, String group, String fname, int color, Bitmap bitmap, TileMode x_mode, TileMode y_mode,
               boolean close_horizontal, int level, int rt )
   {
+    this( name, th_name, group, fname, color, bitmap, x_mode, y_mode, close_horizontal, level, rt, null );
+  }
+
+  SymbolArea( String name, String th_name, String group, String fname, int color, Bitmap bitmap, TileMode x_mode, TileMode y_mode,
+              boolean close_horizontal, int level, int rt, AreaLinePattern line_pattern )
+  {
     super( Symbol.TYPE_AREA, th_name, group, fname, rt );
     mName   = name;
     mColor  = color;
     mLevel  = level;
+    mLinePattern = line_pattern;
 
     mBitmap = bitmap;
     mXMode  = x_mode;
@@ -99,7 +109,7 @@ public class SymbolArea extends Symbol
     mPaint = new Paint();
     mPaint.setDither(true);
     mPaint.setColor( mColor );
-    mPaint.setAlpha( 0x66 );
+    mPaint.setAlpha( ( mColor >> 24 ) & 0xff );
     mPaint.setStyle(Paint.Style.FILL_AND_STROKE);
     mPaint.setStrokeJoin(Paint.Join.ROUND);
     mPaint.setStrokeCap(Paint.Cap.ROUND);
@@ -274,6 +284,9 @@ public class SymbolArea extends Symbol
                 }
               }
               options = sb.toString();
+            } else if ( vals[k].equals("line_pattern") ) {
+              mLinePattern = AreaLinePattern.parse( vals, k + 1 );
+              break;
             } else if ( vals[k].equals("csurvey") ) {
               // csurvey <layer> <category> <pen_type> <brush_type>
             } else if ( vals[k].equals("level") ) {

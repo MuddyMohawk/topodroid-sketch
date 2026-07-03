@@ -322,6 +322,7 @@ public class Archiver
   {
     if ( lib == null ) return false;
     if ( ! (TDFile.getPrivateDir( type )).exists() ) return false;
+    boolean has_symbols = false;
     // TDLog.v( "ZIP symbols zip " + zipfile.getPath() );
     List< Symbol > symbols = lib.getSymbols();
     ZipOutputStream zos = null;
@@ -331,9 +332,11 @@ public class Archiver
         if ( symbol.isEnabled() ) {
           String filename = symbol.getThName(); // 2023-01-31 this is already deprifixed_u
           // THERION-U: filename = Symbol.deprefix_u( filename );
-          String filepath = type + "/" + filename;
+          File file = TDFile.getPrivateFile( type, filename );
+          if ( file == null || ! file.exists() ) continue;
           // TDLog.v( "ZIP symbols compress " + type + " " + filepath );
-          addOptionalEntry( zos, TDFile.getPrivateFile( type, filename ), filepath );
+          addOptionalEntry( zos, file, file.getPath() );
+          has_symbols = true;
         }
       }
     } catch ( FileNotFoundException e ) {
@@ -341,7 +344,19 @@ public class Archiver
     } finally {
       if ( zos != null ) try { zos.close(); } catch ( IOException e ) { TDLog.e("ZIP-symbol close error"); }
     }
-    return true;
+    return has_symbols;
+  }
+
+  private void addSymbolsZip( ZipOutputStream zos, String entry_name, SymbolLibrary lib, String type )
+  {
+    File zipfile = TDPath.getTmpFile( entry_name );
+    try {
+      if ( compressSymbols( zipfile, lib, type ) ) {
+        addOptionalEntry( zos, zipfile, zipfile.getPath() );
+      }
+    } finally {
+      TDFile.deleteFile( zipfile );
+    }
   }
 
   /** uncompress symbol files
@@ -463,6 +478,12 @@ public class Archiver
       pathname = TDPath.getSurveyNoteFile( survey );
       TDLog.v("ZIP note file " + pathname );
       addOptionalEntry( zos, TDFile.getTopoDroidFile( pathname ), pathname );
+
+      if ( TDSetting.mZipWithSymbols ) {
+        addSymbolsZip( zos, "points.zip", BrushManager.getPointLib(), TDPath.getSymbolPointDirname() );
+        addSymbolsZip( zos, "lines.zip",  BrushManager.getLineLib(),  TDPath.getSymbolLineDirname() );
+        addSymbolsZip( zos, "areas.zip",  BrushManager.getAreaLib(),  TDPath.getSymbolAreaDirname() );
+      }
 
 /* FIXME_SKETCH_3D *
       List< Sketch3dInfo > sketches  = app_data.selectAllSketches( TDInstance.sid, TDStatus.NORMAL );

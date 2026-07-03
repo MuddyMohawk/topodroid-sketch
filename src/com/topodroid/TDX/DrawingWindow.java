@@ -3449,6 +3449,16 @@ public class DrawingWindow extends ItemDrawer
     if ( path != null ) path.setSketchBrushStyle( getActiveSketchBrushStyle() );
   }
 
+  private void applySketchBrushStyle( DrawingAreaPath path )
+  {
+    if ( path != null ) path.setSketchBrushStyle( getActiveSketchBrushStyle() );
+  }
+
+  private void applySketchBrushStyle( DrawingAreaPath path, SketchBrushStyle style )
+  {
+    if ( path != null ) path.setSketchBrushStyle( style );
+  }
+
   private boolean isSmoothScalablePoint( int point )
   {
     return BrushManager.isPointScalable( point )
@@ -5485,6 +5495,7 @@ public class DrawingWindow extends ItemDrawer
                   if ( ! tryAndJoinArea( mCurrentAreaPath, mCurrentAreaPath ) ) {
                     DrawingAreaPath ap = new DrawingAreaPath( mCurrentArea, mDrawingSurface.getNextAreaIndex(), mName+"-a", TDSetting.mAreaBorder, mDrawingSurface.scrapIndex() ); 
                     ap.setOptions( BrushManager.getAreaDefaultOptions( mCurrentArea ) );
+                    applySketchBrushStyle( ap, mCurrentAreaPath.getSketchBrushStyle() );
                     if ( TDSetting.isLineStyleBezier() ) {
                       add = DrawingPointLineFilter.bezier( mCurrentAreaPath.mFirst, mCurrentAreaPath.mLast, ap );
                     } else if ( TDSetting.isLineStyleSimplified() ) {
@@ -5548,6 +5559,7 @@ public class DrawingWindow extends ItemDrawer
                       } else { //  mSymbol == SymbolType.AREA
                         DrawingAreaPath ap = new DrawingAreaPath( mCurrentArea, mDrawingSurface.getNextAreaIndex(), mName+"-a", TDSetting.mAreaBorder, mDrawingSurface.scrapIndex() ); 
                         ap.setOptions( BrushManager.getAreaDefaultOptions( mCurrentArea ) );
+                        applySketchBrushStyle( ap, mCurrentAreaPath.getSketchBrushStyle() );
                         ap.addStartPoint( p0.x, p0.y );
                         for (int k=0; k<k0; ++k) {
                           c = curves.get(k);
@@ -5601,6 +5613,7 @@ public class DrawingWindow extends ItemDrawer
                       } else { //  mSymbol == SymbolType.AREA
                         DrawingAreaPath ap = new DrawingAreaPath( mCurrentArea, mDrawingSurface.getNextAreaIndex(), mName+"-a", TDSetting.mAreaBorder, mDrawingSurface.scrapIndex() ); 
                         ap.setOptions( BrushManager.getAreaDefaultOptions( mCurrentArea ) );
+                        applySketchBrushStyle( ap, mCurrentAreaPath.getSketchBrushStyle() );
                         ap.addStartPoint( p0.x, p0.y );
                         for (int k=1; k<k0; ++k) {
                           p0 = points.get(k);
@@ -5870,6 +5883,7 @@ public class DrawingWindow extends ItemDrawer
         // TDLog.Log( TDLog.LOG_PLOT, "onTouch ACTION_DOWN area type " + mCurrentArea );
         mCurrentAreaPath = new DrawingAreaPath( mCurrentArea, mDrawingSurface.getNextAreaIndex(), mName+"-a", TDSetting.mAreaBorder, mDrawingSurface.scrapIndex() );
         // mCurrentAreaPat.setOptions( BrushManager.getAreaDefaultOptions( mCurrentArea ) );
+        applySketchBrushStyle( mCurrentAreaPath );
         mCurrentAreaPath.addStartPoint( xs, ys );
         // TDLog.v( "start area start " + xs + " " + ys );
         mCurrentBrush.mouseDown( mDrawingSurface.getPreviewPath(), xc, yc );
@@ -6151,6 +6165,7 @@ public class DrawingWindow extends ItemDrawer
                                                 TDSetting.mAreaBorder, 
                                                 mDrawingSurface.scrapIndex() );
     area.setOptions( BrushManager.getAreaDefaultOptions( mCurrentArea ) );
+    applySketchBrushStyle( area, mCurrentAreaPath.getSketchBrushStyle() );
     if ( xs - mCurrentAreaPath.mFirst.x > 20 ) { // 20 == 1.0 meter // CLOSE BOTTOM SURFACE
       // TDLog.v("CLOSE BOTTOM " + (ys - mCurrentAreaPath.mFirst.y) );
       LinePoint lp = mCurrentAreaPath.mFirst; 

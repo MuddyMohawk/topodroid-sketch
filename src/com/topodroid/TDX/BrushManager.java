@@ -201,6 +201,7 @@ public class BrushManager
   static float[] getLineDashBase( int idx ) { return (mLineLib == null)? null : mLineLib.getLineDashBase( idx ); }
   static LineSymbolEffect getLineEffect( int idx ) { return (mLineLib == null)? null : mLineLib.getLineEffect( idx ); }
   static Paint getAreaPaint(  int idx ) { return (mAreaLib  == null)? errorPaint : mAreaLib.getSymbolPaint( idx ); }
+  static AreaLinePattern getAreaLinePattern( int idx ) { return (mAreaLib == null)? null : mAreaLib.getAreaLinePattern( idx ); }
 
   static int getPointColor(  int idx ) { return (mPointLib  == null)? 0xffffffff : mPointLib.getSymbolPaint( idx ).getColor(); }
   static int getLineColor(  int idx )  { return (mLineLib  == null)? 0xffffffff : mLineLib.getSymbolPaint( idx ).getColor(); }
