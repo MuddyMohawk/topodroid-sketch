@@ -101,13 +101,13 @@
       android:layout_width="match_parent"
       android:layout_height="16dp"
       android:orientation="horizontal"
-      android:background="#666666"
+      android:background="#26272b"
     />
     <LinearLayout android:id="@+id/layout_tool_style"
       android:layout_width="match_parent"
       android:layout_height="16dp"
       android:orientation="horizontal"
-      android:background="#666666"
+      android:background="#26272b"
     />
     <LinearLayout android:id="@+id/layout_scale"
       android:layout_width="match_parent"

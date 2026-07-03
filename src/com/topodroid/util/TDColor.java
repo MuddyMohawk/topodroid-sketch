@@ -52,6 +52,10 @@ public class TDColor
   public static final int FULL_BLUE    = 0xff0000ff;
   public static final int FULL_VIOLET  = 0xffff00ff;
   public static final int WHITE        = 0xffffffff;
+  public static final int SKETCH_TOGGLE_OFF      = 0xff303237;
+  public static final int SKETCH_TOGGLE_OFF_TEXT = 0xffc5c7cd;
+  public static final int SKETCH_TOGGLE_ON       = 0xff3d7fc0;
+  public static final int SKETCH_TOGGLE_ON_TEXT  = WHITE;
   public static final int MID_RED      = 0xffbb3300;
   public static final int DARK_RED     = 0xff662200;
   public static final int BACK_GREEN   = 0x66009292; // transparent green

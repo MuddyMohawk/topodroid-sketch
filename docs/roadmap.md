@@ -22,7 +22,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - need the crack lines
   - maybe make a popcorn line symbol
   - calcite crust needs a different line length to dot ratio
-  -
+  - clay needs to be better
 
 ## Known bugs
 - Large reference images, and reference images in general, are kinda low and cause lag

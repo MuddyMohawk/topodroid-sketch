@@ -2723,10 +2723,11 @@ public class DrawingWindow extends ItemDrawer
     return lp;
   }
 
-  private LinearLayout.LayoutParams makePresetButtonParams()
+  private LinearLayout.LayoutParams makePresetButtonParams( int index )
   {
     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams( 0, LinearLayout.LayoutParams.MATCH_PARENT );
     lp.weight = 1;
+    if ( index > 0 ) lp.setMarginStart( Math.max( 1, Math.round( getResources().getDisplayMetrics().density ) ) );
     return lp;
   }
 
@@ -3296,9 +3297,15 @@ public class DrawingWindow extends ItemDrawer
         @Override public void onClick( View v ) { requestSketchPresetSelection( preset ); }
       } );
       mBtnPreset[index] = button;
-      mLayoutToolsPreset.addView( button, makePresetButtonParams() );
+      mLayoutToolsPreset.addView( button, makePresetButtonParams( index ) );
     }
     updateSketchPresetButtons();
+  }
+
+  private void styleSketchToggle( Button button, boolean active )
+  {
+    button.setBackgroundColor( active ? TDColor.SKETCH_TOGGLE_ON : TDColor.SKETCH_TOGGLE_OFF );
+    button.setTextColor( active ? TDColor.SKETCH_TOGGLE_ON_TEXT : TDColor.SKETCH_TOGGLE_OFF_TEXT );
   }
 
   private void updateSketchPresetButton( Button button, int preset, boolean active )
@@ -3307,8 +3314,7 @@ public class DrawingWindow extends ItemDrawer
     String name = TDSetting.getSketchPresetName( preset );
     button.setText( name );
     button.setContentDescription( getString( R.string.desc_preset, preset, name ) );
-    button.setBackgroundColor( active ? 0xffd9d9d9 : 0xff7a7a7a );
-    button.setTextColor( active ? 0xff111111 : 0xffffffff );
+    styleSketchToggle( button, active );
   }
 
   private void updateSketchPresetButtons()
@@ -3375,7 +3381,7 @@ public class DrawingWindow extends ItemDrawer
         @Override public void onClick( View v ) { requestSketchStyleSelection( style ); }
       } );
       mBtnStyle[index] = button;
-      mLayoutToolsStyle.addView( button, makePresetButtonParams() );
+      mLayoutToolsStyle.addView( button, makePresetButtonParams( index ) );
     }
     updateSketchStyleButtons();
   }
@@ -3386,8 +3392,7 @@ public class DrawingWindow extends ItemDrawer
     String name = TDSetting.getSketchStyleName( style );
     button.setText( name );
     button.setContentDescription( getString( R.string.desc_style, style, name ) );
-    button.setBackgroundColor( active ? 0xffd9d9d9 : 0xff7a7a7a );
-    button.setTextColor( active ? 0xff111111 : 0xffffffff );
+    styleSketchToggle( button, active );
   }
 
   private void updateSketchStyleButtons()

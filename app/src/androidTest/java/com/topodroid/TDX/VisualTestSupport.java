@@ -27,6 +27,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Point;
 import android.graphics.PointF;
+import android.graphics.drawable.ColorDrawable;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Environment;
@@ -58,6 +59,7 @@ import com.topodroid.prefs.TDSetting;
 import com.topodroid.prefs.TDPrefHelper;
 import com.topodroid.types.PointScale;
 import com.topodroid.ui.MotionEventWrap;
+import com.topodroid.util.TDColor;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -686,9 +688,48 @@ final class VisualTestSupport
     assertButtonBarVisible( R.id.layout_tool_style, "Style", expectedLabels );
   }
 
+  void assertSketchToggleBarColors( int activePreset, int activeStyle )
+  {
+    assertSketchToggleBarColors( R.id.layout_tool_preset, "Preset", activePreset - 1 );
+    assertSketchToggleBarColors( R.id.layout_tool_style, "Style", activeStyle - 1 );
+  }
+
   private void assertPresetBarVisible( String... expectedLabels )
   {
     assertButtonBarVisible( R.id.layout_tool_preset, "Preset", expectedLabels );
+  }
+
+  private void assertSketchToggleBarColors( int barId, String label, int activeIndex )
+  {
+    onView( withId( barId ) ).check( ( View view, NoMatchingViewException error ) -> {
+      if ( error != null ) throw error;
+      assertTrue( label + " bar is not a ViewGroup", view instanceof ViewGroup );
+      assertTrue( label + " bar is not visible",
+        view.getVisibility() == View.VISIBLE && view.getWidth() > 0 && view.getHeight() > 0 );
+      assertEquals( label + " bar divider background", 0xff26272b, getBackgroundColor( view, label + " bar" ) );
+      ViewGroup group = (ViewGroup)view;
+      assertTrue( label + " active index " + activeIndex + " is outside child count " + group.getChildCount(),
+        activeIndex >= 0 && activeIndex < group.getChildCount() );
+      for ( int index = 0; index < group.getChildCount(); ++index ) {
+        View child = group.getChildAt( index );
+        boolean active = index == activeIndex;
+        assertTrue( label + " button " + index + " is not visible",
+          child.getVisibility() == View.VISIBLE && child.getWidth() > 0 && child.getHeight() > 0 );
+        assertTrue( label + " button " + index + " has no text", child instanceof TextView );
+        assertEquals( label + " button " + index + " background",
+          active ? TDColor.SKETCH_TOGGLE_ON : TDColor.SKETCH_TOGGLE_OFF,
+          getBackgroundColor( child, label + " button " + index ) );
+        assertEquals( label + " button " + index + " text color",
+          active ? TDColor.SKETCH_TOGGLE_ON_TEXT : TDColor.SKETCH_TOGGLE_OFF_TEXT,
+          ((TextView)child).getCurrentTextColor() );
+      }
+    } );
+  }
+
+  private int getBackgroundColor( View view, String label )
+  {
+    assertTrue( label + " background is not a ColorDrawable", view.getBackground() instanceof ColorDrawable );
+    return ((ColorDrawable)view.getBackground()).getColor();
   }
 
   private void assertButtonBarVisible( int barId, String label, String... expectedLabels )
@@ -2253,6 +2294,9 @@ selection.mHotItem.getHandleRole() );
     editor.putString( "DISTOX_PRESET_4_LINE_STYLE", "6" );
     editor.putString( "DISTOX_PRESET_4_LINE_SEGMENT", "10" );
     editor.putString( "DISTOX_ACTIVE_SKETCH_PRESET", "1" );
+    editor.putString( "DISTOX_STYLE_SLOTS", "3" );
+    editor.putString( "DISTOX_STYLE_DEFAULTS_VERSION", "1" );
+    editor.putString( "DISTOX_ACTIVE_SKETCH_STYLE", "2" );
     editor.putBoolean( "DISTOX_ERASE_REFERENCE", false );
     editor.apply();
     TDSetting.loadSecondaryPreferences( new TDPrefHelper( mTargetContext ) );
