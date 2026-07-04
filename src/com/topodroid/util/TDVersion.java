@@ -32,7 +32,7 @@ public class TDVersion
 
   // symbol version of installed symbols is stored in the database
   // symbol version of the current  symbols is in the app
-  // 47: first expanded NSS 1979 phase-1 symbol batch
+  // 47: first expanded TopoDroid Sketch symbol batch
   public static final String SYMBOL_VERSION = "47";
 
   // increase to install last version of DistoX2 firmware

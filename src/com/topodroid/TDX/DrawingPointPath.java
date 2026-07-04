@@ -531,7 +531,7 @@ public class DrawingPointPath extends DrawingPath
     return ( mSketchBrushStyle != null ) ? mSketchBrushStyle.pointScaleOr( getScaleValue() ) : getScaleValue();
   }
 
-  /** @return exact Sketch point footprint scale, expanded with W for stroked NSS point stamps
+  /** @return exact Sketch point footprint scale, expanded with W for stroked Sketch point stamps
    */
   private float getSketchPointFootprintScaleValue()
   {

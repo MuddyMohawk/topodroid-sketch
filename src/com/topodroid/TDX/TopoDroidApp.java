@@ -2215,14 +2215,14 @@ public class TopoDroidApp extends Application
     return files != null && files.length > 0;
   }
 
-  /** install default NSS symbols
+  /** install default TopoDroid Sketch symbols
    * @param overwrite whether to overwrite existing files
    */
   static void installSymbols( boolean overwrite )
   {
     deleteObsoleteSymbols();
     // TDLog.v("PATH " + "install symbol version " + TDVersion.SYMBOL_VERSION );
-    installSymbols( R.raw.symbols_nss, overwrite );
+    installSymbols( R.raw.symbols_topodroid_sketch, overwrite );
     if ( mDData != null ) mDData.setValue( "symbol_version", TDVersion.SYMBOL_VERSION );
   }
 
