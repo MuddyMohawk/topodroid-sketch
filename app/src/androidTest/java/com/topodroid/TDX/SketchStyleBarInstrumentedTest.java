@@ -179,7 +179,7 @@ public class SketchStyleBarInstrumentedTest
       support.assertStyleBarVisible( "Thin", "Standard", "Thick" );
       support.tapStyleButton( 3 );
 
-      support.clickRecentLineByThName( SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD );
+      support.clickRecentLineByThName( SymbolLibrary.USER );
       support.drawCurveStrokeNormalized( 0.25, 0.45, 0.75, 0.48, 0.08, 8, 20 );
       support.assertLatestLineBrushWeight( 5.0f );
 
@@ -204,7 +204,7 @@ public class SketchStyleBarInstrumentedTest
       support.enterDrawMode();
 
       support.assertStyleBarVisible( "Thin", "Standard", "Thick" );
-      support.clickRecentLineByThName( SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD );
+      support.clickRecentLineByThName( SymbolLibrary.USER );
       support.tapDrawingSurfaceNormalized( 0.50, 0.50 );
       support.tapStyleButton( 3 );
 

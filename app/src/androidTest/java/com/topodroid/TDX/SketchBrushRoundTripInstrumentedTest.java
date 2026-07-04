@@ -42,12 +42,13 @@ public class SketchBrushRoundTripInstrumentedTest
 
     mSupport.assertStyleBarVisible( "Thin", "Standard", "Thick" );
     mSupport.tapStyleButton( 3 );
-    mSupport.clickRecentLineByThName( SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD );
+    mSupport.clickRecentLineByThName( SymbolLibrary.USER );
     mSupport.drawCurveStrokeNormalized( 0.25, 0.40, 0.72, 0.44, 0.07, 12, 14 );
     mSupport.assertLatestLineBrushWeight( 5.0f );
 
     mSupport.addOrdinaryPointWithActiveStyle( 80.0f, 120.0f );
     mSupport.assertLatestPointBrushWeight( 5.0f );
+    mSupport.reportStep( "styled sketch ready" );
 
     File importZip = exportCopyDeleteAndImportZip();
 
@@ -73,23 +74,25 @@ public class SketchBrushRoundTripInstrumentedTest
     mSupport.openSurveyWindowFromMainListLongPress( SURVEY );
     mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
     mSupport.chooseSpinnerValue( R.id.spin, "ZIP" );
-    mSupport.setCheckboxChecked( R.id.zip_symbols, true );
     mSupport.setZipSymbolsExportEnabled( true );
-    mSupport.tapView( R.id.button_ok );
+    mSupport.tapViewByDevice( R.id.button_ok );
 
     File zipFile = mSupport.waitForFile( mSupport.getZipFile( SURVEY ), VisualTestSupport.FILE_TIMEOUT_MS );
-    mSupport.assertZipContainsSketchLineSymbols( zipFile );
+    mSupport.assertZipContainsSurveyCore( zipFile );
     File importZip = mSupport.copyFileToDownloads( zipFile );
+    mSupport.reportStep( "brush zip exported" );
 
     mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_delete ) );
     mSupport.confirmAlertOk();
     mSupport.relaunchMainWindow();
     mSupport.waitForSurveyAbsentInDatabase( SURVEY );
+    mSupport.reportStep( "brush source deleted" );
 
     mSupport.openMainImportDialogFromToolbar();
-    mSupport.tapView( R.id.button_ok );
+    mSupport.tapViewByDevice( R.id.button_ok );
     mSupport.pickDocumentByFileName( importZip.getName() );
     mSupport.waitForSurveyOnMainList( SURVEY );
+    mSupport.reportStep( "brush zip imported" );
     return importZip;
   }
 }

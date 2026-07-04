@@ -21,7 +21,7 @@ $Instrumentation = "$TestPackage/$Runner"
 $FastTests = @(
   @{
     Name = "Visual golden sketch screen"
-    Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#createSurvey_addShots_createSketch_drawPresetsAndSketchLines_matchesGolden"
+    Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#createSurvey_addShots_createSketch_drawPresetsAndLineWeights_matchesGolden"
     Estimate = 150
     Timeout = 360
     IdleTimeout = 240
@@ -133,11 +133,23 @@ function Grant-Permissions {
   & $Adb -s $Serial "shell" "appops" "set" "--uid" $AppPackage "MANAGE_EXTERNAL_STORAGE" "allow" 2>$null | Out-Null
 }
 
+function Stop-TestRuntime {
+  Invoke-Adb @("shell", "am", "force-stop", $TestPackage) | Out-Null
+  Invoke-Adb @("shell", "am", "force-stop", $AppPackage) | Out-Null
+}
+
+function Reset-TestRuntime {
+  Stop-TestRuntime
+  Invoke-Adb @("shell", "pm", "clear", $AppPackage) | Out-Null
+  Invoke-Adb @("shell", "pm", "clear", $TestPackage) | Out-Null
+  Grant-Permissions
+}
+
 $SdkPath = Get-SdkPath
 $JavaHome = Get-JavaHome
 $Adb = Join-Path $SdkPath "platform-tools\adb.exe"
-$AppApk = Join-Path $RepoRoot "app\build\outputs\apk\debug\app-debug.apk"
-$TestApk = Join-Path $RepoRoot "app\build\outputs\apk\androidTest\debug\app-debug-androidTest.apk"
+$AppApkDir = Join-Path $RepoRoot "app\build\outputs\apk\debug"
+$TestApkDir = Join-Path $RepoRoot "app\build\outputs\apk\androidTest\debug"
 
 Push-Location $RepoRoot
 try {
@@ -150,6 +162,8 @@ try {
     Invoke-NativeChecked -FilePath $Gradle -Arguments @("-g", $GradleUserHome, "--console=plain", ":app:assembleDebug", ":app:assembleDebugAndroidTest") -Description "Gradle build" -TimeoutSeconds 1200 -IdleTimeoutSeconds 300
   }
 
+  $AppApk = Resolve-GradleApkOutput -OutputDirectory $AppApkDir -Description "app debug"
+  $TestApk = Resolve-GradleApkOutput -OutputDirectory $TestApkDir -Description "androidTest debug"
   Install-TestApksAndPreflight -Adb $Adb -Serial $Serial -AppApk $AppApk -TestApk $TestApk -AppPackage $AppPackage -TestPackage $TestPackage -Runner $Runner
   Invoke-Adb @("shell", "pm", "clear", $AppPackage) | Out-Null
   Invoke-Adb @("shell", "pm", "clear", $TestPackage) | Out-Null
@@ -157,9 +171,11 @@ try {
 
   $instrumentationOk = $true
   foreach ($test in $FastTests) {
+    Reset-TestRuntime
     $ok = Invoke-InstrumentationTimed -Adb $Adb -Serial $Serial `
       -Arguments @("shell", "am", "instrument", "-w", "-r", "-e", "class", $test.Class, $Instrumentation) `
       -Name $test.Name -EstimateSeconds $test.Estimate -TimeoutSeconds $test.Timeout -IdleTimeoutSeconds $test.IdleTimeout -AppPackage $AppPackage -TestPackage $TestPackage -ArtifactsLocal $ArtifactsLocal
+    Stop-TestRuntime
     $instrumentationOk = $instrumentationOk -and $ok
   }
 

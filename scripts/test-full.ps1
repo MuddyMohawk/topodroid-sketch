@@ -21,14 +21,14 @@ $Instrumentation = "$TestPackage/$Runner"
 $FullTests = @(
   @{
     Name = "Visual golden sketch screen"
-    Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#createSurvey_addShots_createSketch_drawPresetsAndSketchLines_matchesGolden"
+    Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#createSurvey_addShots_createSketch_drawPresetsAndLineWeights_matchesGolden"
     Estimate = 150
     Timeout = 360
     IdleTimeout = 240
   },
   @{
     Name = "Visual ZIP round-trip"
-    Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#exportZip_includesSketchLineSymbols_and_importRoundTripsThroughPicker"
+    Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#exportZip_includesSurveyCore_and_importRoundTripsThroughPicker"
     Estimate = 300
     Timeout = 600
     IdleTimeout = 300
@@ -97,11 +97,46 @@ $FullTests = @(
     IdleTimeout = 240
   },
   @{
-    Name = "Line/preset/toolbar model tests"
-    Class = "com.topodroid.TDX.LinePatternInstrumentedTest,com.topodroid.TDX.PresetBarInstrumentedTest,com.topodroid.TDX.ToolbarRowsInstrumentedTest"
-    Estimate = 15
-    Timeout = 180
-    IdleTimeout = 90
+    Name = "Model/rendering/style tests"
+    Class = "com.topodroid.TDX.LinePatternInstrumentedTest,com.topodroid.TDX.PresetBarInstrumentedTest,com.topodroid.TDX.ToolbarRowsInstrumentedTest,com.topodroid.TDX.LineStyleSnappingInstrumentedTest,com.topodroid.TDX.SketchBrushStyleInstrumentedTest,com.topodroid.TDX.SketchBrushCompatibilityInstrumentedTest,com.topodroid.TDX.SmoothPointScaleInstrumentedTest,com.topodroid.TDX.SymbolOpacityParserInstrumentedTest,com.topodroid.TDX.NssSymbolSliceInstrumentedTest"
+    Estimate = 45
+    Timeout = 300
+    IdleTimeout = 150
+  },
+  @{
+    Name = "Sketch style bar tests"
+    Class = "com.topodroid.TDX.SketchStyleBarInstrumentedTest"
+    Estimate = 240
+    Timeout = 600
+    IdleTimeout = 300
+  },
+  @{
+    Name = "Sketch brush ZIP round-trip"
+    Class = "com.topodroid.TDX.SketchBrushRoundTripInstrumentedTest"
+    Estimate = 300
+    Timeout = 600
+    IdleTimeout = 300
+  },
+  @{
+    Name = "Smooth point scale UI"
+    Class = "com.topodroid.TDX.SmoothPointScaleUiInstrumentedTest"
+    Estimate = 150
+    Timeout = 360
+    IdleTimeout = 240
+  },
+  @{
+    Name = "Toolbar selection"
+    Class = "com.topodroid.TDX.ToolbarSelectionInstrumentedTest"
+    Estimate = 150
+    Timeout = 360
+    IdleTimeout = 240
+  },
+  @{
+    Name = "Toolbar toggle restyle"
+    Class = "com.topodroid.TDX.ToolbarToggleRestyleInstrumentedTest"
+    Estimate = 150
+    Timeout = 360
+    IdleTimeout = 240
   }
 )
 
@@ -203,11 +238,23 @@ function Grant-Permissions {
   & $Adb -s $Serial "shell" "appops" "set" "--uid" $AppPackage "MANAGE_EXTERNAL_STORAGE" "allow" 2>$null | Out-Null
 }
 
+function Stop-TestRuntime {
+  Invoke-Adb @("shell", "am", "force-stop", $TestPackage) | Out-Null
+  Invoke-Adb @("shell", "am", "force-stop", $AppPackage) | Out-Null
+}
+
+function Reset-TestRuntime {
+  Stop-TestRuntime
+  Invoke-Adb @("shell", "pm", "clear", $AppPackage) | Out-Null
+  Invoke-Adb @("shell", "pm", "clear", $TestPackage) | Out-Null
+  Grant-Permissions
+}
+
 $SdkPath = Get-SdkPath
 $JavaHome = Get-JavaHome
 $Adb = Join-Path $SdkPath "platform-tools\adb.exe"
-$AppApk = Join-Path $RepoRoot "app\build\outputs\apk\debug\app-debug.apk"
-$TestApk = Join-Path $RepoRoot "app\build\outputs\apk\androidTest\debug\app-debug-androidTest.apk"
+$AppApkDir = Join-Path $RepoRoot "app\build\outputs\apk\debug"
+$TestApkDir = Join-Path $RepoRoot "app\build\outputs\apk\androidTest\debug"
 
 Push-Location $RepoRoot
 try {
@@ -220,6 +267,8 @@ try {
     Invoke-NativeChecked -FilePath $Gradle -Arguments @("-g", $GradleUserHome, "--console=plain", ":app:assembleDebug", ":app:assembleDebugAndroidTest") -Description "Gradle build" -TimeoutSeconds 1200 -IdleTimeoutSeconds 300
   }
 
+  $AppApk = Resolve-GradleApkOutput -OutputDirectory $AppApkDir -Description "app debug"
+  $TestApk = Resolve-GradleApkOutput -OutputDirectory $TestApkDir -Description "androidTest debug"
   Install-TestApksAndPreflight -Adb $Adb -Serial $Serial -AppApk $AppApk -TestApk $TestApk -AppPackage $AppPackage -TestPackage $TestPackage -Runner $Runner
   Invoke-Adb @("shell", "pm", "clear", $AppPackage) | Out-Null
   Invoke-Adb @("shell", "pm", "clear", $TestPackage) | Out-Null
@@ -227,9 +276,11 @@ try {
 
   $instrumentationOk = $true
   foreach ($test in $FullTests) {
+    Reset-TestRuntime
     $ok = Invoke-InstrumentationTimed -Adb $Adb -Serial $Serial `
       -Arguments @("shell", "am", "instrument", "-w", "-r", "-e", "class", $test.Class, $Instrumentation) `
       -Name $test.Name -EstimateSeconds $test.Estimate -TimeoutSeconds $test.Timeout -IdleTimeoutSeconds $test.IdleTimeout -AppPackage $AppPackage -TestPackage $TestPackage -ArtifactsLocal $ArtifactsLocal
+    Stop-TestRuntime
     $instrumentationOk = $instrumentationOk -and $ok
   }
 

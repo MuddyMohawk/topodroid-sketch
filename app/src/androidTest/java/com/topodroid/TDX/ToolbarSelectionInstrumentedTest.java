@@ -35,7 +35,7 @@ public class ToolbarSelectionInstrumentedTest
   }
 
   @Test
-  public void selectedSketchLineSurvivesReturningThroughSurveyDataScreen() throws Exception
+  public void selectedUserLineSurvivesReturningThroughSurveyDataScreen() throws Exception
   {
     mSupport.prepareForPhysicalCompatCase();
     mSupport.launchMainWindowOnAnyDevice();
@@ -46,8 +46,9 @@ public class ToolbarSelectionInstrumentedTest
     mSupport.openNewPlotFromShotWindow( PLOT_NAME, "1" );
     mSupport.enterDrawMode();
 
-    mSupport.clickRecentLineByThName( SketchLineSymbolManager.LEGACY_TH_NAME_THICK );
-    mSupport.waitForCurrentLineThName( SketchLineSymbolManager.LEGACY_TH_NAME_THICK );
+    mSupport.tapStyleButton( 3 );
+    mSupport.clickRecentLineByThName( SymbolLibrary.USER );
+    mSupport.waitForCurrentLineThName( SymbolLibrary.USER );
 
     mSupport.pressBackToShotWindow();
     mSupport.waitForToolbarConfigValue( ItemDrawer.KEY_TOOLBAR_ACTIVE_TYPE, "line" );
@@ -55,6 +56,6 @@ public class ToolbarSelectionInstrumentedTest
     mSupport.openExistingPlanPlot( PLOT_NAME );
     mSupport.enterDrawMode();
 
-    mSupport.waitForCurrentLineThName( SketchLineSymbolManager.LEGACY_TH_NAME_THICK );
+    mSupport.waitForCurrentLineThName( SymbolLibrary.USER );
   }
 }

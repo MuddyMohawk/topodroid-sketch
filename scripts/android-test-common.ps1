@@ -210,6 +210,39 @@ function Resolve-GradleUserHome {
   return [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $expanded))
 }
 
+function Resolve-GradleApkOutput {
+  param(
+    [string]$OutputDirectory,
+    [string]$Description
+  )
+
+  $metadataPath = Join-Path $OutputDirectory "output-metadata.json"
+  if (Test-Path $metadataPath) {
+    $metadata = Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json
+    if ($metadata.elements -and $metadata.elements.Count -gt 0) {
+      $outputFile = $metadata.elements[0].outputFile
+      if (-not [string]::IsNullOrWhiteSpace($outputFile)) {
+        $candidate = Join-Path $OutputDirectory $outputFile
+        if (Test-Path $candidate) {
+          return $candidate
+        }
+        throw "$Description APK listed in metadata does not exist: $candidate"
+      }
+    }
+  }
+
+  if (Test-Path $OutputDirectory) {
+    $apk = Get-ChildItem -LiteralPath $OutputDirectory -Filter "*.apk" -File |
+      Sort-Object LastWriteTime -Descending |
+      Select-Object -First 1
+    if ($apk) {
+      return $apk.FullName
+    }
+  }
+
+  throw "Could not locate $Description APK in $OutputDirectory"
+}
+
 function Get-AdbShellText {
   param(
     [string]$Adb,
@@ -563,7 +596,8 @@ exit `$code
   if ($text -match "FAILURES!!!" -or $text -match "INSTRUMENTATION_STATUS: Error" -or $text -match "INSTRUMENTATION_FAILED") {
     $ok = $false
   }
-  $anrFailure = $text -match "keyDispatchingTimedOut|Input dispatching timed out|is not responding|Not Responding|ANR"
+  $anrFailure = ($text -match "(?m)^INSTRUMENTATION_RESULT: shortMsg=keyDispatchingTimedOut") -or
+                ($text -match "(?m)^INSTRUMENTATION_RESULT: longMsg=.*(Input dispatching timed out|is not responding|Not Responding|ANR)")
   if ($anrFailure) {
     $ok = $false
     Write-InstrumentationDiagnostics -Adb $Adb -Serial $Serial -AppPackage $AppPackage -TestPackage $TestPackage -ArtifactsLocal $ArtifactsLocal

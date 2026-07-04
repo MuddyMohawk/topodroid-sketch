@@ -50,8 +50,6 @@ public class ToolbarRowsInstrumentedTest
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     TDInstance.setContext( context.getApplicationContext() );
     TopoDroidApp.installSymbols( true );
-    SketchLineSymbolManager.ensureLineSymbols();
-    SketchLineSymbolManager.syncPrefsFromSymbolFiles();
     BrushManager.reloadPointLibrary( context, context.getResources() );
     BrushManager.reloadLineLibrary( context.getResources() );
     BrushManager.reloadAreaLibrary( context.getResources() );
@@ -78,7 +76,7 @@ public class ToolbarRowsInstrumentedTest
   }
 
   @Test
-  public void defaultSymbolInstall_layersNssOverSpeleoPlaceholders()
+  public void defaultSymbolInstall_includesCurrentSketchPackSymbols()
   {
     int pit = BrushManager.getLineIndexByThName( SymbolLibrary.PIT );
     int flowstone = BrushManager.getLineIndexByThName( SymbolLibrary.FLOWSTONE );
@@ -87,16 +85,14 @@ public class ToolbarRowsInstrumentedTest
     int bedrock = BrushManager.getPointIndexByThName( SymbolLibrary.BEDROCK );
     int boulder = BrushManager.getPointIndexByThName( "boulder" );
     int waterFlow = BrushManager.getLineIndexByThName( SymbolLibrary.WATER_FLOW );
-    int pillar = BrushManager.getPointIndexByThName( SymbolLibrary.PILLAR );
 
     assertTrue( "Missing wall line", wall >= 0 );
-    assertTrue( "Missing NSS pit line", pit >= 0 );
-    assertTrue( "Missing NSS flowstone line", flowstone >= 0 );
-    assertTrue( "Missing NSS clay point", clay >= 0 );
-    assertTrue( "Missing NSS bedrock point", bedrock >= 0 );
-    assertTrue( "Missing NSS boulder point", boulder >= 0 );
-    assertTrue( "Missing Speleo water-flow placeholder", waterFlow >= 0 );
-    assertTrue( "Missing Speleo pillar placeholder", pillar >= 0 );
+    assertTrue( "Missing sketch pit line", pit >= 0 );
+    assertTrue( "Missing sketch flowstone line", flowstone >= 0 );
+    assertTrue( "Missing sketch clay point", clay >= 0 );
+    assertTrue( "Missing sketch bedrock point", bedrock >= 0 );
+    assertTrue( "Missing sketch boulder point", boulder >= 0 );
+    assertTrue( "Missing sketch water-flow line", waterFlow >= 0 );
     for ( int k = 0; k < BrushManager.getLineLibSize(); ++k ) {
       assertTrue( "Line should be enabled by default: " + BrushManager.getLineThName( k ),
                   BrushManager.getLineByIndex( k ).isEnabled() );
@@ -200,7 +196,7 @@ public class ToolbarRowsInstrumentedTest
   {
     TDSetting.mToolbarRows = 3;
     assertEquals( 3, ItemDrawer.getToolbarRowCount() );
-    for ( int slot = 0; slot < ItemDrawer.NR_RECENT; ++slot ) {
+    for ( int slot = 0; slot < ItemDrawer.getToolbarSlotCount(); ++slot ) {
       assertEquals( ItemDrawer.mToolbarLine[0][slot].getFullThName(), ItemDrawer.mToolbarLine[1][slot].getFullThName() );
       assertEquals( ItemDrawer.mToolbarLine[0][slot].getFullThName(), ItemDrawer.mToolbarLine[2][slot].getFullThName() );
     }

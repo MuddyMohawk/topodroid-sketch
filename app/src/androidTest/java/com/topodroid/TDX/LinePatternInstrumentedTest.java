@@ -30,7 +30,7 @@ import java.util.ArrayList;
 @LargeTest
 public class LinePatternInstrumentedTest
 {
-  private static final int WIDTH = 1000;
+  private static final int WIDTH = 1600;
   private static final int HEIGHT = 260;
   private static final float LINE_LENGTH = 180.0f;
   private static final float LINE_Y = 32.0f;
@@ -46,10 +46,12 @@ public class LinePatternInstrumentedTest
   @Test
   public void dashRepeatCountIsStableAcrossZoom() throws Exception
   {
-    int zoom1Runs = renderSectionLineAndCountRuns( 1.0f );
+    // At 1x the built-in section dash is sub-pixel and antialiasing collapses
+    // the scanline into a mostly continuous stroke. Use drawable zoom levels.
+    int zoom3Runs = renderSectionLineAndCountRuns( 3.0f );
     int zoom4Runs = renderSectionLineAndCountRuns( 4.0f );
 
-    assertEquals( "Dashed line repeat count changed across zoom", zoom1Runs, zoom4Runs, 1 );
+    assertEquals( "Dashed line repeat count changed across zoom", zoom3Runs, zoom4Runs, 1 );
   }
 
   @Test

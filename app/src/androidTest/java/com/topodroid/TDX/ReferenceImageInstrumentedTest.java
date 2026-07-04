@@ -63,7 +63,7 @@ public class ReferenceImageInstrumentedTest
     mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
     mSupport.chooseSpinnerValue( R.id.spin, "PNG" );
     mSupport.replaceTextInField( R.id.png_filename, PNG_VISIBLE_EXPORT );
-    mSupport.tapView( R.id.button_ok );
+    mSupport.tapViewByDevice( R.id.button_ok );
 
     File pngFile = mSupport.waitForFile(
       mSupport.getPngExportFile( SURVEY_VISIBLE, PNG_VISIBLE_EXPORT ),
@@ -89,7 +89,7 @@ public class ReferenceImageInstrumentedTest
     mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
     mSupport.chooseSpinnerValue( R.id.spin, "PNG" );
     mSupport.replaceTextInField( R.id.png_filename, PNG_HIDDEN_EXPORT );
-    mSupport.tapView( R.id.button_ok );
+    mSupport.tapViewByDevice( R.id.button_ok );
 
     File pngFile = mSupport.waitForFile(
       mSupport.getPngExportFile( SURVEY_HIDDEN, PNG_HIDDEN_EXPORT ),
@@ -112,30 +112,35 @@ public class ReferenceImageInstrumentedTest
     mSupport.insertReferenceFromFile( reference, 0.24, 0.24 );
     mSupport.transformFirstReference( 1.20f, 33.0, 0.75f, true, 55.0f, -15.0f );
     VisualTestSupport.ReferenceSnapshot before = mSupport.getFirstReferenceSnapshot();
+    mSupport.reportStep( "reference ready" );
 
     mSupport.pressBackToShotWindow();
     mSupport.pressBackToMainWindow();
     mSupport.openSurveyWindowFromMainListLongPress( SURVEY_ZIP );
     mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
     mSupport.chooseSpinnerValue( R.id.spin, "ZIP" );
-    mSupport.tapView( R.id.button_ok );
+    mSupport.tapViewByDevice( R.id.button_ok );
 
     File zipFile = mSupport.waitForFile( mSupport.getZipFile( SURVEY_ZIP ), VisualTestSupport.FILE_TIMEOUT_MS );
     File importZip = mSupport.copyFileToDownloads( zipFile );
+    mSupport.reportStep( "reference zip exported" );
 
     mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_delete ) );
     mSupport.confirmAlertOk();
     mSupport.relaunchMainWindow();
     mSupport.waitForSurveyAbsentInDatabase( SURVEY_ZIP );
+    mSupport.reportStep( "reference source deleted" );
 
     mSupport.openMainImportDialogFromToolbar();
-    mSupport.tapView( R.id.button_ok );
+    mSupport.tapViewByDevice( R.id.button_ok );
     mSupport.pickDocumentByFileName( importZip.getName() );
     mSupport.waitForSurveyOnMainList( SURVEY_ZIP );
+    mSupport.reportStep( "reference zip imported" );
 
     mSupport.openSurveyFromMainList( SURVEY_ZIP );
     mSupport.openExistingPlanPlot( PLOT_NAME );
     VisualTestSupport.ReferenceSnapshot after = mSupport.getFirstReferenceSnapshot();
+    mSupport.reportStep( "reference plot reopened" );
 
     assertEquals( "Reference source name changed across ZIP round-trip", before.sourceName, after.sourceName );
     assertEquals( "Reference alpha changed across ZIP round-trip", before.alphaPercent, after.alphaPercent );

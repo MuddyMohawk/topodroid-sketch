@@ -31,6 +31,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Environment;
+import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
@@ -61,8 +62,6 @@ import com.topodroid.types.PointScale;
 import com.topodroid.ui.MotionEventWrap;
 import com.topodroid.util.TDColor;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -80,7 +79,6 @@ import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
 import junit.framework.AssertionFailedError;
@@ -91,10 +89,16 @@ final class VisualTestSupport
   private static final int SCREEN_MAX_CHANNEL_DELTA = 8;
   private static final double PNG_MAX_DIFF_RATIO = 0.005;
   private static final int PNG_MAX_CHANNEL_DELTA = 8;
+  private static final long SKETCH_ACTION_IDLE_MS = 500;
 
   interface TextNormalizer
   {
     String normalize( String text );
+  }
+
+  private interface MainThreadAction
+  {
+    void run() throws Throwable;
   }
 
   static final class ReferenceSnapshot
@@ -165,6 +169,14 @@ final class VisualTestSupport
   String string( int resId )
   {
     return mTargetContext.getString( resId );
+  }
+
+  void reportStep( String message )
+  {
+    Bundle bundle = new Bundle();
+    bundle.putString( Instrumentation.REPORT_KEY_STREAMRESULT,
+      "VISUAL_STEP " + mCaseName + " " + message + "\n" );
+    mInstrumentation.sendStatus( 0, bundle );
   }
 
   void prepareForCase( List< String > surveyNames ) throws Exception
@@ -295,7 +307,7 @@ final class VisualTestSupport
     configureStableRuntimeState();
     disableDialogRExit();
     waitForMainWindow();
-    ensureSketchLineSymbolsReady();
+    ensureDefaultSymbolsReady();
     if ( verifyGoldenEmulatorProfile ) verifyEmulatorProfile();
   }
 
@@ -525,6 +537,26 @@ final class VisualTestSupport
     return TopoDroidApp.mDrawingWindow;
   }
 
+  private android.app.Activity findCurrentActivity()
+  {
+    android.app.Activity activity = findActivityInStage( androidx.test.runner.lifecycle.Stage.RESUMED );
+    if ( activity != null ) return activity;
+    activity = findActivityInStage( androidx.test.runner.lifecycle.Stage.STARTED );
+    if ( activity != null ) return activity;
+    return findActivityInStage( androidx.test.runner.lifecycle.Stage.PAUSED );
+  }
+
+  private android.app.Activity findActivityInStage( androidx.test.runner.lifecycle.Stage stage )
+  {
+    java.util.Collection< android.app.Activity > activities =
+      androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+        .getActivitiesInStage( stage );
+    for ( android.app.Activity activity : activities ) {
+      return activity;
+    }
+    return null;
+  }
+
   private DrawingWindow findDrawingWindowInStage( androidx.test.runner.lifecycle.Stage stage )
   {
     java.util.Collection< android.app.Activity > activities =
@@ -534,6 +566,40 @@ final class VisualTestSupport
       if ( activity instanceof DrawingWindow ) return (DrawingWindow)activity;
     }
     return null;
+  }
+
+  private void runOnMainChecked( String label, MainThreadAction action )
+  {
+    final Throwable[] error = new Throwable[1];
+    mInstrumentation.runOnMainSync( () -> {
+      try {
+        action.run();
+      } catch ( Throwable t ) {
+        error[0] = t;
+      }
+    } );
+    if ( error[0] == null ) return;
+    if ( error[0] instanceof AssertionFailedError ) throw (AssertionFailedError)error[0];
+    if ( error[0] instanceof AssertionError ) throw (AssertionError)error[0];
+    if ( error[0] instanceof RuntimeException ) throw (RuntimeException)error[0];
+    throw new AssertionFailedError( label + ": " + error[0].getMessage() );
+  }
+
+  private View requireDrawingWindowView( int viewId, String label )
+  {
+    DrawingWindow window = requireCurrentDrawingWindow();
+    View view = window.findViewById( viewId );
+    assertNotNull( "Missing " + label, view );
+    return view;
+  }
+
+  private View requireCurrentActivityView( int viewId, String label )
+  {
+    android.app.Activity activity = findCurrentActivity();
+    assertNotNull( "No active activity found; currentPackage=" + mDevice.getCurrentPackageName(), activity );
+    View view = activity.findViewById( viewId );
+    assertNotNull( "Missing " + label, view );
+    return view;
   }
 
   private Object getPrivateField( Object target, String name ) throws Exception
@@ -626,10 +692,10 @@ final class VisualTestSupport
   }
 
   /** Tap the recent-line toolbar button for a specific symbol, identified by
-   * its therion name (e.g. "u:user-fine"). The position of each symbol in the
+   * its therion name (e.g. "u:user"). The position of each symbol in the
    * recent-line palette is not stable across installs — out of the box,
    * TopoDroid sits walls at index 0 and section at index 1, pushing the user
-   * sketch lines further right. Hard-coded indices in tests were hitting walls
+   * line further right. Hard-coded indices in tests were hitting walls
    * / section by mistake, which in turn opened the cross-section dialog. Look
    * the symbol up at runtime instead so we always click the right button.
    */
@@ -680,6 +746,7 @@ final class VisualTestSupport
   void assertDefaultSketchToolbarVisible()
   {
     assertPresetBarVisible( "Fine", "Smooth", "Straight", "Snap" );
+    assertStyleBarVisible( "Thin", "Standard", "Thick" );
     assertManualToolbarVisible( 8 );
   }
 
@@ -701,8 +768,8 @@ final class VisualTestSupport
 
   private void assertSketchToggleBarColors( int barId, String label, int activeIndex )
   {
-    onView( withId( barId ) ).check( ( View view, NoMatchingViewException error ) -> {
-      if ( error != null ) throw error;
+    runOnMainChecked( label + " toggle bar", () -> {
+      View view = requireDrawingWindowView( barId, label + " bar" );
       assertTrue( label + " bar is not a ViewGroup", view instanceof ViewGroup );
       assertTrue( label + " bar is not visible",
         view.getVisibility() == View.VISIBLE && view.getWidth() > 0 && view.getHeight() > 0 );
@@ -734,8 +801,8 @@ final class VisualTestSupport
 
   private void assertButtonBarVisible( int barId, String label, String... expectedLabels )
   {
-    onView( withId( barId ) ).check( ( View view, NoMatchingViewException error ) -> {
-      if ( error != null ) throw error;
+    runOnMainChecked( label + " bar", () -> {
+      View view = requireDrawingWindowView( barId, label + " bar" );
       assertTrue( label + " bar is not a ViewGroup", view instanceof ViewGroup );
       assertTrue( label + " bar is not visible",
         view.getVisibility() == View.VISIBLE && view.getWidth() > 0 && view.getHeight() > 0 );
@@ -754,8 +821,8 @@ final class VisualTestSupport
 
   private void assertManualToolbarVisible( int expectedSlots )
   {
-    onView( withId( R.id.layout_tools ) ).check( ( View view, NoMatchingViewException error ) -> {
-      if ( error != null ) throw error;
+    runOnMainChecked( "manual toolbar", () -> {
+      View view = requireDrawingWindowView( R.id.layout_tools, "tools container" );
       assertTrue( "Tools container is not a ViewGroup", view instanceof ViewGroup );
       int rows = ItemDrawer.getToolbarRowCount();
       for ( int rowIndex = 0; rowIndex < rows; ++rowIndex ) {
@@ -1235,6 +1302,13 @@ selection.mHotItem.getHandleRole() );
     waitForIdle();
   }
 
+  void tapViewByDevice( int viewId )
+  {
+    String resourceName = mTargetContext.getResources().getResourceEntryName( viewId );
+    UiObject2 object = waitForObject( By.res( PACKAGE_NAME, resourceName ) );
+    clickObject( object );
+  }
+
   void setCheckboxChecked( int viewId, boolean checked )
   {
     final boolean[] current = new boolean[1];
@@ -1346,7 +1420,8 @@ selection.mHotItem.getHandleRole() );
   void openExistingPlanPlot( String plotName )
   {
     openPlotListFromShotToolbar();
-    tapText( plotName + ": PLAN" );
+    UiObject2 plotRow = waitForObject( By.text( plotName + ": PLAN" ) );
+    clickObject( plotRow );
     waitForDrawingWindow();
   }
 
@@ -1431,15 +1506,75 @@ selection.mHotItem.getHandleRole() );
     }
     mDevice.swipe( path, Math.max( 1, segmentSteps ) );
     SystemClock.sleep( 500 );
+    waitForDeviceIdle();
+  }
+
+  void addUserLineCurveWithActiveStyle( double startX, double startY, double endX, double endY,
+                                        double curveOffset, int samples )
+  {
+    final Throwable[] error = new Throwable[1];
+    mInstrumentation.runOnMainSync( () -> {
+      try {
+        DrawingWindow window = requireCurrentDrawingWindow();
+        DrawingSurface surface = requireCurrentDrawingSurface( window );
+        int lineType = BrushManager.getLineIndexByThName( SymbolLibrary.USER );
+        assertTrue( "Missing user line symbol", lineType >= 0 );
+
+        float zoom = getPrivateFloat( window, "mZoom" );
+        PointF offset = (PointF)getPrivateField( window, "mOffset" );
+        int width = Math.max( 1, surface.getWidth() );
+        int height = Math.max( 1, surface.getHeight() );
+
+        double midX  = 0.5 * ( startX + endX );
+        double midY  = 0.5 * ( startY + endY );
+        double dx    = endX - startX;
+        double dy    = endY - startY;
+        double len   = Math.sqrt( dx * dx + dy * dy );
+        double perpX = ( len == 0 ) ? 0.0 : ( -dy / len );
+        double perpY = ( len == 0 ) ? 0.0 : (  dx / len );
+        double ctrlX = midX + perpX * curveOffset;
+        double ctrlY = midY + perpY * curveOffset;
+
+        DrawingLinePath line = new DrawingLinePath( lineType, surface.scrapIndex() );
+        line.setOptions( BrushManager.getLineDefaultOptions( lineType ) );
+        line.setSketchBrushStyle( TDSetting.getSketchStyle( TDSetting.getActiveSketchStyle() ) );
+
+        int n = Math.max( 3, samples );
+        for ( int i = 0; i < n; ++i ) {
+          double t = (double)i / (double)( n - 1 );
+          double u = 1.0 - t;
+          double xCanvas = width  * ( u * u * startX + 2.0 * u * t * ctrlX + t * t * endX );
+          double yCanvas = height * ( u * u * startY + 2.0 * u * t * ctrlY + t * t * endY );
+          float sceneX = (float)( xCanvas / zoom - offset.x );
+          float sceneY = (float)( yCanvas / zoom - offset.y );
+          if ( i == 0 ) {
+            line.addStartPoint( sceneX, sceneY );
+          } else {
+            line.addPoint( sceneX, sceneY );
+          }
+        }
+        line.computeUnitNormal();
+        surface.addDrawingPath( line );
+        surface.invalidate();
+      } catch ( Throwable t ) {
+        error[0] = t;
+      }
+    } );
+    if ( error[0] != null ) {
+      Throwable cause = error[0].getCause();
+      if ( cause != null ) error[0] = cause;
+      throw new AssertionFailedError( "Unable to add styled user line: " + error[0].getMessage() );
+    }
     waitForIdle();
   }
 
   void setCanonicalToolbarState()
   {
     tapPresetButton( 1 );
-    // Resolve by th_name so the "active line" highlight sits on user-fine
-    // regardless of where it lives in the recent-line palette on this install.
-    clickRecentLineByThName( SketchLineSymbolManager.LEGACY_TH_NAME_FINE );
+    tapStyleButton( 2 );
+    // Resolve by th_name so the active-line highlight sits on the normal user
+    // line regardless of where it lives in the manual toolbar on this install.
+    clickRecentLineByThName( SymbolLibrary.USER );
   }
 
   File getPublicRoot()
@@ -1535,50 +1670,31 @@ selection.mHotItem.getHandleRole() );
     return file;
   }
 
-  void assertZipContainsSketchLineSymbols( File zipFile ) throws Exception
+  void assertZipContainsSurveyCore( File zipFile ) throws Exception
   {
     assertTrue( "ZIP export does not exist: " + zipFile.getAbsolutePath(), zipFile.exists() );
     File artifactCopy = new File( getCaseArtifactsDir(), zipFile.getName() );
     copyFile( zipFile, artifactCopy );
 
-    ByteArrayOutputStream nestedZipBytes = new ByteArrayOutputStream();
-    ZipFile outerZip = new ZipFile( zipFile );
-    try {
-      ZipEntry linesZipEntry = outerZip.getEntry( "lines.zip" );
-      assertNotNull( "ZIP export is missing lines.zip", linesZipEntry );
-      InputStream input = outerZip.getInputStream( linesZipEntry );
-      try {
-        copyStream( input, nestedZipBytes );
-      } finally {
-        input.close();
-      }
-    } finally {
-      outerZip.close();
-    }
-
-    boolean foundFine = false;
-    boolean foundStandard = false;
-    boolean foundThick = false;
-    ZipInputStream nestedZip = new ZipInputStream( new ByteArrayInputStream( nestedZipBytes.toByteArray() ) );
+    boolean foundManifest = false;
+    boolean foundSurveySql = false;
+    boolean foundPlotTdr = false;
+    ZipInputStream zip = new ZipInputStream( new FileInputStream( zipFile ) );
     try {
       ZipEntry entry;
-      while ( (entry = nestedZip.getNextEntry()) != null ) {
+      while ( (entry = zip.getNextEntry()) != null ) {
         String name = entry.getName();
-        if ( name.endsWith( "user-fine" ) ) {
-          foundFine = true;
-        } else if ( name.endsWith( "user-standard" ) ) {
-          foundStandard = true;
-        } else if ( name.endsWith( "user-thick" ) ) {
-          foundThick = true;
-        }
+        if ( name.equals( "manifest" ) || name.endsWith( "/manifest" ) ) foundManifest = true;
+        if ( name.equals( "survey.sql" ) || name.endsWith( "/survey.sql" ) ) foundSurveySql = true;
+        if ( name.endsWith( ".tdr" ) ) foundPlotTdr = true;
       }
     } finally {
-      nestedZip.close();
+      zip.close();
     }
 
-    assertTrue( "ZIP export is missing user-fine", foundFine );
-    assertTrue( "ZIP export is missing user-standard", foundStandard );
-    assertTrue( "ZIP export is missing user-thick", foundThick );
+    assertTrue( "ZIP export is missing manifest", foundManifest );
+    assertTrue( "ZIP export is missing survey.sql", foundSurveySql );
+    assertTrue( "ZIP export is missing plot TDR", foundPlotTdr );
   }
 
   File copyFileToDownloads( File sourceFile ) throws Exception
@@ -1923,6 +2039,11 @@ selection.mHotItem.getHandleRole() );
     mDevice.waitForIdle();
   }
 
+  private void waitForDeviceIdle()
+  {
+    mDevice.waitForIdle( SKETCH_ACTION_IDLE_MS );
+  }
+
   private void waitForDisplayedView( int viewId )
   {
     long deadline = SystemClock.uptimeMillis() + UI_TIMEOUT_MS;
@@ -2022,8 +2143,8 @@ selection.mHotItem.getHandleRole() );
   private void tapChildInContainer( int containerId, int childIndex, String containerName )
   {
     final int[] center = new int[2];
-    onView( withId( containerId ) ).check( ( View view, NoMatchingViewException error ) -> {
-      if ( error != null ) throw error;
+    runOnMainChecked( containerName, () -> {
+      View view = requireCurrentActivityView( containerId, "container " + containerName );
       assertTrue( "Container " + containerName + " is not a ViewGroup", view instanceof ViewGroup );
       ViewGroup group = (ViewGroup)view;
       assertTrue( "Container " + containerName + " does not have child index " + childIndex,
@@ -2039,14 +2160,14 @@ selection.mHotItem.getHandleRole() );
     } );
     assertTrue( "Failed to inject tap into " + containerName + " child " + childIndex,
       mDevice.click( center[0], center[1] ) );
-    waitForIdle();
+    waitForDeviceIdle();
   }
 
   private void tapManualToolbarChild( int rowIndex, int childIndex )
   {
     final int[] center = new int[2];
-    onView( withId( R.id.layout_tools ) ).check( ( View view, NoMatchingViewException error ) -> {
-      if ( error != null ) throw error;
+    runOnMainChecked( "manual toolbar row " + rowIndex, () -> {
+      View view = requireCurrentActivityView( R.id.layout_tools, "tools container" );
       assertTrue( "Tools container is not a ViewGroup", view instanceof ViewGroup );
       ViewGroup row = findManualToolbarRow( (ViewGroup)view, rowIndex );
       assertNotNull( "Manual toolbar row " + rowIndex + " is not visible", row );
@@ -2062,7 +2183,7 @@ selection.mHotItem.getHandleRole() );
     } );
     assertTrue( "Failed to inject tap into manual toolbar row " + rowIndex + " child " + childIndex,
       mDevice.click( center[0], center[1] ) );
-    waitForIdle();
+    waitForDeviceIdle();
   }
 
   private ViewGroup findManualToolbarRow( ViewGroup tools, int rowIndex )
@@ -2315,10 +2436,15 @@ selection.mHotItem.getHandleRole() );
     }
   }
 
-  private void ensureSketchLineSymbolsReady()
+  private void ensureDefaultSymbolsReady()
   {
-    SketchLineSymbolManager.ensureLineSymbols();
-    SketchLineSymbolManager.syncPrefsFromSymbolFiles();
+    if ( BrushManager.getLineIndexByThName( SymbolLibrary.USER ) < 0 ) {
+      TopoDroidApp.installSymbols( true );
+      BrushManager.reloadPointLibrary( mTargetContext, mTargetContext.getResources() );
+      BrushManager.reloadLineLibrary( mTargetContext.getResources() );
+      BrushManager.reloadAreaLibrary( mTargetContext.getResources() );
+    }
+    assertTrue( "Missing default user line symbol", BrushManager.getLineIndexByThName( SymbolLibrary.USER ) >= 0 );
   }
 
   private void bringMainWindowToForeground()

@@ -41,8 +41,6 @@ public class SketchBrushCompatibilityInstrumentedTest
     mContext = InstrumentationRegistry.getInstrumentation().getTargetContext().getApplicationContext();
     TDInstance.setContext( mContext );
     TopoDroidApp.installSymbols( true );
-    SketchLineSymbolManager.ensureLineSymbols();
-    SketchLineSymbolManager.syncPrefsFromSymbolFiles();
     BrushManager.reloadPointLibrary( mContext, mContext.getResources() );
     BrushManager.reloadLineLibrary( mContext.getResources() );
   }

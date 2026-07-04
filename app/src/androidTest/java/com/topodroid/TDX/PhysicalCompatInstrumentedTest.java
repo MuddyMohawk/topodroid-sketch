@@ -84,9 +84,9 @@ public class PhysicalCompatInstrumentedTest
     createCanonicalSurveyAndOpenSketch( mSurveyName );
     progress( "draw styled Sketch compatibility probe" );
     drawCanonicalSketch();
-    progress( "export Sketch ZIP with symbols" );
+    progress( "export Sketch ZIP" );
     File sketchZip = exportSketchZip( mSurveyName );
-    mSupport.assertZipContainsSketchLineSymbols( sketchZip );
+    mSupport.assertZipContainsSurveyCore( sketchZip );
 
     mSupport.copyFileToDownloads( sketchZip );
     progress( "import Sketch ZIP into vanilla" );
@@ -121,9 +121,8 @@ public class PhysicalCompatInstrumentedTest
     mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
     mSupport.chooseSpinnerValue( R.id.spin, "ZIP" );
     mSupport.setCheckboxChecked( R.id.export_share, false );
-    mSupport.setCheckboxChecked( R.id.zip_symbols, true );
     mSupport.setZipSymbolsExportEnabled( true );
-    mSupport.tapView( R.id.button_ok );
+    mSupport.tapViewByDevice( R.id.button_ok );
     return mSupport.waitForFile( mSupport.getZipFile( surveyName ), EXPORT_TIMEOUT_MS );
   }
 
@@ -172,7 +171,7 @@ public class PhysicalCompatInstrumentedTest
   {
     mSupport.tapStyleButton( style );
     mSupport.tapPresetButton( preset );
-    mSupport.clickRecentLineByThName( SketchLineSymbolManager.LEGACY_TH_NAME_STANDARD );
+    mSupport.clickRecentLineByThName( SymbolLibrary.USER );
     mSupport.drawCurveStrokeNormalized( startX, startY, endX, endY, curveOffset, 30, 6 );
   }
 

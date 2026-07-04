@@ -12,7 +12,8 @@ $RepoRoot = Split-Path -Parent $ScriptDir
 $Gradle = Join-Path $RepoRoot "gradlew.bat"
 $GradleUserHome = Resolve-GradleUserHome -RepoRoot $RepoRoot
 $LocalProperties = Join-Path $RepoRoot "local.properties"
-$ArtifactsLocal = Join-Path $RepoRoot "tmp-recorded-latest"
+$ArtifactsLocalRoot = Join-Path $RepoRoot "tmp-recorded-latest"
+$ArtifactsLocal = Join-Path $ArtifactsLocalRoot (Get-Date -Format "yyyyMMdd-HHmmss-fff")
 $ArtifactsRemote = "/sdcard/Android/data/com.topodroid.TDX.sketch/files/test-artifacts"
 $GoldenSource = Join-Path $ArtifactsLocal "recorded-goldens\emulator_2560x1600_320dpi_font1.0"
 $GoldenTarget = Join-Path $RepoRoot "app\src\androidTest\assets\goldens\emulator_2560x1600_320dpi_font1.0"
@@ -123,8 +124,8 @@ function Grant-Permissions {
 $SdkPath = Get-SdkPath
 $JavaHome = Get-JavaHome
 $Adb = Join-Path $SdkPath "platform-tools\adb.exe"
-$AppApk = Join-Path $RepoRoot "app\build\outputs\apk\debug\app-debug.apk"
-$TestApk = Join-Path $RepoRoot "app\build\outputs\apk\androidTest\debug\app-debug-androidTest.apk"
+$AppApkDir = Join-Path $RepoRoot "app\build\outputs\apk\debug"
+$TestApkDir = Join-Path $RepoRoot "app\build\outputs\apk\androidTest\debug"
 
 Push-Location $RepoRoot
 try {
@@ -137,6 +138,8 @@ try {
     Invoke-NativeChecked -FilePath $Gradle -Arguments @("-g", $GradleUserHome, "--console=plain", ":app:assembleDebug", ":app:assembleDebugAndroidTest") -Description "Gradle build" -TimeoutSeconds 1200 -IdleTimeoutSeconds 300
   }
 
+  $AppApk = Resolve-GradleApkOutput -OutputDirectory $AppApkDir -Description "app debug"
+  $TestApk = Resolve-GradleApkOutput -OutputDirectory $TestApkDir -Description "androidTest debug"
   Install-TestApksAndPreflight -Adb $Adb -Serial $Serial -AppApk $AppApk -TestApk $TestApk -AppPackage $AppPackage -TestPackage $TestPackage -Runner $Runner
   Invoke-Adb @("shell", "pm", "clear", $AppPackage) | Out-Null
   Invoke-Adb @("shell", "pm", "clear", $TestPackage) | Out-Null
@@ -146,7 +149,6 @@ try {
     -Arguments @("shell", "am", "instrument", "-w", "-r", "-e", "class", $FullClass, "-e", "visual_baseline_mode", "record", $Instrumentation) `
     -Name "Refresh visual baselines" -EstimateSeconds 750 -TimeoutSeconds 1200 -IdleTimeoutSeconds 300 -AppPackage $AppPackage -TestPackage $TestPackage -ArtifactsLocal $ArtifactsLocal
 
-  Clear-LocalArtifactDirectory -Path $ArtifactsLocal -Description "recorded visual baseline artifacts" -Fatal
   Invoke-Adb @("pull", $ArtifactsRemote, $ArtifactsLocal) | Out-Null
 
   if (-not $instrumentationOk) {
@@ -169,7 +171,12 @@ try {
     throw "No recorded goldens found in $GoldenSource to copy"
   }
   foreach ( $item in $sourceItems ) {
-    Copy-Item -LiteralPath $item.FullName -Destination $GoldenTarget -Recurse -Force
+    $targetPath = Join-Path $GoldenTarget $item.Name
+    if ( $item.PSIsContainer ) {
+      Copy-Item -LiteralPath $item.FullName -Destination $targetPath -Recurse -Force
+    } else {
+      Copy-Item -LiteralPath $item.FullName -Destination $targetPath -Force
+    }
   }
   Write-Host ( "Copied {0} recorded golden(s) -> {1}" -f $sourceItems.Count, $GoldenTarget )
 } finally {
