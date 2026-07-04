@@ -29,6 +29,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 @RunWith( AndroidJUnit4.class )
 @LargeTest
@@ -67,6 +71,42 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     BrushManager.reloadPointLibrary( mContext, mContext.getResources() );
     BrushManager.reloadLineLibrary( mContext.getResources() );
     TDInstance.context = mPreviousContext;
+  }
+
+  @Test
+  public void defaultRawSymbolPack_usesTopoDroidSketchZipRoot() throws Exception
+  {
+    Set< String > entries = new HashSet<>();
+    int fileCount = 0;
+
+    ZipInputStream zip = new ZipInputStream(
+      mContext.getResources().openRawResource( R.raw.symbols_topodroid_sketch ) );
+    try {
+      ZipEntry entry;
+      while ( (entry = zip.getNextEntry()) != null ) {
+        String name = entry.getName();
+        assertTrue( "Default symbol pack entry should use symbols_topodroid_sketch root: " + name,
+                    name.startsWith( "symbols_topodroid_sketch/" ) );
+        assertTrue( "Default symbol pack should not use old symbols_nss root: " + name,
+                    ! name.startsWith( "symbols_nss/" ) );
+        if ( ! entry.isDirectory() ) {
+          entries.add( name );
+          ++fileCount;
+        }
+      }
+    } finally {
+      zip.close();
+    }
+
+    assertTrue( "Default TopoDroid Sketch symbol pack is unexpectedly small", fileCount > 40 );
+    assertTrue( "Missing sketch pit line in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/line/pit" ) );
+    assertTrue( "Missing sketch flowstone line in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/line/flowstone" ) );
+    assertTrue( "Missing sketch sand point in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/point/sand" ) );
+    assertTrue( "Missing sketch debris point in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/point/debris=small" ) );
   }
 
   @Test
@@ -171,7 +211,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     canvas.drawText( "Thin W=1", LEFT, 36.0f, label );
     canvas.drawText( "Standard W=2", LEFT + COL, 36.0f, label );
     canvas.drawText( "Thick W=5", LEFT + 2.0f * COL, 36.0f, label );
-    canvas.drawText( "NSS 1979", 18.0f, 36.0f, label );
+    canvas.drawText( "TopoDroid Sketch", 18.0f, 36.0f, label );
   }
 
   private void drawLineRow( Canvas canvas, Paint label, String title, String thName, float y )

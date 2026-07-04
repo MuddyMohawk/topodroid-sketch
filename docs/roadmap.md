@@ -3,6 +3,7 @@
 The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles.
 
 ## TODO
+- rename/display the symbol pack name?
 - toolbar defaults
   - additional toolbars should fill with something else? 
 - the fiddlyness of tweaking the line previews suggests it needs a deeper refactor to mirror the sketch canvas instead of madness
