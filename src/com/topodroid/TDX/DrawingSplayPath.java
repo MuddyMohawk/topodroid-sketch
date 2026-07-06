@@ -191,7 +191,7 @@ public class DrawingSplayPath extends DrawingPath
   // @Override
   public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox, int xor_color )
   {
-    draw( canvas, matrix, scale, bbox, xor_color );
+    draw( canvas, matrix, scale, bbox, true, xor_color ); // was a self-call: StackOverflow if ever dispatched
   }
 
   /** draw the splay on the canvas
@@ -212,6 +212,27 @@ public class DrawingSplayPath extends DrawingPath
         mTransformedPath = new Path( mPath );
         mTransformedPath.transform( matrix );
         drawPath( mTransformedPath, canvas );
+      }
+    }
+  }
+
+  /** draw the splay on the canvas, using a caller-owned scratch path
+   * @param canvas   canvas - @note canvas is guaranteed ! null
+   * @param matrix   transform matrix
+   * @param scale    transform scale: to keep the circle radius fixed
+   * @param bbox     clipping bounding box
+   * @param not_edit whether the splay is drawn not editable (only for splay mode POINT)
+   * @param scratch  caller-owned scratch path, confined to the caller's stack
+   * @note allocation-free variant of the boolean draw above, for the per-frame hot path
+   */
+  public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox, boolean not_edit, Path scratch )
+  {
+    if ( intersects( bbox ) ) {
+      if ( not_edit && mSplayMode == SPLAY_MODE_POINT ) {
+        TDGreenDot.drawMapped( canvas, matrix, xEnd, yEnd, TDSetting.mDotRadius*1.5f*scale, mPaint, scratch );
+      } else {
+        mPath.transform( matrix, scratch );
+        drawPath( scratch, canvas );
       }
     }
   }

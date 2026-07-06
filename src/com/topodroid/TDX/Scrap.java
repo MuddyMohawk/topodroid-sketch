@@ -3153,37 +3153,50 @@ public class Scrap
    * @param matrix    transform matrix
    * @param scale     rescaling factor
    * @param bbox      clipping rectangle
+   * @param landscape landscape presentation - stamped on the items as they are drawn
    * @param xor_color xor colors
    */
-  void drawAll( Canvas canvas, Matrix matrix, float scale, RectF bbox, int xor_color )
+  void drawAll( Canvas canvas, Matrix matrix, float scale, RectF bbox, boolean landscape, int xor_color )
   {
     if ( mCurrentStack == null ) return;
+    Path tick_scratch = new Path(); // per-invocation scratch for direction ticks
     synchronized( TDPath.mCommandsLock ) {
       if ( TDSetting.mAreaOverlapDarken ) {
-        int areaLayer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
+        // the full-canvas layer is opened lazily, only when a visible area actually
+        // draws: compositing an empty layer is a visual no-op but costs a full-screen
+        // buffer clear + composite per frame. The intersects pre-check mirrors the
+        // one the area draw itself performs, so skipped areas drew nothing anyway.
+        int areaLayer = -1;
         if ( TDSetting.mWithLevels == 0 ) {
           for ( ICanvasCommand cmd : mCurrentStack  ) {
             if ( cmd.commandType() == 0 ) {
               DrawingPath path = (DrawingPath)cmd;
-              if ( path.isArea() ) cmd.draw( canvas, matrix, scale, bbox, xor_color );
+              path.mLandscape = landscape;
+              if ( path.isArea() && path.intersects( bbox ) ) {
+                if ( areaLayer < 0 ) areaLayer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
+                cmd.draw( canvas, matrix, scale, bbox, xor_color );
+              }
             }
           }
         } else {
           for ( ICanvasCommand cmd : mCurrentStack  ) {
             if ( cmd.commandType() == 0 ) {
               DrawingPath path = (DrawingPath)cmd;
-              if ( path.isArea() && DrawingLevel.isLevelVisible( path ) ) {
+              path.mLandscape = landscape;
+              if ( path.isArea() && DrawingLevel.isLevelVisible( path ) && path.intersects( bbox ) ) {
+                if ( areaLayer < 0 ) areaLayer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
                 cmd.draw( canvas, matrix, scale, bbox, xor_color );
               }
             }
           }
         }
-        canvas.restoreToCount( areaLayer );
+        if ( areaLayer >= 0 ) canvas.restoreToCount( areaLayer );
       }
       if ( TDSetting.mWithLevels == 0 ) { // treat no-levels case by itself
         for ( ICanvasCommand cmd : mCurrentStack  ) {
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
+            path.mLandscape = landscape;
             if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
             cmd.draw( canvas, matrix, scale, bbox, xor_color );
             if ( path.isLine() ) { // path instanceof DrawingLinePath
@@ -3192,13 +3205,13 @@ public class Scrap
                 Paint paint = new Paint( BrushManager.mSectionPaint );
                 // paint.setColor( xor_color ^ paint.getColor() );
                 paint.setColor( BrushManager.xorColor( paint.getColor() ) );
-                drawDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, paint );
+                drawDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, paint, tick_scratch );
               } else if ( BrushManager.isLineSlope( line.mLineType ) ) {
                 Paint paint = new Paint( BrushManager.mLSidePaint );
                 // paint.setColor( xor_color ^ paint.getColor() );
                 paint.setColor( BrushManager.xorColor( paint.getColor() ) );
                 float lside = line.getLSide(); if ( lside < 1 ) lside = TDSetting.mSlopeLSide;
-                drawDirectionTick( canvas, matrix, line, lside*0.5f, paint ); // lside is divided by 2 to make it roughly long as in therion pdf
+                drawDirectionTick( canvas, matrix, line, lside*0.5f, paint, tick_scratch ); // lside is divided by 2 to make it roughly long as in therion pdf
               }
             }
           }
@@ -3207,6 +3220,7 @@ public class Scrap
         for ( ICanvasCommand cmd : mCurrentStack  ) {
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
+            path.mLandscape = landscape;
             if ( DrawingLevel.isLevelVisible( (DrawingPath)cmd ) ) {
               if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
               cmd.draw( canvas, matrix, scale, bbox, xor_color );
@@ -3216,13 +3230,13 @@ public class Scrap
                   Paint paint = new Paint( BrushManager.mSectionPaint );
                   // paint.setColor( xor_color ^ paint.getColor() );
                   paint.setColor( BrushManager.xorColor( paint.getColor() ) );
-                  drawDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, paint );
+                  drawDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, paint, tick_scratch );
                 } else if ( BrushManager.isLineSlope( line.mLineType ) ) {
                   Paint paint = new Paint( BrushManager.mLSidePaint );
                   // paint.setColor( xor_color ^ paint.getColor() );
                   paint.setColor( BrushManager.xorColor( paint.getColor() ) );
                   float lside = line.getLSide(); if ( lside < 1 ) lside = TDSetting.mSlopeLSide;
-                  drawDirectionTick( canvas, matrix, line, lside*0.5f, paint );
+                  drawDirectionTick( canvas, matrix, line, lside*0.5f, paint, tick_scratch );
                 }
               }
             }
@@ -3239,60 +3253,70 @@ public class Scrap
    * @param len      tick length
    * @param paint    tick paint
    */
-  private void drawDirectionTick( Canvas canvas, Matrix matrix, DrawingLinePath line, float len, Paint paint )
+  private void drawDirectionTick( Canvas canvas, Matrix matrix, DrawingLinePath line, float len, Paint paint, Path scratch )
   {
     LinePoint lp = line.mFirst;
-    Path path1 = new Path();
-    path1.moveTo( lp.x, lp.y );
-    path1.lineTo( lp.x+line.mDx*len, lp.y+line.mDy*len );
-    path1.transform( matrix );
-    canvas.drawPath( path1, paint );
+    scratch.rewind();
+    scratch.moveTo( lp.x, lp.y );
+    scratch.lineTo( lp.x+line.mDx*len, lp.y+line.mDy*len );
+    scratch.transform( matrix );
+    canvas.drawPath( scratch, paint );
   }
 
   /** draw all sketch items
-   * @param canvas   canvas
-   * @param matrix   transform matrix
-   * @param scale    rescaling factor
-   * @param bbox     clipping rectangle
+   * @param canvas    canvas
+   * @param matrix    transform matrix
+   * @param scale     rescaling factor
+   * @param bbox      clipping rectangle
+   * @param landscape landscape presentation - stamped on the items as they are drawn
    */
-  void drawAll( Canvas canvas, Matrix matrix, float scale, RectF bbox )
+  void drawAll( Canvas canvas, Matrix matrix, float scale, RectF bbox, boolean landscape )
   {
     if ( mCurrentStack == null ) return;
+    Path tick_scratch = new Path(); // per-invocation scratch for direction ticks
     synchronized( TDPath.mCommandsLock ) {
       if ( TDSetting.mAreaOverlapDarken ) {
-        int areaLayer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
+        // lazy full-canvas layer: see the xor_color overload above
+        int areaLayer = -1;
         if ( TDSetting.mWithLevels == 0 ) {
           for ( ICanvasCommand cmd : mCurrentStack  ) {
             if ( cmd.commandType() == 0 ) {
               DrawingPath path = (DrawingPath)cmd;
-              if ( path.isArea() ) cmd.draw( canvas, matrix, scale, bbox );
+              path.mLandscape = landscape;
+              if ( path.isArea() && path.intersects( bbox ) ) {
+                if ( areaLayer < 0 ) areaLayer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
+                cmd.draw( canvas, matrix, scale, bbox );
+              }
             }
           }
         } else {
           for ( ICanvasCommand cmd : mCurrentStack  ) {
             if ( cmd.commandType() == 0 ) {
               DrawingPath path = (DrawingPath)cmd;
-              if ( path.isArea() && DrawingLevel.isLevelVisible( path ) ) {
+              path.mLandscape = landscape;
+              if ( path.isArea() && DrawingLevel.isLevelVisible( path ) && path.intersects( bbox ) ) {
+                if ( areaLayer < 0 ) areaLayer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
                 cmd.draw( canvas, matrix, scale, bbox );
               }
             }
           }
         }
-        canvas.restoreToCount( areaLayer );
+        if ( areaLayer >= 0 ) canvas.restoreToCount( areaLayer );
       }
       if ( TDSetting.mWithLevels == 0 ) { // treat no-levels case by itself
         for ( ICanvasCommand cmd : mCurrentStack  ) {
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
+            path.mLandscape = landscape;
             if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
             cmd.draw( canvas, matrix, scale, bbox );
             if ( path.isLine() ) { // path instanceof DrawingLinePath
               DrawingLinePath line = (DrawingLinePath)path;
               if ( BrushManager.isLineSection( line.mLineType ) ) { // add direction-tick to section-lines
-                drawDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, BrushManager.mSectionPaint );
+                drawDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, BrushManager.mSectionPaint, tick_scratch );
               } else if ( BrushManager.isLineSlope( line.mLineType ) ) {
                 float lside = line.getLSide(); if ( lside < 1 ) lside = TDSetting.mSlopeLSide;
-                drawDirectionTick( canvas, matrix, line, lside*0.5f, BrushManager.mLSidePaint );
+                drawDirectionTick( canvas, matrix, line, lside*0.5f, BrushManager.mLSidePaint, tick_scratch );
               }
             }
           }
@@ -3301,16 +3325,17 @@ public class Scrap
         for ( ICanvasCommand cmd : mCurrentStack  ) {
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
+            path.mLandscape = landscape;
             if ( DrawingLevel.isLevelVisible( (DrawingPath)cmd ) ) {
               if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
               cmd.draw( canvas, matrix, scale, bbox );
               if ( path.isLine() ) { // path instanceof DrawingLinePath
                 DrawingLinePath line = (DrawingLinePath)path;
                 if ( BrushManager.isLineSection( line.mLineType ) ) { // add direction-tick to section-lines
-                  drawDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, BrushManager.mSectionPaint );
+                  drawDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, BrushManager.mSectionPaint, tick_scratch );
                 } else if ( BrushManager.isLineSlope( line.mLineType ) ) {
                   float lside = line.getLSide(); if ( lside < 1 ) lside = TDSetting.mSlopeLSide;
-                  drawDirectionTick( canvas, matrix, line, lside*0.5f, BrushManager.mLSidePaint );
+                  drawDirectionTick( canvas, matrix, line, lside*0.5f, BrushManager.mLSidePaint, tick_scratch );
                 }
               }
             }
@@ -3337,10 +3362,11 @@ public class Scrap
                       boolean spoints, boolean slines, boolean sareas, boolean splays, boolean legs_sshots, boolean sstations
                       /* , DrawingStationSplay station_splay */ )
   {
+    Path scratch = new Path(); // dot scratch path, confined to this call
     if ( TDSetting.mWithLevels == 0 ) { // treat no-levels case by itself
       for ( SelectionBucket bucket: mSelection.mBuckets ) {
         if ( bucket.intersects( bbox ) && bucket.mPoints != null ) { // SAFETY CHECK
-          for ( SelectionPoint pt : bucket.mPoints ) { 
+          for ( SelectionPoint pt : bucket.mPoints ) {
             int type = pt.type();
             if ( type == DrawingPath.DRAWING_PATH_POINT ) {
               if ( ! spoints ) continue;
@@ -3367,7 +3393,7 @@ public class Scrap
             //     if ( ! station_splay.isStationON( pt.mItem ) ) continue;
             //   }
             // } 
-            TDGreenDot.draw( canvas, matrix, pt, dot_radius );
+            TDGreenDot.drawMapped( canvas, matrix, pt, bbox, dot_radius, scratch );
           }
         }
       }
@@ -3386,7 +3412,7 @@ public class Scrap
               } else if ( ! DrawingPath.isDrawingType( type ) ) { // FIXME-HIDE should not happen
                 continue;
               } 
-              TDGreenDot.draw( canvas, matrix, pt, dot_radius );
+              TDGreenDot.drawMapped( canvas, matrix, pt, bbox, dot_radius, scratch );
             } else {
               int type = pt.type();
               if ( type == DrawingPath.DRAWING_PATH_POINT ) {
@@ -3414,7 +3440,7 @@ public class Scrap
               //     if ( ! station_splay.isStationON( pt.mItem ) ) continue;
               //   }
               // } 
-              TDGreenDot.draw( canvas, matrix, pt, dot_radius );
+              TDGreenDot.drawMapped( canvas, matrix, pt, bbox, dot_radius, scratch );
             }
           }
         }

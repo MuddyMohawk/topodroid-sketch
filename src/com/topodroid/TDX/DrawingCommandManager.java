@@ -1172,9 +1172,9 @@ public class DrawingCommandManager
     mOffx = dx * s;
     mOffy = dy * s;
 
-    synchronized( mSyncScrap ) {
-      for ( Scrap scrap : mScraps ) scrap.setPathsLandscape( landscape );
-    }
+    // NOTE items' mLandscape is stamped inside Scrap.drawAll on the render
+    // thread: iterating every item here on each touch sample took
+    // TDPath.mCommandsLock against the render loop and was O(items) per event.
 
     // FIXME 
     // TUNING this is to see how many buckets are on the canvas and how many points they contain
@@ -1714,7 +1714,7 @@ public class DrawingCommandManager
         }
       } else {
         synchronized( mSyncScrap ) {
-          for ( Scrap scrap : mScraps ) scrap.drawAll( canvas, matrix, scale, bbox );
+          for ( Scrap scrap : mScraps ) scrap.drawAll( canvas, matrix, scale, bbox, mLandscape );
         }
       }
     } else if ( mCurrentScrap != null ) {
@@ -1723,7 +1723,7 @@ public class DrawingCommandManager
           if ( scrap == mCurrentScrap ) continue;
           scrap.drawGreyOutline( canvas, matrix, bbox );
         }
-        mCurrentScrap.drawAll( canvas, matrix, scale, bbox );
+        mCurrentScrap.drawAll( canvas, matrix, scale, bbox, mLandscape );
       }
     }
   }
@@ -2008,6 +2008,7 @@ public class DrawingCommandManager
     RectF  bbox  = mBBox;
     boolean sidebars = true;
     boolean isPDFpage = false; // HBX
+    Path scratch = new Path(); // per-invocation scratch for screen-space item draws (legs, splays, grid, stations)
 
     boolean legs     = (mDisplayMode & DisplayMode.DISPLAY_LEG     ) != 0;
     boolean splays   = (mDisplayMode & DisplayMode.DISPLAY_SPLAY   ) != 0;
@@ -2085,6 +2086,7 @@ public class DrawingCommandManager
         }
       }
     }
+    RenderPerf.section( RenderPerf.SECTION_REFS );
 
     synchronized( TDPath.mGridsLock ) {
       if( grids && mGridStack1 != null ) {
@@ -2101,35 +2103,25 @@ public class DrawingCommandManager
           // 2 dp --> 0.1 m that at scale 1:100 is 1 mm
           float step = 2 * zoom * mFixedZoom;
 
+          // grid lines are rebuilt into the per-invocation scratch path: the
+          // former per-line DrawingPath + Path allocations were per frame
           int i = - (int)( mOffx / step );
           float x = mOffx + i * step;
           for ( ; x<TopoDroidApp.mDisplayWidth; x += step ) {
-            DrawingPath dpath = new DrawingPath( DrawingPath.DRAWING_PATH_GRID, null, -1 );
-            if ( i % 10 == 0 ) { 
-              dpath.setPathPaint( paint_grid100 );
-            } else {
-              dpath.setPathPaint( paint_grid );
-            }
+            scratch.rewind();
+            scratch.moveTo( x, 0 );
+            scratch.lineTo( x, TopoDroidApp.mDisplayHeight );
+            canvas.drawPath( scratch, ( i % 10 == 0 )? paint_grid100 : paint_grid );
             ++i;
-            dpath.mPath  = new Path();
-            dpath.mPath.moveTo( x, 0 );
-            dpath.mPath.lineTo( x, TopoDroidApp.mDisplayHeight );
-            dpath.draw( canvas );
           }
           int j = - (int)( mOffy / step );
           float y = mOffy + j * step;
           for ( ; y<TopoDroidApp.mDisplayHeight; y += step ) {
-            DrawingPath dpath = new DrawingPath( DrawingPath.DRAWING_PATH_GRID, null, -1 );
-            if ( j % 10 == 0 ) { 
-              dpath.setPathPaint( paint_grid100 );
-            } else {
-              dpath.setPathPaint( paint_grid );
-            }
+            scratch.rewind();
+            scratch.moveTo( 0, y );
+            scratch.lineTo( TopoDroidApp.mDisplayWidth, y );
+            canvas.drawPath( scratch, ( j % 10 == 0 )? paint_grid100 : paint_grid );
             ++j;
-            dpath.mPath  = new Path();
-            dpath.mPath.moveTo( 0, y );
-            dpath.mPath.lineTo( TopoDroidApp.mDisplayWidth, y );
-            dpath.draw( canvas );
           }
         } else {
           if ( isPDFpage ) {
@@ -2140,12 +2132,12 @@ public class DrawingCommandManager
             for ( DrawingPath p100 : mGridStack100 ) p100.draw( canvas, mm, bbox, 1 );
           } else {
             if ( scale < 1 ) {
-              for ( DrawingPath p1 : mGridStack1 ) p1.draw( canvas, mm, bbox );
+              for ( DrawingPath p1 : mGridStack1 ) p1.draw( canvas, mm, bbox, scratch );
             }
             if ( scale < 10 ) {
-              for ( DrawingPath p10 : mGridStack10 ) p10.draw( canvas, mm, bbox );
+              for ( DrawingPath p10 : mGridStack10 ) p10.draw( canvas, mm, bbox, scratch );
             }
-            for ( DrawingPath p100 : mGridStack100 ) p100.draw( canvas, mm, bbox );
+            for ( DrawingPath p100 : mGridStack100 ) p100.draw( canvas, mm, bbox, scratch );
           }
         }
       }
@@ -2153,7 +2145,7 @@ public class DrawingCommandManager
         if ( inverted_colors ) {
           mNorthLine.draw( canvas, mm, bbox, 1 );
         } else {
-          mNorthLine.draw( canvas, mm, bbox );
+          mNorthLine.draw( canvas, mm, bbox, scratch );
         }
       }
       if ( scaleRef && (mScaleRef != null)) {
@@ -2181,13 +2173,14 @@ public class DrawingCommandManager
         }
       }
     }
+    RenderPerf.section( RenderPerf.SECTION_GRID );
 
     synchronized( TDPath.mShotsLock ) {
       if ( legs && mLegsStack != null ) {
         if ( inverted_colors ) {
           for ( DrawingPath leg: mLegsStack ) leg.draw( canvas, mm, bbox, 1 );
         } else {
-          for ( DrawingPath leg: mLegsStack ) leg.draw( canvas, mm, bbox );
+          for ( DrawingPath leg: mLegsStack ) leg.draw( canvas, mm, bbox, scratch );
         }
       }
       if ( mSplaysStack != null ) {
@@ -2196,17 +2189,17 @@ public class DrawingCommandManager
             if ( inverted_colors ) {
               for ( DrawingSplayPath path : mSplaysStack ) path.draw( canvas, mm, scale, bbox, ! mDisplayPoints, 1 );
             } else {
-              for ( DrawingSplayPath path : mSplaysStack ) path.draw( canvas, mm, scale, bbox, ! mDisplayPoints );
+              for ( DrawingSplayPath path : mSplaysStack ) path.draw( canvas, mm, scale, bbox, ! mDisplayPoints, scratch );
             }
           }
         } else {
           if ( splays ) { // draw all splays except the splays-off
             for ( DrawingSplayPath path : mSplaysStack ) {
-	      if ( ! station_splay.isStationOFF( path ) ) path.draw( canvas, mm, scale, bbox, ! mDisplayPoints );
+	      if ( ! station_splay.isStationOFF( path ) ) path.draw( canvas, mm, scale, bbox, ! mDisplayPoints, scratch );
 	    }
           } else if ( latest || station_splay.hasSplaysON() ) { // draw the splays-on and/or the latest
             for ( DrawingSplayPath path : mSplaysStack ) {
-              if ( station_splay.isStationON( path ) || path.isBlockRecent() ) path.draw( canvas, mm, scale, bbox, ! mDisplayPoints );
+              if ( station_splay.isStationON( path ) || path.isBlockRecent() ) path.draw( canvas, mm, scale, bbox, ! mDisplayPoints, scratch );
 	    }
 	  }
         }
@@ -2230,14 +2223,15 @@ public class DrawingCommandManager
         }
       }
     }
- 
+    RenderPerf.section( RenderPerf.SECTION_SHOTS );
+
     if ( stations ) {
-      if ( mStations != null ) {  
+      if ( mStations != null ) {
         synchronized( TDPath.mStationsLock ) {
           if ( inverted_colors ) {
             for ( DrawingStationName st : mStations ) st.draw( canvas, mm, bbox, 1 );
           } else {
-            for ( DrawingStationName st : mStations ) st.draw( canvas, mm, bbox );
+            for ( DrawingStationName st : mStations ) st.draw( canvas, mm, bbox, scratch );
           }
         }
       }
@@ -2251,6 +2245,7 @@ public class DrawingCommandManager
     if ( ! TDSetting.mAutoStations ) {
       if ( mCurrentScrap != null ) mCurrentScrap.drawUserStations( canvas, mm, bbox );
     }
+    RenderPerf.section( RenderPerf.SECTION_STATIONS );
 
     if ( mMode == DrawingSurface.DRAWING_OVERVIEW ) {
       if ( outline ) {
@@ -2260,25 +2255,27 @@ public class DrawingCommandManager
       } else {
         synchronized( mSyncScrap ) {
           if ( inverted_colors ) {
-            for ( Scrap scrap : mScraps ) scrap.drawAll( canvas, mm, scale, bbox, 1 );
+            for ( Scrap scrap : mScraps ) scrap.drawAll( canvas, mm, scale, bbox, mLandscape, 1 );
           } else {
-            for ( Scrap scrap : mScraps ) scrap.drawAll( canvas, mm, scale, bbox );
+            for ( Scrap scrap : mScraps ) scrap.drawAll( canvas, mm, scale, bbox, mLandscape );
           }
         }
       }
+      RenderPerf.section( RenderPerf.SECTION_SCRAPS );
     } else { // not DRAWING_OVERVIEW
-      if ( mCurrentScrap != null ) { 
+      if ( mCurrentScrap != null ) {
         synchronized( mSyncScrap ) {
           for ( Scrap scrap : mScraps ) {
             if ( scrap == mCurrentScrap ) continue;
             scrap.drawGreyOutline( canvas, mm, bbox );
           }
           if ( inverted_colors ) {
-            mCurrentScrap.drawAll( canvas, mm, scale, bbox, 1 );
-          } else { 
-            mCurrentScrap.drawAll( canvas, mm, scale, bbox );
+            mCurrentScrap.drawAll( canvas, mm, scale, bbox, mLandscape, 1 );
+          } else {
+            mCurrentScrap.drawAll( canvas, mm, scale, bbox, mLandscape );
           }
         }
+        RenderPerf.section( RenderPerf.SECTION_SCRAPS );
         if ( sidebars && mDisplayPoints ) {
           float dot_radius = TDSetting.mDotRadius/zoom;
           synchronized( TDPath.mSelectionLock ) {
@@ -2304,6 +2301,7 @@ public class DrawingCommandManager
 
           }  // synch( mSelectedLock ) mSelectionLock
         }
+        RenderPerf.section( RenderPerf.SECTION_DOTS );
       }
     }
 
@@ -2325,10 +2323,11 @@ public class DrawingCommandManager
   private void displayFixedPoints( Canvas canvas, Matrix matrix, RectF bbox, float dot_radius,
                       boolean splays, boolean legs_sshots, boolean sstations, DrawingStationSplay station_splay )
   {
+    Path scratch = new Path(); // dot scratch path, confined to this call
     if ( TDSetting.mWithLevels == 0 ) { // treat no-levels case by itself
       for ( SelectionBucket bucket: mSelectionFixed.mBuckets ) {
         if ( bucket.intersects( bbox ) ) {
-          for ( SelectionPoint pt : bucket.mPoints ) { 
+          for ( SelectionPoint pt : bucket.mPoints ) {
             int type = pt.type();
             if ( type == DrawingPath.DRAWING_PATH_FIXED ) {
               if ( ! legs_sshots ) continue;
@@ -2349,14 +2348,14 @@ public class DrawingCommandManager
               // TDLog.v("Hide: drawing type in selection fixed" );
               continue;
             }
-            TDGreenDot.draw( canvas, matrix, pt, dot_radius );
+            TDGreenDot.drawMapped( canvas, matrix, pt, bbox, dot_radius, scratch );
           }
         }
       }
     } else {
       for ( SelectionBucket bucket: mSelectionFixed.mBuckets ) {
         if ( bucket.intersects( bbox ) ) {
-          for ( SelectionPoint pt : bucket.mPoints ) { 
+          for ( SelectionPoint pt : bucket.mPoints ) {
             int type = pt.type();
             if ( type == DrawingPath.DRAWING_PATH_FIXED ) {
               if ( ! legs_sshots ) continue;
@@ -2377,7 +2376,7 @@ public class DrawingCommandManager
               // TDLog.v("Hide: drawing type in selection fixed" );
               continue;
             }
-            TDGreenDot.draw( canvas, matrix, pt, dot_radius );
+            TDGreenDot.drawMapped( canvas, matrix, pt, bbox, dot_radius, scratch );
           }
         }
       }

@@ -52,7 +52,7 @@ class DrawThread extends  Thread
         Thread.yield();
         TDUtil.slowDown( 1 ); // NECESSARY
       } else {
-        TDUtil.slowDown( 100 );
+        TDUtil.slowDown( 10 ); // short idle poll so a render request is picked up within ~10ms
       }
     }
     // TDLog.Log( TDLog.LOG_PLOT, "draw thread exit");

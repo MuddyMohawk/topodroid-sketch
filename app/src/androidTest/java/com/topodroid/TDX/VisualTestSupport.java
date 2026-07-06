@@ -25,6 +25,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.drawable.ColorDrawable;
@@ -218,7 +219,10 @@ final class VisualTestSupport
   private void ensureDataHelperReady() throws Exception
   {
     if ( TopoDroidApp.mData != null ) return;
-    launchMainWindow();
+    // bootstrap launch only needs the DB handle: skip the golden-profile
+    // check so device-agnostic tests (perf timings) can prepare on physical
+    // hardware; golden tests verify the profile via their own launchMainWindow()
+    launchMainWindowOnAnyDevice();
     closeScenario();
   }
 
@@ -922,6 +926,195 @@ final class VisualTestSupport
       window.notifyReferencePointChanged( reference );
     } );
     waitForIdle();
+  }
+
+  // ----------------------------------------------------------------
+  // RENDER-IDENTITY SUPPORT (RenderIdentityInstrumentedTest)
+  // Renders the current plot off-screen at a fixed canvas size and transform
+  // and hashes the raw pixels. Hashes are compared across builds on the same
+  // device to prove renderer changes are pixel-identical.
+
+  static final int RENDER_HASH_WIDTH  = 1920; // Tab Active 3 panel size
+  static final int RENDER_HASH_HEIGHT = 1200;
+
+  /** @return { offset.x, offset.y, zoom } of the current plot view, rounded for run-to-run stability */
+  float[] currentPlotViewForRenderHash()
+  {
+    final float[] view = new float[3];
+    waitForDrawingWindow();
+    runOnMainChecked( "read plot view", () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      float zoom = getPrivateFloat( window, "mZoom" );
+      PointF offset = (PointF)getPrivateField( window, "mOffset" );
+      assertNotNull( "DrawingWindow offset is null", offset );
+      view[0] = Math.round( offset.x * 100f ) / 100f;
+      view[1] = Math.round( offset.y * 100f ) / 100f;
+      view[2] = Math.round( zoom * 100f ) / 100f;
+    } );
+    return view;
+  }
+
+  /** insert a closed square area item into the current scrap, for the render-identity "areas" variant
+   * @param centerX   square center X [scene]
+   * @param centerY   square center Y [scene]
+   * @param half      half side [scene]
+   */
+  void addTestAreaForRenderHash( float centerX, float centerY, float half )
+  {
+    waitForDrawingWindow();
+    runOnMainChecked( "add test area", () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      DrawingSurface surface = requireCurrentDrawingSurface( window );
+      int areaType = ( BrushManager.getAreaLibSize() > 1 )? 1 : 0;
+      DrawingAreaPath area = new DrawingAreaPath( areaType, surface.getNextAreaIndex(), "renderhash-a",
+                                                  TDSetting.mAreaBorder, surface.scrapIndex() );
+      area.addPoint( centerX - half, centerY - half );
+      area.addPoint( centerX + half, centerY - half );
+      area.addPoint( centerX + half, centerY + half );
+      area.addPoint( centerX - half, centerY + half );
+      area.closePath();
+      surface.addDrawingPath( area );
+    } );
+    waitForIdle();
+  }
+
+  /** render the current plot off-screen and return the SHA-256 hex digest of the raw pixels
+   * @param variant       short name; the frame is also saved as render_<variant>.png in case artifacts
+   * @param offsetX       canvas offset X (DrawingWindow.mOffset.x)
+   * @param offsetY       canvas offset Y
+   * @param zoom          canvas zoom
+   * @param landscape     landscape presentation flag for setTransform
+   * @param displayPoints edit-mode selection dots on/off
+   * @param gridVisible   grid display bit on/off
+   * @param splayMode     DrawingSplayPath display mode (SPLAY_MODE_LINE / SPLAY_MODE_POINT)
+   * @note the live render loop is paused during the capture so the off-screen
+   *       executeAll is the only renderer (avoids races on shared draw state)
+   */
+  String captureRenderHash( String variant, float offsetX, float offsetY, float zoom, boolean landscape,
+                            boolean displayPoints, boolean gridVisible, int splayMode ) throws Exception
+  {
+    waitForDrawingWindow();
+    final Bitmap bitmap = Bitmap.createBitmap( RENDER_HASH_WIDTH, RENDER_HASH_HEIGHT, Bitmap.Config.ARGB_8888 );
+    final boolean[] ok = new boolean[1];
+    runOnMainChecked( "pause render loop", () ->
+      requireCurrentDrawingSurface( requireCurrentDrawingWindow() ).setDrawing( false )
+    );
+    SystemClock.sleep( 250 ); // let any in-flight frame complete (idle poll is 100ms)
+    runOnMainChecked( "render " + variant, () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      DrawingSurface surface = requireCurrentDrawingSurface( window );
+      int savedMode      = DrawingCommandManager.getDisplayMode();
+      int savedSplayMode = DrawingSplayPath.mSplayMode;
+      try {
+        int mode = gridVisible ? ( savedMode | DisplayMode.DISPLAY_GRID ) : ( savedMode & ~DisplayMode.DISPLAY_GRID );
+        DrawingCommandManager.setDisplayMode( mode );
+        DrawingSplayPath.mSplayMode = splayMode;
+        surface.setDisplayPoints( displayPoints );
+        setPrivateField( window, "mZoom", zoom );
+        PointF offset = (PointF)getPrivateField( window, "mOffset" );
+        assertNotNull( "DrawingWindow offset is null", offset );
+        offset.x = offsetX;
+        offset.y = offsetY;
+        surface.setTransform( window, offsetX, offsetY, zoom, landscape );
+        ok[0] = surface.drawCanvas( new Canvas( bitmap ) );
+      } catch ( Exception e ) {
+        throw new RuntimeException( e );
+      } finally {
+        DrawingCommandManager.setDisplayMode( savedMode );
+        DrawingSplayPath.mSplayMode = savedSplayMode;
+        surface.setDisplayPoints( false );
+      }
+    } );
+    runOnMainChecked( "resume render loop", () ->
+      requireCurrentDrawingSurface( requireCurrentDrawingWindow() ).setDrawing( true )
+    );
+    assertTrue( "drawCanvas failed for variant " + variant, ok[0] );
+    saveBitmap( bitmap, new File( getCaseArtifactsDir(), "render_" + variant + ".png" ) );
+    java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate( bitmap.getByteCount() );
+    bitmap.copyPixelsToBuffer( buffer );
+    bitmap.recycle();
+    java.security.MessageDigest digest = java.security.MessageDigest.getInstance( "SHA-256" );
+    digest.update( buffer.array(), 0, buffer.position() );
+    StringBuilder hex = new StringBuilder();
+    for ( byte b : digest.digest() ) hex.append( String.format( Locale.US, "%02x", b ) );
+    return hex.toString();
+  }
+
+  /** write the render-identity hash report to the case artifacts dir */
+  void writeRenderHashReport( List< String > lines ) throws Exception
+  {
+    writeLinesReport( "render_hashes.txt", lines );
+  }
+
+  /** write the render-perf timing report to the case artifacts dir */
+  void writeRenderPerfReport( List< String > lines ) throws Exception
+  {
+    writeLinesReport( "render_perf.txt", lines );
+  }
+
+  private void writeLinesReport( String name, List< String > lines ) throws Exception
+  {
+    File file = new File( getCaseArtifactsDir(), name );
+    ensureParentDir( file );
+    OutputStream out = new FileOutputStream( file );
+    try {
+      for ( String line : lines ) out.write( ( line + "\n" ).getBytes( StandardCharsets.UTF_8 ) );
+    } finally {
+      out.close();
+    }
+  }
+
+  /** time repeated off-screen renders of the current plot (RenderPerfInstrumentedTest)
+   * @param variant       name (for error messages)
+   * @param offsetX       canvas offset X
+   * @param offsetY       canvas offset Y
+   * @param zoom          canvas zoom
+   * @param displayPoints edit-mode selection dots on/off
+   * @param warmup        untimed warm-up renders
+   * @param frames        timed renders
+   * @return per-frame durations [ns]
+   * @note the live render loop is paused during the measurement
+   */
+  long[] timeOffscreenRenders( String variant, float offsetX, float offsetY, float zoom,
+                               boolean displayPoints, int warmup, int frames ) throws Exception
+  {
+    waitForDrawingWindow();
+    final Bitmap bitmap = Bitmap.createBitmap( RENDER_HASH_WIDTH, RENDER_HASH_HEIGHT, Bitmap.Config.ARGB_8888 );
+    final long[] ns = new long[ frames ];
+    final boolean[] ok = new boolean[]{ true };
+    runOnMainChecked( "pause render loop", () ->
+      requireCurrentDrawingSurface( requireCurrentDrawingWindow() ).setDrawing( false )
+    );
+    SystemClock.sleep( 250 );
+    runOnMainChecked( "time renders " + variant, () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      DrawingSurface surface = requireCurrentDrawingSurface( window );
+      try {
+        surface.setDisplayPoints( displayPoints );
+        setPrivateField( window, "mZoom", zoom );
+        PointF offset = (PointF)getPrivateField( window, "mOffset" );
+        offset.x = offsetX;
+        offset.y = offsetY;
+        surface.setTransform( window, offsetX, offsetY, zoom, false );
+        Canvas canvas = new Canvas( bitmap );
+        for ( int k = 0; k < warmup; ++k ) ok[0] = ok[0] && surface.drawCanvas( canvas );
+        for ( int k = 0; k < ns.length; ++k ) {
+          long t0 = System.nanoTime();
+          ok[0] = ok[0] && surface.drawCanvas( canvas );
+          ns[k] = System.nanoTime() - t0;
+        }
+      } catch ( Exception e ) {
+        throw new RuntimeException( e );
+      } finally {
+        surface.setDisplayPoints( false );
+      }
+    } );
+    runOnMainChecked( "resume render loop", () ->
+      requireCurrentDrawingSurface( requireCurrentDrawingWindow() ).setDrawing( true )
+    );
+    bitmap.recycle();
+    assertTrue( "drawCanvas failed during timing " + variant, ok[0] );
+    return ns;
   }
 
   void selectFirstOrdinaryPointTool()

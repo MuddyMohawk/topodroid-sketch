@@ -66,7 +66,19 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   protected DrawThread mDrawThread;
 
   private boolean mSurfaceCreated = false;
-  private volatile boolean isDrawing = true;
+
+  // RENDER-ON-DEMAND: the draw thread renders a frame only when the scene is
+  // dirty (requestRender), during a full-rate burst window (dialog returns,
+  // resume, focus regain), or when the failsafe heartbeat expires. Previously
+  // the surface re-rendered continuously at ~1ms intervals while resumed,
+  // holding the draw locks against the UI thread and loading the CPU even
+  // when nothing changed.
+  private volatile boolean mResumedRender = true;             // resume/pause render gate
+  private final java.util.concurrent.atomic.AtomicBoolean mDirty = new java.util.concurrent.atomic.AtomicBoolean( true );
+  private volatile long mLastFrameMs = 0;                     // last rendered frame [ms epoch]
+  private volatile long mBurstUntilMs = 0;                    // full-rate rendering until [ms epoch]
+  private static final long RENDER_HEARTBEAT_MS = 500;        // failsafe frame period when idle
+  private static final long RENDER_BURST_MS     = 750;        // burst duration on resume/focus
 
   private DrawingPath mPreviewPath;
   // private SurfaceHolder mHolder; // canvas holder
@@ -119,11 +131,12 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   /** delete the current scrap
    * @param force   whether to do also for command-3 // TH2EDIT no force param
    */
-  void deleteCurrentScrap( boolean force ) 
-  { 
+  void deleteCurrentScrap( boolean force )
+  {
     if ( commandManager == null ) return;
     if ( ( ! force ) && commandManager == mCommandManager3 ) return;
     commandManager.deleteCurrentScrap( force );
+    requestRender();
   }
 
   // TH2EDIT
@@ -219,8 +232,9 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
    * @param mode   selection mode
    */
   void setSelectMode( int mode )
-  { 
+  {
     if ( commandManager != null ) commandManager.setSelectMode( mode );
+    requestRender();
   }
 
   /** set the manager
@@ -248,6 +262,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   {
     setManager( mode, type );
     commandManager.newReferences();
+    requestRender();
   }
 
   /** commit the reference
@@ -255,6 +270,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   void commitReferences()
   {
     commandManager.commitReferences();
+    requestRender();
   }
 
 
@@ -312,13 +328,14 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   /** set whether to display points, in the current manager
    * @param display  whether to display the points
    */
-  void setDisplayPoints( boolean display ) 
-  { 
+  void setDisplayPoints( boolean display )
+  {
     commandManager.setDisplayPoints( display );
     if ( display ) {
     } else {
       commandManager.syncClearSelected();
     }
+    requestRender();
   }
 
   /** get the index for the next area item, in the current manager
@@ -378,13 +395,14 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   {
     if ( commandManager != null ) // test for Xiaomi redmi note
       commandManager.setTransform( act, dx, dy, s, landscape );
+    requestRender();
   }
 
   /** split a line at a point, in the current manager
    * @param line   line
    * @param lp     line point where to split
    */
-  void splitLine( DrawingLinePath line, LinePoint lp ) { commandManager.splitLine( line, lp ); }
+  void splitLine( DrawingLinePath line, LinePoint lp ) { commandManager.splitLine( line, lp ); requestRender(); }
 
   /** remove a line point, in the current manager
    * @param line   line
@@ -392,16 +410,16 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
    * @param sp     selection point
    * @return true if the point was removed
    */
-  boolean removeLinePoint( DrawingPointLinePath line, LinePoint point, SelectionPoint sp ) 
-  { return commandManager.removeLinePoint(line, point, sp); }
+  boolean removeLinePoint( DrawingPointLinePath line, LinePoint point, SelectionPoint sp )
+  { requestRender(); return commandManager.removeLinePoint(line, point, sp); }
 
   /** remove a line point from the selection, in the current manager
    * @param line   line
    * @param point  line point
    * @return true if the point was removed
    */
-  boolean removeLinePointFromSelection( DrawingLinePath line, LinePoint point ) 
-  { return commandManager.removeLinePointFromSelection( line, point ); }
+  boolean removeLinePointFromSelection( DrawingLinePath line, LinePoint point )
+  { requestRender(); return commandManager.removeLinePointFromSelection( line, point ); }
 
   /** remove a splay path, in the plan and profile manager
    * @param p   splay path
@@ -415,6 +433,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     if ( mCommandManager2 != null ) {
       mCommandManager2.deleteSplay( p, sp );
     }
+    requestRender();
   }
 
   /** remove a path, from the current manager
@@ -422,7 +441,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
    */
   void deletePath( DrawingPath path ) 
   { 
-    isDrawing = true;
+    requestRender();
     EraseCommand cmd = new EraseCommand();
     commandManager.deletePath( path, cmd );
     commandManager.addEraseCommand( cmd );
@@ -439,32 +458,32 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
 
   /** start the multiselection
    */
-  void startMultiselection()  { commandManager.startMultiselection(); }
+  void startMultiselection()  { commandManager.startMultiselection(); requestRender(); }
 
   /** clear the multiselection
    */
-  void resetMultiselection() { commandManager.resetMultiselection(); }
+  void resetMultiselection() { commandManager.resetMultiselection(); requestRender(); }
 
   /** store the current multiselection
    */
-  void storeMultiselection() { commandManager.storeMultiselection(); }
+  void storeMultiselection() { commandManager.storeMultiselection(); requestRender(); }
 
   /** join the lines in the current multiselection
    * @param dcim     maximum gap for join
    */
-  void joinMultiselection( float dmin ) { commandManager.joinMultiselection( dmin ); }
+  void joinMultiselection( float dmin ) { commandManager.joinMultiselection( dmin ); requestRender(); }
 
   /** delete the items in the current multiselection
    */
-  void deleteMultiselection() { commandManager.deleteMultiselection(); }
+  void deleteMultiselection() { commandManager.deleteMultiselection(); requestRender(); }
 
   /** decimate the lines in the current multiselection
    */
-  void decimateMultiselection() { commandManager.decimateMultiselection(); }
+  void decimateMultiselection() { commandManager.decimateMultiselection(); requestRender(); }
 
   /** restore the stored multiselection
    */
-  void restoreMultiselection() { commandManager.restoreMultiselection(); }
+  void restoreMultiselection() { commandManager.restoreMultiselection(); requestRender(); }
 
   /** @return true if there is a stored multiselection
    */
@@ -474,35 +493,35 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   /** sharpen a line, in the current manager
    * @param line   line
    */
-  void sharpenPointLine( DrawingPointLinePath line ) { commandManager.sharpenPointLine( line ); }
+  void sharpenPointLine( DrawingPointLinePath line ) { commandManager.sharpenPointLine( line ); requestRender(); }
 
   /** decimate a line, in the current manager
    * @param line   line
    * @param decimation   log-decimation 
    */
-  void reducePointLine( DrawingPointLinePath line, int decimation ) { commandManager.reducePointLine( line, decimation ); }
+  void reducePointLine( DrawingPointLinePath line, int decimation ) { commandManager.reducePointLine( line, decimation ); requestRender(); }
 
   /** make a line rock-like, in the current manager
    * @param line   line
    * @note called by drawing window, forward to comman manager
    */
-  void rockPointLine( DrawingPointLinePath line ) { commandManager.rockPointLine( line ); }
+  void rockPointLine( DrawingPointLinePath line ) { commandManager.rockPointLine( line ); requestRender(); }
 
   /** close a line, in the current manager
    * @param line   line
    */
-  void closePointLine( DrawingPointLinePath line ) { commandManager.closePointLine( line ); }
+  void closePointLine( DrawingPointLinePath line ) { commandManager.closePointLine( line ); requestRender(); }
 
   /** finish an erase command, in the current manager
    */
-  void endEraser() { commandManager.endEraser(); }
+  void endEraser() { commandManager.endEraser(); requestRender(); }
 
   /** set the eraser circle, in the current manager
    * @param x    X canvas coords
    * @param y    Y canvas coords
    * @param r    circle radius
    */
-  void setEraser( float x, float y, float r ) { commandManager.setEraser(x, y, r); } // canvas x,y, r
+  void setEraser( float x, float y, float r ) { commandManager.setEraser(x, y, r); requestRender(); } // canvas x,y, r
 
   /** erase at a position, in the current manager
    * @param x    X scene coords
@@ -520,7 +539,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
    */
   void addEraseCommand( EraseCommand cmd )
   {
-    isDrawing = true;
+    requestRender();
     commandManager.addEraseCommand( cmd );
   }
 
@@ -541,16 +560,18 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
       default:
         mCommandManager3.addScaleRef( decl );
     }
+    requestRender();
   }
 
   /** clear shots and stations - only extended profile
    * @param type   plot type
    */
-  void clearShotsAndStations( int type ) 
+  void clearShotsAndStations( int type )
   {
     if ( PlotType.isExtended( type ) ) {
       mCommandManager2.clearShotsAndStations();
     }
+    requestRender();
   }
 
   /** clear shots and stations - both plan and profile
@@ -559,6 +580,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   {
     mCommandManager1.clearShotsAndStations();
     mCommandManager2.clearShotsAndStations();
+    requestRender();
   }
 
   // /** clear the reference - UNUSED
@@ -583,6 +605,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   {
     if ( mCommandManager2 == null ) return;
     mCommandManager2.flipXAxis( z, scrap );
+    requestRender();
   }
 
   // static Handler previewDoneHandler = new Handler()
@@ -598,7 +621,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   /** reset the preview path: if null create an empty path
    * @note also called by DrawingWindow on split
    */
-  synchronized void resetPreviewPath() { if ( mPreviewPath != null ) mPreviewPath.mPath = new Path(); }
+  synchronized void resetPreviewPath() { if ( mPreviewPath != null ) mPreviewPath.mPath = new Path(); requestRender(); }
 
   /** create the preview path
    * @param type   path type
@@ -609,12 +632,16 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     mPreviewPath = new DrawingPath( type, null, -1 );
     mPreviewPath.mPath = new Path();
     mPreviewPath.setPathPaint( paint );
+    requestRender();
   }
 
   /** get the preview path
    * @return the preview path, or null
+   * @note callers mutate the returned Path directly (brush mouse-move), so a
+   *       render is requested here as well - the touch handler also requests
+   *       one per event
    */
-  Path getPreviewPath() { return (mPreviewPath != null)? mPreviewPath.mPath : null; }
+  Path getPreviewPath() { requestRender(); return (mPreviewPath != null)? mPreviewPath.mPath : null; }
 
   // ------------------ IDrawingSurface -----------------------
 
@@ -646,29 +673,58 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
       canvas = holder.lockCanvas();
       // canvas.drawColor(0, PorterDuff.Mode.CLEAR);
       if ( canvas != null && commandManager != null ) {
+        mDirty.set( false ); // cleared before drawing: mutations landing mid-frame re-dirty and get the next frame
         mWidth  = canvas.getWidth();
         mHeight = canvas.getHeight();
+        RenderPerf.frameStart();
         canvas.drawColor(0, PorterDuff.Mode.CLEAR);
         commandManager.executeAll( canvas, mZoomer.zoom(), mStationSplay, false ); // false = no inverted_color
-        // commandManager.executeAll( canvas, mZoomer.zoom(), mStationSplay ); 
+        // commandManager.executeAll( canvas, mZoomer.zoom(), mStationSplay );
         if ( mPreviewPath != null ) mPreviewPath.draw(canvas, null);
+        RenderPerf.frameEnd();
       }
     } finally {
       if ( canvas != null ) {
         holder.unlockCanvasAndPost( canvas ); // FIXME IllegalArgumentException ???
       }
+      mLastFrameMs = System.currentTimeMillis();
     }
   }
 
-  /** check if the surface is drawing
-   * @return true if the surface is drawing
+  /** request a render: the draw thread paints one frame as soon as possible
+   * @note call after any change that affects the rendered scene
    */
-  public boolean isDrawing() { return isDrawing; }
+  public void requestRender() { mDirty.set( true ); }
 
-  /** set the boolean isDrawing
+  /** request full-rate rendering for a short burst (resume, focus regain,
+   *  dialog dismissal): covers scene mutations that do not go through the
+   *  surface, without auditing every dialog
+   */
+  public void requestRenderBurst()
+  {
+    mBurstUntilMs = System.currentTimeMillis() + RENDER_BURST_MS;
+    mDirty.set( true );
+  }
+
+  /** check if the surface needs a frame (called by the draw thread)
+   * @return true if a frame should be rendered now
+   */
+  public boolean isDrawing()
+  {
+    if ( ! mResumedRender ) return false;
+    if ( mDirty.get() ) return true;
+    long now = System.currentTimeMillis();
+    return now < mBurstUntilMs || now - mLastFrameMs > RENDER_HEARTBEAT_MS;
+  }
+
+  /** enable/disable rendering (activity resume/pause)
    * @param drawing   new value
    */
-  public void setDrawing( boolean drawing ) { isDrawing = drawing; }
+  public void setDrawing( boolean drawing )
+  {
+    mResumedRender = drawing;
+    if ( drawing ) requestRenderBurst();
+  }
 
   // ----------------------------------------------------------
 
@@ -685,9 +741,10 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   // TH2EDIT this method was commented
   /** clear the drawing (only for mSkipSaving)
    */
-  void clearDrawing() { 
+  void clearDrawing() {
     assert( commandManager == mCommandManager3 );
-    commandManager.clearDrawing(); 
+    commandManager.clearDrawing();
+    requestRender();
   }
 
   /** set the paint of a station-name
@@ -787,6 +844,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
         // setStationPaint( st0, saved, mCommandManager1 );
       }
     }
+    requestRender();
   }
 
   /** add a station-name drawing item
@@ -821,6 +879,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
       }
     }
     commandManager.addTmpStation( st, selectable ); // NOTE make this always true if you want station selectable on all sections
+    requestRender();
     return st;
   }
 
@@ -841,6 +900,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     setStationPaint( st, null, cmd );
 
     cmd.appendStation( st, selectable ); // NOTE make this always true if you want station selectable on all sections
+    requestRender();
     return st;
   }
 
@@ -859,13 +919,14 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     DrawingStationName st = new DrawingStationName( name, x, y, scrapIndex() );
     st.setPathPaint( BrushManager.fixedStationPaint );
     commandManager.addTmpStation( st, false ); // NOTE make this true for selectable station in all sections
+    requestRender();
     return st;
   }
 
   /** highlight a station name
    * @param name  name to highight, or null to clear
    */
-  void highlightStation( String name ) { commandManager.highlightStation( name ); }
+  void highlightStation( String name ) { commandManager.highlightStation( name ); requestRender(); }
 
   /** reset the "fixed" paint
    * @param app   application
@@ -874,13 +935,14 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   void resetFixedPaint( TopoDroidApp app, Paint paint )
   {
     mCommandManager1.resetFixedPaint( app, false, paint );
-    mCommandManager2.resetFixedPaint( app, true,  paint ); 
+    mCommandManager2.resetFixedPaint( app, true,  paint );
+    requestRender();
   }
 
   /** set the zoom "fixed"
    * @param fixed_zoom  value if fixed-zoom (0 = non-fixed)
    */
-  void setFixedZoom( int fixed_zoom ) { commandManager.setFixedZoom( fixed_zoom ); }
+  void setFixedZoom( int fixed_zoom ) { commandManager.setFixedZoom( fixed_zoom ); requestRender(); }
 
   /** @return the value of current fixed-zoom (0 = non-fixed)
    */
@@ -897,55 +959,60 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   void addFixedSplayPath( DrawingSplayPath path, boolean selectable )
   {
     commandManager.addTmpSplayPath( path, selectable );
+    requestRender();
   }
 
   void addFixedLegPath( DrawingPath path, boolean selectable )
   {
     commandManager.addTmpLegPath( path, selectable );
+    requestRender();
   }
 
   void appendFixedSplayPath( int type, DrawingSplayPath path, boolean selectable )
   {
     DrawingCommandManager cmd = ( type == DRAWING_PLAN )? mCommandManager1 : mCommandManager2;
     cmd.appendSplayPath( path, selectable );
+    requestRender();
   }
 
   void appendFixedLegPath( int type, DrawingPath path, boolean selectable )
   {
     DrawingCommandManager cmd = ( type == DRAWING_PLAN )? mCommandManager1 : mCommandManager2;
     cmd.appendLegPath( path, selectable );
+    requestRender();
   }
 
   void dropLastSplayPath( int type )
   {
     DrawingCommandManager cmd = ( type == DRAWING_PLAN )? mCommandManager1 : mCommandManager2;
     cmd.dropLastSplayPath( );
+    requestRender();
   }
 
   /** set the north line
    * @param path  new north line 
    * @note  used only by DrawingWindow for H-Section
    */
-  public void setNorthPath( DrawingPath path ) { commandManager.setNorthLine( path ); }
+  public void setNorthPath( DrawingPath path ) { commandManager.setNorthLine( path ); requestRender(); }
 
   /** set the path for the first point of a measurement
    * @param path   path for the first point
    */
-  public void setFirstReference( DrawingMeasureStartPath path ) { commandManager.setFirstReference( path ); }
+  public void setFirstReference( DrawingMeasureStartPath path ) { commandManager.setFirstReference( path ); requestRender(); }
 
   /** set the path for the second point of a measurement
    * @param path   path for the second point
    */
-  public void setSecondReference( DrawingMeasureEndPath path ) { commandManager.setSecondReference( path ); }
+  public void setSecondReference( DrawingMeasureEndPath path ) { commandManager.setSecondReference( path ); requestRender(); }
 
   /** add the path for the second point of a measurement
    * @param x  X coord of the point added to the second reference
    * @param y  Y coord of the point added to the second reference
    */
-  public void addSecondReference( float x, float y ) { commandManager.addSecondReference( x, y ); }
+  public void addSecondReference( float x, float y ) { commandManager.addSecondReference( x, y ); requestRender(); }
 
   // k : grid type 1, 10, 100
-  public void addGridPath( DrawingPath path, int k ) { commandManager.addTmpGrid( path, k ); }
+  public void addGridPath( DrawingPath path, int k ) { commandManager.addTmpGrid( path, k ); requestRender(); }
 
   // DEBUG
   // public int getGrid1Size() { return commandManager.getGrid1().size(); }
@@ -954,14 +1021,14 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   /** add a drawing item
    * @param drawingPath  drawing item
    */
-  public void addDrawingPath (DrawingPath drawingPath) { commandManager.addCommand(drawingPath); }
+  public void addDrawingPath (DrawingPath drawingPath) { commandManager.addCommand(drawingPath); requestRender(); }
 
   // public void addDrawingDotPath (DrawingPath drawingPath) { commandManager.addDotCommand(drawingPath); }
-  public void addDrawingDotPath (DrawingPath drawingPath) { commandManager.addDotCommand(drawingPath); }
+  public void addDrawingDotPath (DrawingPath drawingPath) { commandManager.addDotCommand(drawingPath); requestRender(); }
 
-  public void addScrapOutlinePath( DrawingLinePath path ) { commandManager.addScrapOutlinePath( path ); }
+  public void addScrapOutlinePath( DrawingLinePath path ) { commandManager.addScrapOutlinePath( path ); requestRender(); }
 
-  public void addXSectionOutlinePath( DrawingOutlinePath path ) { commandManager.addXSectionOutlinePath( path ); } 
+  public void addXSectionOutlinePath( DrawingOutlinePath path ) { commandManager.addXSectionOutlinePath( path ); requestRender(); }
 
   // return true if point has been deleted
   void deleteSectionPoint( String scrap_name )
@@ -973,13 +1040,13 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
 
   void redo()
   {
-    isDrawing = true;
+    requestRender();
     commandManager.redo();
   }
 
   void undo()
   {
-    isDrawing = true;
+    requestRender();
     commandManager.undo();
   }
 
@@ -1001,12 +1068,14 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   {
     if ( commandManager == null ) return;
     commandManager.addUserStation( path );
+    requestRender();
   }
- 
+
   void removeDrawingStationUser( DrawingStationUser path )
   {
     if ( commandManager == null ) return;
     commandManager.removeUserStation( path );
+    requestRender();
   }
 
   RectF getBitmapBounds( float scale )
@@ -1063,7 +1132,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
  
   /** add the points of the first line to the second line
    */
-  void addLineToLine( DrawingLinePath line, DrawingLinePath line0 ) { commandManager.addLineToLine( line, line0 ); }
+  void addLineToLine( DrawingLinePath line, DrawingLinePath line0 ) { commandManager.addLineToLine( line, line0 ); requestRender(); }
 
   // ---------------------------------------------------------------------
   // SELECT - EDIT
@@ -1106,22 +1175,22 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   int snapHotItemToNearestLine() { return commandManager.snapHotItemToNearestLine(); }
   int snapHotItemToNearestSplays( float dthr ) { return commandManager.snapHotItemToNearestSplays( dthr, mStationSplay ); }
 
-  void splitPointHotItem() { commandManager.splitPointHotItem(); }
-  void insertPointsHotItem() { commandManager.insertPointsHotItem(); }
+  void splitPointHotItem() { commandManager.splitPointHotItem(); requestRender(); }
+  void insertPointsHotItem() { commandManager.insertPointsHotItem(); requestRender(); }
   
   SelectionPoint hotItem() { return commandManager.hotItem(); }
 
   boolean hasSelected() { return commandManager.hasSelected(); }
 
   // void shiftHotItem( float dx, float dy, float range ) { commandManager.shiftHotItem( dx, dy, range ); }
-  void shiftHotItem( float dx, float dy ) { commandManager.shiftHotItem( dx, dy ); }
+  void shiftHotItem( float dx, float dy ) { commandManager.shiftHotItem( dx, dy ); requestRender(); }
 
-  void refreshReferencePath( DrawingReferencePath path ) { commandManager.refreshReferencePath( path ); }
+  void refreshReferencePath( DrawingReferencePath path ) { commandManager.refreshReferencePath( path ); requestRender(); }
 
   /** rotate the hot item 
    * @param dy   amount of rotation [degrees]
    */
-  void rotateHotItem( float dy ) { commandManager.rotateHotItem( dy ); }
+  void rotateHotItem( float dy ) { commandManager.rotateHotItem( dy ); requestRender(); }
 
   /** @return the next selected point
    */
@@ -1133,14 +1202,14 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
 
   /** clear the selection
    */
-  void clearSelected() { commandManager.syncClearSelected(); }
+  void clearSelected() { commandManager.syncClearSelected(); requestRender(); }
 
   /** shift the drawing
    * @param x   X-shift
    * @param y   Y-shift
    * @param scrap whether to shift only the current scrap
    */
-  void shiftDrawing( float x, float y, boolean scrap ) { commandManager.shiftDrawing( x, y, scrap ); }
+  void shiftDrawing( float x, float y, boolean scrap ) { commandManager.shiftDrawing( x, y, scrap ); requestRender(); }
 
   // /** scrap drawing by a factor
   //  * @param z  factor
@@ -1148,16 +1217,17 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   //  */
   // void scaleDrawing( float z, boolean scrap ) { commandManager.scaleDrawing( z, scrap ); }
 
-  void affineTransformDrawing( float a, float b, float c, float d, float e, float f, boolean scrap ) 
-  { commandManager.affineTransformDrawing( a,b,c, d,e,f, scrap ); }
+  void affineTransformDrawing( float a, float b, float c, float d, float e, float f, boolean scrap )
+  { commandManager.affineTransformDrawing( a,b,c, d,e,f, scrap ); requestRender(); }
 
   // ---------------------------------------------------------------------
 
-  public void surfaceChanged( SurfaceHolder holder, int format, int width,  int height) 
+  public void surfaceChanged( SurfaceHolder holder, int format, int width,  int height)
   {
     // TDLog.Log( TDLog.LOG_PLOT, "surfaceChanged " );
     // TODO Auto-generated method stub
     mDrawThread.setHolder( holder );
+    requestRender();
   }
 
 
@@ -1171,7 +1241,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     }
     // mDrawThread.setRunning(true); // not necessary: done by start
     mDrawThread.start();
-    isDrawing = true;
+    requestRender();
     mSurfaceCreated = true;
   }
 
@@ -1222,6 +1292,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     if ( mCommandManager1 != null && mCommandManager1 != commandManager ) mCommandManager1.refreshLinePaints( indexMap );
     if ( mCommandManager2 != null && mCommandManager2 != commandManager ) mCommandManager2.refreshLinePaints( indexMap );
     if ( mCommandManager3 != null && mCommandManager3 != commandManager ) mCommandManager3.refreshLinePaints( indexMap );
+    requestRender();
   }
 
   /** rebind point paints in every cached drawing manager
@@ -1233,6 +1304,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     if ( mCommandManager1 != null && mCommandManager1 != commandManager ) mCommandManager1.refreshPointPaints( indexMap );
     if ( mCommandManager2 != null && mCommandManager2 != commandManager ) mCommandManager2.refreshPointPaints( indexMap );
     if ( mCommandManager3 != null && mCommandManager3 != commandManager ) mCommandManager3.refreshPointPaints( indexMap );
+    requestRender();
   }
 
   /** rebind area paints in every cached drawing manager
@@ -1244,6 +1316,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     if ( mCommandManager1 != null && mCommandManager1 != commandManager ) mCommandManager1.refreshAreaPaints( indexMap );
     if ( mCommandManager2 != null && mCommandManager2 != commandManager ) mCommandManager2.refreshAreaPaints( indexMap );
     if ( mCommandManager3 != null && mCommandManager3 != commandManager ) mCommandManager3.refreshAreaPaints( indexMap );
+    requestRender();
   }
 
   // -------------------------------------------------------------------
@@ -1294,6 +1367,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
         linkSections( plotname );
       }
     }
+    requestRender();
     return ret;
   }
 
@@ -1336,6 +1410,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
         ItemDrawer.resetRecentSymbols();
       }
     }
+    requestRender();
     return ret;
   }
 
@@ -1364,6 +1439,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
         ItemDrawer.resetRecentSymbols();
       }
     }
+    requestRender();
     return ret;
   }
 
@@ -1474,17 +1550,18 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   /** show splays at a station
    * @param station    station
    */
-  void showStationSplays( String station ) { mStationSplay.showStationSplays( station ); }
+  void showStationSplays( String station ) { mStationSplay.showStationSplays( station ); requestRender(); }
 
   /** hide splays at a station
    * @param station    station
    */
-  void hideStationSplays( String station ) { mStationSplay.hideStationSplays( station ); }
-  
+  void hideStationSplays( String station ) { mStationSplay.hideStationSplays( station ); requestRender(); }
+
   void setStationXSections( List< PlotInfo > xsection_plan, List< PlotInfo > xsection_ext, long type2 )
   {
     mCommandManager1.setStationXSections( xsection_plan, PlotType.PLOT_PLAN );
     mCommandManager2.setStationXSections( xsection_ext,  type2 );
+    requestRender();
   }
 
   // only for sections
@@ -1495,7 +1572,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
 
   void deleteSectionLine( DrawingLinePath line, String scrap )
   {
-    isDrawing = true;
+    requestRender();
     EraseCommand cmd = new EraseCommand();
     commandManager.deleteSectionLine( line, scrap, cmd );
     commandManager.deleteSectionPoint( scrap, cmd );
@@ -1508,12 +1585,13 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   
   /** clear the plot outlines
    */
-  void clearPlotOutline() { commandManager.clearPlotOutline(); }
+  void clearPlotOutline() { commandManager.clearPlotOutline(); requestRender(); }
 
   void addScrapDataStream( String tdr, float xdelta, float ydelta )
   {
     commandManager.clearPlotOutline( );
     DrawingIO.doLoadOutlineDataStream( this, tdr, xdelta, ydelta, null, -1 );
+    requestRender();
   }
 
   // @param name xsection scrap name ( survey_name + "-" + xsection_id )
@@ -1529,6 +1607,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   void setXSectionOutline( String name, int scrap_id, String tdr, float xdelta, float ydelta )
   {
     DrawingIO.doLoadOutlineDataStream( this, tdr, xdelta, ydelta, name, scrap_id );
+    requestRender();
   }
 
   /** @return the section point of a given x-section
@@ -1566,6 +1645,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   void clearXSectionOutline( String name )
   {
     commandManager.clearXSectionOutline( name );
+    requestRender();
   }
 
   // shift X-Sections in the plan and in the profile
@@ -1574,6 +1654,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     // TDLog.v("shift X-Sections: " + st.e + " " + st.s + " " + st.h + " " + st.v );
     mCommandManager1.shiftXSections( 20*(float)st.e, 20*(float)st.s );
     mCommandManager2.shiftXSections( 20*(float)st.h, 20*(float)st.v );
+    requestRender();
   }
 
 }

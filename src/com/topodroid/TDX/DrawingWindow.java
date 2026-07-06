@@ -3338,6 +3338,7 @@ public class DrawingWindow extends ItemDrawer
 
   private void requestSketchPresetSelection( int preset )
   {
+    mDrawingSurface.requestRender(); // preset may restyle the selected item live
     int normalized = TDSetting.normalizeSketchPreset( preset );
     int active = TDSetting.getActiveSketchPreset();
     if ( hasPendingSketchStroke() ) {
@@ -3416,6 +3417,7 @@ public class DrawingWindow extends ItemDrawer
 
   private void requestSketchStyleSelection( int style )
   {
+    mDrawingSurface.requestRender(); // style may restyle the selected item live
     int normalized = TDSetting.normalizeSketchStyle( style );
     int active = TDSetting.getActiveSketchStyle();
     if ( hasPendingSketchStroke() ) {
@@ -3819,6 +3821,18 @@ public class DrawingWindow extends ItemDrawer
     //   mApp.disconnectRemoteDevice( false );
     // }
     // TDLog.Log( TDLog.LOG_PLOT, "drawing activity on destroy done");
+  }
+
+  /** window focus: a regained focus usually means a dialog or menu was
+   *  dismissed - anything it mutated (paints, settings, reference images,
+   *  splay toggles) is repainted by a short full-rate render burst, without
+   *  auditing every dialog for invalidation calls.
+   */
+  @Override
+  public void onWindowFocusChanged( boolean has_focus )
+  {
+    super.onWindowFocusChanged( has_focus );
+    if ( has_focus && mDrawingSurface != null ) mDrawingSurface.requestRenderBurst();
   }
 
   /** lifecycle: implement RESUME
@@ -5246,6 +5260,7 @@ public class DrawingWindow extends ItemDrawer
    */
   public boolean onTouch( View view, MotionEvent rawEvent )
   {
+    mDrawingSurface.requestRender(); // every touch sample may change the scene (draw, pan, zoom, erase, edit)
     dismissPopups();
     checkZoomBtnsCtrl();
 
@@ -6994,6 +7009,7 @@ public class DrawingWindow extends ItemDrawer
       if ( old_source != null && ! old_source.equals( imported.mSourceName ) ) {
         ReferencePointHelper.deleteAssetByName( old_source );
       }
+      replace.primeBitmap(); // decode here (UI thread) so the render thread never runs the file decode
       notifyReferencePointChanged( replace );
       clearPendingReferenceInsert();
       clearPendingReferenceReplace();
@@ -8039,8 +8055,9 @@ public class DrawingWindow extends ItemDrawer
   }
 
   @Override
-  public boolean onLongClick( View view ) 
+  public boolean onLongClick( View view )
   {
+    mDrawingSurface.requestRender(); // button actions may mutate the scene
     Button b = (Button)view;
     if ( TDLevel.overAdvanced && BTN_DOWNLOAD < mNrButton1 && b == mButton1[ BTN_DOWNLOAD ] ) {
       if ( mDataDownloader != null ) { // TH2EDIT added this test 
@@ -8184,6 +8201,7 @@ public class DrawingWindow extends ItemDrawer
   @Override
   public void onClick( View view )
   {
+    mDrawingSurface.requestRender(); // button actions may mutate the scene
     if ( onMenu ) {
       closeMenu();
       return;
@@ -9867,9 +9885,10 @@ public class DrawingWindow extends ItemDrawer
    * @param pos       item position in the list
    * @param id        ...
    */
-  @Override 
+  @Override
   public void onItemClick(AdapterView<?> parent, View view, int pos, long id)
   {
+    mDrawingSurface.requestRender(); // menu actions may mutate the scene
     if ( mMenu == (ListView)parent ) { // MENU
       handleMenu( pos );
     }

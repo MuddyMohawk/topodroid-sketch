@@ -371,6 +371,25 @@ public class DrawingAreaPath extends DrawingPointLinePath
     return darken;
   }
 
+  // Per-frame cache of the two darken-mode paints derived from mPaint.
+  // Rebuilt when the source Paint object or its color/alpha changes
+  // (setPathPaint swaps the object; color pickers and alpha edits change the
+  // ARGB int). Shader mutations (orientation local matrix) flow through
+  // because new Paint(paint) shares the shader reference.
+  private Paint mCachedDarkenPaint = null;
+  private Paint mCachedFillPaint   = null;
+  private Paint mCachedSrcPaint    = null;
+  private int   mCachedSrcColor    = 0;
+
+  private void rebuildDarkenPaintsIfNeeded( Paint src )
+  {
+    if ( mCachedSrcPaint == src && mCachedSrcColor == src.getColor() && mCachedDarkenPaint != null ) return;
+    mCachedDarkenPaint = makeAreaOverlapDarkenPaint( src );
+    mCachedFillPaint   = makeAreaFillPaint( src );
+    mCachedSrcPaint    = src;
+    mCachedSrcColor    = src.getColor();
+  }
+
   @Override
   void drawPath( Path path, Canvas canvas )
   {
@@ -378,8 +397,9 @@ public class DrawingAreaPath extends DrawingPointLinePath
       canvas.save();
       canvas.clipPath( path );
       if ( TDSetting.mAreaOverlapDarken ) {
-        canvas.drawPaint( makeAreaOverlapDarkenPaint( mPaint ) );
-        canvas.drawPaint( makeAreaFillPaint( mPaint ) );
+        rebuildDarkenPaintsIfNeeded( mPaint );
+        canvas.drawPaint( mCachedDarkenPaint );
+        canvas.drawPaint( mCachedFillPaint );
       } else {
         canvas.drawPaint( mPaint );
       }

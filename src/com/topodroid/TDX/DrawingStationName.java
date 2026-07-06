@@ -248,6 +248,36 @@ public class DrawingStationName extends DrawingPointPath
     }
   }
 
+  /** draw the station on the screen, using a caller-owned scratch path
+   * @param canvas   canvas
+   * @param matrix   transform matrix
+   * @param bbox     clipping box
+   * @param scratch  caller-owned scratch path, confined to the caller's stack
+   * @note allocation-free variant of draw(Canvas,Matrix,RectF) for the per-frame hot path
+   */
+  @Override
+  public void draw( Canvas canvas, Matrix matrix, RectF bbox, Path scratch )
+  {
+    if ( intersects( bbox ) ) {
+      if ( mName != null && mPaint != null ) {
+        Paint paint = mPaint;
+        if ( mHighlight ) {
+          paint = new Paint( mPaint );
+          paint.setColor( 0xffffffff );
+        }
+        mPath.transform( matrix, scratch );
+        canvas.drawTextOnPath( mName, scratch, 0f, 0f, paint );
+      }
+      if ( mXSectionType != PlotType.PLOT_NULL ) {
+        scratch.rewind();
+        scratch.moveTo( cx, cy );
+        scratch.lineTo( cx+mDX*TDSetting.mArrowLength, cy+mDY*TDSetting.mArrowLength );
+        scratch.transform( matrix );
+        canvas.drawPath( scratch, BrushManager.mSectionPaint );
+      }
+    }
+  }
+
   /** draw the station on the screen
    * @param canvas    canvas
    * @param matrix    transform matrix

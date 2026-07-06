@@ -627,11 +627,30 @@ public class DrawingPath extends RectF
    */
   public void draw( Canvas canvas, Matrix matrix, RectF bbox )
   {
-    if ( intersects( bbox ) ) 
+    if ( intersects( bbox ) )
     {
       mTransformedPath = new Path( mPath );
       mTransformedPath.transform( matrix );
       drawPath( mTransformedPath, canvas );
+    }
+  }
+
+  /** draw the path on a canvas, transforming into a caller-owned scratch path
+   * @param canvas   canvas - N.B. canvas is guaranteed not null
+   * @param matrix   transform matrix
+   * @param bbox     clipping rectangle
+   * @param scratch  caller-owned scratch path, confined to the caller's stack
+   *                 (never an instance/static field: executeAll can run
+   *                 concurrently on the render thread and on export threads)
+   * @note allocation-free variant of draw(Canvas,Matrix,RectF) for the
+   *       per-frame hot paths (legs, splays, grid stacks, stations)
+   */
+  public void draw( Canvas canvas, Matrix matrix, RectF bbox, Path scratch )
+  {
+    if ( intersects( bbox ) )
+    {
+      mPath.transform( matrix, scratch );
+      drawPath( scratch, canvas );
     }
   }
 
