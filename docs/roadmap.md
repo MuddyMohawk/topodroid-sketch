@@ -54,6 +54,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - If you don't give TopoDroid all the perms it can get into a bugged state where it immediately closes upon opening the app. Vanilla bug.
 
 ## Future possible features / brainstorming
+- GPU acceleration
 - export separate layers (point, line, area). Or consider giving different things a layer tag (walls, structure, details) and export those
 - toolbar/toolset/palette UI/UX overhaul
 - snap mode affects rotation?
