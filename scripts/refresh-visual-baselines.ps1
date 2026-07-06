@@ -21,7 +21,7 @@ $AppPackage = "com.topodroid.TDX.sketch"
 $TestPackage = "com.topodroid.TDX.sketch.test"
 $Runner = "androidx.test.runner.AndroidJUnitRunner"
 $Instrumentation = "$TestPackage/$Runner"
-$FullClass = "com.topodroid.TDX.VisualGoldenInstrumentedTest"
+$FullClass = "com.topodroid.TDX.VisualGoldenInstrumentedTest,com.topodroid.TDX.ImportedSketchVisualInstrumentedTest"
 
 function Get-SdkPath {
   if ($env:ANDROID_SDK_ROOT) { return Convert-SdkPath $env:ANDROID_SDK_ROOT }

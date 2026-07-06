@@ -4,6 +4,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 
 ## TODO
 - rename/display the symbol pack name?
+- new test/demo survey with actual survey lines
 - toolbar defaults
   - additional toolbars should fill with something else? 
 - the fiddlyness of tweaking the line previews suggests it needs a deeper refactor to mirror the sketch canvas instead of madness

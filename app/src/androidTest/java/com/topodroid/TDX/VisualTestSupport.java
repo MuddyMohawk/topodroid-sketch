@@ -1710,6 +1710,30 @@ selection.mHotItem.getHandleRole() );
     return targetFile;
   }
 
+  File copyAssetToDownloads( String assetName, String targetFilename ) throws Exception
+  {
+    File targetFile = getDownloadFile( targetFilename );
+    ensureParentDir( targetFile );
+    InputStream input = mTestContext.getAssets().open( assetName );
+    try {
+      OutputStream output = new FileOutputStream( targetFile );
+      try {
+        copyStream( input, output );
+      } finally {
+        output.close();
+      }
+    } finally {
+      input.close();
+    }
+    assertTrue( "Failed to copy import fixture to Downloads: " + targetFile.getAbsolutePath(), targetFile.exists() );
+    // Make freshly copied imports show up in DocumentsUI immediately instead
+    // of relying on the downloads provider to infer metadata lazily.
+    //noinspection ResultOfMethodCallIgnored
+    targetFile.setLastModified( System.currentTimeMillis() );
+    scanFileForDocumentsUi( targetFile, getMimeTypeForPicker( targetFile ) );
+    return targetFile;
+  }
+
   private String getMimeTypeForPicker( File file )
   {
     String name = file.getName().toLowerCase( Locale.US );
@@ -1759,13 +1783,23 @@ selection.mHotItem.getHandleRole() );
 
   void assertPngFileMatchesGolden( File actualFile, String assetName ) throws Exception
   {
+    assertPngFileMatchesGolden( actualFile, assetName, PNG_MAX_DIFF_RATIO );
+  }
+
+  void assertPngFileMatchesGolden( File actualFile, String assetName, double maxDiffRatio ) throws Exception
+  {
+    assertPngFileMatchesGolden( actualFile, assetName, maxDiffRatio, 1 );
+  }
+
+  void assertPngFileMatchesGolden( File actualFile, String assetName, double maxDiffRatio, int sampleSize ) throws Exception
+  {
     File artifactCopy = new File( getCaseArtifactsDir(), assetName );
     copyFile( actualFile, artifactCopy );
     if ( mRecordMode ) {
       copyFile( actualFile, getRecordedGoldenFile( assetName ) );
       return;
     }
-    compareBitmapFileToGolden( actualFile, assetName, PNG_MAX_DIFF_RATIO, PNG_MAX_CHANNEL_DELTA );
+    compareBitmapFileToGolden( actualFile, assetName, maxDiffRatio, PNG_MAX_CHANNEL_DELTA, sampleSize );
   }
 
   void assertBitmapContainsColor( File actualFile, int expectedColor, int tolerance, int minCount )
@@ -2204,9 +2238,16 @@ selection.mHotItem.getHandleRole() );
 
   private void compareBitmapFileToGolden( File actualFile, String assetName, double maxDiffRatio, int maxChannelDelta ) throws Exception
   {
-    Bitmap actual = BitmapFactory.decodeFile( actualFile.getAbsolutePath() );
+    compareBitmapFileToGolden( actualFile, assetName, maxDiffRatio, maxChannelDelta, 1 );
+  }
+
+  private void compareBitmapFileToGolden( File actualFile, String assetName,
+    double maxDiffRatio, int maxChannelDelta, int sampleSize ) throws Exception
+  {
+    int effectiveSampleSize = Math.max( 1, sampleSize );
+    Bitmap actual = decodeBitmapFile( actualFile, effectiveSampleSize );
     assertNotNull( "Unable to decode bitmap " + actualFile.getAbsolutePath(), actual );
-    Bitmap expected = BitmapFactory.decodeStream( mTestContext.getAssets().open( getGoldenAssetPath( assetName ) ) );
+    Bitmap expected = decodeGoldenBitmap( assetName, effectiveSampleSize );
     assertNotNull( "Unable to decode golden bitmap " + assetName, expected );
 
     boolean sameSize = expected.getWidth() == actual.getWidth() && expected.getHeight() == actual.getHeight();
@@ -2226,7 +2267,29 @@ selection.mHotItem.getHandleRole() );
         + " expected=" + expectedCopy.getAbsolutePath()
         + " actual=" + actualFile.getAbsolutePath()
         + (sameSize ? " diff=" + diffCopy.getAbsolutePath() + " diffRatio=" + diffRatio : " (size mismatch)")
+        + (effectiveSampleSize > 1 ? " sampleSize=" + effectiveSampleSize : "")
     );
+  }
+
+  private Bitmap decodeBitmapFile( File file, int sampleSize )
+  {
+    if ( sampleSize <= 1 ) return BitmapFactory.decodeFile( file.getAbsolutePath() );
+    BitmapFactory.Options options = new BitmapFactory.Options();
+    options.inSampleSize = sampleSize;
+    return BitmapFactory.decodeFile( file.getAbsolutePath(), options );
+  }
+
+  private Bitmap decodeGoldenBitmap( String assetName, int sampleSize ) throws Exception
+  {
+    InputStream input = mTestContext.getAssets().open( getGoldenAssetPath( assetName ) );
+    try {
+      if ( sampleSize <= 1 ) return BitmapFactory.decodeStream( input );
+      BitmapFactory.Options options = new BitmapFactory.Options();
+      options.inSampleSize = sampleSize;
+      return BitmapFactory.decodeStream( input, null, options );
+    } finally {
+      input.close();
+    }
   }
 
   private double bitmapDifferenceRatio( Bitmap expected, Bitmap actual, int maxChannelDelta )

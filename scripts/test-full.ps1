@@ -34,6 +34,13 @@ $FullTests = @(
     IdleTimeout = 300
   },
   @{
+    Name = "Imported demo sketch visual fidelity"
+    Class = "com.topodroid.TDX.ImportedSketchVisualInstrumentedTest#importDemoSketch_liveScreenAndPngExport_matchGoldens"
+    Estimate = 300
+    Timeout = 600
+    IdleTimeout = 300
+  },
+  @{
     Name = "Visual PNG export"
     Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#exportPng_matchesGolden"
     Estimate = 180
