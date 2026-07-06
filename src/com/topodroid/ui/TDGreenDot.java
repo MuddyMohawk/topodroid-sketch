@@ -114,6 +114,37 @@ public class TDGreenDot
     drawMapped( canvas, matrix, x, y, dot_radius, BrushManager.highlightPaint2, scratch );
   }
 
+  /** draw a selection point as a green dot on a canvas already carrying the
+   *  scene-to-screen transform (canvas.concat), allocation-free, culled
+   * @param canvas     canvas with the scene transform concatenated
+   * @param pt         selection point
+   * @param bbox       scene clipping rectangle (null = no culling)
+   * @param dot_radius circle radius [scene units]
+   * @param scratch    caller-owned scratch path - must not be shared between threads
+   * @note skips the per-dot path.transform: Skia maps the same conic control
+   *       points through the same matrix at scan conversion, producing the
+   *       same device-space outline (verified byte-identical by the
+   *       render-hash gate)
+   */
+  public static void drawScene( Canvas canvas, SelectionPoint pt, RectF bbox, float dot_radius, Path scratch )
+  {
+    float x, y;
+    if ( pt.mPoint != null ) { // line-point
+      x = pt.mPoint.x;
+      y = pt.mPoint.y;
+    } else {
+      x = pt.mItem.cx;
+      y = pt.mItem.cy;
+    }
+    float margin = 2 * dot_radius;
+    if ( bbox != null
+      && ( x < bbox.left - margin || x > bbox.right  + margin
+        || y < bbox.top  - margin || y > bbox.bottom + margin ) ) return;
+    scratch.rewind();
+    scratch.addCircle( x, y, dot_radius, Path.Direction.CCW );
+    canvas.drawPath( scratch, BrushManager.highlightPaint2 );
+  }
+
   // /** draw a point, as a dot with the given paint
   //  * @param canvas     canvas
   //  * @param x          X coordinate

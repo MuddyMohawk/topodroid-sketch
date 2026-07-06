@@ -993,6 +993,17 @@ final class VisualTestSupport
   String captureRenderHash( String variant, float offsetX, float offsetY, float zoom, boolean landscape,
                             boolean displayPoints, boolean gridVisible, int splayMode ) throws Exception
   {
+    return captureRenderHash( variant, offsetX, offsetY, zoom, landscape, displayPoints, gridVisible, splayMode, false );
+  }
+
+  /** @param mipCache whether the reference-image downscale cache is active during the
+   *                  capture. Hash-compared variants pass false (the cache is deliberately
+   *                  not byte-identical when the image is minified); review captures pass
+   *                  true to produce side-by-side material.
+   */
+  String captureRenderHash( String variant, float offsetX, float offsetY, float zoom, boolean landscape,
+                            boolean displayPoints, boolean gridVisible, int splayMode, boolean mipCache ) throws Exception
+  {
     waitForDrawingWindow();
     final Bitmap bitmap = Bitmap.createBitmap( RENDER_HASH_WIDTH, RENDER_HASH_HEIGHT, Bitmap.Config.ARGB_8888 );
     final boolean[] ok = new boolean[1];
@@ -1005,10 +1016,12 @@ final class VisualTestSupport
       DrawingSurface surface = requireCurrentDrawingSurface( window );
       int savedMode      = DrawingCommandManager.getDisplayMode();
       int savedSplayMode = DrawingSplayPath.mSplayMode;
+      boolean savedMip   = DrawingReferencePath.sMipCacheEnabled;
       try {
         int mode = gridVisible ? ( savedMode | DisplayMode.DISPLAY_GRID ) : ( savedMode & ~DisplayMode.DISPLAY_GRID );
         DrawingCommandManager.setDisplayMode( mode );
         DrawingSplayPath.mSplayMode = splayMode;
+        DrawingReferencePath.sMipCacheEnabled = mipCache;
         surface.setDisplayPoints( displayPoints );
         setPrivateField( window, "mZoom", zoom );
         PointF offset = (PointF)getPrivateField( window, "mOffset" );
@@ -1016,12 +1029,18 @@ final class VisualTestSupport
         offset.x = offsetX;
         offset.y = offsetY;
         surface.setTransform( window, offsetX, offsetY, zoom, landscape );
+        if ( mipCache ) {
+          // first draw kicks the async mip build; wait for it, then capture
+          surface.drawCanvas( new Canvas( bitmap ) );
+          SystemClock.sleep( 800 );
+        }
         ok[0] = surface.drawCanvas( new Canvas( bitmap ) );
       } catch ( Exception e ) {
         throw new RuntimeException( e );
       } finally {
         DrawingCommandManager.setDisplayMode( savedMode );
         DrawingSplayPath.mSplayMode = savedSplayMode;
+        DrawingReferencePath.sMipCacheEnabled = savedMip;
         surface.setDisplayPoints( false );
       }
     } );
@@ -1044,6 +1063,13 @@ final class VisualTestSupport
   void writeRenderHashReport( List< String > lines ) throws Exception
   {
     writeLinesReport( "render_hashes.txt", lines );
+  }
+
+  /** write the mip-cache review hashes to a separate file so the main
+   *  render_hashes.txt stays byte-comparable across builds */
+  void writeRenderMipReport( List< String > lines ) throws Exception
+  {
+    writeLinesReport( "render_hashes_mip.txt", lines );
   }
 
   /** write the render-perf timing report to the case artifacts dir */
@@ -1076,7 +1102,7 @@ final class VisualTestSupport
    * @note the live render loop is paused during the measurement
    */
   long[] timeOffscreenRenders( String variant, float offsetX, float offsetY, float zoom,
-                               boolean displayPoints, int warmup, int frames ) throws Exception
+                               boolean displayPoints, int warmup, int frames, boolean mipCache ) throws Exception
   {
     waitForDrawingWindow();
     final Bitmap bitmap = Bitmap.createBitmap( RENDER_HASH_WIDTH, RENDER_HASH_HEIGHT, Bitmap.Config.ARGB_8888 );
@@ -1086,10 +1112,12 @@ final class VisualTestSupport
       requireCurrentDrawingSurface( requireCurrentDrawingWindow() ).setDrawing( false )
     );
     SystemClock.sleep( 250 );
+    final boolean savedMip = DrawingReferencePath.sMipCacheEnabled;
     runOnMainChecked( "time renders " + variant, () -> {
       DrawingWindow window = requireCurrentDrawingWindow();
       DrawingSurface surface = requireCurrentDrawingSurface( window );
       try {
+        DrawingReferencePath.sMipCacheEnabled = mipCache;
         surface.setDisplayPoints( displayPoints );
         setPrivateField( window, "mZoom", zoom );
         PointF offset = (PointF)getPrivateField( window, "mOffset" );
@@ -1098,6 +1126,10 @@ final class VisualTestSupport
         surface.setTransform( window, offsetX, offsetY, zoom, false );
         Canvas canvas = new Canvas( bitmap );
         for ( int k = 0; k < warmup; ++k ) ok[0] = ok[0] && surface.drawCanvas( canvas );
+        // let the async reference-image mip build finish so the timed frames
+        // measure the steady-state (production) render path
+        SystemClock.sleep( 800 );
+        for ( int k = 0; k < 3; ++k ) ok[0] = ok[0] && surface.drawCanvas( canvas );
         for ( int k = 0; k < ns.length; ++k ) {
           long t0 = System.nanoTime();
           ok[0] = ok[0] && surface.drawCanvas( canvas );
@@ -1106,6 +1138,7 @@ final class VisualTestSupport
       } catch ( Exception e ) {
         throw new RuntimeException( e );
       } finally {
+        DrawingReferencePath.sMipCacheEnabled = savedMip;
         surface.setDisplayPoints( false );
       }
     } );

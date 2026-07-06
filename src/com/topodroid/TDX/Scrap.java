@@ -3363,6 +3363,9 @@ public class Scrap
                       /* , DrawingStationSplay station_splay */ )
   {
     Path scratch = new Path(); // dot scratch path, confined to this call
+    int save = canvas.save();
+    canvas.concat( matrix ); // one canvas transform for all dots instead of one path transform per dot
+    try {
     if ( TDSetting.mWithLevels == 0 ) { // treat no-levels case by itself
       for ( SelectionBucket bucket: mSelection.mBuckets ) {
         if ( bucket.intersects( bbox ) && bucket.mPoints != null ) { // SAFETY CHECK
@@ -3393,7 +3396,7 @@ public class Scrap
             //     if ( ! station_splay.isStationON( pt.mItem ) ) continue;
             //   }
             // } 
-            TDGreenDot.drawMapped( canvas, matrix, pt, bbox, dot_radius, scratch );
+            TDGreenDot.drawScene( canvas, pt, bbox, dot_radius, scratch );
           }
         }
       }
@@ -3412,7 +3415,7 @@ public class Scrap
               } else if ( ! DrawingPath.isDrawingType( type ) ) { // FIXME-HIDE should not happen
                 continue;
               } 
-              TDGreenDot.drawMapped( canvas, matrix, pt, bbox, dot_radius, scratch );
+              TDGreenDot.drawScene( canvas, pt, bbox, dot_radius, scratch );
             } else {
               int type = pt.type();
               if ( type == DrawingPath.DRAWING_PATH_POINT ) {
@@ -3440,11 +3443,14 @@ public class Scrap
               //     if ( ! station_splay.isStationON( pt.mItem ) ) continue;
               //   }
               // } 
-              TDGreenDot.drawMapped( canvas, matrix, pt, bbox, dot_radius, scratch );
+              TDGreenDot.drawScene( canvas, pt, bbox, dot_radius, scratch );
             }
           }
         }
       }
+    }
+    } finally {
+      canvas.restoreToCount( save );
     }
   }
 

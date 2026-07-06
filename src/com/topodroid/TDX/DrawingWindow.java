@@ -5260,7 +5260,10 @@ public class DrawingWindow extends ItemDrawer
    */
   public boolean onTouch( View view, MotionEvent rawEvent )
   {
-    mDrawingSurface.requestRender(); // every touch sample may change the scene (draw, pan, zoom, erase, edit)
+    // every touch sample may change the scene; the short burst keeps frames
+    // pacing steadily through the gesture instead of stuttering between
+    // dirty-driven renders and idle waits
+    mDrawingSurface.requestRenderBurst( DrawingSurface.GESTURE_BURST_MS );
     dismissPopups();
     checkZoomBtnsCtrl();
 

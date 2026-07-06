@@ -77,8 +77,9 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   private final java.util.concurrent.atomic.AtomicBoolean mDirty = new java.util.concurrent.atomic.AtomicBoolean( true );
   private volatile long mLastFrameMs = 0;                     // last rendered frame [ms epoch]
   private volatile long mBurstUntilMs = 0;                    // full-rate rendering until [ms epoch]
-  private static final long RENDER_HEARTBEAT_MS = 500;        // failsafe frame period when idle
-  private static final long RENDER_BURST_MS     = 750;        // burst duration on resume/focus
+  private static final long RENDER_HEARTBEAT_MS = 5000;       // failsafe frame period when idle (field-tuned on Tab Active 3)
+  private static final long RENDER_BURST_MS     = 7500;       // burst duration on resume/focus (field-tuned on Tab Active 3)
+  static final long GESTURE_BURST_MS            = 400;        // burst per touch event: steady frame pacing through gestures
 
   private DrawingPath mPreviewPath;
   // private SurfaceHolder mHolder; // canvas holder
@@ -702,7 +703,19 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
    */
   public void requestRenderBurst()
   {
-    mBurstUntilMs = System.currentTimeMillis() + RENDER_BURST_MS;
+    requestRenderBurst( RENDER_BURST_MS );
+  }
+
+  /** request full-rate rendering for the given duration
+   * @param ms   burst duration [ms]
+   * @note during a burst frames render back-to-back at a steady cadence -
+   *       used per touch event so gestures pace regularly instead of the
+   *       jittery render/idle alternation of pure dirty-driven frames
+   */
+  public void requestRenderBurst( long ms )
+  {
+    long until = System.currentTimeMillis() + ms;
+    if ( until > mBurstUntilMs ) mBurstUntilMs = until;
     mDirty.set( true );
   }
 

@@ -2324,6 +2324,9 @@ public class DrawingCommandManager
                       boolean splays, boolean legs_sshots, boolean sstations, DrawingStationSplay station_splay )
   {
     Path scratch = new Path(); // dot scratch path, confined to this call
+    int save = canvas.save();
+    canvas.concat( matrix ); // one canvas transform for all dots instead of one path transform per dot
+    try {
     if ( TDSetting.mWithLevels == 0 ) { // treat no-levels case by itself
       for ( SelectionBucket bucket: mSelectionFixed.mBuckets ) {
         if ( bucket.intersects( bbox ) ) {
@@ -2348,7 +2351,7 @@ public class DrawingCommandManager
               // TDLog.v("Hide: drawing type in selection fixed" );
               continue;
             }
-            TDGreenDot.drawMapped( canvas, matrix, pt, bbox, dot_radius, scratch );
+            TDGreenDot.drawScene( canvas, pt, bbox, dot_radius, scratch );
           }
         }
       }
@@ -2376,10 +2379,13 @@ public class DrawingCommandManager
               // TDLog.v("Hide: drawing type in selection fixed" );
               continue;
             }
-            TDGreenDot.drawMapped( canvas, matrix, pt, bbox, dot_radius, scratch );
+            TDGreenDot.drawScene( canvas, pt, bbox, dot_radius, scratch );
           }
         }
       }
+    }
+    } finally {
+      canvas.restoreToCount( save );
     }
   }
 

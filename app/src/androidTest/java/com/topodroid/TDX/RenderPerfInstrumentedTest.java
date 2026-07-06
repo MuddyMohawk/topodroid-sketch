@@ -76,17 +76,30 @@ public class RenderPerfInstrumentedTest
     mSupport.setCanonicalToolbarState();
 
     float[] view = mSupport.currentPlotViewForRenderHash();
+    float zout = view[2] * 0.05f; // deep zoom-out: the source image is minified past the mip threshold
 
     List< String > report = new ArrayList<>();
-    report.add( timeVariant( "normal",   view, false ) );
-    report.add( timeVariant( "editmode", view, true ) );
+    report.add( timeVariant( "normal",        view[0], view[1], view[2], false, true ) );
+    report.add( timeVariant( "editmode",      view[0], view[1], view[2], true,  true ) );
+    report.add( timeVariant( "zoomout_nomip", view[0], view[1], zout,    false, false ) );
+    report.add( timeVariant( "zoomout_mip",   view[0], view[1], zout,    false, true ) );
+
+    // the fixture stores its reference image hidden: force it visible for
+    // the image-cost variants (the users' problem case)
+    mSupport.transformFirstReference( 1.0f, 0.0, 0.6f, true, 0f, 0f );
+    report.add( timeVariant( "img_base",        view[0], view[1], view[2], false, true ) );
+    report.add( timeVariant( "img_edit",        view[0], view[1], view[2], true,  true ) );
+    report.add( timeVariant( "img_zout_nomip",  view[0], view[1], zout,    false, false ) );
+    report.add( timeVariant( "img_zout_mip",    view[0], view[1], zout,    false, true ) );
+    mSupport.transformFirstReference( 1.0f, 0.0, 0.6f, false, 0f, 0f );
+
     mSupport.writeRenderPerfReport( report );
     for ( String line : report ) mSupport.reportStep( "RENDER_PERF " + line );
   }
 
-  private String timeVariant( String variant, float[] view, boolean displayPoints ) throws Exception
+  private String timeVariant( String variant, float ox, float oy, float zoom, boolean displayPoints, boolean mipCache ) throws Exception
   {
-    long[] ns = mSupport.timeOffscreenRenders( variant, view[0], view[1], view[2], displayPoints, WARMUP, FRAMES );
+    long[] ns = mSupport.timeOffscreenRenders( variant, ox, oy, zoom, displayPoints, WARMUP, FRAMES, mipCache );
     long[] sorted = ns.clone();
     Arrays.sort( sorted );
     long sum = 0;

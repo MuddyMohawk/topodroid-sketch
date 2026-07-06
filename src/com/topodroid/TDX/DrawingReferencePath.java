@@ -28,11 +28,34 @@ class DrawingReferencePath extends DrawingPointPath
 {
   private static final int MAX_BITMAP_DIM = 4096;
 
+  // MIP CACHE: when the source bitmap would be minified 2x or more on screen,
+  // the per-frame filtered blit reads 4x+ the pixels it produces - on the
+  // software canvas this dominates the whole frame. A background-built
+  // half-scaled chain level is drawn instead, chosen so the residual
+  // on-screen minification stays in [1,2) - the mip is never magnified, so
+  // sharpness is preserved (a one-time high-quality downscale typically looks
+  // better than per-frame bilinear 4-8x minification, but it is not
+  // byte-identical: sMipCacheEnabled lets tests and users fall back).
+  static volatile boolean sMipCacheEnabled = true;
+  private static final java.util.concurrent.ExecutorService sMipBuilder =
+    java.util.concurrent.Executors.newSingleThreadExecutor( r -> {
+      Thread t = new Thread( r, "ref-mip" );
+      t.setDaemon( true );
+      return t;
+    } );
+
   private final Matrix mImageMatrix = new Matrix();
   private final Paint mBitmapPaint = new Paint( Paint.FILTER_BITMAP_FLAG | Paint.DITHER_FLAG );
   private final PointF[] mCorners = new PointF[] { new PointF(), new PointF(), new PointF(), new PointF() };
+  private final float[] mMatrixValues = new float[9];
   private Bitmap mBitmap = null;
   private String mBitmapSource = null;
+
+  private final Object mMipLock = new Object();
+  private Bitmap mMip = null;        // downscaled copy of mBitmap (guarded by mMipLock)
+  private int    mMipLevel = 0;      // half-scalings applied to the source
+  private String mMipSource = null;  // source the mip was built from
+  private volatile boolean mMipBuilding = false;
 
   DrawingReferencePath( int type, float x, float y, int scale, int scrap )
   {
@@ -228,15 +251,83 @@ class DrawingReferencePath extends DrawingPointPath
     float height = getSceneHeight();
     if ( width <= 0.0f || height <= 0.0f ) return;
 
+    Bitmap drawn = bitmap;
+    if ( sMipCacheEnabled ) {
+      matrix.getValues( mMatrixValues );
+      // uniform view scale, robust to the landscape -90 rotation
+      float view_scale = (float)Math.hypot( mMatrixValues[0], mMatrixValues[3] );
+      float sx = ( width  / bitmap.getWidth()  ) * view_scale; // screen px per source px
+      float sy = ( height / bitmap.getHeight() ) * view_scale;
+      float px_per_src_px = Math.max( sx, sy ); // least-minified axis decides (conservative)
+      if ( px_per_src_px > 0 ) {
+        int level = 0;
+        float m = 1.0f / px_per_src_px; // source minification factor
+        while ( m >= 2.0f && level < 8 ) { m *= 0.5f; ++level; }
+        drawn = mipForLevel( bitmap, level );
+      }
+    }
+    if ( drawn.isRecycled() ) return; // source swapped concurrently: skip this frame
+
     mImageMatrix.reset();
-    mImageMatrix.postScale( width / bitmap.getWidth(), height / bitmap.getHeight() );
+    mImageMatrix.postScale( width / drawn.getWidth(), height / drawn.getHeight() );
     mImageMatrix.postTranslate( - width / 2.0f, - height / 2.0f );
     mImageMatrix.postRotate( (float)mOrientation );
     mImageMatrix.postTranslate( cx, cy );
     mImageMatrix.postConcat( matrix );
 
     mBitmapPaint.setAlpha( Math.round( 255.0f * getAlpha() ) );
-    canvas.drawBitmap( bitmap, mImageMatrix, mBitmapPaint );
+    canvas.drawBitmap( drawn, mImageMatrix, mBitmapPaint );
+  }
+
+  /** @return the cached downscaled bitmap for the level if ready, else the source (kicking a background build)
+   * @param source  full-resolution source bitmap
+   * @param level   number of half-scalings wanted (0 = source)
+   */
+  private Bitmap mipForLevel( Bitmap source, int level )
+  {
+    if ( level <= 0 ) return source;
+    synchronized ( mMipLock ) {
+      if ( mMip != null && ! mMip.isRecycled() && mMipLevel == level
+        && mMipSource != null && mMipSource.equals( mBitmapSource ) ) return mMip;
+    }
+    if ( ! mMipBuilding ) {
+      mMipBuilding = true;
+      final String src_name = mBitmapSource;
+      final int wanted = level;
+      sMipBuilder.execute( () -> buildMip( src_name, wanted ) );
+    }
+    return source; // full-res until the mip is ready: never a blank frame
+  }
+
+  /** background build of the downscaled bitmap by iterative high-quality half-scaling */
+  private void buildMip( String src_name, int level )
+  {
+    try {
+      Bitmap cur = mBitmap;
+      if ( cur == null || cur.isRecycled() || src_name == null || ! src_name.equals( mBitmapSource ) ) return;
+      Bitmap scaled = cur;
+      for ( int k = 0; k < level; ++k ) {
+        int w = Math.max( 1, scaled.getWidth() / 2 );
+        int h = Math.max( 1, scaled.getHeight() / 2 );
+        Bitmap next = Bitmap.createScaledBitmap( scaled, w, h, true );
+        if ( scaled != cur ) scaled.recycle(); // intermediate levels are private to this thread
+        scaled = next;
+      }
+      if ( scaled == cur ) return;
+      synchronized ( mMipLock ) {
+        // the previous mip is dropped, not recycled: the render thread may
+        // still be drawing it this frame - the GC reclaims it safely
+        mMip = scaled;
+        mMipLevel = level;
+        mMipSource = src_name;
+      }
+    } catch ( OutOfMemoryError e ) {
+      TDLog.e( "reference mip oom " + e.getMessage() );
+    } catch ( RuntimeException e ) {
+      TDLog.e( "reference mip failed " + e.getMessage() ); // e.g. source recycled mid-scale
+    } finally {
+      mMipBuilding = false;
+    }
   }
 
   void applyHandleDrag( SelectionPoint handle, float dx, float dy )
@@ -380,6 +471,12 @@ class DrawingReferencePath extends DrawingPointPath
     if ( mBitmap != null && ! mBitmap.isRecycled() ) mBitmap.recycle();
     mBitmap = null;
     mBitmapSource = null;
+    synchronized ( mMipLock ) {
+      // dropped, not recycled: a concurrent frame may still be drawing it
+      mMip = null;
+      mMipSource = null;
+      mMipLevel = 0;
+    }
   }
 
   private PointF mapPoint( float[] mm, float x, float y )
