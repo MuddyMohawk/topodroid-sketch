@@ -3338,7 +3338,7 @@ public class DrawingWindow extends ItemDrawer
 
   private void requestSketchPresetSelection( int preset )
   {
-    mDrawingSurface.requestRender(); // preset may restyle the selected item live
+    mDrawingSurface.requestSceneRender(); // preset may restyle the selected item live
     int normalized = TDSetting.normalizeSketchPreset( preset );
     int active = TDSetting.getActiveSketchPreset();
     if ( hasPendingSketchStroke() ) {
@@ -3417,7 +3417,7 @@ public class DrawingWindow extends ItemDrawer
 
   private void requestSketchStyleSelection( int style )
   {
-    mDrawingSurface.requestRender(); // style may restyle the selected item live
+    mDrawingSurface.requestSceneRender(); // style may restyle the selected item live
     int normalized = TDSetting.normalizeSketchStyle( style );
     int active = TDSetting.getActiveSketchStyle();
     if ( hasPendingSketchStroke() ) {
@@ -3486,6 +3486,7 @@ public class DrawingWindow extends ItemDrawer
       if ( landscape ) angle = TDMath.in360( angle + 90.0f );
       point.setOrientation( angle );
     }
+    mDrawingSurface.requestRender(); // the point is a live overlay during the drag: a frame is enough
   }
 
   // ------------------------------------- PUSH / POP INFO --------------------------------
@@ -5691,6 +5692,7 @@ public class DrawingWindow extends ItemDrawer
         else
         { // SymbolType.POINT
           // mLastLinePath = null;
+          if ( mDrawingSurface.commitLiveItem() ) modified(); // drag-placed point: bake it into the scene now
           if ( (! mPointerDown) && (!HBXP_PointDown)) { // HBXP
             float radius = ( ( BrushManager.isPointOrientable( mCurrentPoint ) )? 6 : 2 ) * TDSetting.mPointingRadius;
 	    float shift = Math.abs( x_shift ) + Math.abs( y_shift );
@@ -5849,6 +5851,7 @@ public class DrawingWindow extends ItemDrawer
   private boolean onTouchDown( float xc, float yc, float xs, float ys )
   {
     HBXP_PointDown = false; // HBXP
+    if ( mDrawingSurface.commitLiveItem() ) modified(); // safety: commit any stray live point (e.g. cancelled gesture)
     mDrawingSurface.endEraser();
     float d0 = TDSetting.mCloseCutoff + mSelectSize / mZoom;
     // TDLog.v( "on touch down. mode " + mMode + " " + mTouchMode );
@@ -6041,10 +6044,11 @@ public class DrawingWindow extends ItemDrawer
                 } else {
                   if ( mLandscape ) {
                     DrawingPointPath point = new DrawingPointPath( mCurrentPoint, -ys, xs, mPointScale, mDrawingSurface.scrapIndex() );
+                    point.mLandscape = true; // live overlay draws before the scene stamps this flag
                     applySketchBrushStyle( point );
                     updatePointFromPlacementDrag( point, x_shift, y_shift, true );
                     if ( !HBXP_PointDown ){ // HBXP To put it down just once
-                      mDrawingSurface.addDrawingPath( point );
+                      mDrawingSurface.setLiveItem( point ); // live overlay: committed to the scene on stylus-up
                       HBXP_PointDown = true;
                       mHotPath = point;
                     } else {
@@ -6058,7 +6062,7 @@ public class DrawingWindow extends ItemDrawer
                     applySketchBrushStyle( point );
                     updatePointFromPlacementDrag( point, x_shift, y_shift, false );
                     if ( !HBXP_PointDown ){
-                      mDrawingSurface.addDrawingPath( point );
+                      mDrawingSurface.setLiveItem( point ); // live overlay: committed to the scene on stylus-up
                       HBXP_PointDown = true;
                       mHotPath = point;
                     } else {
@@ -7283,6 +7287,7 @@ public class DrawingWindow extends ItemDrawer
         // TDLog.v("set mode from " + mMode + " to " + mode + " (skip)");
         return;
       }
+      if ( mDrawingSurface.commitLiveItem() ) modified(); // never strand a live point across a mode switch
 
       if ( mMode == MODE_DRAW ) {  // this has annoying glitches 
         mZoomView.setTranslationY( 0 );
@@ -8060,7 +8065,7 @@ public class DrawingWindow extends ItemDrawer
   @Override
   public boolean onLongClick( View view )
   {
-    mDrawingSurface.requestRender(); // button actions may mutate the scene
+    mDrawingSurface.requestSceneRenderPosted(); // button actions may mutate the scene: invalidate before and after the handler
     Button b = (Button)view;
     if ( TDLevel.overAdvanced && BTN_DOWNLOAD < mNrButton1 && b == mButton1[ BTN_DOWNLOAD ] ) {
       if ( mDataDownloader != null ) { // TH2EDIT added this test 
@@ -8204,7 +8209,7 @@ public class DrawingWindow extends ItemDrawer
   @Override
   public void onClick( View view )
   {
-    mDrawingSurface.requestRender(); // button actions may mutate the scene
+    mDrawingSurface.requestSceneRenderPosted(); // button actions may mutate the scene: invalidate before and after the handler
     if ( onMenu ) {
       closeMenu();
       return;
@@ -8908,17 +8913,15 @@ public class DrawingWindow extends ItemDrawer
       return;
     }
 
-    Bitmap bitmap = mDrawingSurface.renderExportBitmap( mType, export_options );
-    if ( bitmap == null ) {
-      TDToast.makeBad( R.string.null_bitmap );
-      return;
-    }
-
+    // free the scene-cache bitmaps and pause its builder while the export
+    // bitmap is rendered and PNG-compressed: exports are the peak-memory path.
+    // The render itself happens inside the async task - big sketches take
+    // seconds and must not freeze the UI on the save tap.
+    mDrawingSurface.suppressSceneCache( 15000 );
     Uri uri = Uri.fromFile( new File( TDPath.getOutFile( filename ) ) );
     try {
-      new ExportPngToFile( mApp, mActivity, uri, bitmap, filename, true ).execute();
+      new ExportPngToFile( mApp, mActivity, uri, mDrawingSurface, mType, export_options, filename, true ).execute();
     } catch ( RejectedExecutionException e ) {
-      bitmap.recycle();
       TDToast.makeBad( R.string.saving_file_failed );
     }
   }
@@ -9891,7 +9894,7 @@ public class DrawingWindow extends ItemDrawer
   @Override
   public void onItemClick(AdapterView<?> parent, View view, int pos, long id)
   {
-    mDrawingSurface.requestRender(); // menu actions may mutate the scene
+    mDrawingSurface.requestSceneRenderPosted(); // menu actions may mutate the scene: invalidate before and after the handler
     if ( mMenu == (ListView)parent ) { // MENU
       handleMenu( pos );
     }

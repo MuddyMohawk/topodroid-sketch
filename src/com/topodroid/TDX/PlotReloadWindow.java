@@ -631,8 +631,19 @@ public class PlotReloadWindow extends ItemDrawer
   }
 
 
+  /** window focus: a regained focus usually means a dialog was dismissed -
+   *  burst-render and invalidate the scene cache
+   */
+  @Override
+  public void onWindowFocusChanged( boolean has_focus )
+  {
+    super.onWindowFocusChanged( has_focus );
+    if ( has_focus && mReloadSurface != null ) mReloadSurface.requestRenderBurst();
+  }
+
   public void onClick(View view)
   {
+    if ( mReloadSurface != null ) mReloadSurface.requestSceneRenderPosted(); // button actions may mutate the scene
     if ( onMenu ) {
       closeMenu();
       return;

@@ -1998,14 +1998,27 @@ public class DrawingCommandManager
    */
   void executeAll( Canvas canvas, float zoom, DrawingStationSplay station_splay, boolean inverted_colors )
   {
+    executeAll( canvas, zoom, station_splay, inverted_colors, mMatrix, mScale, mBBox, true );
+  }
+
+  /** draw the scene with an explicit transform - used by the scene cache to
+   *  render off-screen at a margin-shifted transform without touching the
+   *  live manager state (same concurrency model as the export renders)
+   * @param mm           scene-to-target transform
+   * @param scale        scene units per target pixel (1/zoom of the transform)
+   * @param bbox         scene clipping rectangle for the target
+   * @param screen_decos whether to draw the screen-anchored decorations
+   *                     (side-drag zones, scalebar, eraser): the scene cache
+   *                     excludes them and draws them live over the blit
+   */
+  void executeAll( Canvas canvas, float zoom, DrawingStationSplay station_splay, boolean inverted_colors,
+                   Matrix mm, float scale, RectF bbox, boolean screen_decos )
+  {
     if ( canvas == null ) {
       TDLog.e( "drawing execute all: null canvas");
       return;
     }
 
-    Matrix mm    = mMatrix; // mMatrix = Scale( 1/s, 1/s) * Translate( -Offx, -Offy)  (first translate then scale)
-    float  scale = mScale;
-    RectF  bbox  = mBBox;
     boolean sidebars = true;
     boolean isPDFpage = false; // HBX
     Path scratch = new Path(); // per-invocation scratch for screen-space item draws (legs, splays, grid, stations)
@@ -2066,7 +2079,7 @@ public class DrawingCommandManager
       // TDLog.v("scale " + scale + " bbox " + bbox.left + " " + bbox.top + " " + bbox.right + " " + bbox.bottom + " zoom " + zoom );
     }
 
-    if ( sidebars && TDSetting.mSideDrag ) {
+    if ( sidebars && screen_decos && TDSetting.mSideDrag ) {
       drawSideDrag( canvas );
     }
 
@@ -2148,7 +2161,7 @@ public class DrawingCommandManager
           mNorthLine.draw( canvas, mm, bbox, scratch );
         }
       }
-      if ( scaleRef && (mScaleRef != null)) {
+      if ( scaleRef && (mScaleRef != null) && screen_decos ) {
         float sketch_unit = isFixedZoom()? 1.0f : TDSetting.mUnitGrid;
         if ( inverted_colors ) {
           if ( sidebars ) {
@@ -2314,9 +2327,66 @@ public class DrawingCommandManager
       }
     }
 
-    if ( hasEraser ) {
+    if ( screen_decos && hasEraser ) {
       drawEraser( canvas );
     }
+  }
+
+  // -------------------------------------------------------------------
+  // SCENE CACHE SUPPORT
+
+  /** @return the live view matrix reference (reference-swapped by setTransform, safe to read cross-thread) */
+  Matrix getMatrixRef() { return mMatrix; }
+
+  /** draw the under-content screen decoration (side-drag zones) - blit path */
+  void drawUnderDecos( Canvas canvas )
+  {
+    if ( TDSetting.mSideDrag ) drawSideDrag( canvas );
+  }
+
+  /** draw the over-content screen decorations (scalebar, eraser) - blit path */
+  void drawOverDecos( Canvas canvas, float zoom )
+  {
+    if ( ( (mDisplayMode & DisplayMode.DISPLAY_SCALEBAR) != 0 ) && mScaleRef != null ) {
+      float sketch_unit = isFixedZoom()? 1.0f : TDSetting.mUnitGrid;
+      mScaleRef.draw( canvas, zoom, mLandscape, sketch_unit );
+    }
+    if ( hasEraser ) drawEraser( canvas );
+  }
+
+  /** build the scene-to-cache transform and scene clipping rect for an
+   *  off-screen cache canvas, mirroring setTransform's conventions
+   * @param dx,dy      view offset (DrawingWindow mOffset)
+   * @param s          view zoom
+   * @param landscape  landscape presentation
+   * @param ww,hh      cache canvas size [px]
+   * @param mx,my      cache margins [px]: cache pixel (mx,my) coincides with viewport pixel (0,0)
+   * @param out_matrix receives the transform
+   * @param out_bbox   receives the scene clipping rect
+   */
+  static void buildSceneTransform( float dx, float dy, float s, boolean landscape,
+                                   int ww, int hh, float mx, float my,
+                                   Matrix out_matrix, RectF out_bbox )
+  {
+    float cdx = dx + mx / s; // margin shift happens in the translate stage,
+    float cdy = dy + my / s; // before scaling, for portrait and landscape alike
+    float cscale = 1 / s;
+    out_matrix.reset();
+    if ( landscape ) {
+      out_bbox.left   = - cscale * hh + cdy;   // scene coords
+      out_bbox.right  =   cdy;
+      out_bbox.top    = - cdx;
+      out_bbox.bottom =   cscale * ww - cdx;
+      out_matrix.postRotate( -90, 0, 0 );
+      out_matrix.postTranslate( cdx, cdy );
+    } else {
+      out_bbox.left   = - cdx;                 // scene coords
+      out_bbox.right  =   cscale * ww - cdx;
+      out_bbox.top    = - cdy;
+      out_bbox.bottom =   cscale * hh - cdy;
+      out_matrix.postTranslate( cdx, cdy );
+    }
+    out_matrix.postScale( s, s );
   }
 
   // FIXME-HIDE
