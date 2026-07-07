@@ -1613,12 +1613,13 @@ public class DrawingCommandManager
 
         float padding = BITMAP_PADDING * bitmap_scale;
         float decoration_gap = EXPORT_DECORATION_GAP * bitmap_scale;
-        boolean scalable_label = TDSetting.mScalableLabel;
         try {
-          TDSetting.mScalableLabel = false;
+          // thread-confined: exports render with unscaled labels without
+          // flipping the global setting under concurrent live/cache renders
+          sExportUnscaledLabels.set( Boolean.TRUE );
           drawExportScene( canvas, mm, 1.0f / bitmap_scale, scene_bounds, station_splay, options );
         } finally {
-          TDSetting.mScalableLabel = scalable_label;
+          sExportUnscaledLabels.set( Boolean.FALSE );
         }
         drawExportDecorations( canvas, bitmap_scale, options, padding, height - padding, decoration_gap );
         return bitmap;
@@ -2334,6 +2335,11 @@ public class DrawingCommandManager
 
   // -------------------------------------------------------------------
   // SCENE CACHE SUPPORT
+
+  /** export renders force unscaled labels for their own thread only (see
+   *  renderExportBitmap and DrawingLabelPath.draw) */
+  static final ThreadLocal< Boolean > sExportUnscaledLabels =
+    ThreadLocal.withInitial( () -> Boolean.FALSE );
 
   /** @return the live view matrix reference (reference-swapped by setTransform, safe to read cross-thread) */
   Matrix getMatrixRef() { return mMatrix; }

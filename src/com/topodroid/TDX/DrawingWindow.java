@@ -3338,7 +3338,7 @@ public class DrawingWindow extends ItemDrawer
 
   private void requestSketchPresetSelection( int preset )
   {
-    mDrawingSurface.requestSceneRender(); // preset may restyle the selected item live
+    mDrawingSurface.requestSceneRenderPosted(); // preset may restyle the selected item during this UI turn
     int normalized = TDSetting.normalizeSketchPreset( preset );
     int active = TDSetting.getActiveSketchPreset();
     if ( hasPendingSketchStroke() ) {
@@ -3417,7 +3417,7 @@ public class DrawingWindow extends ItemDrawer
 
   private void requestSketchStyleSelection( int style )
   {
-    mDrawingSurface.requestSceneRender(); // style may restyle the selected item live
+    mDrawingSurface.requestSceneRenderPosted(); // style may restyle the selected item during this UI turn
     int normalized = TDSetting.normalizeSketchStyle( style );
     int active = TDSetting.getActiveSketchStyle();
     if ( hasPendingSketchStroke() ) {

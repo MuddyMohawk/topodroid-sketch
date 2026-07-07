@@ -149,7 +149,9 @@ public class DrawingLabelPath extends DrawingPointPath
     Paint paint = (bbox != null)? mPaint : BrushManager.blackPaint;
     if ( intersects( bbox ) ) {
       // TDLog.Log( TDLog.LOG_PATH, "Drawing Label Path::draw[matrix] " + mPointText );
-      if ( TDSetting.mScalableLabel ) mTextSize = TDSetting.mLabelSize * 0.1f / scale;
+      // export renders force unscaled labels on their own thread only: the
+      // global setting must not be flipped (live/cache renders run concurrently)
+      if ( TDSetting.mScalableLabel && ! DrawingCommandManager.sExportUnscaledLabels.get() ) mTextSize = TDSetting.mLabelSize * 0.1f / scale;
       setTextSize( );
       mTransformedPath = new Path( mPath );
       if ( mLandscape ) {

@@ -159,13 +159,25 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   /** get a new scrap index 
    * @param force   whether to do also for command-3 // TH2EDIT no force param
    */
-  public int newScrapIndex( boolean force )   { return ( commandManager == null )? 0 : commandManager.newScrapIndex( force ); }
+  public int newScrapIndex( boolean force )
+  {
+    if ( commandManager == null ) return 0;
+    int ret = commandManager.newScrapIndex( force );
+    requestSceneRender(); // the current scrap changed: the whole rendered content is different
+    return ret;
+  }
 
   /** toggle the scrap index
    * @param force   whether to do also for command-3 // TH2EDIT no force param
    * @param k       advance step
    */
-  int toggleScrapIndex( boolean force, int k ) { return ( commandManager == null )? 0 : commandManager.toggleScrapIndex( force, k ); }
+  int toggleScrapIndex( boolean force, int k )
+  {
+    if ( commandManager == null ) return 0;
+    int ret = commandManager.toggleScrapIndex( force, k );
+    requestSceneRender(); // the current scrap changed: the whole rendered content is different
+    return ret;
+  }
 
   /** delete the current scrap
    * @param force   whether to do also for command-3 // TH2EDIT no force param
@@ -181,7 +193,9 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   // TH2EDIT
   public boolean setScrapOptions( int idx, String options )
   {
-    return commandManager != null && commandManager.setScrapOptions(idx, options);
+    boolean ret = commandManager != null && commandManager.setScrapOptions(idx, options);
+    if ( ret ) requestSceneRender();
+    return ret;
   }
 
   // -----------------------------------------------------
@@ -1275,6 +1289,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   void deleteSectionPoint( String scrap_name )
   {
     commandManager.deleteSectionPoint( scrap_name, null ); // null eraseCommand
+    requestSceneRender();
   }
   
   // void setBounds( float x1, float x2, float y1, float y2 ) { commandManager.setBounds( x1, x2, y1, y2 ); }
@@ -1334,9 +1349,11 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
    * @param size ???
    * @return true if the area ap1 has been added to an area in the sketch
    */
-  boolean getAreaToContinue( DrawingAreaPath ap, LinePoint lp1, LinePoint lp2,  int type, float zoom, float size ) 
+  boolean getAreaToContinue( DrawingAreaPath ap, LinePoint lp1, LinePoint lp2,  int type, float zoom, float size )
   {
-    return commandManager.getAreaToContinue( ap, lp1, lp2, type, zoom, size );
+    boolean ret = commandManager.getAreaToContinue( ap, lp1, lp2, type, zoom, size );
+    if ( ret ) requestSceneRender(); // on success the stroke merged into an existing (cached) area
+    return ret;
   }
 
   /** try to continue a line
@@ -1348,9 +1365,11 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
    * @param size ???
    * @return true if the line lp1 has been added to a line in the sketch
    */
-  boolean getLineToContinue( DrawingLinePath lp, LinePoint lp1, LinePoint lp2,  int type, float zoom, float size ) 
+  boolean getLineToContinue( DrawingLinePath lp, LinePoint lp1, LinePoint lp2,  int type, float zoom, float size )
   {
-    return commandManager.getLineToContinue( lp, lp1, lp2, type, zoom, size );
+    boolean ret = commandManager.getLineToContinue( lp, lp1, lp2, type, zoom, size );
+    if ( ret ) requestSceneRender(); // on success the stroke merged into an existing (cached) line
+    return ret;
   }
 
   /** get the line to continue
@@ -1368,7 +1387,9 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   // @param zoom canvas zoom (the larger the zoom, the bigger the sketch on the display)
   boolean modifyLine( DrawingLinePath line, DrawingLinePath lp2, float zoom, float size )
   {
-    return commandManager.modifyLine( line, lp2, zoom, size );
+    boolean ret = commandManager.modifyLine( line, lp2, zoom, size );
+    if ( ret ) requestSceneRender(); // on success the target (cached) line geometry changed
+    return ret;
   }
  
   /** add the points of the first line to the second line
