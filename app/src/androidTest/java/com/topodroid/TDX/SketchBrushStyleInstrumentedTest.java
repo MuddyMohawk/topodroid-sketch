@@ -111,7 +111,7 @@ public class SketchBrushStyleInstrumentedTest
 
       assertEquals( 2.0f, source.getStrokeWidth(), 0.0001f );
       assertEquals( 0xccffffff, source.getColor() );
-      assertEquals( 5.0f, styled.getStrokeWidth(), 0.0001f );
+      assertEquals( 5.0f * TDSetting.INK_UNIT_SCALE, styled.getStrokeWidth(), 0.0001f );
       assertEquals( 102, styled.getAlpha() );
       assertEquals( 0x123456, styled.getColor() & 0x00ffffff );
     } finally {
@@ -133,7 +133,7 @@ public class SketchBrushStyleInstrumentedTest
       Paint styled = SketchBrushRenderer.pointPaint( source, SketchBrushStyle.of( 5.0f, 1.0f, 1.0f ) );
 
       assertEquals( 2.0f, source.getStrokeWidth(), 0.0001f );
-      assertEquals( 2.5f, styled.getStrokeWidth(), 0.0001f );
+      assertEquals( 2.5f * TDSetting.INK_UNIT_SCALE, styled.getStrokeWidth(), 0.0001f );
     } finally {
       TDSetting.mLineThickness = previous;
     }

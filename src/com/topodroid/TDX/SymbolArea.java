@@ -103,7 +103,7 @@ public class SymbolArea extends Symbol
     mPaint.setStyle(Paint.Style.FILL_AND_STROKE);
     mPaint.setStrokeJoin(Paint.Join.ROUND);
     mPaint.setStrokeCap(Paint.Cap.ROUND);
-    mPaint.setStrokeWidth( TDSetting.mLineThickness );
+    mPaint.setStrokeWidth( TDSetting.inkUnit() );
     makeShader( mBitmap, mXMode, mYMode, true );
     makeAreaPath();
   }
@@ -384,7 +384,7 @@ public class SymbolArea extends Symbol
                 mPaint.setStyle(Paint.Style.FILL_AND_STROKE);
                 mPaint.setStrokeJoin(Paint.Join.ROUND);
                 mPaint.setStrokeCap(Paint.Cap.ROUND);
-                mPaint.setStrokeWidth( TDSetting.mLineThickness );
+                mPaint.setStrokeWidth( TDSetting.inkUnit() );
   	      }
               in_symbol = false;
             }

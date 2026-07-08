@@ -5,7 +5,8 @@
  *
  * @brief TopoDroid Sketch brush-style rendering helpers (world-space ink model)
  *
- * Ink stroke widths are SCENE units: weight * TDSetting.mLineThickness.
+ * Ink stroke widths are SCENE units: weight * TDSetting.inkUnit()
+ * (= INK_UNIT_SCALE * the "Line width" setting).
  * The canvas scene->screen transform magnifies them with zoom / export scale,
  * so relative thicknesses are invariant.
  * --------------------------------------------------------
@@ -42,7 +43,7 @@ class SketchBrushRenderer
     float weight = ( style != null && style.hasWeight() )
                  ? style.weightOr( SketchBrushStyle.DEFAULT_WEIGHT_STANDARD )
                  : SketchBrushStyle.DEFAULT_WEIGHT_STANDARD;
-    return normalizedPositive( weight * TDSetting.mLineThickness );
+    return normalizedPositive( weight * TDSetting.inkUnit() );
   }
 
   /** @return weight ratio relative to the standard weight (for point-footprint expansion) */
@@ -65,7 +66,7 @@ class SketchBrushRenderer
     }
     paint.setColor( ( alpha << 24 ) | rgb );
     if ( style.hasWeight() ) {
-      paint.setStrokeWidth( style.weightOr( SketchBrushStyle.DEFAULT_WEIGHT_STANDARD ) * TDSetting.mLineThickness * stroke_scale );
+      paint.setStrokeWidth( style.weightOr( SketchBrushStyle.DEFAULT_WEIGHT_STANDARD ) * TDSetting.inkUnit() * stroke_scale );
     }
     return paint;
   }

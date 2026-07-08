@@ -136,7 +136,7 @@ public class SymbolPoint extends Symbol
    */
   Path getOrigPath( )
   {
-    return makeScaledPath( mPathStr, TDSetting.mUnitIcons );
+    return makeScaledPath( mPathStr, TDSetting.pointInkUnit() );
   }
 
   /** @return the point scaled path
@@ -189,7 +189,7 @@ public class SymbolPoint extends Symbol
     mName  = n1;
     mDxf   = null;
     mPaint = makePaint( c1, Paint.Style.STROKE ); // FIXME style
-    makePointPath( path, TDSetting.mUnitIcons );
+    makePointPath( path, TDSetting.pointInkUnit() );
     // mOrigPath = new Path( mPath );
     mPathStr  = path;
     // mScaledPath = makeScaledPath( path, TDSetting.mSymbolSize );
@@ -220,7 +220,7 @@ public class SymbolPoint extends Symbol
     mName  = n1;
     mDxf   = null;
     mPaint = makePaint( c1, Paint.Style.STROKE ); //FIXME style
-    makePointPath( path, TDSetting.mUnitIcons );
+    makePointPath( path, TDSetting.pointInkUnit() );
     // mOrigPath = new Path( mPath );
     mPathStr  = path;
     // mScaledPath = makeScaledPath( path, TDSetting.mSymbolSize );
@@ -457,7 +457,7 @@ public class SymbolPoint extends Symbol
                   setThName( th_name ); // this sets prefix (if necessary) and name
                   mGroup  = group;
                   mPaint  = makePaint( color, style );
-                  makePointPath( path, TDSetting.mUnitIcons );
+                  makePointPath( path, TDSetting.pointInkUnit() );
                   // mOrigPath = new Path( mPath );
                   mPathStr  = path;
                   // mScaledPath = makeScaledPath( path, TDSetting.mSymbolSize );

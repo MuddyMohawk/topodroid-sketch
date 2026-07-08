@@ -48,7 +48,7 @@ public class SymbolLine extends Symbol
   private static final float FLAT_PREVIEW_MIN_STROKE_LINES = 2.0f;
 
   String mName;       // local name
-  Paint  mPaint;      // forward paint - stroke width [scene units] = width * TDSetting.mLineThickness
+  Paint  mPaint;      // forward paint - stroke width [scene units] = width * TDSetting.inkUnit()
   Paint  mRevPaint;   // reverse paint
   Paint  mPreviewPaint; // preview paint independent of scene scaling
   Paint  mRevPreviewPaint; // reverse preview paint
@@ -141,7 +141,7 @@ public class SymbolLine extends Symbol
     mPaint.setStyle(Paint.Style.STROKE);
     mPaint.setStrokeJoin(Paint.Join.ROUND);
     mPaint.setStrokeCap(Paint.Cap.ROUND);
-    mPaint.setStrokeWidth( mWidth * TDSetting.mLineThickness );
+    mPaint.setStrokeWidth( mWidth * TDSetting.inkUnit() );
     mRevPaint = new Paint (mPaint );
     mPreviewPaint = null;
     mRevPreviewPaint = null;
@@ -210,7 +210,8 @@ public class SymbolLine extends Symbol
   {
     if ( mPaint == null ) return;
 
-    float preview_stroke = Math.max( mPaint.getStrokeWidth() * FLAT_PREVIEW_STROKE_SCALE,
+    // nominal width (not ink units): palette previews must not shrink with INK_UNIT_SCALE
+    float preview_stroke = Math.max( mWidth * TDSetting.mLineThickness * FLAT_PREVIEW_STROKE_SCALE,
                                      TDSetting.mLineThickness * FLAT_PREVIEW_MIN_STROKE_LINES );
     PathEffect preview_dash = scaledDashEffect( dash_lw, preview_stroke );
 
@@ -728,7 +729,7 @@ public class SymbolLine extends Symbol
                 mGroup  = group;
                 mDefaultOptions = options;
                 mWidth  = ( width > 0 )? width : 1;
-                float unit = mWidth * TDSetting.mLineThickness; // default ink thickness [scene units]
+                float unit = mWidth * TDSetting.inkUnit(); // default ink thickness [scene units]
                 mPaint  = new Paint();
                 mPaint.setDither(true);
                 mPaint.setColor( color );

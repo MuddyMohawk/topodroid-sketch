@@ -613,7 +613,14 @@ public class TDSetting
 
   // ------------- UNIT SIZES
   public static float mUnitIcons = 1.4f; // drawing unit icons
-  public static float mUnitLines = 1.4f; // drawing unit lines
+  // point-symbol ink scale, sibling of INK_UNIT_SCALE: shrinks point symbols in step with the
+  // line-ink recenter while leaving the "Point tools scale" setting/stored value untouched
+  public static final float POINT_INK_SCALE = 0.3f;
+
+  /** @return the point-symbol unit [scene units] = POINT_INK_SCALE * "Point tools scale" setting */
+  public static float pointInkUnit() { return POINT_INK_SCALE * mUnitIcons; }
+
+  public static float mUnitLines = 1.4f; // drawing unit lines - dormant: kept for settings-file import compat
   public static float mUnitGrid    = 0.6096f;   // 2 feet
   public static float mUnitMeasure = 0.3048f;   // feet
 
@@ -748,7 +755,15 @@ public class TDSetting
   public static float mSketchGridWidth = DEFAULT_SKETCH_GRID_WIDTH;
   public static int   mSketchGridColor = DEFAULT_SKETCH_GRID_COLOR;
   public static boolean mAreaOverlapDarken = true;
-  public static float mLineThickness   = 1;    // width of drawing lines
+  public static float mLineThickness   = 1;    // "Line width" setting: ink thickness in ink units
+  // base ink unit [scene units per ink unit]. DrawingUtil.SCALE_FIX = 20 scene units/m, so at the
+  // default "Line width" 1.0: weight 1 -> 0.3 scene units = 1.5 cm of world ink (standard weight 2
+  // -> 3 cm, was 10 cm before the recenter). Field-tune here, keeping the setting centered on 1.0.
+  public static final float INK_UNIT_SCALE = 0.3f;
+
+  /** @return the base ink thickness [scene units] = INK_UNIT_SCALE * "Line width" setting */
+  public static float inkUnit() { return INK_UNIT_SCALE * mLineThickness; }
+
   public static final float DEFAULT_SKETCH_STYLE_WEIGHT_THIN     = 1.0f;
   public static final float DEFAULT_SKETCH_STYLE_WEIGHT_STANDARD = 2.0f;
   public static final float DEFAULT_SKETCH_STYLE_WEIGHT_THICK    = 5.0f;
@@ -1660,8 +1675,7 @@ public class TDSetting
     mArrowLength   = tryFloat( prefs,  key[4].key,      key[4].dflt );   // DISTOX_ARROW_LENGTH
     mAutoSectionPt = prefs.getBoolean( key[5].key, bool(key[5].dflt) );  // DISTOX_AUTO_SECTION_PT
     mAreaBorder    = prefs.getBoolean( key[6].key, bool(key[6].dflt) );  // DISTOX_AREA_BORDER
-    mUnitLines     = tryFloat( prefs,  key[7].key,      key[7].dflt );   // DISTOX_LINE_UNITS
-    mSlopeLSide    = tryInt(   prefs,  key[8].key,      key[8].dflt );   // DISTOX_SLOPE_LSIDE
+    mSlopeLSide    = tryInt(   prefs,  key[7].key,      key[7].dflt );   // DISTOX_SLOPE_LSIDE
     int rawPresetSlots = tryInt( prefs, PRESET_SLOTS_KEY, TDString.FOUR );
     boolean resetPresetDefaults = tryInt( prefs, PRESET_DEFAULTS_VERSION_KEY, TDString.ZERO ) < SKETCH_PRESET_DEFAULTS_VERSION;
     if ( resetPresetDefaults ) rawPresetSlots = SKETCH_PRESET_DEFAULT;
@@ -3181,14 +3195,8 @@ public class TDSetting
     //   mWithLineJoin = tryBooleanValue(  hlp, k, v, bool(key[8].dflt) );
     } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_AREA_BORDER (bool)
       mAreaBorder = tryBooleanValue( hlp, k, v, bool(key[6].dflt) );
-    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_LINE_UNITS
-      try {
-        setDrawingUnitLines( tryFloatValue( hlp, k, v, key[7].dflt ) );
-      } catch ( NumberFormatException e ) {
-        TDLog.e( e.getMessage() );
-      }
-    } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_SLOPE_LSIDE
-      ret = setSlopeLSide( tryIntValue( hlp, k, v, key[8].dflt ) );
+    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_SLOPE_LSIDE
+      ret = setSlopeLSide( tryIntValue( hlp, k, v, key[7].dflt ) );
     } else {
       TDLog.e("missing LINE key: " + k );
     }
@@ -4247,7 +4255,7 @@ public class TDSetting
     String ret = null;
     try {
       float f = Float.parseFloat( str );
-      if ( f < 0.5f ) { f = 0.5f; ret = "0.5"; }
+      if ( f < 0.1f ) { f = 0.1f; ret = "0.1"; }
       else if ( f > 10 ) { f = 10; ret = "10.0"; }
       if ( f != mLineThickness ) {
         mLineThickness = f;

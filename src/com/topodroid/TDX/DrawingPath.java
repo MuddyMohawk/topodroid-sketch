@@ -309,8 +309,8 @@ public class DrawingPath extends RectF
       mPath.transform( m );
     } else { // SPECIAL_DOT
       mPath = new Path();
-      // mPath.addCircle( 0, 0, TDSetting.mLineThickness, Path.Direction.CCW );
-      float d = TDSetting.mLineThickness / 2.0f;
+      // mPath.addCircle( 0, 0, TDSetting.inkUnit(), Path.Direction.CCW );
+      float d = TDSetting.inkUnit() / 2.0f;
       mPath.moveTo( d,  d );
       mPath.lineTo(-d, -d );
       mPath.moveTo( d, -d );

@@ -579,7 +579,6 @@ class TDPrefKey
 
   /** lines settings
    * thickness of normal lines (walls are twice)
-   * line units
    * line style: 0 bezier, 1 fine, 2 normal, 3 coarse, 4 simplified, 5 straight, 6/7/8 snap
    * minimum distance between consecutive points on a line
    * close lines of closed type
@@ -588,6 +587,8 @@ class TDPrefKey
    * whether to add section point when tracing a section line
    * area border visibility
    * @note 7 keys repeated
+   * @note DISTOX_LINE_UNITS was dropped from this array (no-op under world-space ink);
+   *       the key is still accepted by settings-file import for compat
    */
   static TDPrefKey[] mLine = {
     new TDPrefKey( N, FLT,  UI, "DISTOX_LINE_THICKNESS",  R.string.pref_line_thickness_title, R.string.pref_line_thickness_summary,  TDString.ONE ),
@@ -597,7 +598,6 @@ class TDPrefKey
     new TDPrefKey( A, FLT,  DR, "DISTOX_ARROW_LENGTH",    R.string.pref_arrow_length_title,   R.string.pref_arrow_length_message,    "8"  ),
     new TDPrefKey( A, BOOL, UI, "DISTOX_AUTO_SECTION_PT", R.string.pref_auto_section_pt_title,R.string.pref_auto_section_pt_summary, TRUE ),
     new TDPrefKey( N, BOOL, UI, "DISTOX_AREA_BORDER",     R.string.pref_area_border_title,    R.string.pref_area_border_summary,     TRUE ),
-    new TDPrefKey( N, FLT,  DR, "DISTOX_LINE_UNITS",      R.string.pref_line_units_title,     R.string.pref_line_units_summary,      "1.4" ),
     new TDPrefKey( A, LONG, UI, "DISTOX_SLOPE_LSIDE",     R.string.pref_slope_lside_title,    R.string.pref_slope_lside_summary,     "20" )
   };
 
