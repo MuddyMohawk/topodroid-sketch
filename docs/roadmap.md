@@ -10,7 +10,6 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - the fiddlyness of tweaking the line previews suggests it needs a deeper refactor to mirror the sketch canvas instead of madness
 - Area/fill
   - area will need a second pass for the fancier chop/cut/push tools
-- Rename the nss-symbol stuff to topodroid sketch
 - Refactor away from the -tdx-brush options and into dedicated symbol terminology?
 - Bake/export-to-vanilla export
 - more symbol behavior (sand/silt stamps, slope line)
@@ -41,6 +40,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - stackable boulders, rocks?
 
 ## Known bugs
+- Cavway special lines don't seem to be colored in cross-sections like they are in plan. Vanilla bug.
 - Large reference images, and reference images in general, are kinda low and cause lag
 - Adjusting the number of preset buttons doesn't update that settings screen, causing the user to have to leave and re-enter that settings page to adjust the new preset bars
 - Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch
@@ -90,6 +90,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - switch between tools/brushes
   - switch between line weights
   - open/close larger toolbar?
+  - switch hatchure direction of the previous line
 - Pie in the sky: Advanced GPS/gnss tools. RTK when.
 - Inventory/Rope Audit/Vandalism tracking tools
 - In-app symbol editor v2

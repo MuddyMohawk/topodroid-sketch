@@ -68,6 +68,29 @@ public class LinePatternInstrumentedTest
   }
 
   @Test
+  public void sectionFacingDirectionFollowsVisibleTick()
+  {
+    int lineType = BrushManager.getLineIndexByThName( SymbolLibrary.SECTION );
+    assertTrue( "Section line symbol is missing", lineType >= 0 );
+
+    DrawingLinePath line = new DrawingLinePath( lineType, 0 );
+    line.addStartPoint( 0.0f, 0.0f );
+    line.addPoint( 100.0f, 0.0f );
+    line.computeUnitNormal();
+
+    assertEquals( "A left-to-right section tick should point upward",
+                  -1.0f, line.sectionDirectionY(), 0.001f );
+    assertEquals( "A left-to-right section should face the upward tick",
+                  0.0f, DrawingWindow.sectionAzimuthFromTick( line ), 0.001f );
+
+    line.setReversed( true );
+    assertEquals( "Reversing a section line should reverse its visible tick",
+                  1.0f, line.sectionDirectionY(), 0.001f );
+    assertEquals( "Reversing a section line should reverse the xsection azimuth",
+                  180.0f, DrawingWindow.sectionAzimuthFromTick( line ), 0.001f );
+  }
+
+  @Test
   public void sketchCarrierEffect_drawsContinuousCurvedCarrier()
   {
     Path fallback = rectanglePath( 0.0f, 0.0f, 20.0f, 1.0f, false );

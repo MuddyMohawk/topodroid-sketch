@@ -8,23 +8,23 @@ width 2
 # units: line-widths (1 = ink thickness); carrier/tick width 1 = line weight
 dash 4.2 1.4
 effect
-  moveTo 0 0
-  lineTo 4.2 0
+  moveTo 0 1
   lineTo 4.2 1
-  lineTo 2.7 1
-  lineTo 2.7 2.7
-  lineTo 1.7 2.7
-  lineTo 1.7 1
-  lineTo 0 1
+  lineTo 4.2 0
+  lineTo 2.7 0
+  lineTo 2.7 -1.7
+  lineTo 1.7 -1.7
+  lineTo 1.7 0
+  lineTo 0 0
 endeffect
 sketch_effect 1
   carrier 0 1
   stamp
-    moveTo 1.7 1
-    lineTo 2.7 1
-    lineTo 2.7 2.7
-    lineTo 1.7 2.7
-    lineTo 1.7 1
+    moveTo 1.7 0
+    lineTo 2.7 0
+    lineTo 2.7 -1.7
+    lineTo 1.7 -1.7
+    lineTo 1.7 0
   endstamp
 endsketch_effect
 endsymbol

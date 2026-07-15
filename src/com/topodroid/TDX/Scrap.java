@@ -3205,7 +3205,7 @@ public class Scrap
                 Paint paint = new Paint( BrushManager.mSectionPaint );
                 // paint.setColor( xor_color ^ paint.getColor() );
                 paint.setColor( BrushManager.xorColor( paint.getColor() ) );
-                drawDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, paint, tick_scratch );
+                drawSectionDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, paint, tick_scratch );
               } else if ( BrushManager.isLineSlope( line.mLineType ) ) {
                 Paint paint = new Paint( BrushManager.mLSidePaint );
                 // paint.setColor( xor_color ^ paint.getColor() );
@@ -3230,7 +3230,7 @@ public class Scrap
                   Paint paint = new Paint( BrushManager.mSectionPaint );
                   // paint.setColor( xor_color ^ paint.getColor() );
                   paint.setColor( BrushManager.xorColor( paint.getColor() ) );
-                  drawDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, paint, tick_scratch );
+                  drawSectionDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, paint, tick_scratch );
                 } else if ( BrushManager.isLineSlope( line.mLineType ) ) {
                   Paint paint = new Paint( BrushManager.mLSidePaint );
                   // paint.setColor( xor_color ^ paint.getColor() );
@@ -3246,7 +3246,7 @@ public class Scrap
     }
   }
 
-  /** draw the direction tick of a section line or the lside tick of a slope line
+  /** draw the lside tick of a slope line
    * @param canvas   canvas
    * @param matrix   transform matrix
    * @param line     line
@@ -3255,10 +3255,20 @@ public class Scrap
    */
   private void drawDirectionTick( Canvas canvas, Matrix matrix, DrawingLinePath line, float len, Paint paint, Path scratch )
   {
+    drawTick( canvas, matrix, line, line.mDx, line.mDy, len, paint, scratch );
+  }
+
+  private void drawSectionDirectionTick( Canvas canvas, Matrix matrix, DrawingLinePath line, float len, Paint paint, Path scratch )
+  {
+    drawTick( canvas, matrix, line, line.sectionDirectionX(), line.sectionDirectionY(), len, paint, scratch );
+  }
+
+  private void drawTick( Canvas canvas, Matrix matrix, DrawingLinePath line, float dx, float dy, float len, Paint paint, Path scratch )
+  {
     LinePoint lp = line.mFirst;
     scratch.rewind();
     scratch.moveTo( lp.x, lp.y );
-    scratch.lineTo( lp.x+line.mDx*len, lp.y+line.mDy*len );
+    scratch.lineTo( lp.x+dx*len, lp.y+dy*len );
     scratch.transform( matrix );
     canvas.drawPath( scratch, paint );
   }
@@ -3313,7 +3323,7 @@ public class Scrap
             if ( path.isLine() ) { // path instanceof DrawingLinePath
               DrawingLinePath line = (DrawingLinePath)path;
               if ( BrushManager.isLineSection( line.mLineType ) ) { // add direction-tick to section-lines
-                drawDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, BrushManager.mSectionPaint, tick_scratch );
+                drawSectionDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, BrushManager.mSectionPaint, tick_scratch );
               } else if ( BrushManager.isLineSlope( line.mLineType ) ) {
                 float lside = line.getLSide(); if ( lside < 1 ) lside = TDSetting.mSlopeLSide;
                 drawDirectionTick( canvas, matrix, line, lside*0.5f, BrushManager.mLSidePaint, tick_scratch );
@@ -3332,7 +3342,7 @@ public class Scrap
               if ( path.isLine() ) { // path instanceof DrawingLinePath
                 DrawingLinePath line = (DrawingLinePath)path;
                 if ( BrushManager.isLineSection( line.mLineType ) ) { // add direction-tick to section-lines
-                  drawDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, BrushManager.mSectionPaint, tick_scratch );
+                  drawSectionDirectionTick( canvas, matrix, line, TDSetting.mArrowLength, BrushManager.mSectionPaint, tick_scratch );
                 } else if ( BrushManager.isLineSlope( line.mLineType ) ) {
                   float lside = line.getLSide(); if ( lside < 1 ) lside = TDSetting.mSlopeLSide;
                   drawDirectionTick( canvas, matrix, line, lside*0.5f, BrushManager.mLSidePaint, tick_scratch );

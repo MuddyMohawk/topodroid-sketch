@@ -1,5 +1,6 @@
 package com.topodroid.TDX;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -29,6 +30,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.zip.ZipEntry;
@@ -107,6 +109,18 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                 entries.contains( "symbols_topodroid_sketch/point/sand" ) );
     assertTrue( "Missing sketch debris point in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/point/debris=small" ) );
+  }
+
+  @Test
+  public void pitAndCeilingLedgeHachuresPointSameDirectionInDefaultRawPack() throws Exception
+  {
+    int pitDirection = hachureDirection( readRawSymbolEntry( "symbols_topodroid_sketch/line/pit" ) );
+    int ceilingLedgeDirection = hachureDirection( readRawSymbolEntry( "symbols_topodroid_sketch/line/chimney" ) );
+
+    assertTrue( "Could not parse pit hachure direction", pitDirection != 0 );
+    assertTrue( "Could not parse ceiling-ledge hachure direction", ceilingLedgeDirection != 0 );
+    assertEquals( "Pit and ceiling-ledge hachures should point to the same side while drawing",
+                  pitDirection, ceilingLedgeDirection );
   }
 
   @Test
@@ -227,6 +241,89 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
   private void assertLineMissing( String thName )
   {
     assertTrue( "Unexpected TopoDroid Sketch line symbol " + thName, BrushManager.getLineIndexByThName( thName ) < 0 );
+  }
+
+  private String readRawSymbolEntry( String entryName ) throws Exception
+  {
+    ZipInputStream zip = new ZipInputStream(
+      mContext.getResources().openRawResource( R.raw.symbols_topodroid_sketch ) );
+    try {
+      ZipEntry entry;
+      while ( (entry = zip.getNextEntry()) != null ) {
+        if ( entryName.equals( entry.getName() ) ) {
+          return new String( readZipEntryBytes( zip ), StandardCharsets.UTF_8 );
+        }
+      }
+    } finally {
+      zip.close();
+    }
+    throw new AssertionError( "Missing raw symbol entry " + entryName );
+  }
+
+  private static byte[] readZipEntryBytes( ZipInputStream zip ) throws Exception
+  {
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    byte[] buffer = new byte[4096];
+    int read;
+    while ( (read = zip.read( buffer )) >= 0 ) output.write( buffer, 0, read );
+    return output.toByteArray();
+  }
+
+  private static int hachureDirection( String symbol )
+  {
+    float carrierCenterSum = 0.0f;
+    int carrierCount = 0;
+    float stampMinY = Float.POSITIVE_INFINITY;
+    float stampMaxY = Float.NEGATIVE_INFINITY;
+    boolean inSketchEffect = false;
+    boolean inStamp = false;
+
+    String[] lines = symbol.split( "\\r?\\n" );
+    for ( int i = 0; i < lines.length; ++i ) {
+      String line = lines[i].trim();
+      if ( line.length() == 0 || line.startsWith( "#" ) ) continue;
+      String[] vals = line.split( "\\s+" );
+      if ( vals.length == 0 ) continue;
+
+      if ( vals[0].equals( "sketch_effect" ) ) {
+        inSketchEffect = true;
+      } else if ( inSketchEffect && vals[0].equals( "endsketch_effect" ) ) {
+        break;
+      } else if ( inSketchEffect && vals[0].equals( "carrier" ) && vals.length >= 3 ) {
+        try {
+          float y0 = Float.parseFloat( vals[1] );
+          float y1 = Float.parseFloat( vals[2] );
+          carrierCenterSum += 0.5f * ( y0 + y1 );
+          ++carrierCount;
+        } catch ( NumberFormatException e ) {
+          return 0;
+        }
+      } else if ( inSketchEffect && vals[0].equals( "stamp" ) ) {
+        inStamp = true;
+      } else if ( inSketchEffect && vals[0].equals( "endstamp" ) ) {
+        inStamp = false;
+      } else if ( inStamp ) {
+        int yIndex = -1;
+        if ( ( vals[0].equals( "moveTo" ) || vals[0].equals( "lineTo" ) ) && vals.length >= 3 ) {
+          yIndex = 2;
+        }
+        if ( yIndex >= 0 ) {
+          try {
+            float y = Float.parseFloat( vals[yIndex] );
+            if ( y < stampMinY ) stampMinY = y;
+            if ( y > stampMaxY ) stampMaxY = y;
+          } catch ( NumberFormatException e ) {
+            return 0;
+          }
+        }
+      }
+    }
+
+    if ( carrierCount == 0 || stampMinY == Float.POSITIVE_INFINITY || stampMaxY == Float.NEGATIVE_INFINITY ) return 0;
+    float carrierCenter = carrierCenterSum / carrierCount;
+    float stampCenter = 0.5f * ( stampMinY + stampMaxY );
+    if ( Math.abs( stampCenter - carrierCenter ) < 0.001f ) return 0;
+    return ( stampCenter < carrierCenter ) ? -1 : 1;
   }
 
   private void drawStyledLine( Canvas canvas, int lineType, float x, float y, SketchBrushStyle style )

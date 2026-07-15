@@ -5646,9 +5646,8 @@ public class DrawingWindow extends ItemDrawer
                 if ( mSymbol == SymbolType.LINE ) {
                   if ( mCurrentLinePath != null ) {
                     // N.B.
-                    // section direction is in the direction of the tick
-                    // and splay reference are taken from the station the section looks towards
-                    // section line points: right-end -- left-end -- tick-end
+                    // section direction is in the direction of the tick,
+                    // and splay references are taken from the station the section looks towards.
                     //
                     if ( BrushManager.isLineSection(  mCurrentLinePath.mLineType ) ) {
                       mLastLinePath = null;
@@ -6235,6 +6234,12 @@ public class DrawingWindow extends ItemDrawer
     }
   }
 
+  /** @return xsection azimuth in the direction of the visible section tick */
+  static float sectionAzimuthFromTick( DrawingLinePath line )
+  {
+    return TDMath.in360( (float)(Math.atan2( line.sectionDirectionX(), -line.sectionDirectionY() ) * TDMath.RAD2DEG ) );
+  }
+
   /** ... section-line
    * @param currentLine  current line
    */
@@ -6251,9 +6256,8 @@ public class DrawingWindow extends ItemDrawer
     // NOTE here l1 is the end-point and l2 the start-point (not considering the tick)
     //         |
     //         L2 --------- L1
-    //      The azimuth reference is North-East same as bearing
-    //         L1->L2 = atan2( (L2-L1).x, -(L2-l1).y )  Y is point downward North upward
-    //         azimuth = dir(L1->L2) + 90
+    //      The azimuth reference is North-East same as bearing.
+    //      The xsection direction follows the visible tick, including line reversal.
     //
     LinePoint l2 = currentLine.mFirst; // .mNext;
     LinePoint l1 = l2.mNext;
@@ -6275,20 +6279,10 @@ public class DrawingWindow extends ItemDrawer
 
     currentLine.computeUnitNormal();
 
-    // orientation of the section-line:
-    // line_azimuth:
-    //              ^ 180
-    //     270 <----+-----> 90
-    //              v 0
-    // azimuth:
-    //              ^ 270
-    //       0 <----+-----> 180
-    //              v 90
-    float line_azimuth = TDMath.in360( (float)(Math.atan2( l2.x-l1.x, -l2.y+l1.y ) * TDMath.RAD2DEG ) );
-    azimuth = TDMath.in360( 90 + line_azimuth );
+    azimuth = sectionAzimuthFromTick( currentLine );
     DBlock blk = null;
     Vector3D center = null; // centroid of the intersection
-    // TDLog.v("do Section Line: section " + h_section + " projected " + h_section_projected + " legs " + nr_legs + " azimuth " + azimuth + " line " + line_azimuth );
+    // TDLog.v("do Section Line: section " + h_section + " projected " + h_section_projected + " legs " + nr_legs + " azimuth " + azimuth );
 
     if ( nr_legs == 1 ) {
       DrawingPathIntersection pi = paths.get(0);
@@ -6439,8 +6433,8 @@ public class DrawingWindow extends ItemDrawer
     mDrawingSurface.addDrawingPath( currentLine );
 
     if ( TDSetting.mAutoSectionPt && section_id != null ) {
-      float x5 = currentLine.mLast.x + currentLine.mDx * 20; 
-      float y5 = currentLine.mLast.y + currentLine.mDy * 20; 
+      float x5 = currentLine.mLast.x + currentLine.sectionDirectionX() * 20;
+      float y5 = currentLine.mLast.y + currentLine.sectionDirectionY() * 20;
       // FIXME_LANDSCAPE if ( mLandscape ) { float t=x5; x5=-y5; y5=t; }
       // FIXME String scrap_option = "-scrap " /* + TDInstance.survey + "-" */ + section_id;
       String scrap_option = TDString.OPTION_SCRAP + " " + TDInstance.survey + "-" + section_id;
@@ -6856,8 +6850,8 @@ public class DrawingWindow extends ItemDrawer
       return point;
     }
 
-    float x5 = line.mLast.x + line.mDx * 20;
-    float y5 = line.mLast.y + line.mDy * 20;
+    float x5 = line.mLast.x + line.sectionDirectionX() * 20;
+    float y5 = line.mLast.y + line.sectionDirectionY() * 20;
     String scrap_option = TDString.OPTION_SCRAP + " " + scrap_name;
     point = new DrawingPointPath( BrushManager.getPointSectionIndex(),
                                   x5, y5, PointScale.SCALE_M,

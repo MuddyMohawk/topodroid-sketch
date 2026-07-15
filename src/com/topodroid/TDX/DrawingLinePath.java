@@ -241,6 +241,11 @@ public class DrawingLinePath extends DrawingPointLinePath
     }
   }
 
+  /** Section ticks point to the side the cross-section faces. */
+  float sectionDirectionX() { return mDx; }
+
+  float sectionDirectionY() { return mDy; }
+
   /** split the line at a point
    * @param lp0   splitting point
    * @param line1 first part 
