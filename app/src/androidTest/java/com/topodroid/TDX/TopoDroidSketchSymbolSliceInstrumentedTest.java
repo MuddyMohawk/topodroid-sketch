@@ -150,7 +150,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawLineRow( canvas, label, "Ceiling ledge", "chimney", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Ceiling channel", "ceiling-meander", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Pit", "pit", y ); y += LINE_ROW;
-    drawLineRow( canvas, label, "Floor meander", "floor-meander", y ); y += LINE_ROW;
+    drawLineRow( canvas, label, "Floor channel", "floor-meander", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Water flow", "water-flow", y ); y += LINE_ROW + 32.0f;
     assertLineMissing( "arrow" );
     assertLineMissing( "border" );
@@ -163,7 +163,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
 
     drawPointRow( canvas, label, "Sand", "sand", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Clay", "clay", y, 0.0, false ); y += POINT_ROW;
-    drawPointRow( canvas, label, "Bedrock", "bedrock", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Bedrock", "bedrock", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Slope", "slope", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Air draught", "air-draught", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Anchor", "anchor", y, 0.0 ); y += POINT_ROW;

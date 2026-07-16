@@ -1,6 +1,6 @@
 encoding utf-8
 symbol line
-name floor-meander
+name floor_channel
 th_name floor-meander
 group floor
 color 0xffffff 0xff

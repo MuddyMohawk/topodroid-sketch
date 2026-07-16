@@ -19,7 +19,6 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Option for rearranging render order (eg, survey station designations on top)
 - Change the update check and versioning to track something besides `https://raw.githubusercontent.com/marcocorvi/speleoapks/main/tdversion.txt`
 - symbol notes:
-  - bedrock point symbol shouldn't be orientable
   - need the text/special object symbols
   - need the crack lines
   - maybe make a popcorn line symbol
@@ -27,7 +26,6 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - clay needs to be better
   - top horizontal bar of anthodite ain't right
   - need a talus symbol, probably line and point
-  - rename this meander nonsense
   - all the water symbols 
   - I don't like the boulder symbol and it needs to be stackable
   - need a loose flowstone or point flowstone

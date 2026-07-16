@@ -3,7 +3,7 @@ symbol point
 name bedrock
 th_name bedrock
 group bedrock
-orientation yes
+orientation no
 color 0xffffff
 path
   moveTo -12 0
