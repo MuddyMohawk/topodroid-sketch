@@ -38,8 +38,10 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - bones could be bonier
   - leaves, organic detritus
   - stackable boulders, rocks?
+  - different scaling factor for leaves? or maybe they're just small
 
 ## Known bugs
+- Sometimes drawing a section line causes the splay lines it crosses to stop rendered. Fixed by re-opening the sketch
 - Cavway special lines don't seem to be colored in cross-sections like they are in plan. Vanilla bug.
 - Large reference images, and reference images in general, are kinda low and cause lag
 - Adjusting the number of preset buttons doesn't update that settings screen, causing the user to have to leave and re-enter that settings page to adjust the new preset bars
@@ -54,6 +56,8 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - If you don't give TopoDroid all the perms it can get into a bugged state where it immediately closes upon opening the app. Vanilla bug.
 
 ## Future possible features / brainstorming
+- stamp point symbol from random selection (eg leaf variants, rock variants)
+- settings/symbol set profiles
 - better visual indication of export-in-progress. Loading bar? spinny wheel?
 - GPU acceleration
 - export separate layers (point, line, area). Or consider giving different things a layer tag (walls, structure, details) and export those

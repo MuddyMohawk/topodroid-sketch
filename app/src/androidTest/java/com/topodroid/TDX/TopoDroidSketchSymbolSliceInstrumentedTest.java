@@ -41,7 +41,7 @@ import java.util.zip.ZipInputStream;
 public class TopoDroidSketchSymbolSliceInstrumentedTest
 {
   private static final int WIDTH = 1440;
-  private static final int HEIGHT = 5750;
+  private static final int HEIGHT = 5844;
   private static final float LEFT = 260.0f;
   private static final float COL = 370.0f;
   private static final float LINE_ROW = 70.0f;
@@ -109,6 +109,8 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                 entries.contains( "symbols_topodroid_sketch/point/sand" ) );
     assertTrue( "Missing sketch debris point in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/point/debris=small" ) );
+    assertTrue( "Missing sketch leaf-litter point in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/point/leaf-litter-organic" ) );
   }
 
   @Test
@@ -197,6 +199,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawPointRow( canvas, label, "Gypsum flower", "gypsum-flower", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Gypsum needles", "gypsum-needles", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Invert fossils", "invertebrate-fossils", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Leaf litter", "leaf-litter-organic", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Moonmilk", "moonmilk", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Pool spar", "pool-spar", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Frostwork", "frostwork", y, 0.0 ); y += POINT_ROW;

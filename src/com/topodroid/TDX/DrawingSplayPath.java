@@ -53,6 +53,31 @@ public class DrawingSplayPath extends DrawingPath
   private static final Paint H_SPLAY_PAINT = BrushManager.lightPinkPaint;
   private static final Paint V_SPLAY_PAINT = BrushManager.deepBluePaint;
 
+  static Paint getCavwaySplayPaint( DBlock blk )
+  {
+    if ( blk == null ) return null;
+    int cavway_flag = blk.cavwayFlag();
+    if ( cavway_flag <= 0 ) return null;
+    switch ( cavway_flag ) {
+      case CavwayConst.FLAG_FEATURE:
+        return BrushManager.paintSplayFeature;
+      case CavwayConst.FLAG_RIDGE:
+        return BrushManager.paintSplayRidge;
+      case CavwayConst.FLAG_BACKSIGHT:
+        return BrushManager.paintSplayBacksight;
+      case CavwayConst.FLAG_GENERIC:
+        return BrushManager.paintSplayGeneric;
+      default:
+        return BrushManager.fixedOrangePaint;
+    }
+  }
+
+  static Paint makeCavwaySplayPaint( DBlock blk )
+  {
+    Paint paint = getCavwaySplayPaint( blk );
+    return ( paint == null ) ? null : new Paint( paint );
+  }
+
   /** toggle the display mode of splays , between LINE and POINT
    */
   static int toggleSplayMode()
@@ -277,25 +302,9 @@ public class DrawingSplayPath extends DrawingPath
       mPaint = BrushManager.paintSplayXB; // BLUE
       return true;
     }
-    int cavway_flag = blk.cavwayFlag();
-    if ( cavway_flag > 0 ) {
-      switch ( cavway_flag ) {
-        case CavwayConst.FLAG_FEATURE: 
-          mPaint = BrushManager.paintSplayFeature;
-          break;
-        case CavwayConst.FLAG_RIDGE:
-          mPaint = BrushManager.paintSplayRidge;
-          break;
-        case CavwayConst.FLAG_BACKSIGHT:
-          mPaint = BrushManager.paintSplayBacksight;
-          break;
-        case CavwayConst.FLAG_GENERIC:
-          mPaint = BrushManager.paintSplayGeneric;
-          break;
-        default:
-          mPaint = BrushManager.fixedOrangePaint;
-          break;
-      }
+    Paint cavway_paint = getCavwaySplayPaint( blk );
+    if ( cavway_paint != null ) {
+      mPaint = cavway_paint;
       return true;
     }
     // if ( blk.isHighlighted() ) {

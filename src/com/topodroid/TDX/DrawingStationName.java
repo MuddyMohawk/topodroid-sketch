@@ -248,6 +248,18 @@ public class DrawingStationName extends DrawingPointPath
     }
   }
 
+  /** draw the station on the screen
+   * @param canvas   canvas
+   * @param matrix   transform matrix
+   * @param scale    transform scale (not used by station labels)
+   * @param bbox     clipping box
+   */
+  @Override
+  public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox )
+  {
+    draw( canvas, matrix, bbox );
+  }
+
   /** draw the station on the screen, using a caller-owned scratch path
    * @param canvas   canvas
    * @param matrix   transform matrix
@@ -307,6 +319,19 @@ public class DrawingStationName extends DrawingPointPath
         canvas.drawPath( path, DrawingPath.xorPaint( BrushManager.mSectionPaint, xor_color ) );
       }
     }
+  }
+
+  /** draw the station on the screen
+   * @param canvas    canvas
+   * @param matrix    transform matrix
+   * @param scale     transform scale (not used by station labels)
+   * @param bbox      clipping box
+   * @param xor_color xoring color
+   */
+  @Override
+  public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox, int xor_color )
+  {
+    draw( canvas, matrix, bbox, xor_color );
   }
 
   /** @return the coordinates (E,N,Z) as a string

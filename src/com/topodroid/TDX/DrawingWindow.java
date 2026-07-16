@@ -1370,6 +1370,53 @@ public class DrawingWindow extends ItemDrawer
   /** used for splays in XSections
    * the DBlock comes from a query in the DB and it is not the DBlock in the plan/profile
    *     therefore coloring the splays of those blocks does not affect the X-Section splay coloring
+   * @param path   splay path
+   * @param blk    data block
+   * @param angle  angle between splay and the plane [degrees]
+   * @param blue   true for splays at TO station
+   */
+  private void setSectionSplayPaint( DrawingSplayPath path, DBlock blk, float angle, boolean blue )
+  {
+    Paint paint = ( blk == null ) ? null : blk.getPaint();
+    if ( paint != null ) {
+      path.setPathPaint( paint );
+      return;
+    }
+    paint = DrawingSplayPath.makeCavwaySplayPaint( blk );
+    if ( paint != null ) {
+      path.setPathPaint( paint );
+      return;
+    }
+    if ( blue ) {
+      if ( blk != null && blk.isScan() ) {
+        path.setPathPaint( BrushManager.paintScanShot );    // SCAN
+      } else if ( blk != null && blk.isXSplay() ) {
+        path.setPathPaint( BrushManager.paintSplayLRUD );    // GREEN
+      } else if ( angle > TDSetting.mSectionSplay ) {
+        path.setPathPaint( BrushManager.paintSplayXVdot );   // MID_BLUE dotted-4  -- -- -- --
+      } else if ( angle < -TDSetting.mSectionSplay ) {
+        path.setPathPaint( BrushManager.paintSplayXVdash );  // MID_BLUE dashed-3  --- --- ---
+      } else {
+        path.setPathPaint( BrushManager.paintSplayXViewed ); // MID_BLUE
+      }
+    } else {
+      if ( blk != null && blk.isScan() ) {
+        path.setPathPaint( BrushManager.paintScanShot );    // SCAN
+      } else if ( blk != null && blk.isXSplay() ) {
+        path.setPathPaint( BrushManager.paintSplayLRUD );    // GREEN
+      } else if ( angle > TDSetting.mSectionSplay ) {
+        path.setPathPaint( BrushManager.paintSplayXBdot );   // LIGHT_BLUE dotted-4 -- -- -- --
+      } else if ( angle < -TDSetting.mSectionSplay ) {
+        path.setPathPaint( BrushManager.paintSplayXBdash );  // LIGHT_BLUE dashed-3 --- --- ---
+      } else {
+        path.setPathPaint( BrushManager.paintSplayXB );      // LIGHT_BLUE
+      }
+    }
+  }
+
+  /** used for splays in XSections
+   * the DBlock comes from a query in the DB and it is not the DBlock in the plan/profile
+   *     therefore coloring the splays of those blocks does not affect the X-Section splay coloring
    * @param blk    data block
    * @param x1,y1  first endpoint
    * @param x2,y2  second endpoint
@@ -1377,40 +1424,13 @@ public class DrawingWindow extends ItemDrawer
    * @param blue   true for splays at TO station
    */
   private void addFixedSectionSplay( DBlock blk, float x1, float y1, float x2, float y2, float angle,
-                                     // float xoff, float yoff, 
+                                     // float xoff, float yoff,
                                      boolean blue )
   {
     // TDLog.v("add fixed section splay " + blue );
     DrawingSplayPath dpath = new DrawingSplayPath( blk, mDrawingSurface.scrapIndex() );
-    dpath.setCosine( angle ); 
-    Paint paint = blk.getPaint();
-    if ( paint != null ) {
-      dpath.setPathPaint( paint );
-    } else if ( blue ) {
-      if ( blk.isScan() ) {
-        dpath.setPathPaint( BrushManager.paintScanShot );    // SCAN
-      } else if ( blk.isXSplay() ) {
-        dpath.setPathPaint( BrushManager.paintSplayLRUD );    // GREEN
-      } else if ( angle > TDSetting.mSectionSplay ) {
-        dpath.setPathPaint( BrushManager.paintSplayXVdot );   // MID_BLUE dotted-4  -- -- -- --
-      } else if ( angle < -TDSetting.mSectionSplay ) {
-        dpath.setPathPaint( BrushManager.paintSplayXVdash );  // MID_BLUE dashed-3  --- --- ---
-      } else {
-        dpath.setPathPaint( BrushManager.paintSplayXViewed ); // MID_BLUE
-      }
-    } else {
-      if ( blk.isScan() ) {
-        dpath.setPathPaint( BrushManager.paintScanShot );    // SCAN
-      } else if ( blk.isXSplay() ) {
-        dpath.setPathPaint( BrushManager.paintSplayLRUD );    // GREEN
-      } else if ( angle > TDSetting.mSectionSplay ) {
-        dpath.setPathPaint( BrushManager.paintSplayXBdot );   // LIGHT_BLUE dotted-4 -- -- -- --
-      } else if ( angle < -TDSetting.mSectionSplay ) {
-        dpath.setPathPaint( BrushManager.paintSplayXBdash );  // LIGHT_BLUE dashed-3 --- --- ---
-      } else {
-        dpath.setPathPaint( BrushManager.paintSplayXB );      // LIGHT_BLUE
-      }
-    }
+    dpath.setCosine( angle );
+    setSectionSplayPaint( dpath, blk, angle, blue );
     // dpath.setPathPaint( blue? BrushManager.paintSplayXViewed : BrushManager.paintSplayXB );
     // DrawingUtil.makeDrawingPath( dpath, x1, y1, x2, y2, xoff, yoff );
     DrawingUtil.makeDrawingSplayPath( dpath, x1, y1, x2, y2 );
@@ -11111,34 +11131,7 @@ public class DrawingWindow extends ItemDrawer
   {
     DrawingSplayPath path = new DrawingSplayPath( blk, scrap );
     path.setCosine( angle );
-    Paint paint = blk.getPaint();
-    if ( paint != null ) {
-      path.setPathPaint( paint );
-    } else if ( blue ) {
-      if ( blk.isScan() ) {
-        path.setPathPaint( BrushManager.paintScanShot );
-      } else if ( blk.isXSplay() ) {
-        path.setPathPaint( BrushManager.paintSplayLRUD );
-      } else if ( angle > TDSetting.mSectionSplay ) {
-        path.setPathPaint( BrushManager.paintSplayXVdot );
-      } else if ( angle < -TDSetting.mSectionSplay ) {
-        path.setPathPaint( BrushManager.paintSplayXVdash );
-      } else {
-        path.setPathPaint( BrushManager.paintSplayXViewed );
-      }
-    } else {
-      if ( blk.isScan() ) {
-        path.setPathPaint( BrushManager.paintScanShot );
-      } else if ( blk.isXSplay() ) {
-        path.setPathPaint( BrushManager.paintSplayLRUD );
-      } else if ( angle > TDSetting.mSectionSplay ) {
-        path.setPathPaint( BrushManager.paintSplayXBdot );
-      } else if ( angle < -TDSetting.mSectionSplay ) {
-        path.setPathPaint( BrushManager.paintSplayXBdash );
-      } else {
-        path.setPathPaint( BrushManager.paintSplayXB );
-      }
-    }
+    setSectionSplayPaint( path, blk, angle, blue );
     DrawingUtil.makeDrawingSplayPath( path, x1, y1, x2, y2 );
     path.shiftPathBy( dx, dy );
     path.xEnd += dx;
