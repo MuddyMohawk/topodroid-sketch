@@ -1205,27 +1205,20 @@ public class DrawingCommandManager
   final static String remove_area_point = "remove area point";
   final static String remove_area = "remove area completely";
 
-  /** erase at a position, in the current scrap
-   * @param x    X scene coords
-   * @param y    Y scene coords
+  /** erase along the swept segment from the previous to the current eraser position, in the current scrap
+   * @param x0   previous X scene coords (its disk was handled by the previous call)
+   * @param y0   previous Y scene coords
+   * @param x1   current X scene coords
+   * @param y1   current Y scene coords
    * @param zoom current canvas display zoom
    * @param eraseCmd  erase command
    * @param erase_mode  erasing mode
    * @param erase_size  eraser size
-   *
-   * return result code:
-   *    0  no erasing
-   *    1  point erased
-   *    2  line complete erase
-   *    3  line start erase
-   *    4  line end erase 
-   *    5  line split
-   *    6  area complete erase
-   *    7  area point erase
+   * @return true if anything was erased or modified
    */
-  void eraseAt( float x, float y, float zoom, EraseCommand eraseCmd, int erase_mode, float erase_size ) 
+  boolean eraseAt( float x0, float y0, float x1, float y1, float zoom, EraseCommand eraseCmd, int erase_mode, float erase_size )
   {
-    mCurrentScrap.eraseAt(x, y, zoom, eraseCmd, erase_mode, erase_size ); 
+    return mCurrentScrap.eraseAt( x0, y0, x1, y1, zoom, eraseCmd, erase_mode, erase_size );
   }
 
   void refreshReferencePath( DrawingReferencePath path )

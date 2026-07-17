@@ -388,6 +388,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     } else {
       commandManager.syncClearSelected();
     }
+    staleBlitWindow( STALE_BLIT_SWITCH_MS ); // dots pop in with the rebuild instead of freezing the surface
     requestSceneRender();
   }
 
@@ -580,16 +581,28 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
    */
   void setEraser( float x, float y, float r ) { commandManager.setEraser(x, y, r); requestRender(); } // canvas x,y, r - live overlay, not cached
 
-  /** erase at a position, in the current manager
-   * @param x    X scene coords
-   * @param y    Y scene coords
+  /** erase along the segment swept since the previous touch sample, in the current manager
+   * @param x0   previous X scene coords (already erased by the previous call)
+   * @param y0   previous Y scene coords
+   * @param x1   current X scene coords
+   * @param y1   current Y scene coords
    * @param zoom current zoom (the larger the zoom, the bigger the sketch on the display)
    * @param cmd  erase command
    * @param erase_mode  erasing mode
    * @param erase_size  eraser size
+   * @return true if anything was erased or modified
+   * @note the scene is invalidated only when something actually changed:
+   *       dragging the eraser over empty canvas stays on the cheap blit path
    */
-  void eraseAt( float x, float y, float zoom, EraseCommand cmd, int erase_mode, float erase_size )
-  { commandManager.eraseAt( x, y, zoom, cmd, erase_mode, erase_size ); requestSceneRender(); }
+  boolean eraseAt( float x0, float y0, float x1, float y1, float zoom, EraseCommand cmd, int erase_mode, float erase_size )
+  {
+    boolean erased = commandManager.eraseAt( x0, y0, x1, y1, zoom, cmd, erase_mode, erase_size );
+    if ( erased ) {
+      staleBlitWindow( STALE_BLIT_GESTURE_MS );
+      requestSceneRender();
+    }
+    return erased;
+  }
   
   /** add an erase command in the current manager
    * @param cmd   erase command
@@ -769,7 +782,10 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     synchronized ( mCacheLock ) {
       if ( mCacheFront == null || mCacheFront.isRecycled() ) return false;
       if ( mCacheOwner != manager ) return false;                          // plot/manager switched
-      if ( mCacheVersion != mSceneVersion.get() ) return false;            // scene mutated
+      if ( mCacheVersion != mSceneVersion.get() ) {                        // scene mutated
+        if ( System.currentTimeMillis() >= mStaleBlitUntilMs ) return false; // direct render
+        scheduleSceneCacheBuild(); // tolerated staleness: blit the last build, converge in background
+      }
       if ( mCacheForW != mWidth || mCacheForH != mHeight ) return false;   // viewport resized
       manager.drawUnderDecos( canvas );
       if ( mCacheDx == mViewDx && mCacheDy == mViewDy && mCacheZoom == mViewZoom && mCacheLandscape == mViewLandscape ) {
@@ -865,6 +881,31 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   /** invalidate the scene cache: call after any change to the rendered scene
    *  content (the transform alone does NOT invalidate - that is the point) */
   private void invalidateSceneCache() { mSceneVersion.incrementAndGet(); }
+
+  // STALE-BLIT WINDOW: while armed, a frame whose scene version is stale
+  // keeps blitting the last built cache (scheduling a converging rebuild)
+  // instead of falling back to a full direct render. A direct render runs
+  // on the render thread holding the command locks, so during continuous
+  // scene-mutating gestures (erase drag, hot-item shift/rotate) it starves
+  // the UI thread's per-event mutation work: touch events coalesce, erase
+  // samples arrive sparse, and the whole gesture feels laggy. Under the
+  // window, mutated content lags the finger by one background rebuild -
+  // the same rate a direct render would repaint it - while frames, pan and
+  // the eraser cursor stay at frame rate. The window is deliberately short
+  // and refreshed per event: one-shot mutations (committing a line, undo)
+  // never arm it, so their next frame still direct-renders immediately.
+  private volatile long mStaleBlitUntilMs = 0;
+  static final long STALE_BLIT_GESTURE_MS = 300;  // refreshed per touch event during a gesture
+  static final long STALE_BLIT_SWITCH_MS  = 500;  // display-mode switches: cover one full rebuild
+
+  /** tolerate blitting a stale scene cache for a short while
+   * @param ms   window duration from now [ms]
+   */
+  void staleBlitWindow( long ms )
+  {
+    long until = System.currentTimeMillis() + ms;
+    if ( until > mStaleBlitUntilMs ) mStaleBlitUntilMs = until;
+  }
 
   // LIVE ITEM: a drawing item being placed/adjusted by an active gesture
   // (drag-placed point symbol being scaled/rotated). It is NOT in the command
@@ -1414,6 +1455,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   SelectionSet getItemsAt( float x, float y, float zoom, int mode, float size )
   {
     SelectionSet ret = commandManager.getItemsAt( x, y, zoom, mode, size, mStationSplay );
+    staleBlitWindow( STALE_BLIT_GESTURE_MS ); // highlight pops in with the rebuild; the surface stays fluid
     requestSceneRender(); // changed the selection highlight, which is part of the cached scene
     return ret;
   }
@@ -1430,6 +1472,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   boolean setRangeAt( float x, float y, float zoom, int type, float size )
   {
     boolean ret = commandManager.setRangeAt( x, y, zoom, type, size );
+    staleBlitWindow( STALE_BLIT_GESTURE_MS );
     requestSceneRender();
     return ret;
   }
@@ -1450,14 +1493,14 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   boolean hasSelected() { return commandManager.hasSelected(); }
 
   // void shiftHotItem( float dx, float dy, float range ) { commandManager.shiftHotItem( dx, dy, range ); }
-  void shiftHotItem( float dx, float dy ) { commandManager.shiftHotItem( dx, dy ); requestSceneRender(); }
+  void shiftHotItem( float dx, float dy ) { commandManager.shiftHotItem( dx, dy ); staleBlitWindow( STALE_BLIT_GESTURE_MS ); requestSceneRender(); }
 
   void refreshReferencePath( DrawingReferencePath path ) { commandManager.refreshReferencePath( path ); requestSceneRender(); }
 
   /** rotate the hot item 
    * @param dy   amount of rotation [degrees]
    */
-  void rotateHotItem( float dy ) { commandManager.rotateHotItem( dy ); requestSceneRender(); }
+  void rotateHotItem( float dy ) { commandManager.rotateHotItem( dy ); staleBlitWindow( STALE_BLIT_GESTURE_MS ); requestSceneRender(); }
 
   /** @return the next selected point
    */
@@ -1476,7 +1519,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
    * @param y   Y-shift
    * @param scrap whether to shift only the current scrap
    */
-  void shiftDrawing( float x, float y, boolean scrap ) { commandManager.shiftDrawing( x, y, scrap ); requestSceneRender(); }
+  void shiftDrawing( float x, float y, boolean scrap ) { commandManager.shiftDrawing( x, y, scrap ); staleBlitWindow( STALE_BLIT_GESTURE_MS ); requestSceneRender(); }
 
   // /** scrap drawing by a factor
   //  * @param z  factor

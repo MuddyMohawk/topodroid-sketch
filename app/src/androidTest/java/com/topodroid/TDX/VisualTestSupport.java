@@ -1538,7 +1538,7 @@ selection.mHotItem.getHandleRole() );
         float zoom = getPrivateFloat( window, "mZoom" );
 
         EraseCommand command = new EraseCommand();
-        surface.eraseAt( reference.cx, reference.cy, zoom, command, eraseMode, eraseSize );
+        surface.eraseAt( reference.cx, reference.cy, reference.cx, reference.cy, zoom, command, eraseMode, eraseSize );
         if ( command.size() > 0 ) {
           command.completeCommand();
           surface.addEraseCommand( command );

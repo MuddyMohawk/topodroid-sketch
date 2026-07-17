@@ -679,31 +679,94 @@ public class Scrap
   }
 
   // ERASE ACTIONS -----------------------------------------------
-  /** 
-   * return result code:
-   *    0  no erasing
-   *    1  point erased
-   *    2  line complete erase
-   *    3  line start erase
-   *    4  line end erase 
-   *    5  line split
-   *    6  area complete erase
-   *    7  area point erase
+
+  // max erase sub-samples per swept segment: bounds the work of a huge
+  // coalesced touch jump (each sub-sample is one bucket query)
+  private static final int ERASE_MAX_SAMPLES = 64;
+
+  /** erase along the segment swept by the eraser since the previous touch sample
+   * @param x0,y0  previous eraser position (scene): its disk was already erased
+   * @param x1,y1  current eraser position (scene)
+   * @param zoom   canvas display zoom
+   * @param eraseCmd   erase command (accumulates the gesture's actions)
+   * @param erase_mode erase filter mode
+   * @param erase_size eraser size
+   * @return true if anything was erased or modified
    *
-   * x    X scene
-   * y    Y scene
-   * zoom canvas display zoom
+   * The segment is sampled at most every 0.8 erase-radius so the swept
+   * capsule is covered no matter how sparse the touch events arrive
+   * (coalesced events used to leave un-erased gaps). Sample (x0,y0) itself
+   * is skipped: the previous call handled it.
    *
    * N.B. mSelection cannot be null here
    */
-  void eraseAt( float x, float y, float zoom, EraseCommand eraseCmd, int erase_mode, float erase_size ) 
+  boolean eraseAt( float x0, float y0, float x1, float y1, float zoom, EraseCommand eraseCmd, int erase_mode, float erase_size )
+  {
+    float erase_radius = TDSetting.mCloseCutoff + erase_size / zoom;
+    float dx = x1 - x0;
+    float dy = y1 - y0;
+    float len = (float)Math.sqrt( dx*dx + dy*dy );
+    int n = 1 + (int)( len / ( 0.8f * erase_radius ) );
+    if ( n > ERASE_MAX_SAMPLES ) n = ERASE_MAX_SAMPLES;
+    boolean erased = false;
+    for ( int i = 1; i <= n; ++i ) {
+      float t = i / (float)n;
+      erased |= eraseAtSample( x0 + t*dx, y0 + t*dy, erase_radius, eraseCmd, erase_mode );
+    }
+    if ( TDSetting.mEraseReferenceImages && ( erase_mode == Drawing.FILTER_ALL || erase_mode == Drawing.FILTER_POINT ) ) {
+      ArrayList< DrawingReferencePath > refs_to_erase = null;
+      synchronized( TDPath.mCommandsLock ) {
+        for ( ICanvasCommand cmd : mCurrentStack ) {
+          if ( ! ( cmd instanceof DrawingReferencePath ) ) continue;
+          DrawingReferencePath ref = (DrawingReferencePath)cmd;
+          for ( int i = 1; i <= n; ++i ) {
+            float t = i / (float)n;
+            if ( ref.intersectsEraseDisk( x0 + t*dx, y0 + t*dy, erase_radius ) ) {
+              if ( refs_to_erase == null ) refs_to_erase = new ArrayList<>();
+              refs_to_erase.add( ref );
+              break;
+            }
+          }
+        }
+        if ( refs_to_erase != null ) {
+          for ( DrawingReferencePath ref : refs_to_erase ) {
+            eraseCmd.addAction( EraseAction.ERASE_REMOVE, ref );
+            mCurrentStack.remove( ref );
+            synchronized ( TDPath.mSelectionLock ) {
+              mSelection.removePath( ref );
+            }
+            erased = true;
+          }
+        }
+      }
+    }
+    return erased;
+  }
+
+  /** erase the items selectable within one eraser disk
+   * @param x    X scene
+   * @param y    Y scene
+   * @param erase_radius eraser disk radius (scene units)
+   * @param eraseCmd   erase command
+   * @param erase_mode erase filter mode
+   * @return true if anything was erased or modified
+   *
+   * result cases (formerly return codes):
+   *    1  point erased
+   *    2  line complete erase
+   *    3  line start erase
+   *    4  line end erase
+   *    5  line split
+   *    6  area complete erase
+   *    7  area point erase
+   */
+  private boolean eraseAtSample( float x, float y, float erase_radius, EraseCommand eraseCmd, int erase_mode )
   {
     SelectionSet sel = new SelectionSet();
-    float erase_radius = TDSetting.mCloseCutoff + erase_size / zoom;
     synchronized ( TDPath.mSelectionLock ) {
       mSelection.selectAtForErase( sel, x, y, erase_radius, erase_mode );
     }
-    // int ret = 0;
+    boolean erased = false;
     if ( sel.size() > 0 ) {
       synchronized( TDPath.mCommandsLock ) {
         for ( SelectionPoint pt : sel.mPoints ) {
@@ -723,7 +786,8 @@ public class Scrap
               if ( size <= 2 || ( size == 3 && pt.mPoint == first.mNext ) ) // 2-point line OR erase midpoint of a 3-point line 
               {
                 // TDLog.Log( TDLog.LOG_PLOT, remove_line );
-                // ret = 2; 
+                // ret = 2;
+                erased = true;
                 eraseCmd.addAction( EraseAction.ERASE_REMOVE, path );
                 mCurrentStack.remove( path );
                 synchronized ( TDPath.mSelectionLock ) {
@@ -734,6 +798,7 @@ public class Scrap
               {
                 // TDLog.Log( TDLog.LOG_PLOT, remove_line_first );
                 // ret = 3;
+                erased = true;
                 eraseCmd.addAction( EraseAction.ERASE_MODIFY, path );
                 // LinePoint lp = points.get(0);
                 // LinePoint lp = first;
@@ -748,6 +813,7 @@ public class Scrap
               {
                 // TDLog.Log( TDLog.LOG_PLOT, remove_line_second );
                 // ret = 3;
+                erased = true;
                 eraseCmd.addAction( EraseAction.ERASE_MODIFY, path );
                 // LinePoint lp = points.get(0);
                 // LinePoint lp = first;
@@ -763,6 +829,7 @@ public class Scrap
               {
                 // TDLog.Log( TDLog.LOG_PLOT, remove_line_last );
                 // ret = 4;
+                erased = true;
                 eraseCmd.addAction( EraseAction.ERASE_MODIFY, path );
                 // LinePoint lp = points.get(size-1);
                 // LinePoint lp = last;
@@ -778,6 +845,7 @@ public class Scrap
               {
                 // TDLog.Log( TDLog.LOG_PLOT, remove_line_last );
                 // ret = 4;
+                erased = true;
                 eraseCmd.addAction( EraseAction.ERASE_MODIFY, path );
                 // LinePoint lp = points.get(size-1);
                 // LinePoint lp = last;
@@ -790,6 +858,7 @@ public class Scrap
               } else { // erase a point in the middle of multi-point line
                 // TDLog.Log( TDLog.LOG_PLOT, remove_line_middle );
                 // ret = 5;
+                erased = true;
                 doSplitLine( line, pt.mPoint, eraseCmd );
                 break; // IMPORTANT break the for-loop
               }
@@ -800,6 +869,7 @@ public class Scrap
               if ( area.size() <= 3 ) {
                 // TDLog.Log( TDLog.LOG_PLOT, remove_area );
                 // ret = 6;
+                erased = true;
                 eraseCmd.addAction( EraseAction.ERASE_REMOVE, path );
                 mCurrentStack.remove( path );
                 synchronized ( TDPath.mSelectionLock ) {
@@ -808,6 +878,7 @@ public class Scrap
               } else {
                 // TDLog.Log( TDLog.LOG_PLOT, remove_area_point );
                 // ret = 7;
+                erased = true;
                 eraseCmd.addAction( EraseAction.ERASE_MODIFY, path );
                 doRemoveLinePoint( area, pt.mPoint, pt );
                 area.retracePath();
@@ -816,6 +887,7 @@ public class Scrap
           } else if ( path.isPoint() ) { // path  instanceof DrawingPointPath
             if ( erase_mode == Drawing.FILTER_ALL || erase_mode == Drawing.FILTER_POINT ) {
               // ret = 1;
+              erased = true;
               eraseCmd.addAction( EraseAction.ERASE_REMOVE, path );
               mCurrentStack.remove( path );
               synchronized ( TDPath.mSelectionLock ) {
@@ -826,31 +898,8 @@ public class Scrap
         }
       }
     }
-
-    if ( TDSetting.mEraseReferenceImages && ( erase_mode == Drawing.FILTER_ALL || erase_mode == Drawing.FILTER_POINT ) ) {
-      ArrayList< DrawingReferencePath > refs_to_erase = null;
-      synchronized( TDPath.mCommandsLock ) {
-        for ( ICanvasCommand cmd : mCurrentStack ) {
-          if ( ! ( cmd instanceof DrawingReferencePath ) ) continue;
-          DrawingReferencePath ref = (DrawingReferencePath)cmd;
-          if ( ref.intersectsEraseDisk( x, y, erase_radius ) ) {
-            if ( refs_to_erase == null ) refs_to_erase = new ArrayList<>();
-            refs_to_erase.add( ref );
-          }
-        }
-        if ( refs_to_erase != null ) {
-          for ( DrawingReferencePath ref : refs_to_erase ) {
-            eraseCmd.addAction( EraseAction.ERASE_REMOVE, ref );
-            mCurrentStack.remove( ref );
-            synchronized ( TDPath.mSelectionLock ) {
-              mSelection.removePath( ref );
-            }
-          }
-        }
-      }
-    }
     // checkLines();
-    // return ret;
+    return erased;
   }
 
   /** append an erase command to the command stack

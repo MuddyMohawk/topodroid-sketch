@@ -563,6 +563,9 @@ public class DrawingWindow extends ItemDrawer
   private boolean mScrapOnly;    // whether to shift only the current scrap
 
   private EraseCommand mEraseCommand = null;
+  private boolean mHasErasePrev = false; // whether mErasePrevX/Y hold the previous erase sample (scene, landscape-adjusted)
+  private float mErasePrevX = 0;
+  private float mErasePrevY = 0;
 
   // used only by the DrawingModeDialog
   void setShiftDrawing( boolean shift_drawing, boolean scrap_only ) 
@@ -4631,15 +4634,21 @@ public class DrawingWindow extends ItemDrawer
     } 
   }
 
-  /** execute an erase action
+  /** execute an erase action, sweeping from the previous erase sample
    * @param x    X coordinate of the erase action (scene frame)
    * @param y    Y coordinate of the erase action (scene frame)
    */
   private void doEraseAt( float x, float y )
   {
     if ( mLandscape ) { float t=x; x=-y; y=t; }
-    mDrawingSurface.eraseAt( x, y, mZoom, mEraseCommand, mEraseMode, mEraseSize );
-    modified();
+    float x0 = mHasErasePrev ? mErasePrevX : x;
+    float y0 = mHasErasePrev ? mErasePrevY : y;
+    mErasePrevX = x;
+    mErasePrevY = y;
+    mHasErasePrev = true;
+    if ( mDrawingSurface.eraseAt( x0, y0, x, y, mZoom, mEraseCommand, mEraseMode, mEraseSize ) ) {
+      modified();
+    }
   }
 
   /** update the name of a data block
@@ -5255,6 +5264,7 @@ public class DrawingWindow extends ItemDrawer
     // TDLog.v( "Erase at " + xs + " " + ys );
     if ( mTouchMode == MODE_MOVE ) {
       mEraseCommand =  new EraseCommand();
+      mHasErasePrev = false; // new stroke: no swept segment for the first sample
       mDrawingSurface.setEraser( xc, yc, mEraseSize );
       doEraseAt( xs, ys );
     }
@@ -5264,6 +5274,7 @@ public class DrawingWindow extends ItemDrawer
    */
   private void finishErasing()
   {
+    mHasErasePrev = false;
     mDrawingSurface.endEraser();
     if ( mEraseCommand != null && mEraseCommand.size() > 0 ) {
       mEraseCommand.completeCommand();
