@@ -1,0 +1,10 @@
+encoding utf-8
+symbol area
+name water
+th_name water
+group water
+color 0x3366ff 0x66
+close-horizontal
+level 7
+line_pattern parallel angle -35 color 0x3366ff 0x66 width 5.0 spacing 10.0 fade 25.0
+endsymbol

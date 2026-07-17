@@ -2,7 +2,7 @@
 
 Everything TopoDroid Sketch changes relative to vanilla TopoDroid. Future releases get their own section.
 
-## v0.32.1 (June 2026) -- first alpha
+## v0.40.1 (July 2026) -- first alpha
 
 Everything since forking from TopoDroid 6.4.27.
 
@@ -22,6 +22,9 @@ Everything since forking from TopoDroid 6.4.27.
 - Changed the vanilla morphing of line-symbols from warp-to-fit to a rigid-stamping that prevents the ugly morphing of things like ceiling ledges
 - Extended the line symbols with additional terms; sketch_effect, carriers, rigid stamps, dash-on segments, and advance. These are used to make prettier curved brush lines. This bumped the TDVersion.SYMBOL_VERSION from 44 to 45. However, this is still compatible with vanilla TopoDroid. Probably.
 - Changed most of the lines from the default speleo symbol pack to be white
+
+*Line Weights*
+- Added support for point and line symbols to follow a line weight setting 
 
 *Sketch Lines*
 - Added three new "sketch lines", which are programmatically generated custom line symbols based on the existing `user` lines 
