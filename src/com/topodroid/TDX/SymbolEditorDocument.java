@@ -129,8 +129,7 @@ class SymbolEditorDocument
             || thName.equals( SymbolLibrary.WALL )
             || thName.equals( SymbolLibrary.SECTION );
       case SymbolType.AREA:
-        return thName.equals( Symbol.deprefix_u( SymbolLibrary.USER ) )
-            || thName.equals( SymbolLibrary.WATER );
+        return thName.equals( Symbol.deprefix_u( SymbolLibrary.USER ) );
     }
     return true;
   }
@@ -340,6 +339,7 @@ class SymbolEditorDocument
         || "orientable".equals( key )
         || "closed".equals( key )
         || "close-horizontal".equals( key )
+        || "line_pattern".equals( key )
         || "has_text".equals( key )
         || "has_value".equals( key )
         || "style".equals( key );

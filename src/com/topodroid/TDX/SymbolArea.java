@@ -45,6 +45,7 @@ public class SymbolArea extends Symbol
   BitmapShader mShader; // paint bitmap shader
   TileMode mXMode;
   TileMode mYMode;
+  private AreaLinePattern mLinePattern = null; // world-aligned stripe fill, null = plain fill
 
   @Override public String getName()  { return mName; }
 
@@ -55,6 +56,9 @@ public class SymbolArea extends Symbol
   // @Override public int getColor() { return (mPaint == null)? 0 : mPaint.getColor(); }
 
   @Override public Path   getPath()  { return mPath; }
+
+  /** @return the stripe-fill pattern, or null when this area is a plain fill */
+  AreaLinePattern getLinePattern() { return mLinePattern; }
 
   @Override public boolean isOrientable() { return mOrientable; }
 
@@ -368,6 +372,10 @@ public class SymbolArea extends Symbol
               mOrientable = true;
   	    } else if ( vals[k].equals("close-horizontal") ) {
               mCloseHorizontal = true;
+
+  	    } else if ( vals[k].equals("line_pattern") ) {
+              mLinePattern = AreaLinePattern.parse( vals, k+1 ); // consumes the rest of the line
+              break;
 
   	    } else if ( vals[k].equals("endsymbol") ) {
   	      if ( name != null && th_name != null ) { // at this point if both are not null, they have both positive length

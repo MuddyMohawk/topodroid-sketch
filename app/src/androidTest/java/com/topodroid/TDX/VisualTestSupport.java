@@ -958,14 +958,35 @@ final class VisualTestSupport
    * @param centerX   square center X [scene]
    * @param centerY   square center Y [scene]
    * @param half      half side [scene]
+   * @return the inserted area (usable with removeTestAreaForRenderHash)
    */
-  void addTestAreaForRenderHash( float centerX, float centerY, float half )
+  DrawingAreaPath addTestAreaForRenderHash( float centerX, float centerY, float half )
+  {
+    int areaType = ( BrushManager.getAreaLibSize() > 1 )? 1 : 0;
+    return addTestAreaForRenderHash( areaType, centerX, centerY, half );
+  }
+
+  /** insert a closed square area of a specific symbol into the current scrap
+   * @param thName    area symbol th_name (e.g. "water")
+   * @param centerX   square center X [scene]
+   * @param centerY   square center Y [scene]
+   * @param half      half side [scene]
+   * @return the inserted area (usable with removeTestAreaForRenderHash)
+   */
+  DrawingAreaPath addTestAreaForRenderHash( String thName, float centerX, float centerY, float half )
+  {
+    int areaType = BrushManager.getAreaIndexByThName( thName );
+    assertTrue( "area symbol not in library: " + thName, areaType >= 0 );
+    return addTestAreaForRenderHash( areaType, centerX, centerY, half );
+  }
+
+  private DrawingAreaPath addTestAreaForRenderHash( int areaType, float centerX, float centerY, float half )
   {
     waitForDrawingWindow();
+    final DrawingAreaPath[] created = new DrawingAreaPath[1];
     runOnMainChecked( "add test area", () -> {
       DrawingWindow window = requireCurrentDrawingWindow();
       DrawingSurface surface = requireCurrentDrawingSurface( window );
-      int areaType = ( BrushManager.getAreaLibSize() > 1 )? 1 : 0;
       DrawingAreaPath area = new DrawingAreaPath( areaType, surface.getNextAreaIndex(), "renderhash-a",
                                                   TDSetting.mAreaBorder, surface.scrapIndex() );
       area.addPoint( centerX - half, centerY - half );
@@ -974,6 +995,23 @@ final class VisualTestSupport
       area.addPoint( centerX - half, centerY + half );
       area.closePath();
       surface.addDrawingPath( area );
+      created[0] = area;
+    } );
+    waitForIdle();
+    return created[0];
+  }
+
+  /** remove an area previously inserted with addTestAreaForRenderHash
+   * @param area   the area to remove
+   */
+  void removeTestAreaForRenderHash( DrawingAreaPath area )
+  {
+    if ( area == null ) return;
+    waitForDrawingWindow();
+    runOnMainChecked( "remove test area", () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      DrawingSurface surface = requireCurrentDrawingSurface( window );
+      surface.deletePath( area );
     } );
     waitForIdle();
   }

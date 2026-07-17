@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import android.graphics.Canvas;
 import android.graphics.Matrix;
@@ -3148,6 +3150,56 @@ public class Scrap
     }
   }
 
+  /** @return true if the path is an area whose symbol declares a stripe pattern */
+  private static boolean isPatternedArea( DrawingPath path )
+  {
+    return ( path instanceof DrawingAreaPath )
+        && BrushManager.getAreaLinePattern( ((DrawingAreaPath)path).mAreaType ) != null;
+  }
+
+  /** draw the patterned areas, one world-aligned union group per symbol, above the
+   * plain-area pass (patterned areas are excluded from the darken layer and from the
+   * main pass); called under TDPath.mCommandsLock
+   * @param canvas   canvas
+   * @param matrix   transform matrix
+   * @param bbox     scene clipping rectangle
+   * @param with_xor whether stripe colors are xor-ed (inverted-colors rendering)
+   */
+  private void drawPatternedAreaGroups( Canvas canvas, Matrix matrix, RectF bbox, boolean with_xor )
+  {
+    if ( ! BrushManager.hasPatternedAreas() ) return;
+    boolean with_levels = TDSetting.mWithLevels != 0;
+    float ink = TDSetting.inkUnit();
+    LinkedHashMap< Integer, ArrayList< DrawingAreaPath > > groups = null;
+    RectF pad = ( bbox == null )? null : new RectF();
+    for ( ICanvasCommand cmd : mCurrentStack ) {
+      if ( cmd.commandType() != 0 ) continue;
+      if ( ! ( cmd instanceof DrawingAreaPath ) ) continue;
+      DrawingAreaPath area = (DrawingAreaPath)cmd;
+      AreaLinePattern pattern = BrushManager.getAreaLinePattern( area.mAreaType );
+      if ( pattern == null ) continue;
+      if ( with_levels && ! DrawingLevel.isLevelVisible( area ) ) continue;
+      if ( pad != null ) {
+        // padded cull: members just outside the viewport still shape the visible union boundary/fade
+        float inflate = ( pattern.mFadeScale + pattern.mWidthScale + pattern.mSpacingScale ) * ink;
+        pad.set( bbox );
+        pad.inset( -inflate, -inflate );
+        if ( ! area.intersects( pad ) ) continue;
+      }
+      if ( groups == null ) groups = new LinkedHashMap<>();
+      ArrayList< DrawingAreaPath > members = groups.get( area.mAreaType );
+      if ( members == null ) {
+        members = new ArrayList<>();
+        groups.put( area.mAreaType, members );
+      }
+      members.add( area );
+    }
+    if ( groups == null ) return;
+    for ( Map.Entry< Integer, ArrayList< DrawingAreaPath > > entry : groups.entrySet() ) {
+      AreaPatternRenderer.drawGroup( canvas, matrix, bbox, BrushManager.getAreaLinePattern( entry.getKey() ), entry.getValue(), with_xor );
+    }
+  }
+
   /** draw all sketch items
    * @param canvas    canvas
    * @param matrix    transform matrix
@@ -3172,7 +3224,7 @@ public class Scrap
             if ( cmd.commandType() == 0 ) {
               DrawingPath path = (DrawingPath)cmd;
               path.mLandscape = landscape;
-              if ( path.isArea() && path.intersects( bbox ) ) {
+              if ( path.isArea() && ! isPatternedArea( path ) && path.intersects( bbox ) ) {
                 if ( areaLayer < 0 ) areaLayer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
                 cmd.draw( canvas, matrix, scale, bbox, xor_color );
               }
@@ -3183,7 +3235,7 @@ public class Scrap
             if ( cmd.commandType() == 0 ) {
               DrawingPath path = (DrawingPath)cmd;
               path.mLandscape = landscape;
-              if ( path.isArea() && DrawingLevel.isLevelVisible( path ) && path.intersects( bbox ) ) {
+              if ( path.isArea() && ! isPatternedArea( path ) && DrawingLevel.isLevelVisible( path ) && path.intersects( bbox ) ) {
                 if ( areaLayer < 0 ) areaLayer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
                 cmd.draw( canvas, matrix, scale, bbox, xor_color );
               }
@@ -3192,12 +3244,13 @@ public class Scrap
         }
         if ( areaLayer >= 0 ) canvas.restoreToCount( areaLayer );
       }
+      drawPatternedAreaGroups( canvas, matrix, bbox, true );
       if ( TDSetting.mWithLevels == 0 ) { // treat no-levels case by itself
         for ( ICanvasCommand cmd : mCurrentStack  ) {
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
             path.mLandscape = landscape;
-            if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
+            if ( path.isArea() && ( TDSetting.mAreaOverlapDarken || isPatternedArea( path ) ) ) continue;
             cmd.draw( canvas, matrix, scale, bbox, xor_color );
             if ( path.isLine() ) { // path instanceof DrawingLinePath
               DrawingLinePath line = (DrawingLinePath)path;
@@ -3222,7 +3275,7 @@ public class Scrap
             DrawingPath path = (DrawingPath)cmd;
             path.mLandscape = landscape;
             if ( DrawingLevel.isLevelVisible( (DrawingPath)cmd ) ) {
-              if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
+              if ( path.isArea() && ( TDSetting.mAreaOverlapDarken || isPatternedArea( path ) ) ) continue;
               cmd.draw( canvas, matrix, scale, bbox, xor_color );
               if ( path.isLine() ) { // path instanceof DrawingLinePath
                 DrawingLinePath line = (DrawingLinePath)path;
@@ -3293,7 +3346,7 @@ public class Scrap
             if ( cmd.commandType() == 0 ) {
               DrawingPath path = (DrawingPath)cmd;
               path.mLandscape = landscape;
-              if ( path.isArea() && path.intersects( bbox ) ) {
+              if ( path.isArea() && ! isPatternedArea( path ) && path.intersects( bbox ) ) {
                 if ( areaLayer < 0 ) areaLayer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
                 cmd.draw( canvas, matrix, scale, bbox );
               }
@@ -3304,7 +3357,7 @@ public class Scrap
             if ( cmd.commandType() == 0 ) {
               DrawingPath path = (DrawingPath)cmd;
               path.mLandscape = landscape;
-              if ( path.isArea() && DrawingLevel.isLevelVisible( path ) && path.intersects( bbox ) ) {
+              if ( path.isArea() && ! isPatternedArea( path ) && DrawingLevel.isLevelVisible( path ) && path.intersects( bbox ) ) {
                 if ( areaLayer < 0 ) areaLayer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
                 cmd.draw( canvas, matrix, scale, bbox );
               }
@@ -3313,12 +3366,13 @@ public class Scrap
         }
         if ( areaLayer >= 0 ) canvas.restoreToCount( areaLayer );
       }
+      drawPatternedAreaGroups( canvas, matrix, bbox, false );
       if ( TDSetting.mWithLevels == 0 ) { // treat no-levels case by itself
         for ( ICanvasCommand cmd : mCurrentStack  ) {
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
             path.mLandscape = landscape;
-            if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
+            if ( path.isArea() && ( TDSetting.mAreaOverlapDarken || isPatternedArea( path ) ) ) continue;
             cmd.draw( canvas, matrix, scale, bbox );
             if ( path.isLine() ) { // path instanceof DrawingLinePath
               DrawingLinePath line = (DrawingLinePath)path;
@@ -3337,7 +3391,7 @@ public class Scrap
             DrawingPath path = (DrawingPath)cmd;
             path.mLandscape = landscape;
             if ( DrawingLevel.isLevelVisible( (DrawingPath)cmd ) ) {
-              if ( TDSetting.mAreaOverlapDarken && path.isArea() ) continue;
+              if ( path.isArea() && ( TDSetting.mAreaOverlapDarken || isPatternedArea( path ) ) ) continue;
               cmd.draw( canvas, matrix, scale, bbox );
               if ( path.isLine() ) { // path instanceof DrawingLinePath
                 DrawingLinePath line = (DrawingLinePath)path;

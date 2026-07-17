@@ -1,5 +1,7 @@
 package com.topodroid.TDX;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -88,12 +90,41 @@ public class RenderIdentityInstrumentedTest
     captureVariant( report, "splaydots", transforms, false, false, true,  DrawingSplayPath.SPLAY_MODE_POINT );
     captureVariant( report, "landscape", transforms, true,  false, true,  DrawingSplayPath.SPLAY_MODE_LINE );
 
-    // add an area (exercises the saveLayer / area-paint path), then re-capture
+    // add an area, then re-capture. Area index 1 is the water symbol: since the
+    // stripe-fill overhaul these variants render the patterned path (world-aligned
+    // stripes + boundary fade) instead of the flat translucent fill
     float sceneCx = ( VisualTestSupport.RENDER_HASH_WIDTH  * 0.5f ) / zm - ox;
     float sceneCy = ( VisualTestSupport.RENDER_HASH_HEIGHT * 0.5f ) / zm - oy;
-    mSupport.addTestAreaForRenderHash( sceneCx, sceneCy, 60f / zm );
+    float half = 60f / zm;
+    DrawingAreaPath water1 = mSupport.addTestAreaForRenderHash( sceneCx, sceneCy, half );
     captureVariant( report, "witharea",     transforms, false, false, true, DrawingSplayPath.SPLAY_MODE_LINE );
     captureVariant( report, "witharea_edit", transforms, false, true, true, DrawingSplayPath.SPLAY_MODE_LINE );
+
+    // plain USER area pins the legacy flat/darken fill path
+    DrawingAreaPath plain = mSupport.addTestAreaForRenderHash( SymbolLibrary.USER, sceneCx - 200f / zm, sceneCy, half );
+    captureVariant( report, "plainarea", transforms, false, false, true, DrawingSplayPath.SPLAY_MODE_LINE );
+    mSupport.removeTestAreaForRenderHash( plain );
+
+    // overlapping second water square pins stripes + union + fade with real overlap
+    assertNotNull( "water area symbol must declare a stripe pattern",
+      BrushManager.getAreaLinePattern( BrushManager.getAreaIndexByThName( SymbolLibrary.WATER ) ) );
+    float ax = sceneCx + half, ay = sceneCy + half;
+    DrawingAreaPath water2 = mSupport.addTestAreaForRenderHash( SymbolLibrary.WATER, ax, ay, half );
+    captureVariant( report, "waterunion", transforms, false, false, true, DrawingSplayPath.SPLAY_MODE_LINE );
+
+    // draw-order independence: the union render of the same two areas must not depend
+    // on stack order (the nondeterminism class that sank the first water overhaul)
+    String orderAB = mSupport.captureRenderHash( "waterorder_ab",
+      ox, oy, zm, false, false, true, DrawingSplayPath.SPLAY_MODE_LINE );
+    mSupport.removeTestAreaForRenderHash( water1 );
+    mSupport.removeTestAreaForRenderHash( water2 );
+    mSupport.addTestAreaForRenderHash( SymbolLibrary.WATER, ax, ay, half );
+    mSupport.addTestAreaForRenderHash( SymbolLibrary.WATER, sceneCx, sceneCy, half );
+    String orderBA = mSupport.captureRenderHash( "waterorder_ba",
+      ox, oy, zm, false, false, true, DrawingSplayPath.SPLAY_MODE_LINE );
+    assertEquals( "patterned water union must be draw-order independent", orderAB, orderBA );
+    report.add( "waterorder_ab " + orderAB );
+    report.add( "waterorder_ba " + orderBA );
 
     mSupport.writeRenderHashReport( report );
     for ( String line : report ) mSupport.reportStep( "RENDER_HASH " + line );

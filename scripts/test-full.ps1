@@ -105,7 +105,7 @@ $FullTests = @(
   },
   @{
     Name = "Model/rendering/style tests"
-    Class = "com.topodroid.TDX.LinePatternInstrumentedTest,com.topodroid.TDX.PresetBarInstrumentedTest,com.topodroid.TDX.ToolbarRowsInstrumentedTest,com.topodroid.TDX.LineStyleSnappingInstrumentedTest,com.topodroid.TDX.SketchBrushStyleInstrumentedTest,com.topodroid.TDX.SketchBrushCompatibilityInstrumentedTest,com.topodroid.TDX.SmoothPointScaleInstrumentedTest,com.topodroid.TDX.SymbolOpacityParserInstrumentedTest,com.topodroid.TDX.TopoDroidSketchSymbolSliceInstrumentedTest"
+    Class = "com.topodroid.TDX.LinePatternInstrumentedTest,com.topodroid.TDX.AreaLinePatternInstrumentedTest,com.topodroid.TDX.PresetBarInstrumentedTest,com.topodroid.TDX.ToolbarRowsInstrumentedTest,com.topodroid.TDX.LineStyleSnappingInstrumentedTest,com.topodroid.TDX.SketchBrushStyleInstrumentedTest,com.topodroid.TDX.SketchBrushCompatibilityInstrumentedTest,com.topodroid.TDX.SmoothPointScaleInstrumentedTest,com.topodroid.TDX.SymbolOpacityParserInstrumentedTest,com.topodroid.TDX.TopoDroidSketchSymbolSliceInstrumentedTest"
     Estimate = 45
     Timeout = 300
     IdleTimeout = 150
