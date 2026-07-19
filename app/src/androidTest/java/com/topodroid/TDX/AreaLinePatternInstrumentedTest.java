@@ -31,11 +31,47 @@ public class AreaLinePatternInstrumentedTest
   {
     AreaLinePattern p = parse( "parallel angle -35 color 0x3366ff 0x66 width 5.0 spacing 10.0 fade 25.0" );
     assertNotNull( p );
+    assertEquals( AreaLinePattern.TYPE_PARALLEL, p.mType );
     assertEquals( -35.0f, p.mAngle, 0.001f );
     assertEquals( 0x663366ff, p.mColor );
     assertEquals(  5.0f, p.mWidthScale,   0.001f );
     assertEquals( 10.0f, p.mSpacingScale, 0.001f );
     assertEquals( 25.0f, p.mFadeScale,    0.001f );
+  }
+
+  @Test
+  public void parsesClayDashesGrammar()
+  {
+    AreaLinePattern p = parse( "dashes angle 0 color 0xe0d5c0 0xcc width 0.75 dash 5.0 spacing 5.5 period 13.0 fade 5.0" );
+    assertNotNull( p );
+    assertEquals( AreaLinePattern.TYPE_DASHES, p.mType );
+    assertEquals( 0.0f, p.mAngle, 0.001f );
+    assertEquals( 0xcce0d5c0, p.mColor );
+    assertEquals( 0.75f, p.mWidthScale,   0.001f );
+    assertEquals(  5.5f, p.mSpacingScale, 0.001f );
+    assertEquals(  5.0f, p.mDashScale,    0.001f );
+    assertEquals( 13.0f, p.mPeriodScale,  0.001f );
+    assertEquals(  5.0f, p.mFadeScale,    0.001f );
+  }
+
+  @Test
+  public void minimalDashesGetsDashDefaults()
+  {
+    AreaLinePattern p = parse( "dashes" );
+    assertNotNull( p );
+    assertEquals( AreaLinePattern.TYPE_DASHES, p.mType );
+    assertEquals( AreaLinePattern.DEFAULT_DASH,   p.mDashScale,   0.001f );
+    assertEquals( AreaLinePattern.DEFAULT_PERIOD, p.mPeriodScale, 0.001f );
+  }
+
+  @Test
+  public void retiredJitterTokenIsIgnoredGracefully()
+  {
+    // "jitter" (dropped when the dash stamp replaced free jitter) must not void a
+    // pattern coming from a stale symbol file
+    AreaLinePattern p = parse( "dashes jitter 4.0 width 2.0" );
+    assertNotNull( p );
+    assertEquals( 2.0f, p.mWidthScale, 0.001f );
   }
 
   @Test

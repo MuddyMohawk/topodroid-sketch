@@ -3,7 +3,7 @@
  * @author MuddyMohawk
  * @date jul 2026
  *
- * @brief TopoDroid Sketch area stripe-fill metadata
+ * @brief TopoDroid Sketch area line-fill metadata (parallel stripes / broken dashes)
  * --------------------------------------------------------
  *  Copyright This software is distributed under GPL-3.0 or later
  *  See the file COPYING.
@@ -13,40 +13,61 @@ package com.topodroid.TDX;
 
 import com.topodroid.util.TDLog;
 
-/** immutable stripe-fill parameters of an area symbol, from a "line_pattern" file line
+/** immutable line-fill parameters of an area symbol, from a "line_pattern" file line
  *
  * Grammar (one line in the area symbol file):
  *   line_pattern parallel [angle A] [color 0xRRGGBB 0xAA] [width W] [spacing S] [fade F]
+ *   line_pattern dashes   [angle A] [color 0xRRGGBB 0xAA] [width W] [spacing S]
+ *                         [dash D] [period P] [fade F]
  *
- * width, spacing (stripe period, center to center) and fade (boundary fade depth,
- * 0 = off) are ink units, the same system as line weights: scene units = value *
- * TDSetting.inkUnit(). angle is degrees in the y-down scene sense. Stripes anchor to
- * absolute scene coordinates (see AreaPatternRenderer). Unknown tokens are logged and
- * skipped so future keys degrade gracefully; a malformed number voids the whole
+ * "parallel" fills the area with continuous stripes (water). "dashes" fills it with
+ * short broken segments in horizontal rows (clay/mud): spacing is the perpendicular
+ * row spacing, period the along-row slot spacing, dash the nominal segment length;
+ * the renderer varies slot offsets and lengths with a small repeating stamp (see
+ * AreaPatternRenderer) so the fill reads hand-drawn yet repeats evenly. All metrics
+ * are ink units, the same system as line weights: scene units = value *
+ * TDSetting.inkUnit(), further scaled by the area's brush weight relative to the
+ * standard weight. angle is degrees in the y-down scene sense. Both fills anchor to
+ * absolute scene coordinates. Unknown tokens are logged and skipped so future keys
+ * degrade gracefully; an unsupported type or a malformed number voids the whole
  * pattern and the symbol falls back to its plain fill.
  */
 class AreaLinePattern
 {
-  static final String TYPE_PARALLEL = "parallel";
+  static final int TYPE_PARALLEL = 0;
+  static final int TYPE_DASHES   = 1;
+
+  private static final String NAME_PARALLEL = "parallel";
+  private static final String NAME_DASHES   = "dashes";
 
   static final float DEFAULT_ANGLE   = -35.0f;
   static final int   DEFAULT_COLOR   = 0x663366ff;
   static final float DEFAULT_WIDTH   = 5.0f;
   static final float DEFAULT_SPACING = 10.0f;
   static final float DEFAULT_FADE    = 0.0f;
+  // dashes-only
+  static final float DEFAULT_DASH    = 14.0f;
+  static final float DEFAULT_PERIOD  = 24.0f;
 
-  final float mAngle;        // stripe direction [degrees, y-down scene sense]
-  final int   mColor;        // stripe ARGB color
-  final float mWidthScale;   // stripe stroke width [ink units]
-  final float mSpacingScale; // stripe period, center to center [ink units]
+  final int   mType;         // TYPE_PARALLEL or TYPE_DASHES
+  final float mAngle;        // line direction [degrees, y-down scene sense]
+  final int   mColor;        // ink ARGB color
+  final float mWidthScale;   // stroke width [ink units]
+  final float mSpacingScale; // parallel: stripe period; dashes: perpendicular row spacing [ink units]
   final float mFadeScale;    // boundary fade depth [ink units], 0 = no fade
+  final float mDashScale;    // dashes: nominal segment length [ink units]
+  final float mPeriodScale;  // dashes: along-row slot spacing [ink units]
 
-  private AreaLinePattern( float angle, int color, float width_scale, float spacing_scale, float fade_scale )
+  private AreaLinePattern( int type, float angle, int color, float width_scale, float spacing_scale,
+                           float dash_scale, float period_scale, float fade_scale )
   {
+    mType         = type;
     mAngle        = angle;
     mColor        = color;
     mWidthScale   = width_scale;
     mSpacingScale = spacing_scale;
+    mDashScale    = dash_scale;
+    mPeriodScale  = period_scale;
     mFadeScale    = fade_scale;
   }
 
@@ -54,10 +75,24 @@ class AreaLinePattern
    */
   static AreaLinePattern parallel( float angle, int color, float width_scale, float spacing_scale, float fade_scale )
   {
-    return new AreaLinePattern( angle, color,
+    return new AreaLinePattern( TYPE_PARALLEL, angle, color,
         positiveOrDefault( width_scale,   DEFAULT_WIDTH ),
         positiveOrDefault( spacing_scale, DEFAULT_SPACING ),
-        positiveOrDefault( fade_scale,    DEFAULT_FADE ) );
+        DEFAULT_DASH, DEFAULT_PERIOD,
+        nonNegativeOrDefault( fade_scale, DEFAULT_FADE ) );
+  }
+
+  /** @return a broken-dash pattern, with non-positive/invalid metrics replaced by defaults
+   */
+  static AreaLinePattern dashes( float angle, int color, float width_scale, float spacing_scale,
+                                 float dash_scale, float period_scale, float fade_scale )
+  {
+    return new AreaLinePattern( TYPE_DASHES, angle, color,
+        positiveOrDefault( width_scale,   DEFAULT_WIDTH ),
+        positiveOrDefault( spacing_scale, DEFAULT_SPACING ),
+        positiveOrDefault( dash_scale,    DEFAULT_DASH ),
+        positiveOrDefault( period_scale,  DEFAULT_PERIOD ),
+        nonNegativeOrDefault( fade_scale, DEFAULT_FADE ) );
   }
 
   /** parse the tokens that follow the "line_pattern" key
@@ -70,7 +105,12 @@ class AreaLinePattern
     if ( vals == null ) return null;
     start = nextToken( vals, start );
     if ( start >= vals.length ) return null;
-    if ( ! TYPE_PARALLEL.equals( vals[start] ) ) {
+    int type;
+    if ( NAME_PARALLEL.equals( vals[start] ) ) {
+      type = TYPE_PARALLEL;
+    } else if ( NAME_DASHES.equals( vals[start] ) ) {
+      type = TYPE_DASHES;
+    } else {
       TDLog.e( "Unsupported area line_pattern type: " + vals[start] );
       return null;
     }
@@ -78,6 +118,8 @@ class AreaLinePattern
     int   color   = DEFAULT_COLOR;
     float width   = DEFAULT_WIDTH;
     float spacing = DEFAULT_SPACING;
+    float dash    = DEFAULT_DASH;
+    float period  = DEFAULT_PERIOD;
     float fade    = DEFAULT_FADE;
     for ( int k = nextToken( vals, start+1 ); k < vals.length; k = nextToken( vals, k+1 ) ) {
       String key = vals[k];
@@ -99,6 +141,12 @@ class AreaLinePattern
         } else if ( "spacing".equals( key ) ) {
           k = nextToken( vals, k+1 );
           if ( k < vals.length ) spacing = Float.parseFloat( vals[k] );
+        } else if ( "dash".equals( key ) ) {
+          k = nextToken( vals, k+1 );
+          if ( k < vals.length ) dash = Float.parseFloat( vals[k] );
+        } else if ( "period".equals( key ) ) {
+          k = nextToken( vals, k+1 );
+          if ( k < vals.length ) period = Float.parseFloat( vals[k] );
         } else if ( "fade".equals( key ) ) {
           k = nextToken( vals, k+1 );
           if ( k < vals.length ) fade = Float.parseFloat( vals[k] );
@@ -110,12 +158,19 @@ class AreaLinePattern
         return null;
       }
     }
-    return parallel( angle, color, width, spacing, fade );
+    return ( type == TYPE_DASHES )
+        ? dashes( angle, color, width, spacing, dash, period, fade )
+        : parallel( angle, color, width, spacing, fade );
   }
 
   private static float positiveOrDefault( float value, float fallback )
   {
     return ( value > 0.0f && ! Float.isNaN( value ) && ! Float.isInfinite( value ) )? value : fallback;
+  }
+
+  private static float nonNegativeOrDefault( float value, float fallback )
+  {
+    return ( value >= 0.0f && ! Float.isNaN( value ) && ! Float.isInfinite( value ) )? value : fallback;
   }
 
   private static int nextToken( String[] vals, int start )

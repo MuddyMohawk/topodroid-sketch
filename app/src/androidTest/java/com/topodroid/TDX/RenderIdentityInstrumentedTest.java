@@ -90,13 +90,14 @@ public class RenderIdentityInstrumentedTest
     captureVariant( report, "splaydots", transforms, false, false, true,  DrawingSplayPath.SPLAY_MODE_POINT );
     captureVariant( report, "landscape", transforms, true,  false, true,  DrawingSplayPath.SPLAY_MODE_LINE );
 
-    // add an area, then re-capture. Area index 1 is the water symbol: since the
-    // stripe-fill overhaul these variants render the patterned path (world-aligned
-    // stripes + boundary fade) instead of the flat translucent fill
+    // add a water area, then re-capture. These variants render the patterned water path
+    // (world-aligned stripes + boundary fade) instead of the flat translucent fill. Pin
+    // water by th_name, not library index: adding more file-backed areas (e.g. clay)
+    // reorders the library, and the index-1 heuristic would silently pick a different one
     float sceneCx = ( VisualTestSupport.RENDER_HASH_WIDTH  * 0.5f ) / zm - ox;
     float sceneCy = ( VisualTestSupport.RENDER_HASH_HEIGHT * 0.5f ) / zm - oy;
     float half = 60f / zm;
-    DrawingAreaPath water1 = mSupport.addTestAreaForRenderHash( sceneCx, sceneCy, half );
+    DrawingAreaPath water1 = mSupport.addTestAreaForRenderHash( SymbolLibrary.WATER, sceneCx, sceneCy, half );
     captureVariant( report, "witharea",     transforms, false, false, true, DrawingSplayPath.SPLAY_MODE_LINE );
     captureVariant( report, "witharea_edit", transforms, false, true, true, DrawingSplayPath.SPLAY_MODE_LINE );
 
@@ -125,6 +126,37 @@ public class RenderIdentityInstrumentedTest
     assertEquals( "patterned water union must be draw-order independent", orderAB, orderBA );
     report.add( "waterorder_ab " + orderAB );
     report.add( "waterorder_ba " + orderBA );
+
+    // clay uses the DASHES pattern (world-anchored broken dashes on a hash-jittered grid
+    // + boundary fade); pin it with two overlapping clay squares, clear of the water, and
+    // the same draw-order-independence guard - the jitter must be a pure function of the
+    // world cell, never of stack order or frame
+    assertNotNull( "clay area symbol must declare a line pattern",
+      BrushManager.getAreaLinePattern( BrushManager.getAreaIndexByThName( SymbolLibrary.CLAY ) ) );
+    float clayCx = sceneCx, clayCy = sceneCy + 260f / zm;
+    float clayBx = clayCx + half, clayBy = clayCy + half;
+    DrawingAreaPath clay1 = mSupport.addTestAreaForRenderHash( SymbolLibrary.CLAY, clayCx, clayCy, half );
+    DrawingAreaPath clay2 = mSupport.addTestAreaForRenderHash( SymbolLibrary.CLAY, clayBx, clayBy, half );
+    captureVariant( report, "clayunion", transforms, false, false, true, DrawingSplayPath.SPLAY_MODE_LINE );
+
+    String clayAB = mSupport.captureRenderHash( "clayorder_ab",
+      ox, oy, zm, false, false, true, DrawingSplayPath.SPLAY_MODE_LINE );
+    mSupport.removeTestAreaForRenderHash( clay1 );
+    mSupport.removeTestAreaForRenderHash( clay2 );
+    mSupport.addTestAreaForRenderHash( SymbolLibrary.CLAY, clayBx, clayBy, half );
+    mSupport.addTestAreaForRenderHash( SymbolLibrary.CLAY, clayCx, clayCy, half );
+    String clayBA = mSupport.captureRenderHash( "clayorder_ba",
+      ox, oy, zm, false, false, true, DrawingSplayPath.SPLAY_MODE_LINE );
+    assertEquals( "patterned clay union must be draw-order independent", clayAB, clayBA );
+    report.add( "clayorder_ab " + clayAB );
+    report.add( "clayorder_ba " + clayBA );
+
+    // thick-weight clay pins the brush-weight pattern scaling (5.0 / standard 2.0)
+    DrawingAreaPath thick = mSupport.addTestAreaForRenderHash( SymbolLibrary.CLAY, clayCx - 260f / zm, clayCy, half );
+    mSupport.applyTestAreaBrushWeight( thick, 5.0f );
+    report.add( "claythick " + mSupport.captureRenderHash( "claythick",
+      ox, oy, zm, false, false, true, DrawingSplayPath.SPLAY_MODE_LINE ) );
+    mSupport.removeTestAreaForRenderHash( thick );
 
     mSupport.writeRenderHashReport( report );
     for ( String line : report ) mSupport.reportStep( "RENDER_HASH " + line );

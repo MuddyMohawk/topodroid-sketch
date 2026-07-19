@@ -1,0 +1,25 @@
+encoding utf-8
+symbol point
+name leaf_litter
+th_name leaf-litter-organic
+group organic
+orientation yes
+color 0xffffff
+path
+  moveTo -8.6 1.5
+  lineTo -4.6 -2.1
+  lineTo -7.1 -7.3
+  lineTo -1.7 -4.6
+  lineTo 2.5 -8.35
+  lineTo 2.2 -2.15
+  lineTo 8.55 -1.55
+  lineTo 4.05 3.25
+  lineTo 8.6 7.9
+  lineTo 3.8 3.85
+  lineTo -1.35 8.1
+  lineTo -0.85 1.55
+  lineTo -8.6 1.5
+  moveTo -1.55 -1.65
+  lineTo 8.6 7.9
+endpath
+endsymbol

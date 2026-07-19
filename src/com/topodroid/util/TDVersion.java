@@ -34,7 +34,8 @@ public class TDVersion
   // symbol version of the current  symbols is in the app
   // 47: first expanded TopoDroid Sketch symbol batch
   // 48: file-backed water area with world-aligned stripe fill
-  public static final String SYMBOL_VERSION = "48";
+  // 49: file-backed clay area with world-anchored broken-dash fill
+  public static final String SYMBOL_VERSION = "49";
 
   // increase to install last version of DistoX2 firmware
   public static final String FIRMWARE_VERSION = "28";
@@ -67,6 +68,8 @@ public class TDVersion
   // separate from the Android app version of TopoDroid Sketch.
   public static final String COMPAT_VERSION = BuildConfig.TOPODROID_COMPAT_VERSION_NAME;
   public static final int COMPAT_VERSION_CODE = BuildConfig.TOPODROID_COMPAT_VERSION_CODE;
+  // TDR area records gain an options UTF (Sketch brush weight for pattern scaling) from this stream version
+  public static final int SKETCH_AREA_OPTIONS_VERSION_CODE = 604028;
 
   // minimum compatible TopoDroid version
   public static final int MAJOR_MIN = 2;
@@ -78,7 +81,8 @@ public class TDVersion
   public static String fullString() { return VERSION + "-" + TARGET_SDK; }
   public static int    code()       { return VERSION_CODE; }
   public static String compatString() { return COMPAT_VERSION; }
-  public static int    compatCode()   { return COMPAT_VERSION_CODE; }
+  // streams must stamp at least the area-options version so readers expect the field
+  public static int    compatCode()   { return Math.max( COMPAT_VERSION_CODE, SKETCH_AREA_OPTIONS_VERSION_CODE ); }
   public static String symbols()    { return SYMBOL_VERSION; }
   public static int    targetSdk()  { return TARGET_SDK; }
 

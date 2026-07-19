@@ -1,0 +1,9 @@
+encoding utf-8
+symbol area
+name clay
+th_name clay
+group clay
+color 0xe0d5c0 0x66
+level 3
+line_pattern dashes angle 0 color 0xe0d5c0 0xcc width 0.75 dash 5.0 spacing 5.5 period 13.0 fade 5.0
+endsymbol

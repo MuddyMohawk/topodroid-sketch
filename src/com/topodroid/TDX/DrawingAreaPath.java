@@ -46,6 +46,9 @@ import java.util.Locale;
  */
 public class DrawingAreaPath extends DrawingPointLinePath
 {
+  // TDR streams stamped with a version >= this carry the area options UTF (brush weight etc.)
+  static final int AREA_OPTIONS_VERSION = com.topodroid.util.TDVersion.SKETCH_AREA_OPTIONS_VERSION_CODE;
+
   private static final PorterDuffXfermode AREA_FILL_EMPTY_XFERMODE =
       new PorterDuffXfermode( PorterDuff.Mode.DST_OVER );
   private static final PorterDuffXfermode AREA_OVERLAP_DARKEN_XFERMODE =
@@ -65,6 +68,7 @@ public class DrawingAreaPath extends DrawingPointLinePath
   public String mPrefix;      // border/area name prefix (= scrap name) // TH2EDIT package
   // boolean mVisible; // visible border in DrawingPointLinePath
   private Shader mLocalShader = null;
+  private SketchBrushStyle mSketchBrushStyle = null; // scales the stripe/dash pattern (kept in mOptions)
 
   // FIXME-COPYPATH
   // @Override
@@ -182,6 +186,10 @@ public class DrawingAreaPath extends DrawingPointLinePath
       orientation = dis.readFloat( );
       if ( version >= 401090 ) level = dis.readInt();
       if ( version >= 401160 ) scrap = dis.readInt();
+      if ( version >= AREA_OPTIONS_VERSION ) {
+        options = dis.readUTF();
+        if ( options.length() == 0 ) options = null;
+      }
       int npt = dis.readInt( );
 
       
@@ -197,7 +205,7 @@ public class DrawingAreaPath extends DrawingPointLinePath
       }
 
       DrawingAreaPath ret = new DrawingAreaPath( type, cnt, prefix, visible, scrap );
-      ret.addOption( options ); // does nothing is options is null
+      ret.setOptions( options ); // null clears; also refreshes the brush-style metadata
       ret.mLevel       = level;
       ret.mOrientation = orientation;
       // setPathPaint( BrushManager.getAreaPaint( mAreaType ) );
@@ -327,6 +335,33 @@ public class DrawingAreaPath extends DrawingPointLinePath
   /** @return the area Therion type (possibly incuding the prefix), with ':' replaced by '_'
    */
   public String getFullThNameEscapedColon() { return  BrushManager.getAreaFullThNameEscapedColon( mAreaType ); }
+
+  /** set Sketch brush-style metadata for this placement
+   * @param style  Sketch brush style, or null to clear it
+   */
+  void setSketchBrushStyle( SketchBrushStyle style )
+  {
+    mSketchBrushStyle = style;
+    mOptions = SketchBrushStyleCodec.storeInOptions( mOptions, style );
+  }
+
+  /** @return Sketch brush-style metadata, or null if this placement has none
+   */
+  SketchBrushStyle getSketchBrushStyle() { return mSketchBrushStyle; }
+
+  /** @return this area's pattern scale (compressed brush-weight ladder, 1 = standard)
+   */
+  float getPatternWeightScale() { return AreaPatternRenderer.patternWeightScale( mSketchBrushStyle ); }
+
+  /** set the options string and refresh Sketch brush metadata
+   * @param options   new options string
+   */
+  @Override
+  public void setOptions( String options )
+  {
+    super.setOptions( options );
+    mSketchBrushStyle = SketchBrushStyleCodec.fromOptions( mOptions );
+  }
 
   /** set the area orientation angle
    * @param angle  orientation angle [degrees]
@@ -498,8 +533,9 @@ public class DrawingAreaPath extends DrawingPointLinePath
   {
     // linetype: 0 spline, 1 bezier, 2 line
     String name = getThName( );
+    String export_options = SketchBrushStyleCodec.exportOptions( mOptions ); // strip private brush metadata
     pw.format(Locale.US, "          <item type=\"area\" name=\"%s\" cave=\"%s\" branch=\"%s\" orientation=\"%.2f\" options=\"%s\" ",
-      name, cave, branch, mOrientation, ( (mOptions== null)? "" : mOptions )
+      name, cave, branch, mOrientation, ( (export_options == null)? "" : export_options )
     );
     if ( bind != null ) pw.format(" bind=\"%s\"", bind );
     pw.format(" >\n" );
@@ -545,6 +581,9 @@ public class DrawingAreaPath extends DrawingPointLinePath
         dos.writeInt( mLevel );
       // if ( version >= 401160 )
         dos.writeInt( (scrap >= 0)? scrap : mScrap );
+      if ( com.topodroid.util.TDVersion.compatCode() >= AREA_OPTIONS_VERSION ) {
+        dos.writeUTF( ( mOptions != null )? mOptions : "" );
+      }
 
       int npt = size(); // number of line points
       dos.writeInt( npt );

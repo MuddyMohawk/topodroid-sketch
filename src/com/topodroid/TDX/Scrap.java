@@ -3219,7 +3219,9 @@ public class Scrap
     if ( ! BrushManager.hasPatternedAreas() ) return;
     boolean with_levels = TDSetting.mWithLevels != 0;
     float ink = TDSetting.inkUnit();
-    LinkedHashMap< Integer, ArrayList< DrawingAreaPath > > groups = null;
+    // groups key = (area type, quantized brush-weight scale): same-type areas drawn at
+    // different weights render as separate unions with their own pattern metrics
+    LinkedHashMap< Long, ArrayList< DrawingAreaPath > > groups = null;
     RectF pad = ( bbox == null )? null : new RectF();
     for ( ICanvasCommand cmd : mCurrentStack ) {
       if ( cmd.commandType() != 0 ) continue;
@@ -3228,24 +3230,30 @@ public class Scrap
       AreaLinePattern pattern = BrushManager.getAreaLinePattern( area.mAreaType );
       if ( pattern == null ) continue;
       if ( with_levels && ! DrawingLevel.isLevelVisible( area ) ) continue;
+      float weight_scale = area.getPatternWeightScale();
       if ( pad != null ) {
         // padded cull: members just outside the viewport still shape the visible union boundary/fade
-        float inflate = ( pattern.mFadeScale + pattern.mWidthScale + pattern.mSpacingScale ) * ink;
+        float inflate = ( pattern.mFadeScale + pattern.mWidthScale + pattern.mSpacingScale + pattern.mPeriodScale )
+                      * ink * weight_scale;
         pad.set( bbox );
         pad.inset( -inflate, -inflate );
         if ( ! area.intersects( pad ) ) continue;
       }
       if ( groups == null ) groups = new LinkedHashMap<>();
-      ArrayList< DrawingAreaPath > members = groups.get( area.mAreaType );
+      Long key = ( ((long)area.mAreaType) << 32 ) | ( Math.round( weight_scale * 1000f ) & 0xffffffffL );
+      ArrayList< DrawingAreaPath > members = groups.get( key );
       if ( members == null ) {
         members = new ArrayList<>();
-        groups.put( area.mAreaType, members );
+        groups.put( key, members );
       }
       members.add( area );
     }
     if ( groups == null ) return;
-    for ( Map.Entry< Integer, ArrayList< DrawingAreaPath > > entry : groups.entrySet() ) {
-      AreaPatternRenderer.drawGroup( canvas, matrix, bbox, BrushManager.getAreaLinePattern( entry.getKey() ), entry.getValue(), with_xor );
+    for ( Map.Entry< Long, ArrayList< DrawingAreaPath > > entry : groups.entrySet() ) {
+      int area_type = (int)( entry.getKey() >> 32 );
+      ArrayList< DrawingAreaPath > members = entry.getValue();
+      AreaPatternRenderer.drawGroup( canvas, matrix, bbox, BrushManager.getAreaLinePattern( area_type ),
+                                     members, with_xor, members.get( 0 ).getPatternWeightScale() );
     }
   }
 

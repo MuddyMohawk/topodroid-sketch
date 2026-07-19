@@ -1001,6 +1001,18 @@ final class VisualTestSupport
     return created[0];
   }
 
+  /** apply a Sketch brush weight to a test area (scales its stripe/dash pattern)
+   * @param area    the area
+   * @param weight  brush weight (standard = 2.0)
+   */
+  void applyTestAreaBrushWeight( DrawingAreaPath area, float weight )
+  {
+    if ( area == null ) return;
+    runOnMainChecked( "set test area weight", () ->
+      area.setSketchBrushStyle( SketchBrushStyle.of( weight, 1.0f, 1.0f ) ) );
+    waitForIdle();
+  }
+
   /** remove an area previously inserted with addTestAreaForRenderHash
    * @param area   the area to remove
    */
