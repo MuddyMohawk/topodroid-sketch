@@ -57,14 +57,14 @@ public class AreaLinePatternInstrumentedTest
   @Test
   public void parsesBedrockGrammar_withoutBoundaryFade()
   {
-    AreaLinePattern p = parse( "bedrock angle 0 color 0x888888 0xcc width 0.85 spacing 24.0 period 68.0 fade 0.0" );
+    AreaLinePattern p = parse( "bedrock angle 0 color 0x888888 0xcc width 0.85 spacing 17.0 period 48.0 fade 0.0" );
     assertNotNull( p );
     assertEquals( AreaLinePattern.TYPE_BEDROCK, p.mType );
     assertEquals( 0.0f, p.mAngle, 0.001f );
     assertEquals( 0xcc888888, p.mColor );
     assertEquals(  0.85f, p.mWidthScale,   0.001f );
-    assertEquals( 24.0f,  p.mSpacingScale, 0.001f );
-    assertEquals( 68.0f,  p.mPeriodScale,  0.001f );
+    assertEquals( 17.0f,  p.mSpacingScale, 0.001f );
+    assertEquals( 48.0f,  p.mPeriodScale,  0.001f );
     assertEquals(  0.0f,  p.mFadeScale,    0.001f );
   }
 

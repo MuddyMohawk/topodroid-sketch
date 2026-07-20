@@ -3200,7 +3200,7 @@ public class Scrap
   }
 
   /** @return true if the path is an area whose symbol declares a stripe pattern */
-  private static boolean isPatternedArea( DrawingPath path )
+  static boolean isPatternedArea( DrawingPath path )
   {
     return ( path instanceof DrawingAreaPath )
         && BrushManager.getAreaLinePattern( ((DrawingAreaPath)path).mAreaType ) != null;
@@ -3208,23 +3208,24 @@ public class Scrap
 
   /** draw the patterned areas, one world-aligned union group per symbol, above the
    * plain-area pass (patterned areas are excluded from the darken layer and from the
-   * main pass); called under TDPath.mCommandsLock
+   * main pass). A mutable command source must be locked by its caller.
    * @param canvas   canvas
    * @param matrix   transform matrix
    * @param bbox     scene clipping rectangle
    * @param with_xor whether stripe colors are xor-ed (inverted-colors rendering)
+   * @param commands drawing paths or canvas commands to group
    */
-  private void drawPatternedAreaGroups( Canvas canvas, Matrix matrix, RectF bbox, boolean with_xor )
+  static void drawPatternedAreaGroups( Canvas canvas, Matrix matrix, RectF bbox, boolean with_xor,
+                                       Iterable< ? > commands )
   {
-    if ( ! BrushManager.hasPatternedAreas() ) return;
+    if ( commands == null ) return;
     boolean with_levels = TDSetting.mWithLevels != 0;
     float ink = TDSetting.inkUnit();
     // groups key = (area type, quantized brush-weight scale): same-type areas drawn at
     // different weights render as separate unions with their own pattern metrics
     LinkedHashMap< Long, ArrayList< DrawingAreaPath > > groups = null;
     RectF pad = ( bbox == null )? null : new RectF();
-    for ( ICanvasCommand cmd : mCurrentStack ) {
-      if ( cmd.commandType() != 0 ) continue;
+    for ( Object cmd : commands ) {
       if ( ! ( cmd instanceof DrawingAreaPath ) ) continue;
       DrawingAreaPath area = (DrawingAreaPath)cmd;
       AreaLinePattern pattern = BrushManager.getAreaLinePattern( area.mAreaType );
@@ -3301,7 +3302,7 @@ public class Scrap
         }
         if ( areaLayer >= 0 ) canvas.restoreToCount( areaLayer );
       }
-      drawPatternedAreaGroups( canvas, matrix, bbox, true );
+      drawPatternedAreaGroups( canvas, matrix, bbox, true, mCurrentStack );
       if ( TDSetting.mWithLevels == 0 ) { // treat no-levels case by itself
         for ( ICanvasCommand cmd : mCurrentStack  ) {
           if ( cmd.commandType() == 0 ) {
@@ -3423,7 +3424,7 @@ public class Scrap
         }
         if ( areaLayer >= 0 ) canvas.restoreToCount( areaLayer );
       }
-      drawPatternedAreaGroups( canvas, matrix, bbox, false );
+      drawPatternedAreaGroups( canvas, matrix, bbox, false, mCurrentStack );
       if ( TDSetting.mWithLevels == 0 ) { // treat no-levels case by itself
         for ( ICanvasCommand cmd : mCurrentStack  ) {
           if ( cmd.commandType() == 0 ) {

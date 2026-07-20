@@ -161,7 +161,7 @@ class DrawingOutlinePath
     boolean has_area = false;
     if ( area_overlap_darken ) {
       for ( DrawingPath path : paths ) {
-        if ( path != null && path.isArea() ) {
+        if ( path != null && path.isArea() && ! Scrap.isPatternedArea( path ) ) {
           has_area = true;
           break;
         }
@@ -170,13 +170,16 @@ class DrawingOutlinePath
     if ( has_area ) {
       int area_layer = canvas.saveLayer( 0, 0, canvas.getWidth(), canvas.getHeight(), null );
       for ( DrawingPath path : paths ) {
-        if ( path != null && path.isArea() ) path.draw( canvas, matrix, scale, mBox );
+        if ( path != null && path.isArea() && ! Scrap.isPatternedArea( path ) ) {
+          path.draw( canvas, matrix, scale, mBox );
+        }
       }
       canvas.restoreToCount( area_layer );
     }
+    Scrap.drawPatternedAreaGroups( canvas, matrix, mBox, false, paths );
     for ( DrawingPath path : paths ) {
       if ( path == null ) continue;
-      if ( area_overlap_darken && path.isArea() ) continue;
+      if ( path.isArea() && ( area_overlap_darken || Scrap.isPatternedArea( path ) ) ) continue;
       path.draw( canvas, matrix, scale, mBox );
     }
   }

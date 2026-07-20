@@ -37,6 +37,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - leaves, organic detritus
   - stackable boulders, rocks?
   - different scaling factor for leaves? or maybe they're just small
+  - are the bedrock area lines too thin?
 
 ## Known bugs
 - Sometimes drawing a section line causes the splay lines it crosses to stop rendered. Fixed by re-opening the sketch
