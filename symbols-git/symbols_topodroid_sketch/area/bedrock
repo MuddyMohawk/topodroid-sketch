@@ -1,0 +1,9 @@
+encoding utf-8
+symbol area
+name bedrock
+th_name bedrock
+group bedrock
+color 0x888888 0x66
+level 3
+line_pattern bedrock angle 0 color 0x888888 0xcc width 0.85 spacing 24.0 period 68.0 fade 0.0
+endsymbol

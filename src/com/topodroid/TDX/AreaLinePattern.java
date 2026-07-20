@@ -3,7 +3,7 @@
  * @author MuddyMohawk
  * @date jul 2026
  *
- * @brief TopoDroid Sketch area line-fill metadata (parallel stripes / broken dashes)
+ * @brief TopoDroid Sketch area line-fill metadata (stripes / dashes / bedrock courses)
  * --------------------------------------------------------
  *  Copyright This software is distributed under GPL-3.0 or later
  *  See the file COPYING.
@@ -19,15 +19,19 @@ import com.topodroid.util.TDLog;
  *   line_pattern parallel [angle A] [color 0xRRGGBB 0xAA] [width W] [spacing S] [fade F]
  *   line_pattern dashes   [angle A] [color 0xRRGGBB 0xAA] [width W] [spacing S]
  *                         [dash D] [period P] [fade F]
+ *   line_pattern bedrock  [angle A] [color 0xRRGGBB 0xAA] [width W] [spacing S]
+ *                         [period P] [fade F]
  *
  * "parallel" fills the area with continuous stripes (water). "dashes" fills it with
  * short broken segments in horizontal rows (clay/mud): spacing is the perpendicular
  * row spacing, period the along-row slot spacing, dash the nominal segment length;
  * the renderer varies slot offsets and lengths with a small repeating stamp (see
- * AreaPatternRenderer) so the fill reads hand-drawn yet repeats evenly. All metrics
- * are ink units, the same system as line weights: scene units = value *
+ * AreaPatternRenderer) so the fill reads hand-drawn yet repeats evenly. "bedrock"
+ * draws irregular-height courses with staggered, irregular-width joints: spacing is
+ * the nominal course height and period the nominal block width. All metrics are ink
+ * units, the same system as line weights: scene units = value *
  * TDSetting.inkUnit(), further scaled by the area's brush weight relative to the
- * standard weight. angle is degrees in the y-down scene sense. Both fills anchor to
+ * standard weight. angle is degrees in the y-down scene sense. All fills anchor to
  * absolute scene coordinates. Unknown tokens are logged and skipped so future keys
  * degrade gracefully; an unsupported type or a malformed number voids the whole
  * pattern and the symbol falls back to its plain fill.
@@ -36,9 +40,11 @@ class AreaLinePattern
 {
   static final int TYPE_PARALLEL = 0;
   static final int TYPE_DASHES   = 1;
+  static final int TYPE_BEDROCK  = 2;
 
   private static final String NAME_PARALLEL = "parallel";
   private static final String NAME_DASHES   = "dashes";
+  private static final String NAME_BEDROCK  = "bedrock";
 
   static final float DEFAULT_ANGLE   = -35.0f;
   static final int   DEFAULT_COLOR   = 0x663366ff;
@@ -49,14 +55,14 @@ class AreaLinePattern
   static final float DEFAULT_DASH    = 14.0f;
   static final float DEFAULT_PERIOD  = 24.0f;
 
-  final int   mType;         // TYPE_PARALLEL or TYPE_DASHES
+  final int   mType;         // TYPE_PARALLEL, TYPE_DASHES, or TYPE_BEDROCK
   final float mAngle;        // line direction [degrees, y-down scene sense]
   final int   mColor;        // ink ARGB color
   final float mWidthScale;   // stroke width [ink units]
-  final float mSpacingScale; // parallel: stripe period; dashes: perpendicular row spacing [ink units]
+  final float mSpacingScale; // parallel: stripe period; dashes/bedrock: perpendicular row spacing [ink units]
   final float mFadeScale;    // boundary fade depth [ink units], 0 = no fade
   final float mDashScale;    // dashes: nominal segment length [ink units]
-  final float mPeriodScale;  // dashes: along-row slot spacing [ink units]
+  final float mPeriodScale;  // dashes/bedrock: along-row slot or joint spacing [ink units]
 
   private AreaLinePattern( int type, float angle, int color, float width_scale, float spacing_scale,
                            float dash_scale, float period_scale, float fade_scale )
@@ -95,6 +101,19 @@ class AreaLinePattern
         nonNegativeOrDefault( fade_scale, DEFAULT_FADE ) );
   }
 
+  /** @return an irregular bedrock-course pattern, with invalid metrics replaced by defaults
+   */
+  static AreaLinePattern bedrock( float angle, int color, float width_scale, float spacing_scale,
+                                  float period_scale, float fade_scale )
+  {
+    return new AreaLinePattern( TYPE_BEDROCK, angle, color,
+        positiveOrDefault( width_scale,   DEFAULT_WIDTH ),
+        positiveOrDefault( spacing_scale, DEFAULT_SPACING ),
+        DEFAULT_DASH,
+        positiveOrDefault( period_scale,  DEFAULT_PERIOD ),
+        nonNegativeOrDefault( fade_scale, DEFAULT_FADE ) );
+  }
+
   /** parse the tokens that follow the "line_pattern" key
    * @param vals   whitespace-split symbol-file line
    * @param start  index of the first token after "line_pattern"
@@ -110,6 +129,8 @@ class AreaLinePattern
       type = TYPE_PARALLEL;
     } else if ( NAME_DASHES.equals( vals[start] ) ) {
       type = TYPE_DASHES;
+    } else if ( NAME_BEDROCK.equals( vals[start] ) ) {
+      type = TYPE_BEDROCK;
     } else {
       TDLog.e( "Unsupported area line_pattern type: " + vals[start] );
       return null;
@@ -158,9 +179,12 @@ class AreaLinePattern
         return null;
       }
     }
-    return ( type == TYPE_DASHES )
-        ? dashes( angle, color, width, spacing, dash, period, fade )
-        : parallel( angle, color, width, spacing, fade );
+    if ( type == TYPE_DASHES ) {
+      return dashes( angle, color, width, spacing, dash, period, fade );
+    } else if ( type == TYPE_BEDROCK ) {
+      return bedrock( angle, color, width, spacing, period, fade );
+    }
+    return parallel( angle, color, width, spacing, fade );
   }
 
   private static float positiveOrDefault( float value, float fallback )

@@ -111,6 +111,8 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                 entries.contains( "symbols_topodroid_sketch/point/debris=small" ) );
     assertTrue( "Missing sketch leaf-litter point in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/point/leaf-litter-organic" ) );
+    assertTrue( "Missing sketch bedrock area in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/area/bedrock" ) );
   }
 
   @Test

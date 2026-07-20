@@ -3,7 +3,7 @@
  * @author MuddyMohawk
  * @date jul 2026
  *
- * @brief TopoDroid Sketch patterned-area group renderer: world-aligned stripes + boundary fade
+ * @brief TopoDroid Sketch world-aligned area patterns with optional boundary fade
  * --------------------------------------------------------
  *  Copyright This software is distributed under GPL-3.0 or later
  *  See the file COPYING.
@@ -24,14 +24,14 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RectF;
 
-/** Stateless renderer for line-patterned areas (parallel stripes / broken dashes).
+/** Stateless renderer for line-patterned areas (parallel stripes / broken dashes / bedrock courses).
  *
  * All areas of one patterned symbol render as a single union region per scrap: the
  * ink anchors to absolute scene coordinates (stripes at multiples of the period along
- * the pattern normal from the scene origin; dashes on a world-anchored grid decorated
- * by a fixed repeating stamp) so overlapping or appended areas always tile seamlessly,
- * overlaps never double-blend, and the optional fade erases ink alpha toward the union
- * boundary (interior holes included). Patterned areas draw no per-area border.
+ * the pattern normal from the scene origin; dashes and bedrock on decorated repeating
+ * grids) so overlapping or appended areas always tile seamlessly, overlaps never
+ * double-blend, and the optional fade erases ink alpha toward the union boundary
+ * (interior holes included). Patterned areas draw no per-area border.
  *
  * WORLD-SPACE INK: everything draws in scene coordinates under canvas.concat(matrix);
  * metrics are ink units * TDSetting.inkUnit(), scaled by the group's brush weight
@@ -67,6 +67,35 @@ class AreaPatternRenderer
   };
   private static final int STAMP_ROWS = STAMP_SHIFT.length;
   private static final int STAMP_SLOTS = STAMP_DU[0].length;
+
+  // BEDROCK STAMP: six irregular-height courses totaling exactly six nominal row
+  // spacings. Each course has a different joint phase, small per-slot displacement,
+  // and a subtle joint skew. The fixed world-indexed table gives the hand-drawn,
+  // irregular block rhythm of the reference while keeping separate areas seamless.
+  private static final float[] BEDROCK_ROW_V = {
+    0.00f, 0.74f, 1.97f, 2.88f, 4.23f, 5.08f, 6.00f
+  }; // cumulative course boundaries [spacing]
+  private static final float[] BEDROCK_JOINT_SHIFT = {
+    0.04f, 0.55f, 0.18f, 0.72f, 0.34f, 0.86f
+  }; // per-course phase [period]
+  private static final float[][] BEDROCK_JOINT_DU = {
+    {  0.10f, -0.14f,  0.12f, -0.05f },
+    { -0.12f,  0.13f, -0.08f,  0.09f },
+    {  0.14f, -0.04f, -0.13f,  0.07f },
+    { -0.09f,  0.11f,  0.05f, -0.14f },
+    {  0.12f, -0.11f,  0.09f, -0.03f },
+    { -0.13f,  0.06f, -0.09f,  0.13f },
+  }; // joint displacement [period]
+  private static final float[][] BEDROCK_JOINT_SKEW = {
+    { -0.03f,  0.04f, -0.02f,  0.01f },
+    {  0.02f, -0.04f,  0.03f, -0.01f },
+    {  0.04f, -0.02f,  0.01f, -0.03f },
+    { -0.01f,  0.03f, -0.04f,  0.02f },
+    { -0.04f,  0.01f,  0.02f, -0.03f },
+    {  0.03f, -0.01f, -0.02f,  0.04f },
+  }; // bottom-minus-top joint offset [period]
+  private static final int BEDROCK_ROWS = BEDROCK_JOINT_SHIFT.length;
+  private static final int BEDROCK_SLOTS = BEDROCK_JOINT_DU[0].length;
 
   private AreaPatternRenderer() { } // static-only
 
@@ -142,10 +171,10 @@ class AreaPatternRenderer
     // margin = how far a mark can reach beyond the clip rect: stripes span it via their
     // half-diagonal, dashes via the stamp shift/offset plus half the longest segment
     float margin;
-    if ( pattern.mType == AreaLinePattern.TYPE_DASHES ) {
+    if ( pattern.mType == AreaLinePattern.TYPE_DASHES || pattern.mType == AreaLinePattern.TYPE_BEDROCK ) {
       float dash   = positive( pattern.mDashScale   * ink, AreaLinePattern.DEFAULT_DASH   * ink );
       float period = positive( pattern.mPeriodScale * ink, AreaLinePattern.DEFAULT_PERIOD * ink );
-      margin = period + Math.max( dash, stroke );
+      margin = period + Math.max( ( pattern.mType == AreaLinePattern.TYPE_DASHES )? dash : spacing, stroke );
     } else {
       margin = Math.max( stroke, spacing );
     }
@@ -170,6 +199,8 @@ class AreaPatternRenderer
       int layer = canvas.saveLayer( layer_rect, null );
       if ( pattern.mType == AreaLinePattern.TYPE_DASHES ) {
         drawDashes( canvas, region, clip, pattern, ink, stroke, with_xor );
+      } else if ( pattern.mType == AreaLinePattern.TYPE_BEDROCK ) {
+        drawBedrock( canvas, region, clip, pattern, ink, stroke, with_xor );
       } else {
         drawStripes( canvas, region, clip, pattern, stroke, spacing, with_xor );
       }
@@ -291,6 +322,85 @@ class AreaPatternRenderer
           float hx = dx * len * 0.5f;
           float hy = dy * len * 0.5f;
           canvas.drawLine( cx - hx, cy - hy, cx + hx, cy + hy, paint );
+        }
+      }
+    } finally {
+      canvas.restoreToCount( save );
+    }
+  }
+
+  /** draw irregular bedrock courses on a world-anchored grid clipped to the region.
+   *
+   * The rotated frame uses u along the bedding plane and v across it. Horizontal course
+   * boundaries repeat every six nominal spacings; joints span one course, with a fixed
+   * stagger/offset/skew table indexed by absolute course and block slots. Because every
+   * coordinate is derived from world u/v rather than the area's bounds, adjoining areas
+   * show one continuous pattern. A zero fade leaves Canvas.clipPath as the hard cutoff,
+   * intentionally breaking partial blocks at the surveyed area edge.
+   */
+  private static void drawBedrock( Canvas canvas, Path region, RectF clip, AreaLinePattern pattern,
+                                   float ink, float stroke, boolean with_xor )
+  {
+    float spacing = positive( pattern.mSpacingScale * ink, AreaLinePattern.DEFAULT_SPACING * ink );
+    float period  = positive( pattern.mPeriodScale  * ink, AreaLinePattern.DEFAULT_PERIOD  * ink );
+
+    Paint paint = new Paint( Paint.ANTI_ALIAS_FLAG );
+    paint.setStyle( Paint.Style.STROKE );
+    paint.setStrokeJoin( Paint.Join.ROUND );
+    paint.setStrokeCap( Paint.Cap.ROUND );
+    paint.setStrokeWidth( stroke );
+    paint.setColor( with_xor ? BrushManager.xorColor( pattern.mColor ) : pattern.mColor );
+
+    float radians = (float)Math.toRadians( pattern.mAngle );
+    float dx = (float)Math.cos( radians );
+    float dy = (float)Math.sin( radians );
+    float nx = -dy;
+    float ny = dx;
+
+    float u1 = clip.left  * dx + clip.top    * dy;
+    float u2 = clip.right * dx + clip.top    * dy;
+    float u3 = clip.left  * dx + clip.bottom * dy;
+    float u4 = clip.right * dx + clip.bottom * dy;
+    float v1 = clip.left  * nx + clip.top    * ny;
+    float v2 = clip.right * nx + clip.top    * ny;
+    float v3 = clip.left  * nx + clip.bottom * ny;
+    float v4 = clip.right * nx + clip.bottom * ny;
+    float uMin = Math.min( Math.min( u1, u2 ), Math.min( u3, u4 ) );
+    float uMax = Math.max( Math.max( u1, u2 ), Math.max( u3, u4 ) );
+    float vMin = Math.min( Math.min( v1, v2 ), Math.min( v3, v4 ) );
+    float vMax = Math.max( Math.max( v1, v2 ), Math.max( v3, v4 ) );
+
+    float repeatV = BEDROCK_ROW_V[BEDROCK_ROW_V.length - 1] * spacing;
+    int tile0 = (int)Math.floor( vMin / repeatV ) - 1;
+    int tile1 = (int)Math.ceil ( vMax / repeatV ) + 1;
+    int j0 = (int)Math.floor( uMin / period ) - 2;
+    int j1 = (int)Math.ceil ( uMax / period ) + 2;
+    float lineUMin = uMin - period;
+    float lineUMax = uMax + period;
+
+    int save = canvas.save();
+    try {
+      canvas.clipPath( region );
+      for ( int tile = tile0; tile <= tile1; ++tile ) {
+        float tileV = tile * repeatV;
+        for ( int row = 0; row < BEDROCK_ROWS; ++row ) {
+          float topV = tileV + BEDROCK_ROW_V[row] * spacing;
+          float bottomV = tileV + BEDROCK_ROW_V[row+1] * spacing;
+
+          // Draw each course boundary once. The next repeat's row zero supplies the
+          // final boundary of the previous six-course tile, avoiding alpha doubling.
+          canvas.drawLine( lineUMin * dx + topV * nx, lineUMin * dy + topV * ny,
+                           lineUMax * dx + topV * nx, lineUMax * dy + topV * ny, paint );
+
+          for ( int j = j0; j <= j1; ++j ) {
+            int slot = Math.floorMod( j, BEDROCK_SLOTS );
+            float centerU = ( j + BEDROCK_JOINT_SHIFT[row] + BEDROCK_JOINT_DU[row][slot] ) * period;
+            float skew = BEDROCK_JOINT_SKEW[row][slot] * period;
+            float topU = centerU - 0.5f * skew;
+            float bottomU = centerU + 0.5f * skew;
+            canvas.drawLine( topU * dx + topV * nx, topU * dy + topV * ny,
+                             bottomU * dx + bottomV * nx, bottomU * dy + bottomV * ny, paint );
+          }
         }
       }
     } finally {
