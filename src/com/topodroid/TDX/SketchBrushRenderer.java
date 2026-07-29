@@ -54,17 +54,25 @@ class SketchBrushRenderer
                             SketchBrushStyle.DEFAULT_WEIGHT_STANDARD );
   }
 
+  /** @return source ARGB with the style color/opacity overrides applied */
+  static int styledColor( int source_color, SketchBrushStyle style )
+  {
+    if ( style == null || style.isEmpty() ) return source_color;
+    int alpha = ( source_color >>> 24 ) & 0xff;
+    int rgb = style.colorOr( source_color ) & 0x00ffffff;
+    if ( style.hasOpacity() ) {
+      alpha = Math.max( 0, Math.min( 255,
+          Math.round( alpha * style.opacityOr( SketchBrushStyle.DEFAULT_OPACITY ) ) ) );
+    }
+    return ( alpha << 24 ) | rgb;
+  }
+
   private static Paint paint( Paint source, SketchBrushStyle style, float stroke_scale )
   {
     if ( source == null || style == null || style.isEmpty() ) return source;
 
     Paint paint = new Paint( source );
-    int alpha = source.getAlpha();
-    int rgb = style.colorOr( source.getColor() ) & 0x00ffffff;
-    if ( style.hasOpacity() ) {
-      alpha = Math.max( 0, Math.min( 255, Math.round( alpha * style.opacityOr( SketchBrushStyle.DEFAULT_OPACITY ) ) ) );
-    }
-    paint.setColor( ( alpha << 24 ) | rgb );
+    paint.setColor( styledColor( source.getColor(), style ) );
     if ( style.hasWeight() ) {
       paint.setStrokeWidth( style.weightOr( SketchBrushStyle.DEFAULT_WEIGHT_STANDARD ) * TDSetting.inkUnit() * stroke_scale );
     }

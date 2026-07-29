@@ -3206,6 +3206,38 @@ public class Scrap
         && BrushManager.getAreaLinePattern( ((DrawingAreaPath)path).mAreaType ) != null;
   }
 
+  /** grouping identity for patterned areas: differently styled colors/opacities
+   * must not collapse into one union and inherit whichever area was encountered first
+   */
+  private static final class PatternedAreaGroupKey
+  {
+    final int mAreaType;
+    final int mWeightKey;
+    final int mColor;
+
+    PatternedAreaGroupKey( int area_type, float weight_scale, int color )
+    {
+      mAreaType = area_type;
+      mWeightKey = Math.round( weight_scale * 1000f );
+      mColor = color;
+    }
+
+    @Override public boolean equals( Object object )
+    {
+      if ( this == object ) return true;
+      if ( ! ( object instanceof PatternedAreaGroupKey ) ) return false;
+      PatternedAreaGroupKey other = (PatternedAreaGroupKey)object;
+      return mAreaType == other.mAreaType && mWeightKey == other.mWeightKey && mColor == other.mColor;
+    }
+
+    @Override public int hashCode()
+    {
+      int result = mAreaType;
+      result = 31 * result + mWeightKey;
+      return 31 * result + mColor;
+    }
+  }
+
   /** draw the patterned areas, one world-aligned union group per symbol, above the
    * plain-area pass (patterned areas are excluded from the darken layer and from the
    * main pass). A mutable command source must be locked by its caller.
@@ -3221,9 +3253,9 @@ public class Scrap
     if ( commands == null ) return;
     boolean with_levels = TDSetting.mWithLevels != 0;
     float ink = TDSetting.inkUnit();
-    // groups key = (area type, quantized brush-weight scale): same-type areas drawn at
-    // different weights render as separate unions with their own pattern metrics
-    LinkedHashMap< Long, ArrayList< DrawingAreaPath > > groups = null;
+    // Same-symbol areas share a union only when their weight and resolved style color
+    // also match; otherwise one area's toolbar override would color the entire group.
+    LinkedHashMap< PatternedAreaGroupKey, ArrayList< DrawingAreaPath > > groups = null;
     RectF pad = ( bbox == null )? null : new RectF();
     for ( Object cmd : commands ) {
       if ( ! ( cmd instanceof DrawingAreaPath ) ) continue;
@@ -3241,7 +3273,8 @@ public class Scrap
         if ( ! area.intersects( pad ) ) continue;
       }
       if ( groups == null ) groups = new LinkedHashMap<>();
-      Long key = ( ((long)area.mAreaType) << 32 ) | ( Math.round( weight_scale * 1000f ) & 0xffffffffL );
+      PatternedAreaGroupKey key = new PatternedAreaGroupKey(
+          area.mAreaType, weight_scale, area.getPatternColor( pattern ) );
       ArrayList< DrawingAreaPath > members = groups.get( key );
       if ( members == null ) {
         members = new ArrayList<>();
@@ -3250,11 +3283,11 @@ public class Scrap
       members.add( area );
     }
     if ( groups == null ) return;
-    for ( Map.Entry< Long, ArrayList< DrawingAreaPath > > entry : groups.entrySet() ) {
-      int area_type = (int)( entry.getKey() >> 32 );
+    for ( Map.Entry< PatternedAreaGroupKey, ArrayList< DrawingAreaPath > > entry : groups.entrySet() ) {
+      PatternedAreaGroupKey key = entry.getKey();
       ArrayList< DrawingAreaPath > members = entry.getValue();
-      AreaPatternRenderer.drawGroup( canvas, matrix, bbox, BrushManager.getAreaLinePattern( area_type ),
-                                     members, with_xor, members.get( 0 ).getPatternWeightScale() );
+      AreaPatternRenderer.drawGroup( canvas, matrix, bbox, BrushManager.getAreaLinePattern( key.mAreaType ),
+                                     members, with_xor, members.get( 0 ).getPatternWeightScale(), key.mColor );
     }
   }
 

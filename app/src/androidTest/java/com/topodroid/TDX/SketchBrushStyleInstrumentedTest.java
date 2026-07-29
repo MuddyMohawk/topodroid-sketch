@@ -114,6 +114,9 @@ public class SketchBrushStyleInstrumentedTest
       assertEquals( 5.0f * TDSetting.INK_UNIT_SCALE, styled.getStrokeWidth(), 0.0001f );
       assertEquals( 102, styled.getAlpha() );
       assertEquals( 0x123456, styled.getColor() & 0x00ffffff );
+      assertEquals( 0x66123456,
+          SketchBrushRenderer.styledColor( 0xccabcdef,
+              SketchBrushStyle.of( 5.0f, 1.0f, 0.5f, 0x123456 ) ) );
     } finally {
       TDSetting.mLineThickness = previous;
     }

@@ -203,7 +203,7 @@ class TDPrefKey
     new TDPrefKey( T, FLT,  UI,  "DISTOX_HTHRESHOLD",     R.string.pref_hthr_title,          R.string.pref_hthr_summary,          "70"          ),
     new TDPrefKey( A, BOOL, DT,  "DISTOX_CHECK_ATTACHED", R.string.pref_checkAttached_title, R.string.pref_checkAttached_summary, FALSE         ),
     new TDPrefKey( A, BOOL, DT,  "DISTOX_CHECK_EXTEND",   R.string.pref_checkExtend_title,   R.string.pref_checkExtend_summary,   TRUE          ),
-    new TDPrefKey( T, FLT,  UI,  "DISTOX_TOOLBAR_SIZE",   R.string.pref_toolbarSize_title,   R.string.pref_toolbarSize_summary,   TDString.FIVE ),
+    new TDPrefKey( T, FLT,  UI,  "DISTOX_TOOLBAR_SIZE",   R.string.pref_toolbarSize_title,   R.string.pref_toolbarSize_summary,   "2.5" ),
     new TDPrefKey( B, LONG, UI,  "DISTOX_TOOLBAR_SLOTS",  R.string.pref_toolbarSlots_title,  R.string.pref_toolbarSlots_summary,  "8" ),
     new TDPrefKey( B, LONG, UI,  "DISTOX_TOOLBAR_ROWS",   R.string.pref_toolbarRows_title,   R.string.pref_toolbarRows_summary,   TDString.TWO ),
     new TDPrefKey( B, BOOL, GEN, "DISTOX_PLOT_CACHE",     R.string.pref_plot_cache_title,    R.string.pref_plot_cache_summary,    TRUE ),

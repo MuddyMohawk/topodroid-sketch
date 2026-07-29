@@ -26,7 +26,8 @@ import android.graphics.RectF;
 
 /** Stateless renderer for line-patterned areas (parallel stripes / broken dashes / bedrock courses).
  *
- * All areas of one patterned symbol render as a single union region per scrap: the
+ * All areas with one patterned symbol and matching brush style render as a single
+ * union region per scrap: the
  * ink anchors to absolute scene coordinates (stripes at multiples of the period along
  * the pattern normal from the scene origin; dashes and bedrock on decorated repeating
  * grids) so overlapping or appended areas always tile seamlessly, overlaps never
@@ -121,9 +122,11 @@ class AreaPatternRenderer
    * @param members      areas of this symbol (and weight class) to merge
    * @param with_xor     whether stripe colors are xor-ed (inverted-colors rendering)
    * @param weight_scale group brush weight relative to the standard weight (1 = standard)
+   * @param ink_color    resolved group ARGB after style color/opacity overrides
    */
   static void drawGroup( Canvas canvas, Matrix matrix, RectF bbox, AreaLinePattern pattern,
-                         ArrayList< DrawingAreaPath > members, boolean with_xor, float weight_scale )
+                         ArrayList< DrawingAreaPath > members, boolean with_xor, float weight_scale,
+                         int ink_color )
   {
     if ( canvas == null || matrix == null || pattern == null || members == null || members.isEmpty() ) return;
     Path union = new Path();
@@ -143,7 +146,7 @@ class AreaPatternRenderer
       }
     }
     if ( ok ) {
-      drawRegion( canvas, matrix, bbox, pattern, union, with_xor, weight_scale );
+      drawRegion( canvas, matrix, bbox, pattern, union, with_xor, weight_scale, ink_color );
     } else {
       // degraded but deterministic: per-member regions keep the stripes aligned (overlaps
       // re-draw identical pixels); only the fade doubles up along interior shared edges
@@ -151,7 +154,7 @@ class AreaPatternRenderer
       for ( DrawingAreaPath member : members ) {
         Path p = new Path( member.mPath );
         p.close();
-        drawRegion( canvas, matrix, bbox, pattern, p, with_xor, weight_scale );
+        drawRegion( canvas, matrix, bbox, pattern, p, with_xor, weight_scale, ink_color );
       }
     }
   }
@@ -159,7 +162,7 @@ class AreaPatternRenderer
   /** ink-fill one merged region: pattern clipped to the region, then the boundary fade
    */
   private static void drawRegion( Canvas canvas, Matrix matrix, RectF bbox, AreaLinePattern pattern,
-                                  Path region, boolean with_xor, float weight_scale )
+                                  Path region, boolean with_xor, float weight_scale, int ink_color )
   {
     // one scene unit per ink unit, scaled by the group's brush weight: Thin/Standard/
     // Thick coarsen or tighten the whole pattern together with the line work
@@ -198,11 +201,11 @@ class AreaPatternRenderer
       // fade strokes must only erase this group's ink, never what is already below
       int layer = canvas.saveLayer( layer_rect, null );
       if ( pattern.mType == AreaLinePattern.TYPE_DASHES ) {
-        drawDashes( canvas, region, clip, pattern, ink, stroke, with_xor );
+        drawDashes( canvas, region, clip, pattern, ink, stroke, with_xor, ink_color );
       } else if ( pattern.mType == AreaLinePattern.TYPE_BEDROCK ) {
-        drawBedrock( canvas, region, clip, pattern, ink, stroke, with_xor );
+        drawBedrock( canvas, region, clip, pattern, ink, stroke, with_xor, ink_color );
       } else {
-        drawStripes( canvas, region, clip, pattern, stroke, spacing, with_xor );
+        drawStripes( canvas, region, clip, pattern, stroke, spacing, with_xor, ink_color );
       }
       drawBoundaryFade( canvas, region, fade );
       canvas.restoreToCount( layer );
@@ -214,14 +217,14 @@ class AreaPatternRenderer
   /** draw the world-anchored parallel stripes clipped to the region
    */
   private static void drawStripes( Canvas canvas, Path region, RectF clip, AreaLinePattern pattern,
-                                   float stroke, float spacing, boolean with_xor )
+                                   float stroke, float spacing, boolean with_xor, int ink_color )
   {
     Paint paint = new Paint( Paint.ANTI_ALIAS_FLAG );
     paint.setStyle( Paint.Style.STROKE );
     paint.setStrokeJoin( Paint.Join.ROUND );
     paint.setStrokeCap( Paint.Cap.ROUND );
     paint.setStrokeWidth( stroke );
-    paint.setColor( with_xor ? BrushManager.xorColor( pattern.mColor ) : pattern.mColor );
+    paint.setColor( with_xor ? BrushManager.xorColor( ink_color ) : ink_color );
 
     float radians = (float)Math.toRadians( pattern.mAngle );
     float dx = (float)Math.cos( radians );
@@ -269,7 +272,7 @@ class AreaPatternRenderer
    * dashes and the render is order- and frame-independent.
    */
   private static void drawDashes( Canvas canvas, Path region, RectF clip, AreaLinePattern pattern,
-                                  float ink, float stroke, boolean with_xor )
+                                  float ink, float stroke, boolean with_xor, int ink_color )
   {
     float spacing = positive( pattern.mSpacingScale * ink, AreaLinePattern.DEFAULT_SPACING * ink );
     float period  = positive( pattern.mPeriodScale  * ink, AreaLinePattern.DEFAULT_PERIOD  * ink );
@@ -280,7 +283,7 @@ class AreaPatternRenderer
     paint.setStrokeJoin( Paint.Join.ROUND );
     paint.setStrokeCap( Paint.Cap.ROUND );
     paint.setStrokeWidth( stroke );
-    paint.setColor( with_xor ? BrushManager.xorColor( pattern.mColor ) : pattern.mColor );
+    paint.setColor( with_xor ? BrushManager.xorColor( ink_color ) : ink_color );
 
     float radians = (float)Math.toRadians( pattern.mAngle );
     float dx = (float)Math.cos( radians );
@@ -339,7 +342,7 @@ class AreaPatternRenderer
    * intentionally breaking partial blocks at the surveyed area edge.
    */
   private static void drawBedrock( Canvas canvas, Path region, RectF clip, AreaLinePattern pattern,
-                                   float ink, float stroke, boolean with_xor )
+                                   float ink, float stroke, boolean with_xor, int ink_color )
   {
     float spacing = positive( pattern.mSpacingScale * ink, AreaLinePattern.DEFAULT_SPACING * ink );
     float period  = positive( pattern.mPeriodScale  * ink, AreaLinePattern.DEFAULT_PERIOD  * ink );
@@ -349,7 +352,7 @@ class AreaPatternRenderer
     paint.setStrokeJoin( Paint.Join.ROUND );
     paint.setStrokeCap( Paint.Cap.ROUND );
     paint.setStrokeWidth( stroke );
-    paint.setColor( with_xor ? BrushManager.xorColor( pattern.mColor ) : pattern.mColor );
+    paint.setColor( with_xor ? BrushManager.xorColor( ink_color ) : ink_color );
 
     float radians = (float)Math.toRadians( pattern.mAngle );
     float dx = (float)Math.cos( radians );

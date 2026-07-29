@@ -3,6 +3,7 @@
 The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles.
 
 ## TODO
+- need a more intuitive settings name for the style and presets toolbar
 - rename/display the symbol pack name?
 - new test/demo survey with actual survey lines
 - toolbar defaults
@@ -20,7 +21,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Change the update check and versioning to track something besides `https://raw.githubusercontent.com/marcocorvi/speleoapks/main/tdversion.txt`
 - symbol notes:
   - need the text/special object symbols
-  - need the crack lines
+  - need the ceiling crack and floor crack lines
   - maybe make a popcorn line symbol
   - calcite crust needs a different line length to dot ratio
   - clay needs to be better
@@ -53,8 +54,10 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Seems like the scaling of dashed line is odd, like it has a minimum size? Vanilla bug.
 - Had a bug where I placed a section cross-section but then couldn't select it via the edit tool. Wasn't replicable but noted here.
 - If you don't give TopoDroid all the perms it can get into a bugged state where it immediately closes upon opening the app. Vanilla bug.
+- Making the toolbars smaller causes point symbols to become illegible. Even smaller, and other rendering problems come up
 
 ## Future possible features / brainstorming
+- make the symbol toolbar sizing controls different than the line styles/preset style controls
 - stamp point symbol from random selection (eg leaf variants, rock variants)
 - settings/symbol set profiles
 - better visual indication of export-in-progress. Loading bar? spinny wheel?

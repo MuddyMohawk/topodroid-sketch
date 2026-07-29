@@ -259,7 +259,7 @@ public class TDSetting
   public static boolean mBulkExport = false;
   public static String  mGeminiApiKey  = "";
   public static boolean mLocalManPages = true;
-  public static float mItemButtonSize  = 5.0f;    // used in ItemButton
+  public static float mItemButtonSize  = 2.5f;    // used in ItemButton
   // public static float mItemPathScale   = 2.0f; // referred from DrawingWindow
 
   public static boolean mPacketLog     = false;

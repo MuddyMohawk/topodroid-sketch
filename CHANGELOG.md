@@ -2,7 +2,7 @@
 
 Everything TopoDroid Sketch changes relative to vanilla TopoDroid. Future releases get their own section.
 
-## v0.40.1 (July 2026) -- first alpha
+## v0.40.8 (July 2026) -- first alpha
 
 Everything since forking from TopoDroid 6.4.27.
 
@@ -15,7 +15,6 @@ Everything since forking from TopoDroid 6.4.27.
   - The versioning was changed from vanilla TopoDroid. See [docs/versioning.md](docs/versioning.md) for the details. Not well tested. 
 
 **Lines**
-
 - Added a setting, "Fixed line pattern density", which disables the auto-scaling of lines (most notable with dashed lines, eg pits and ceiling ledges)
 - Added a straight line option in addition to the existing Fine, Normal, Coarse, Bezier, and Simplified lines styles
 - Added a snapping line style that snaps a drawn line to the nearest 22.5, 45, or 90 degree angle
@@ -24,16 +23,9 @@ Everything since forking from TopoDroid 6.4.27.
 - Changed most of the lines from the default speleo symbol pack to be white
 
 *Line Weights*
-- Added support for point and line symbols to follow a line weight setting 
-
-*Sketch Lines*
-- Added three new "sketch lines", which are programmatically generated custom line symbols based on the existing `user` lines 
-- The sketch lines has three variants: Thin, Standard, and Thick (user-fine, user-standard, user-thick).
-- Added per-variant width settings for new sketching lines, with defaults of 1.0x, 2.0x, and 5.0x.
-- Added color options to the new sketch lines
-- Made the three sketch lines default in the recent-line toolbar
-- Compatibility intent: when exported and imported into vanilla TopoDroid, the new sketch lines should fall back into the `user` line type. It'll be ugly, but still compatible. The current emulator has only smoke-tested side-by-side install/launch with an already-installed vanilla 6.4.27; real vanilla ZIP import still needs a compatible vanilla APK/device.
-- If exported with the personal line box checked, it can be imported into another copy of TopoDroid Sketch and the lines are preserved
+- Added support for point and line symbols to follow a line weight setting
+- Most symbols are scaled based on their line weights. For example, increasing the line weight for a dashed line also increases the space between the dashes
+- Added a style toolbar with three default line weights; thin, standard, thick. See the Toolbar Overhaul section for more on this
 
 **Cross-Section Viewports**
 - Added the ability to place cross-sections directly on the plan sketch in a viewport style experience. These can be moved around and edited by selecting them in edit mode (may require TopoDroid to be in Expert mode in the main settings)
@@ -45,13 +37,19 @@ Everything since forking from TopoDroid 6.4.27.
 - Added the ability to place a reference image on a sketch (eg, a photo for a cross-section). The image can be scaled, moved, rotated, and its opacity and visibility can be changed. The reference image is included with the PNG export if it's visible
 
 **Line Presets**
-- Added drawing presets to the sketch screen, which appear as "P1" and "P2". These are intended to allow a sketcher to switch between drawing thin, detailed lines, and smooth, straight lines
+- Added a drawing presets toolbar to the sketch screen. These control how lines are drawn. By default, there are four presets:
 - Fine's defaults are a line style of `fine` and a line point spacing of 1
 - Smooth's defaults are a line style of `bezier` and a line point spacing of 10
 - Straight's defaults are a line style of `straight` and a line point spacing of 5
+- Snap's defaults are a line style of `snap 22.5°` and a line point spacing of 10
 - Added a presets menu to the sketch settings screen to allow customization of each preset. Users can also add up to 8 preset slots.
 
-**Toolbar Overhaul**
+**Line Style Presets**
+- Added a line style toolbar. This controls line weight, color, and opacity. 
+- The number of buttons and their functions can be configured 
+- By default, there are three buttons that control line weight, with a setting of `thin`, `standard`, and `thick`
+
+**Recents Toolbar Overhaul**
 - Added a setting for an overhauled toolbar/recents bar. This is on by default under Settings -> Secondary sketch settings -> Toolbar mode
 - The new toolbar replaces the old recents-style functionality with manually selected slots, which are saved on a per-survey basis
   - To change the tool in a slot, select the slot, tap the >> button the far right, and select the new tool/brush you want from the palette
@@ -78,6 +76,10 @@ Everything since forking from TopoDroid 6.4.27.
 - Stations, legs, splays, grid, scale bar (kinda meh), north direction, and background transparency are all toggleable options
 - The output can be scaled from 0.05 to 4.0. The default of 1.00 is great for handing to a cartographer, but the files it produces are too large to really view on the tablet. I recommend 0.25 scale for that.
 - The default filename is `<survey_name>_<sketch_name>_<sketch_type (eg plan, profile)>_YYYY-MM-DD.png`. Example: `F-Survey_toob_plan_2026-04-15.png`.
+
+**Performance**
+- Changed the rending so instead of re-rendering every line and symbol constantly, the canvas is rendered once with each change into a bitmap. This dramatically improves performance when panning or zooming
+- Other miscellaneous performance tweaks
 
 **Testing**
 - Added tests to cover import/export, vanilla compatibility, some regression testing. See [docs/testing.md](docs/testing.md) for details.

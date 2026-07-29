@@ -116,7 +116,7 @@ public class AreaPatternRendererInstrumentedTest
     matrix.setScale( SCALE, SCALE );
     ArrayList< DrawingAreaPath > members = new ArrayList<>();
     members.add( area );
-    AreaPatternRenderer.drawGroup( canvas, matrix, bbox, BEDROCK, members, false, 1.0f );
+    AreaPatternRenderer.drawGroup( canvas, matrix, bbox, BEDROCK, members, false, 1.0f, BEDROCK.mColor );
   }
 
   private static DrawingAreaPath rectangle( float left, float top, float right, float bottom )

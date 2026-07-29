@@ -68,7 +68,7 @@ public class DrawingAreaPath extends DrawingPointLinePath
   public String mPrefix;      // border/area name prefix (= scrap name) // TH2EDIT package
   // boolean mVisible; // visible border in DrawingPointLinePath
   private Shader mLocalShader = null;
-  private SketchBrushStyle mSketchBrushStyle = null; // scales the stripe/dash pattern (kept in mOptions)
+  private SketchBrushStyle mSketchBrushStyle = null; // pattern weight/color/opacity (kept in mOptions)
 
   // FIXME-COPYPATH
   // @Override
@@ -352,6 +352,12 @@ public class DrawingAreaPath extends DrawingPointLinePath
   /** @return this area's pattern scale (compressed brush-weight ladder, 1 = standard)
    */
   float getPatternWeightScale() { return AreaPatternRenderer.patternWeightScale( mSketchBrushStyle ); }
+
+  /** @return pattern ARGB with this area's style color/opacity overrides applied */
+  int getPatternColor( AreaLinePattern pattern )
+  {
+    return SketchBrushRenderer.styledColor( pattern.mColor, mSketchBrushStyle );
+  }
 
   /** set the options string and refresh Sketch brush metadata
    * @param options   new options string
