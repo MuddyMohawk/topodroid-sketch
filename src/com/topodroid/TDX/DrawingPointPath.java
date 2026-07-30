@@ -47,7 +47,7 @@ public class DrawingPointPath extends DrawingPath
   public int mPointType;      // symbol point type (index in symbol-point lib)
   protected int mScale;       // symbol scale
   public double mOrientation; // orientation [degrees]
-  public String mPointText;   // point text value (if any)
+  public volatile String mPointText;   // point text value (if any)
   public IDrawingLink mLink;  // linked drawing item
   private SketchBrushStyle mSketchBrushStyle;
 

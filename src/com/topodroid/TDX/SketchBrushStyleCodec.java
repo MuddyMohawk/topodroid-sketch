@@ -16,13 +16,11 @@ import java.util.Locale;
 class SketchBrushStyleCodec
 {
   // Alpha bridge: keep this token private to Sketch and strip it from structured exports.
-  private static final String OPTION_BRUSH = "-tdx-brush";
-
   private SketchBrushStyleCodec() { }
 
   static SketchBrushStyle fromOptions( String options )
   {
-    String value = getOptionValue( options, OPTION_BRUSH );
+    String value = SketchPrivateOptions.getOptionValue( options, SketchPrivateOptions.OPTION_BRUSH );
     if ( value == null || value.length() == 0 ) return null;
 
     boolean has_weight = false;
@@ -76,34 +74,21 @@ class SketchBrushStyleCodec
 
   static String storeInOptions( String options, SketchBrushStyle style )
   {
-    String stripped = exportOptions( options );
+    String stripped = stripOptions( options );
     if ( style == null || style.isEmpty() ) return stripped;
     String value = toOptionValue( style );
     if ( value == null || value.length() == 0 ) return stripped;
-    return appendOption( stripped, OPTION_BRUSH, value );
+    return SketchPrivateOptions.storeOption( stripped, SketchPrivateOptions.OPTION_BRUSH, value );
   }
 
   static String exportOptions( String options )
   {
-    return stripOptions( options );
+    return SketchPrivateOptions.stripAll( options );
   }
 
   static String stripOptions( String options )
   {
-    if ( options == null ) return null;
-    StringBuilder builder = new StringBuilder();
-    String[] tokens = options.trim().split( "\\s+" );
-    for ( int i = 0; i < tokens.length; ++i ) {
-      String token = tokens[i];
-      if ( token == null || token.length() == 0 ) continue;
-      if ( OPTION_BRUSH.equals( token ) ) {
-        if ( i + 1 < tokens.length && ! isOptionToken( tokens[i + 1] ) ) ++i;
-        continue;
-      }
-      if ( builder.length() > 0 ) builder.append( ' ' );
-      builder.append( token );
-    }
-    return ( builder.length() == 0 ) ? null : builder.toString();
+    return SketchPrivateOptions.stripOption( options, SketchPrivateOptions.OPTION_BRUSH );
   }
 
   private static String toOptionValue( SketchBrushStyle style )
@@ -128,38 +113,6 @@ class SketchBrushStyleCodec
   {
     if ( builder.length() > 0 ) builder.append( ',' );
     builder.append( key ).append( '=' ).append( value );
-  }
-
-  private static String appendOption( String options, String key, String value )
-  {
-    StringBuilder builder = new StringBuilder();
-    if ( options != null && options.length() > 0 ) builder.append( options );
-    if ( builder.length() > 0 ) builder.append( ' ' );
-    builder.append( key ).append( ' ' ).append( value );
-    return builder.toString();
-  }
-
-  private static String getOptionValue( String options, String key )
-  {
-    if ( options == null ) return null;
-    String value = null;
-    String[] tokens = options.trim().split( "\\s+" );
-    for ( int i = 0; i < tokens.length; ++i ) {
-      if ( key.equals( tokens[i] ) ) {
-        while ( ++i < tokens.length ) {
-          if ( tokens[i].length() > 0 ) {
-            if ( ! isOptionToken( tokens[i] ) ) value = tokens[i];
-            break;
-          }
-        }
-      }
-    }
-    return value;
-  }
-
-  private static boolean isOptionToken( String token )
-  {
-    return token != null && token.startsWith( "-" ) && ( token.length() < 2 || ! Character.isDigit( token.charAt( 1 ) ) );
   }
 
   private static String formatFloat( float value )

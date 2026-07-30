@@ -1610,9 +1610,11 @@ public class DrawingCommandManager
           // thread-confined: exports render with unscaled labels without
           // flipping the global setting under concurrent live/cache renders
           sExportUnscaledLabels.set( Boolean.TRUE );
+          sExportTextScale.set( bitmap_scale / EXPORT_BITMAP_SCALE );
           drawExportScene( canvas, mm, 1.0f / bitmap_scale, scene_bounds, station_splay, options );
         } finally {
           sExportUnscaledLabels.set( Boolean.FALSE );
+          sExportTextScale.set( 1.0f );
         }
         drawExportDecorations( canvas, bitmap_scale, options, padding, height - padding, decoration_gap );
         return bitmap;
@@ -1709,6 +1711,7 @@ public class DrawingCommandManager
       } else {
         synchronized( mSyncScrap ) {
           for ( Scrap scrap : mScraps ) scrap.drawAll( canvas, matrix, scale, bbox, mLandscape );
+          for ( Scrap scrap : mScraps ) scrap.drawTextOverlays( canvas, matrix, scale, bbox, mLandscape );
         }
       }
     } else if ( mCurrentScrap != null ) {
@@ -1718,6 +1721,7 @@ public class DrawingCommandManager
           scrap.drawGreyOutline( canvas, matrix, bbox );
         }
         mCurrentScrap.drawAll( canvas, matrix, scale, bbox, mLandscape );
+        mCurrentScrap.drawTextOverlays( canvas, matrix, scale, bbox, mLandscape );
       }
     }
   }
@@ -2263,8 +2267,10 @@ public class DrawingCommandManager
         synchronized( mSyncScrap ) {
           if ( inverted_colors ) {
             for ( Scrap scrap : mScraps ) scrap.drawAll( canvas, mm, scale, bbox, mLandscape, 1 );
+            for ( Scrap scrap : mScraps ) scrap.drawTextOverlays( canvas, mm, scale, bbox, mLandscape, 1 );
           } else {
             for ( Scrap scrap : mScraps ) scrap.drawAll( canvas, mm, scale, bbox, mLandscape );
+            for ( Scrap scrap : mScraps ) scrap.drawTextOverlays( canvas, mm, scale, bbox, mLandscape );
           }
         }
       }
@@ -2278,8 +2284,10 @@ public class DrawingCommandManager
           }
           if ( inverted_colors ) {
             mCurrentScrap.drawAll( canvas, mm, scale, bbox, mLandscape, 1 );
+            mCurrentScrap.drawTextOverlays( canvas, mm, scale, bbox, mLandscape, 1 );
           } else {
             mCurrentScrap.drawAll( canvas, mm, scale, bbox, mLandscape );
+            mCurrentScrap.drawTextOverlays( canvas, mm, scale, bbox, mLandscape );
           }
         }
         RenderPerf.section( RenderPerf.SECTION_SCRAPS );
@@ -2333,6 +2341,15 @@ public class DrawingCommandManager
    *  renderExportBitmap and DrawingLabelPath.draw) */
   static final ThreadLocal< Boolean > sExportUnscaledLabels =
     ThreadLocal.withInitial( () -> Boolean.FALSE );
+
+  private static final ThreadLocal< Float > sExportTextScale =
+    ThreadLocal.withInitial( () -> 1.0f );
+
+  static float getExportTextScale()
+  {
+    Float value = sExportTextScale.get();
+    return ( value == null || ! ( value > 0.0f ) ) ? 1.0f : value;
+  }
 
   /** @return the live view matrix reference (reference-swapped by setTransform, safe to read cross-thread) */
   Matrix getMatrixRef() { return mMatrix; }
@@ -2492,12 +2509,15 @@ public class DrawingCommandManager
     // boolean latest = (mDisplayMode & DisplayMode.DISPLAY_LATEST ) != 0;
     boolean stations = (mDisplayMode & DisplayMode.DISPLAY_STATION ) != 0;
     // TDLog.v( "DCM get items at " + x + " " + y + " mode " + mode );
-    return mCurrentScrap.getItemsAt( x, y, radius, mode, legs, splays, stations, station_splay, mSelectionFixed ); // FIXME-HIDE
+    float scene_per_pixel = ( zoom > 0.0f ) ? 1.0f / zoom : 1.0f;
+    return mCurrentScrap.getItemsAt( x, y, radius, mode, legs, splays, stations,
+                                     station_splay, mSelectionFixed, scene_per_pixel ); // FIXME-HIDE
   }
     
   void addItemAt( float x, float y, float zoom, float size ) { 
     float radius = TDSetting.mCloseCutoff + size/zoom; // TDSetting.mSelectness / zoom;
-    mCurrentScrap.addItemAt( x, y, radius );
+    float scene_per_pixel = ( zoom > 0.0f ) ? 1.0f / zoom : 1.0f;
+    mCurrentScrap.addItemAt( x, y, radius, scene_per_pixel );
   }
 
   void splitPointHotItem() { mCurrentScrap.splitPointHotItem(); }

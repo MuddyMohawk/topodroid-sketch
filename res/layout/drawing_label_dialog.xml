@@ -1,108 +1,283 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" 
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    >
-<LinearLayout
-  style="@style/base_padding"
-  android:layout_width="match_parent" 
-  android:layout_height="wrap_content"
-  android:orientation="vertical"
-  >
+    android:layout_height="match_parent">
 
-  <TextView android:id="@+id/label_caption"
-    android:layout_marginTop="@dimen/margintiny"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content" 
-    android:text="@string/label_text"
-    />
-      				  
-  <EditText android:id="@+id/label_text"
-    style="@style/edit_text"
-    android:layout_marginTop="@dimen/margintiny"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content" 
-    android:singleLine="true"
-    android:inputType="text"
-    android:hint="@string/hint_label"
-    android:importantForAutofill="no"
-  />
-
-  <LinearLayout android:id="@+id/layer_layout"
-    style="@style/base_padding"
-    android:layout_width="match_parent" 
-    android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    >
-    <CheckBox android:id="@+id/cb_layer_base"
-      android:layout_width="wrap_content" 
-      android:layout_height="wrap_content" 
-      android:text="@string/level_b"
-    />
-    <CheckBox android:id="@+id/cb_layer_floor"
-      android:layout_width="wrap_content" 
-      android:layout_height="wrap_content" 
-      android:text="@string/level_f"
-    />
-    <CheckBox android:id="@+id/cb_layer_fill"
-      android:layout_width="wrap_content" 
-      android:layout_height="wrap_content" 
-      android:text="@string/level_d"
-    />
-    <CheckBox android:id="@+id/cb_layer_ceil"
-      android:layout_width="wrap_content" 
-      android:layout_height="wrap_content" 
-      android:text="@string/level_c"
-    />
-    <CheckBox android:id="@+id/cb_layer_arti"
-      android:layout_width="wrap_content" 
-      android:layout_height="wrap_content" 
-      android:text="@string/level_a"
-    />
-    <!-- CheckBox android:id="@+id/cb_layer_form"
-      android:layout_width="wrap_content" 
-      android:layout_height="wrap_content" 
-      android:text="@string/level_s"
-    />
-    <CheckBox android:id="@+id/cb_layer_water"
-      android:layout_width="wrap_content" 
-      android:layout_height="wrap_content" 
-      android:text="@string/level_w"
-    />
-    <CheckBox android:id="@+id/cb_layer_text"
-      android:layout_width="wrap_content" 
-      android:layout_height="wrap_content" 
-      android:text="@string/level_t"
-    / -->
-  </LinearLayout>
-      	
-  <LinearLayout android:id="@+id/help"
-    android:layout_width="match_parent" 
-    android:layout_height="wrap_content"
-    android:gravity="start"
-    android:orientation="horizontal" 
-    android:layout_marginTop="@dimen/marginvbig"
-    >
-    <Button android:id="@+id/button_help"
-        style="@style/button_empty"
-        android:text="@string/button_help"
-    />
-    <LinearLayout
-      android:layout_width="fill_parent" 
+  <LinearLayout
+      style="@style/base_padding"
+      android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:gravity="end"
-      >
-      <Button android:id="@+id/label_cancel"
-        style="@style/button_default"
-        android:text="@string/button_cancel"
-        android:layout_marginEnd="@dimen/marginh"
-      />
-      <Button android:id="@+id/label_ok"
-        style="@style/button_default"
-        android:text="@string/button_ok"
-      />
+      android:orientation="vertical">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/label_text" />
+
+    <EditText
+        android:id="@+id/label_text"
+        style="@style/edit_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="top|start"
+        android:hint="@string/hint_label"
+        android:importantForAutofill="no"
+        android:inputType="textMultiLine|textCapSentences"
+        android:maxLines="6"
+        android:minLines="2"
+        android:scrollHorizontally="false"
+        android:singleLine="false" />
+
+    <com.topodroid.TDX.SketchTextPreviewView
+        android:id="@+id/text_preview"
+        android:layout_width="match_parent"
+        android:layout_height="112dp"
+        android:layout_marginTop="@dimen/marginsmall"
+        android:contentDescription="@string/text_preview" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/marginsmall"
+        android:text="@string/text_font" />
+
+    <Spinner
+        android:id="@+id/text_font"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+      <CheckBox
+          android:id="@+id/text_bold"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/text_bold"
+          android:textStyle="bold" />
+
+      <CheckBox
+          android:id="@+id/text_italic"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/text_italic"
+          android:textStyle="italic" />
+
+      <CheckBox
+          android:id="@+id/text_underline"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/text_underline" />
+    </LinearLayout>
+
+    <RadioGroup
+        android:id="@+id/text_alignment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+      <RadioButton
+          android:id="@+id/text_align_left"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/text_align_left" />
+
+      <RadioButton
+          android:id="@+id/text_align_center"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/text_align_center" />
+
+      <RadioButton
+          android:id="@+id/text_align_right"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/text_align_right" />
+    </RadioGroup>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+      <CheckBox
+          android:id="@+id/text_auto_size"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/text_auto_size" />
+
+      <CheckBox
+          android:id="@+id/text_scale_with_sketch"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/text_scale_with_sketch" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/text_height" />
+
+      <EditText
+          android:id="@+id/text_size"
+          style="@style/edit_number"
+          android:layout_width="96dp"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="@dimen/marginsmall"
+          android:importantForAutofill="no"
+          android:inputType="numberDecimal"
+          android:maxLines="1"
+          android:singleLine="true" />
+
+      <TextView
+          android:id="@+id/text_size_unit"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="@dimen/marginsmall" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+      <Button
+          android:id="@+id/text_color"
+          style="@style/button_default"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/text_color" />
+
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="@dimen/marginsmall"
+          android:text="@string/text_opacity" />
+
+      <SeekBar
+          android:id="@+id/text_opacity"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:max="255" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/orientation" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+      <ImageView
+          android:id="@+id/image"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:contentDescription="@string/orientation"
+          android:paddingEnd="@dimen/paddingbig"
+          android:paddingStart="@dimen/paddingbig" />
+
+      <SeekBar
+          android:id="@+id/seekbar"
+          android:layout_width="0dp"
+          android:layout_height="20dp"
+          android:layout_weight="1"
+          android:background="#666666"
+          android:max="360"
+          android:progressDrawable="@xml/progress2" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layer_layout"
+        style="@style/base_padding"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+      <CheckBox
+          android:id="@+id/cb_layer_base"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/level_b" />
+
+      <CheckBox
+          android:id="@+id/cb_layer_floor"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/level_f" />
+
+      <CheckBox
+          android:id="@+id/cb_layer_fill"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/level_d" />
+
+      <CheckBox
+          android:id="@+id/cb_layer_ceil"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/level_c" />
+
+      <CheckBox
+          android:id="@+id/cb_layer_arti"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/level_a" />
+    </LinearLayout>
+
+    <EditText
+        android:id="@+id/text_options"
+        style="@style/edit_text_light"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/hint_options"
+        android:importantForAutofill="no"
+        android:inputType="text" />
+
+    <LinearLayout
+        android:id="@+id/help"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/marginvbig"
+        android:gravity="start"
+        android:orientation="horizontal">
+
+      <Button
+          android:id="@+id/button_help"
+          style="@style/button_empty"
+          android:text="@string/button_help" />
+
+      <LinearLayout
+          android:layout_width="fill_parent"
+          android:layout_height="wrap_content"
+          android:gravity="end">
+
+        <Button
+            android:id="@+id/label_cancel"
+            style="@style/button_default"
+            android:layout_marginEnd="@dimen/marginh"
+            android:text="@string/button_cancel" />
+
+        <Button
+            android:id="@+id/label_ok"
+            style="@style/button_default"
+            android:text="@string/button_save" />
+      </LinearLayout>
     </LinearLayout>
   </LinearLayout>
-
-</LinearLayout>
 </ScrollView>

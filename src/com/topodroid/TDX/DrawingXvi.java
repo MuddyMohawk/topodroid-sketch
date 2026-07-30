@@ -326,41 +326,56 @@ class DrawingXvi
     if ( BrushManager.isPointPicture( idx ) ) return;
     if ( BrushManager.isPointReference( idx ) ) return;
     if ( BrushManager.isPointLabel( idx ) ) {
-      String label = point.getPointText().toUpperCase( Locale.getDefault() );
-      int len = label.length();
-      int pos = 0;
-      for ( int k = 0; k < len; ++k ) {
-        char ch = label.charAt( k );
-	int[] glyph = CHAR_any;
-	if ( ch >= 'A' && ch <= 'Z' ) {
-	  glyph = GLYPH_AZ[ ch - 'A' ];
-	} else if ( ch >= '0' && ch <= '9' ) {
-	  glyph = GLYPH_01[ ch - '0' ];
-	} else if ( ch == '-' ) {
-	  glyph = CHAR_minus;
-	} else if ( ch == '+' ) {
-	  glyph = CHAR_plus;
-	} else if ( ch == '?' ) {
-	  glyph = CHAR_question;
-	} else if ( ch == '_' ) {
-	  glyph = CHAR_underscore;
-	} else if ( ch == '/' ) {
-	  glyph = CHAR_slash;
-	} else if ( ch == '>' ) {
-	  glyph = CHAR_more;
-	} else if ( ch == '<' ) {
-	  glyph = CHAR_less;
-	}
-	int j = 0;
-	while ( j < glyph.length ) {
-          x1 = TDSetting.mToTherion*(xof + 3 * (pos + glyph[j])); ++j;
-          y1 = TDSetting.mToTherion*(yof + 3 * glyph[j] ); ++j;
-          x2 = TDSetting.mToTherion*(xof + 3 * (pos + glyph[j])); ++j;
-          y2 = TDSetting.mToTherion*(yof + 3 * glyph[j] ); ++j;
-          pw.format(Locale.US, "  { black %.2f %.2f %.2f %.2f }\n", x1, y1, x2, y2 );
-	}
-	pos += 1 + glyph[j-2];
-      }	
+      DrawingLabelPath label_path = (DrawingLabelPath)point;
+      SketchTextStyle style = label_path.getTextStyle();
+      String label = label_path.getPointText();
+      if ( label == null ) label = "";
+      label = label.replace( "\r\n", "\n" ).replace( '\r', '\n' ).toUpperCase( Locale.getDefault() );
+      String[] lines = label.split( "\\n", -1 );
+
+      float glyph_unit = 3.0f;
+      SketchTextStyle.Alignment alignment = SketchTextStyle.Alignment.LEFT;
+      String label_color = "black";
+      if ( style != null ) {
+        glyph_unit = Math.max( 0.001f, label_path.getTextExportLineHeightScene() / 4.0f );
+        alignment = style.alignment();
+        label_color = String.format( Locale.US, "#%06X", style.color() & 0x00ffffff );
+      }
+
+      float angle = (float)point.mOrientation;
+      float cosine = TDMath.cosd( angle );
+      float sine = TDMath.sind( angle );
+      float line_advance = glyph_unit * 4.0f;
+      for ( int line_index = 0; line_index < lines.length; ++line_index ) {
+        String line = lines[line_index];
+        int total_advance = xviTextAdvance( line );
+        float align_offset = 0.0f;
+        if ( alignment == SketchTextStyle.Alignment.CENTER ) align_offset = -0.5f * total_advance;
+        else if ( alignment == SketchTextStyle.Alignment.RIGHT ) align_offset = -total_advance;
+
+        int pos = 0;
+        for ( int k = 0; k < line.length(); ++k ) {
+          int[] glyph = xviGlyph( line.charAt( k ) );
+          int advance = 3;
+          if ( glyph != null ) {
+            advance = 1 + glyph[glyph.length - 2];
+            int j = 0;
+            while ( j < glyph.length ) {
+              float local_x1 = glyph_unit * ( align_offset + pos + glyph[j++] );
+              float local_y1 = glyph_unit * glyph[j++] - line_index * line_advance;
+              float local_x2 = glyph_unit * ( align_offset + pos + glyph[j++] );
+              float local_y2 = glyph_unit * glyph[j++] - line_index * line_advance;
+              x1 = TDSetting.mToTherion * ( xof + local_x1 * cosine + local_y1 * sine );
+              y1 = TDSetting.mToTherion * ( yof - local_x1 * sine + local_y1 * cosine );
+              x2 = TDSetting.mToTherion * ( xof + local_x2 * cosine + local_y2 * sine );
+              y2 = TDSetting.mToTherion * ( yof - local_x2 * sine + local_y2 * cosine );
+              pw.format( Locale.US, "  { %s %.2f %.2f %.2f %.2f }\n",
+                         label_color, x1, y1, x2, y2 );
+            }
+          }
+          pos += advance;
+        }
+      }
       return;
     }
 
@@ -445,6 +460,32 @@ class DrawingXvi
     // }
   }
 
+  private static int xviTextAdvance( String text )
+  {
+    int advance = 0;
+    for ( int index = 0; index < text.length(); ++index ) {
+      int[] glyph = xviGlyph( text.charAt( index ) );
+      advance += ( glyph == null ) ? 3 : 1 + glyph[glyph.length - 2];
+    }
+    return advance;
+  }
+
+  /** @return null for a space, otherwise the closest XVI vector glyph */
+  private static int[] xviGlyph( char ch )
+  {
+    if ( ch == ' ' || ch == '\t' ) return null;
+    if ( ch >= 'A' && ch <= 'Z' ) return GLYPH_AZ[ch - 'A'];
+    if ( ch >= '0' && ch <= '9' ) return GLYPH_01[ch - '0'];
+    if ( ch == '-' ) return CHAR_minus;
+    if ( ch == '+' ) return CHAR_plus;
+    if ( ch == '?' ) return CHAR_question;
+    if ( ch == '_' ) return CHAR_underscore;
+    if ( ch == '/' ) return CHAR_slash;
+    if ( ch == '>' ) return CHAR_more;
+    if ( ch == '<' ) return CHAR_less;
+    return CHAR_any;
+  }
+
   static private void tdrToXvi( PrintWriter pw, String scrapfile, float dx, float dy, float xoff, float yoff )
   {
     // TDLog.Log( TDLog.LOG_IO, "trd to xvi. scrap file " + scrapfile );
@@ -510,4 +551,3 @@ class DrawingXvi
   }
 
 }
-

@@ -826,6 +826,15 @@ public class DXF
   static int printText( PrintWriter pw, int handle, int ref, String label, float x, float y, float angle, float scale,
                         String layer, String style, float xoff, float yoff, float z, int s, int color )
   {
+    return printText( pw, handle, ref, label, x, y, angle, scale,
+                      layer, style, xoff, yoff, z, s, color, 0 );
+  }
+
+  /** write text with a DXF horizontal alignment (0 left, 1 center, 2 right) */
+  static int printText( PrintWriter pw, int handle, int ref, String label, float x, float y, float angle, float scale,
+                        String layer, String style, float xoff, float yoff, float z, int s, int color,
+                        int horizontal_alignment )
+  {
     // if ( false && mVersion13_14 ) { // FIXME TEXT in AC1012
     //   // int idx = 1 + point.mPointType;
     //   printString( pw, 0, "INSERT" );
@@ -849,7 +858,7 @@ public class DXF
       // printString( pw, 7, style_dejavu ); // style (optional)
       // pw.printf("%s%s  0%s", "\"10\"", EOL, EOL );
       printXYZ( pw, x, y, z, 0 );
-      // printXYZ( pw, 0, 0, 1, 1 );   // second alignment (optional)
+      if ( horizontal_alignment != 0 ) printXYZ( pw, x, y, z, 1 );
       // printXYZ( pw, 0, 0, 1, 200 ); // extrusion (optional 0 0 1)
       // printFloat( pw, 39, 0 );      // thickness (optional 0) 
       printFloat( pw, 40, scale );     // height
@@ -857,8 +866,8 @@ public class DXF
       printFloat( pw, 50, angle );     // rotation [deg]
       printFloat( pw, 51, 0 );         // oblique angle
       // printInt( pw, 71, 0 );        // text generation flag (optional 0)
-      // printFloat( pw, 72, 0 );      // H-align (optional 0)
-      // printFloat( pw, 73, 0 );      // V-align
+      if ( horizontal_alignment != 0 ) printInt( pw, 72, horizontal_alignment );
+      printInt( pw, 73, 0 );           // baseline vertical alignment
       printString( pw, 1, label );    
       // printString( pw, 7, style );  // style, optional (default STANDARD)
 
@@ -1917,4 +1926,3 @@ public class DXF
   }
 
 }
-

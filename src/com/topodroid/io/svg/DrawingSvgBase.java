@@ -36,6 +36,7 @@ import com.topodroid.TDX.DrawingPhotoPath;
 import com.topodroid.TDX.DrawingSpecialPath;
 import com.topodroid.TDX.DrawingIO;
 import com.topodroid.TDX.DrawingCommandManager;
+import com.topodroid.TDX.SketchTextStyle;
 import com.topodroid.TDX.LinePoint;
 import com.topodroid.TDX.BrushManager;
 import com.topodroid.TDX.SymbolPoint;
@@ -60,7 +61,12 @@ import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.Set;
+
+import android.graphics.Color;
+import android.util.Base64;
 
 /* Inkscape units
  * - The root element can have width and height with units, which with the proper view-box
@@ -84,6 +90,8 @@ import java.util.Set;
  */
 public class DrawingSvgBase
 {
+  private static volatile String sArchitectsDaughterData;
+  private static volatile boolean sArchitectsDaughterLoadAttempted;
   // FIXME station scale is 0.3
   static final protected int POINT_SCALE  = 10;
   static final protected int POINT_RADIUS = 10;
@@ -281,13 +289,50 @@ public class DrawingSvgBase
     // TDLog.v("label: " + name + " " + scale + " text " + label.mPointText );
     pw.format("<!-- label %s -->\n", name );
     if ( name.equals( SymbolLibrary.LABEL ) ) {
-      printPointWithXY( pw, "<text", xoff+label.cx, yoff+label.cy );
-      pw.format(Locale.US, " font-size=\"%.1f\"", TDSetting.mSvgLabelSize * scale );
-      // if ( TDSetting.mFixmeClass ) { // FIXME_CLASS
-        pw.format(Locale.US, " class=\"label\">%s</text>\n", label.mPointText );
-      // } else {
-      //   pw.format(Locale.US, " style=\"fill:black;stroke:black;stroke-width:%.2f\">%s</text>\n", TDSetting.mSvgLabelStroke, label.mPointText );
-      // }
+      if ( ! label.hasExplicitTextStyle() ) {
+        pw.format( Locale.US,
+          "<text x=\"0\" y=\"0\" font-size=\"%.1f\" class=\"label\" "
+          + "transform=\"translate(%.3f %.3f) rotate(%.3f)\">%s</text>\n",
+          TDSetting.mSvgLabelSize * scale,
+          (xoff + label.cx) * TDSetting.mToSvg,
+          (yoff + label.cy) * TDSetting.mToSvg,
+          label.mOrientation,
+          escapeXml( label.getPointText() ) );
+        return;
+      }
+
+      SketchTextStyle style = label.getTextStyle();
+      float line_height = label.getTextExportLineHeightScene() * TDSetting.mToSvg;
+      float font_size = line_height * label.getTextPaintSizePerLineHeight();
+      String anchor = "start";
+      if ( style.alignment() == SketchTextStyle.Alignment.CENTER ) anchor = "middle";
+      else if ( style.alignment() == SketchTextStyle.Alignment.RIGHT ) anchor = "end";
+
+      int argb = style.color();
+      String fill = String.format( Locale.US, "#%02x%02x%02x",
+                                   Color.red( argb ), Color.green( argb ), Color.blue( argb ) );
+      String family = svgFontFamily( style.fontId() );
+      pw.format( Locale.US,
+        "<text x=\"0\" y=\"0\" font-size=\"%.3f\" text-anchor=\"%s\" "
+        + "transform=\"translate(%.3f %.3f) rotate(%.3f)\" "
+        + "style=\"font-family:%s;font-weight:%s;font-style:%s;text-decoration:%s;"
+        + "fill:%s;fill-opacity:%.4f;stroke:none\">",
+        font_size, anchor,
+        (xoff + label.cx) * TDSetting.mToSvg,
+        (yoff + label.cy) * TDSetting.mToSvg,
+        label.mOrientation,
+        family,
+        style.bold() ? "bold" : "normal",
+        style.italic() ? "italic" : "normal",
+        style.underline() ? "underline" : "none",
+        fill,
+        Color.alpha( argb ) / 255.0f );
+      String[] lines = label.getPointText().split( "\\n", -1 );
+      for ( int i = 0; i < lines.length; ++i ) {
+        pw.format( Locale.US, "<tspan x=\"0\" dy=\"%.3f\">%s</tspan>",
+                   ( i == 0 ) ? 0.0f : line_height, escapeXml( lines[i] ) );
+      }
+      pw.format( "</text>\n" );
     }
   }
   // <text
@@ -436,22 +481,7 @@ public class DrawingSvgBase
     if ( BrushManager.isPointReference( idx ) ) return;
     pw.format("<!-- point %s -->\n", name );
     if ( name.equals( SymbolLibrary.LABEL ) ) {
-      // assert( point instanceof DrawingLabelPath );
-      float o = (float)(point.mOrientation);
-      float s = POINT_SCALE * TDMath.sind( o ) * scale / 10.0f;
-      float c = POINT_SCALE * TDMath.cosd( o ) * scale / 10.0f;
-      DrawingLabelPath label = (DrawingLabelPath)point;
-      // TDLog.v( "SVG point " + name + " at " + point.cx + " " + point.cy + " text " + label.mPointText );
-      // printPointWithXY( pw, "<text", xoff+point.cx, yoff+point.cy );
-      printPointWithXY( pw, "<text", 0, 0 );
-      pw.format(Locale.US, " font-size=\"%.2f\"", TDSetting.mSvgLabelSize * scale );
-      // if ( TDSetting.mFixmeClass ) { // FIXME_CLASS
-        pw.format( " class=\"p_label\"" );
-      // } else {
-      //   pw.format(Locale.US, " style=\"fill:black;stroke:black;stroke-width:%.2f\"", TDSetting.mSvgLabelStroke * scale );
-      // }
-      printMatrix( pw, c, s, (xoff+point.cx), (yoff+point.cy) );
-      pw.format( " >%s</text>\n", label.mPointText );
+      toSvgLabel( pw, (DrawingLabelPath)point, color, xoff, yoff );
     // } else if ( name.equals("continuation") ) {
     //   printPointWithXY( pw, "<text", xoff+point.cx, yoff+point.cy );
     //   pw.format(Locale.US, " style=\"fill:none;stroke:black;stroke-width:%.2f\">\?</text>\n", TDSetting.mSvgLabelStroke );
@@ -617,9 +647,10 @@ public class DrawingSvgBase
 
     for ( DrawingPath path : paths ) {
       switch ( path.mType ) {
-        case DrawingPath.DRAWING_PATH_POINT:
+      case DrawingPath.DRAWING_PATH_POINT:
           DrawingPointPath point = (DrawingPointPath)path;
           if ( BrushManager.isPointReference( point.mPointType ) ) break;
+          if ( point instanceof DrawingLabelPath ) break;
           if ( BrushManager.isPointSection( point.mPointType ) ) {
             groupedPaths.xsectionsPoints.add( point );
           } else {
@@ -800,6 +831,22 @@ public class DrawingSvgBase
         out.write(end_grp); // xsection_scraps
         out.flush();
       }
+
+      ArrayList< DrawingLabelPath > labels = new ArrayList<>();
+      for ( DrawingPath path : paths ) {
+        if ( path instanceof DrawingLabelPath ) labels.add( (DrawingLabelPath)path );
+      }
+      if ( ! labels.isEmpty() ) {
+        out.write( "<g id=\"text_" + scrapId + "\"" + group_mode_open );
+        StringWriter text_writer = new StringWriter();
+        PrintWriter text_print = new PrintWriter( text_writer );
+        for ( DrawingLabelPath label : labels ) {
+          toSvgLabel( text_print, label, pathToColor( label ), xoff, yoff );
+        }
+        out.write( text_writer.getBuffer().toString() );
+        out.write( end_grp );
+        out.flush();
+      }
     } catch ( IOException e ) {
       TDLog.e( "SVG io-exception " + e.getMessage() );
     }
@@ -879,6 +926,12 @@ public class DrawingSvgBase
 
     out.write( "  <defs>\n");
     out.write( "    <style type=\"text/css\" id=\"style_grid\"> \n"); // FIXME_CLASS
+    String architects_font = architectsDaughterData();
+    if ( architects_font != null ) {
+      out.write( "      @font-face { font-family: 'Architects Daughter'; src: url(data:font/truetype;base64," );
+      out.write( architects_font );
+      out.write( ") format('truetype'); font-style: normal; font-weight: normal; }\n" );
+    }
     out.write( "      .grid1 { stroke: #999999; stroke-opacity: 0.4; ");   out.write( grid_width );
     out.write( "      .grid10 { stroke: #666666; stroke-opacity: 0.6; ");  out.write( grid_width );
     out.write( "      .grid100 { stroke: #333333; stroke-opacity: 0.8; "); out.write( grid_width );
@@ -957,5 +1010,45 @@ public class DrawingSvgBase
     }
     out.write( "  </defs>\n");
     out.flush();
+  }
+
+  private static String svgFontFamily( String font_id )
+  {
+    if ( "architects-daughter".equals( font_id ) ) return "'Architects Daughter',sans-serif";
+    if ( "serif".equals( font_id ) ) return "serif";
+    if ( "monospace".equals( font_id ) ) return "monospace";
+    return "sans-serif";
+  }
+
+  private static String escapeXml( String text )
+  {
+    if ( text == null ) return "";
+    return text.replace( "&", "&amp;" )
+               .replace( "<", "&lt;" )
+               .replace( ">", "&gt;" )
+               .replace( "\"", "&quot;" )
+               .replace( "'", "&apos;" );
+  }
+
+  private static String architectsDaughterData()
+  {
+    if ( sArchitectsDaughterLoadAttempted ) return sArchitectsDaughterData;
+    if ( TDInstance.context == null ) return null;
+    synchronized ( DrawingSvgBase.class ) {
+      if ( sArchitectsDaughterLoadAttempted ) return sArchitectsDaughterData;
+      try ( InputStream input = TDInstance.context.getAssets().open( "fonts/ArchitectsDaughter-Regular.ttf" );
+            ByteArrayOutputStream output = new ByteArrayOutputStream() ) {
+        byte[] buffer = new byte[8192];
+        int count;
+        while ( ( count = input.read( buffer ) ) >= 0 ) {
+          if ( count > 0 ) output.write( buffer, 0, count );
+        }
+        sArchitectsDaughterData = Base64.encodeToString( output.toByteArray(), Base64.NO_WRAP );
+      } catch ( IOException e ) {
+        TDLog.e( "SVG text font unavailable: " + e.getMessage() );
+      }
+      sArchitectsDaughterLoadAttempted = true;
+      return sArchitectsDaughterData;
+    }
   }
 }

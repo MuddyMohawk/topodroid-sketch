@@ -14,6 +14,7 @@ package com.topodroid.TDX;
 // import com.topodroid.util.TDLog;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 
 class SelectionSet
 {
@@ -90,6 +91,25 @@ class SelectionSet
   }
 
   void addPoint( SelectionPoint pt ) { mPoints.add( pt ); }
+
+  /** Bounds-based text hits precede the bucket query. Remove only the later
+   * anchor duplicate while retaining every distinct overlapping text object.
+   */
+  void removeDuplicateTextItems()
+  {
+    IdentityHashMap< DrawingPath, Boolean > seen = new IdentityHashMap<>();
+    for ( int i = 0; i < mPoints.size(); ) {
+      SelectionPoint point = mPoints.get( i );
+      if ( point.mItem instanceof DrawingLabelPath ) {
+        if ( seen.containsKey( point.mItem ) ) {
+          mPoints.remove( i );
+          continue;
+        }
+        seen.put( point.mItem, Boolean.TRUE );
+      }
+      ++i;
+    }
+  }
 
   int size() { return mPoints.size(); }
 

@@ -1509,6 +1509,7 @@ public class DataHelper extends DataSetObservable
       myDB.delete( FIXED_TABLE,   WHERE_SID, clause );
       myDB.delete( SHOT_TABLE,    WHERE_SID, clause );
       myDB.delete( STATION_TABLE, WHERE_SID, clause );
+      myDB.delete( CONFIG_TABLE, "key=?", new String[] { SketchTextDefaults.key( sid ) } );
       myDB.delete( SURVEY_TABLE, "id=?", clause );
       myDB.setTransactionSuccessful();
     } catch ( SQLiteDiskIOException e ) {  handleDiskIOError( e );
@@ -5608,6 +5609,15 @@ public class DataHelper extends DataSetObservable
       if ( ! (cursor == null) && ! cursor.isClosed()) cursor.close();
       myDB.endTransaction();
     }
+  }
+
+  void deleteValue( String key )
+  {
+    if ( myDB == null || TDString.isNullOrEmpty( key ) ) return;
+    try {
+      myDB.delete( CONFIG_TABLE, "key=?", new String[] { key } );
+    } catch ( SQLiteDiskIOException e ) { handleDiskIOError( e );
+    } catch ( SQLiteException e ) { logError( "config delete " + key, e ); }
   }
 
   // SYMBOLS ------------------------------------------------------------------

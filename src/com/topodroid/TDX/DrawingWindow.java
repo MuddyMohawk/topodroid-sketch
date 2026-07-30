@@ -5743,7 +5743,7 @@ public class DrawingWindow extends ItemDrawer
               xs = mSaveX/mZoom - mOffset.x;
               ys = mSaveY/mZoom - mOffset.y;
               if ( BrushManager.isPointLabel( mCurrentPoint ) ) {
-                new DrawingLabelDialog( mActivity, this, xs, ys ).show();
+                new DrawingTextDialog( mActivity, this, xs, ys ).show();
               } else if ( BrushManager.isPointPhoto( mCurrentPoint ) ) {
                 new DrawingPhotoDialog( mActivity, this, mPid, xs, ys ).show();
               } else if ( BrushManager.isPointAudio( mCurrentPoint ) ) {
@@ -6074,7 +6074,7 @@ public class DrawingWindow extends ItemDrawer
                 xs = mSaveX/mZoom - mOffset.x;
                 ys = mSaveY/mZoom - mOffset.y;
                 if ( BrushManager.isPointLabel( mCurrentPoint ) ) {
-                  //new DrawingLabelDialog( mActivity, this, xs, ys ).show(); // HBXP ? dummy text create
+                  // A drag below the placement threshold does not create a text object.
                 } else if ( BrushManager.isPointPhoto( mCurrentPoint ) ) {
                   //new DrawingPhotoDialog( mActivity, this, xs, ys ).show(); // HBXP
                 } else if ( BrushManager.isPointAudio( mCurrentPoint ) ) {
@@ -6516,6 +6516,55 @@ public class DrawingWindow extends ItemDrawer
       mDrawingSurface.addDrawingPath( label_path );
       modified();
     } 
+  }
+
+  /** insert a styled Sketch text object
+   * @param label        text
+   * @param x            X coord
+   * @param y            Y coord
+   * @param level        canvas level
+   * @param style        text style
+   * @param options      public point options
+   * @param orientation  text orientation [degrees]
+   */
+  void addLabel( String label, float x, float y, int level, SketchTextStyle style,
+                 String options, double orientation )
+  {
+    if ( label == null || label.length() == 0 ) return;
+    if ( mLandscape ) { float t = x; x = -y; y = t; }
+    DrawingLabelPath label_path = new DrawingLabelPath(
+      label, x, y, mPointScale, options, mDrawingSurface.scrapIndex(), style );
+    label_path.setOrientation( orientation );
+    label_path.mLandscape = mLandscape;
+    label_path.mLevel = level;
+    mDrawingSurface.addDrawingPath( label_path );
+    modified();
+  }
+
+  /** apply property edits to an existing text object */
+  void updateTextObject( DrawingLabelPath label, String text, SketchTextStyle style,
+                         boolean make_explicit, double orientation, int level,
+                         String public_options )
+  {
+    if ( label == null ) return;
+    label.applyTextEdit( text, style, make_explicit, orientation, level, public_options );
+    mDrawingSurface.requestSceneRender();
+    modified();
+  }
+
+  SketchTextStyle loadTextObjectDefault()
+  {
+    return SketchTextDefaults.load( mApp_mData, TDInstance.sid );
+  }
+
+  void rememberTextObjectDefault( SketchTextStyle style )
+  {
+    SketchTextDefaults.save( mApp_mData, TDInstance.sid, style );
+  }
+
+  double textObjectDefaultOrientation()
+  {
+    return BrushManager.getPointOrientation( mCurrentPoint );
   }
 
   // private String mMediaComment = null;
@@ -8409,7 +8458,9 @@ public class DrawingWindow extends ItemDrawer
             } else if ( item instanceof DrawingPointPath ) {
               DrawingPointPath point = (DrawingPointPath)(item);
               // TDLog.v( "edit point type " + point.mPointType );
-              if ( point instanceof DrawingPhotoPath ) { // BrushManager.isPointPhoto( point.mPointType )
+              if ( point instanceof DrawingLabelPath ) {
+                new DrawingTextDialog( mActivity, this, (DrawingLabelPath)point ).show();
+              } else if ( point instanceof DrawingPhotoPath ) { // BrushManager.isPointPhoto( point.mPointType )
                 new DrawingPhotoEditDialog( mActivity, (DrawingPhotoPath)point ).show();
               } else if ( point instanceof DrawingPicturePath ) { // BrushManager.isPointPhoto( point.mPointType )
                 // TODO

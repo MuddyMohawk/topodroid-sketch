@@ -41,6 +41,7 @@ import com.topodroid.TDX.DrawingPhotoPath;
 import com.topodroid.TDX.DrawingStationUser;
 import com.topodroid.TDX.DrawingStationName;
 import com.topodroid.TDX.DrawingLabelPath;
+import com.topodroid.TDX.SketchTextStyle;
 import com.topodroid.TDX.DrawingCommandManager;
 import com.topodroid.TDX.IDrawingLink;
 import com.topodroid.TDX.Symbol;
@@ -823,26 +824,12 @@ public class DrawingDxf
                 String layer2 = TDSetting.mAcadLayer?  "SCRAP_" + Integer.toString( path.mScrap ) // z
                                                     : "P_" + th_name;
               DrawingLabelPath label = (DrawingLabelPath)point;
-              DXF.printString(pw5, 0, "TEXT");
-              if ( DXF.mVersion13_14 ) {
-                handle = DXF.inc( handle );
-                DXF.printHex(pw5, 5, handle );
-                DXF.printHex(pw5, 330, model_block_handle );
-                DXF.printString(pw5, 100, "AcDbEntity" );
-              }
-              DXF.printString( pw5, 8, layer2 );
-
-              if ( DXF.mVersion13_14 ) {
-                DXF.printString(pw5, 100, "AcDbText" );
-              }
-              DXF.printXYZ(pw5, (point.cx + xoff) * scale, -(point.cy + yoff) * scale, z, 0);
-              DXF.printFloat(pw5, 40, point.getScaleValue() * 1.4f / 5 );
-              DXF.printFloat(pw5, 50, 360.0f - (float)(point.mOrientation));
-              DXF.printFloat(pw5, 51, 0.0f );
-              DXF.printString(pw5, 1, label.mPointText);
-              if ( DXF.mVersion13_14 ) {
-                DXF.printString(pw5, 100, "AcDbText" );
-              }
+              handle = printLabel(
+                pw5, handle, model_block_handle, label,
+                (point.cx + xoff) * scale, -(point.cy + yoff) * scale,
+                360.0f - (float)point.mOrientation,
+                point.getScaleValue() * 1.4f / 5,
+                scale, layer2, xoff, yoff, z, scrap_flag );
             } else {
               boolean done_point = false;
               if ( BrushManager.isPointSection( point.mPointType ) && TDSetting.mAutoXSections ) {
@@ -997,15 +984,13 @@ public class DrawingDxf
     if ( BrushManager.isPointLabel( point.mPointType ) ) {
       DrawingLabelPath label = (DrawingLabelPath)point;
       // TDLog.v( "LABEL PATH label <" + label.mPointText + ">" );
-      return DXF.printText( pw, handle, ref_handle,
-              label.mPointText,
-              (point.cx+xoff)*scale,
-              -(point.cy+yoff)*scale, 360.0f-(float)label.mOrientation,
-              LABEL_SCALE,
-              (TDSetting.mAcadLayer?  "SCRAP_" + Integer.toString( scrap ) : "POINT"),
-              DXF.style_dejavu,
-              xoff, yoff, z, scrap,
-              DXF.BY_LAYER );
+      return printLabel(
+        pw, handle, ref_handle, label,
+        (point.cx + xoff) * scale, -(point.cy + yoff) * scale,
+        360.0f - (float)label.mOrientation,
+        LABEL_SCALE, scale,
+        (TDSetting.mAcadLayer ? "SCRAP_" + Integer.toString( scrap ) : "POINT"),
+        xoff, yoff, z, scrap );
       // HBX_DXF
     }
     String th_name = replaceColon( point.getThName() );
@@ -1022,6 +1007,42 @@ public class DrawingDxf
     DXF.printFloat( pw, 42, point.getScaleValue()*TDSetting.pointInkUnit()); //HBX unit
     DXF.printFloat( pw, 50, 360.0f-(float)(point.mOrientation) );
     DXF.printXYZ( pw, (point.cx+xoff)*scale, -(point.cy+yoff)*scale, z, 0 );
+    return handle;
+  }
+
+  /** Export a label as one DXF TEXT entity per explicit line.
+   * Styled labels map their stored height and alignment; legacy labels retain
+   * the caller's historical fallback height.
+   */
+  static private int printLabel( PrintWriter pw, int handle, int ref_handle,
+                                 DrawingLabelPath label, float x, float y, float angle,
+                                 float legacy_height, float coordinate_scale,
+                                 String layer, float xoff, float yoff, float z, int scrap )
+  {
+    SketchTextStyle style = label.getTextStyle();
+    float height = legacy_height;
+    int alignment = 0;
+    if ( style != null ) {
+      height = Math.max( 0.0001f, label.getTextExportLineHeightScene() * coordinate_scale );
+      if ( style.alignment() == SketchTextStyle.Alignment.CENTER ) alignment = 1;
+      else if ( style.alignment() == SketchTextStyle.Alignment.RIGHT ) alignment = 2;
+    }
+
+    String text = label.getPointText();
+    if ( text == null ) text = "";
+    text = text.replace( "\r\n", "\n" ).replace( '\r', '\n' );
+    String[] lines = text.split( "\\n", -1 );
+    float orientation = 360.0f - angle;
+    float radians = (float)Math.toRadians( orientation );
+    float line_dx = -(float)Math.sin( radians ) * height;
+    float line_dy = -(float)Math.cos( radians ) * height;
+    for ( int index = 0; index < lines.length; ++index ) {
+      handle = DXF.printText(
+        pw, handle, ref_handle, lines[index],
+        x + index * line_dx, y + index * line_dy,
+        angle, height, layer, DXF.style_dejavu,
+        xoff, yoff, z, scrap, DXF.BY_LAYER, alignment );
+    }
     return handle;
   }
 

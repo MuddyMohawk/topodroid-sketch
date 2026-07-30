@@ -18,9 +18,7 @@ import com.topodroid.types.PointScale;
 
 
 import android.graphics.Canvas;
-import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Matrix;
 
@@ -33,8 +31,8 @@ import java.util.Locale;
 
 public class DrawingLabelPath extends DrawingPointPath
 {
-  private final static float PDF_SCALE = 0.4f;
-  private float mTextSize;
+  private volatile SketchTextLayoutSnapshot mTextLayout;
+  private volatile SketchTextStyle mTextStyle;
 
   /** cstr
    * @param text     label text
@@ -47,20 +45,19 @@ public class DrawingLabelPath extends DrawingPointPath
   public DrawingLabelPath( String text, float off_x, float off_y, int scale, String options, int scrap ) // TH2EDIT package
   {
     super( BrushManager.getPointLabelIndex(), off_x, off_y, scale, text, options, scrap );
-    // mPointText = text;
-    // setPaint( BrushManager.pointPaint[ BrushManager.POINT_LABEL ] );
-    // mPaint = BrushManager.pointPaint[ BrushManager.POINT_LABEL ];
-    // paint = new Paint();
-    // paint.setDither(true);
-    // paint.setColor( 0xffffffff );
-    // paint.setStyle(Paint.Style.STROKE);
-    // paint.setStrokeJoin(Paint.Join.ROUND);
-    // paint.setStrokeCap(Paint.Cap.ROUND);
-    // paint.setStrokeWidth( WIDTH_CURRENT );
+    // Labels render through SketchTextRenderer rather than a point-symbol path.
+    // Keep an empty path so inherited point movement/transform operations remain safe.
+    if ( mPath == null ) mPath = new Path();
+    mTextStyle = SketchTextStyleCodec.fromOptions( options );
+    refreshPaint();
+    updateSceneBounds( 1.0f );
+  }
 
-    // makeStraightPath( 0, 0, 20*mPointText.length(), 0, cx, cy );
-    mTextSize = TDSetting.mLabelSize;
-    doSetScale( mScale );
+  DrawingLabelPath( String text, float off_x, float off_y, int scale, String options, int scrap,
+                    SketchTextStyle style )
+  {
+    this( text, off_x, off_y, scale, options, scrap );
+    setTextStyle( ( style == null ) ? SketchTextStyle.defaultStyle() : style );
   }
 
   /** deserialize from an input stream
@@ -129,10 +126,8 @@ public class DrawingLabelPath extends DrawingPointPath
   @Override
   public void draw( Canvas canvas, RectF bbox )
   {
-    if ( intersects( bbox ) ) {
-      // TDLog.Log( TDLog.LOG_PATH, "Drawing Label Path::draw " + mPointText );
-      canvas.drawTextOnPath( mPointText, mPath, 0f, 0f, mPaint );
-    }
+    Matrix identity = new Matrix();
+    drawText( canvas, identity, 1.0f, bbox, 0 );
   }
 
   /** draw the label on the screen
@@ -145,23 +140,7 @@ public class DrawingLabelPath extends DrawingPointPath
   @Override
   public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox )
   {
-    // TDLog.v("LABEL DRAW scale " + scale );
-    Paint paint = (bbox != null)? mPaint : BrushManager.blackPaint;
-    if ( intersects( bbox ) ) {
-      // TDLog.Log( TDLog.LOG_PATH, "Drawing Label Path::draw[matrix] " + mPointText );
-      // export renders force unscaled labels on their own thread only: the
-      // global setting must not be flipped (live/cache renders run concurrently)
-      if ( TDSetting.mScalableLabel && ! DrawingCommandManager.sExportUnscaledLabels.get() ) mTextSize = TDSetting.mLabelSize * 0.1f / scale;
-      setTextSize( );
-      mTransformedPath = new Path( mPath );
-      if ( mLandscape ) {
-        Matrix rot = new Matrix();
-	rot.postRotate( 90, cx, cy );
-        mTransformedPath.transform( rot );
-      }
-      mTransformedPath.transform( matrix );
-      canvas.drawTextOnPath( mPointText, mTransformedPath, 0f, 0f, mPaint );
-    }
+    drawText( canvas, matrix, scale, bbox, 0 );
   }
 
   /** draw the label on the screen
@@ -176,26 +155,153 @@ public class DrawingLabelPath extends DrawingPointPath
   @Override
   public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox, int xor_color )
   {
-    // TDLog.v("DRAW xor color " + xor_color + " scale " + scale );
-    if ( intersects( bbox ) ) {
-      // TDLog.Log( TDLog.LOG_PATH, "Drawing Label Path::draw[matrix] " + mPointText );
-      setTextSize();
-      mTransformedPath = new Path( mPath );
-      if ( mLandscape ) {
-        Matrix rot = new Matrix();
-        rot.postRotate( 90, cx, cy );
-        mTransformedPath.transform( rot );
-      }
-      mTransformedPath.transform( matrix );
-      Paint paint = xorPaint( mPaint, xor_color );
-      paint.setTextSize( PDF_SCALE * paint.getTextSize() );
-      canvas.drawTextOnPath( mPointText, mTransformedPath, 0f, 0f, paint );
-    }
+    drawText( canvas, matrix, scale, bbox, xor_color );
   }
 
-  /** @return the font-size factor according to the point scale
-   */
-  private float fontSize( )
+  private void drawText( Canvas canvas, Matrix matrix, float scale, RectF bbox, int xor_color )
+  {
+    if ( canvas == null || matrix == null ) return;
+    String text = mPointText;
+    SketchTextStyle explicit_style = mTextStyle;
+    SketchTextStyle style = ( explicit_style == null ) ? legacyStyleForEditor( text ) : explicit_style;
+    SketchTextLayoutSnapshot layout = layoutFor( text, style );
+    RectF scene_bounds = SketchTextRenderer.rotatedBounds(
+      cx, cy, effectiveOrientation(),
+      SketchTextRenderer.localBounds(
+        layout, lineHeightScene( scale, layout, style, explicit_style != null ) ) );
+    if ( bbox != null && ! RectF.intersects( scene_bounds, bbox ) ) return;
+    float line_height = lineHeightPixels( matrix, scale, layout, style, explicit_style != null );
+    float orientation = effectiveOrientation();
+    SketchTextRenderer.drawScene( canvas, matrix, cx, cy, orientation,
+                                  style, layout, line_height, xor_color );
+  }
+
+  private SketchTextLayoutSnapshot layoutFor( String text, SketchTextStyle style )
+  {
+    SketchTextLayoutSnapshot snapshot = mTextLayout;
+    if ( snapshot != null && snapshot.matches( text, style ) ) return snapshot;
+    snapshot = SketchTextLayoutSnapshot.create( text, style );
+    mTextLayout = snapshot;
+    return snapshot;
+  }
+
+  private SketchTextStyle renderStyle()
+  {
+    SketchTextStyle style = mTextStyle;
+    return ( style == null ) ? legacyStyleForEditor( mPointText ) : style;
+  }
+
+  private float lineHeightPixels( Matrix matrix, float scale, SketchTextLayoutSnapshot layout,
+                                  SketchTextStyle style, boolean explicit )
+  {
+    if ( ! explicit ) {
+      float paint_size = TDSetting.mLabelSize * pointScaleFactor();
+      if ( TDSetting.mScalableLabel && ! DrawingCommandManager.sExportUnscaledLabels.get() ) {
+        paint_size = TDSetting.mLabelSize * 0.1f * pointScaleFactor() / safeScale( scale );
+      }
+      return paint_size / layout.paintSizePerLineHeight;
+    }
+    if ( style.sizeMode() == SketchTextStyle.SizeMode.SCREEN ) {
+      float export_scale = DrawingCommandManager.getExportTextScale();
+      return style.height() * TopoDroidApp.getDisplayDensity() * export_scale;
+    }
+    float scene_height = worldLineHeightScene( style );
+    return scene_height * matrixScale( matrix );
+  }
+
+  float lineHeightScene( float scale )
+  {
+    String text = mPointText;
+    SketchTextStyle explicit_style = mTextStyle;
+    SketchTextStyle style = ( explicit_style == null ) ? legacyStyleForEditor( text ) : explicit_style;
+    SketchTextLayoutSnapshot layout = layoutFor( text, style );
+    return lineHeightScene( scale, layout, style, explicit_style != null );
+  }
+
+  private float lineHeightScene( float scale, SketchTextLayoutSnapshot layout,
+                                 SketchTextStyle style, boolean explicit )
+  {
+    if ( ! explicit ) {
+      float paint_size = TDSetting.mLabelSize * pointScaleFactor();
+      if ( TDSetting.mScalableLabel && ! DrawingCommandManager.sExportUnscaledLabels.get() ) {
+        paint_size = TDSetting.mLabelSize * 0.1f * pointScaleFactor() / safeScale( scale );
+      }
+      return paint_size * safeScale( scale ) / layout.paintSizePerLineHeight;
+    }
+    if ( style.sizeMode() == SketchTextStyle.SizeMode.SCREEN ) {
+      return style.height() * TopoDroidApp.getDisplayDensity()
+          * DrawingCommandManager.getExportTextScale() * safeScale( scale );
+    }
+    return worldLineHeightScene( style );
+  }
+
+  RectF textBoundsScene( float scale )
+  {
+    String text = mPointText;
+    SketchTextStyle explicit_style = mTextStyle;
+    SketchTextStyle style = ( explicit_style == null ) ? legacyStyleForEditor( text ) : explicit_style;
+    SketchTextLayoutSnapshot layout = layoutFor( text, style );
+    RectF local = SketchTextRenderer.localBounds(
+      layout, lineHeightScene( scale, layout, style, explicit_style != null ) );
+    return SketchTextRenderer.rotatedBounds( cx, cy, effectiveOrientation(), local );
+  }
+
+  boolean hitText( float x, float y, float scale, float touch_slop )
+  {
+    String text = mPointText;
+    SketchTextStyle explicit_style = mTextStyle;
+    SketchTextStyle style = ( explicit_style == null ) ? legacyStyleForEditor( text ) : explicit_style;
+    SketchTextLayoutSnapshot layout = layoutFor( text, style );
+    RectF local = SketchTextRenderer.localBounds(
+      layout, lineHeightScene( scale, layout, style, explicit_style != null ) );
+    return SketchTextRenderer.hitTest( x, y, cx, cy, effectiveOrientation(), local, touch_slop );
+  }
+
+  Path textBoundsPath( float scale )
+  {
+    String text = mPointText;
+    SketchTextStyle explicit_style = mTextStyle;
+    SketchTextStyle style = ( explicit_style == null ) ? legacyStyleForEditor( text ) : explicit_style;
+    SketchTextLayoutSnapshot layout = layoutFor( text, style );
+    RectF local = SketchTextRenderer.localBounds(
+      layout, lineHeightScene( scale, layout, style, explicit_style != null ) );
+    Path path = new Path();
+    path.addRect( local, Path.Direction.CW );
+    Matrix transform = new Matrix();
+    transform.postRotate( effectiveOrientation() );
+    transform.postTranslate( cx, cy );
+    path.transform( transform );
+    return path;
+  }
+
+  private float effectiveOrientation()
+  {
+    return (float)mOrientation + ( mLandscape ? 90.0f : 0.0f );
+  }
+
+  private void updateSceneBounds( float scale )
+  {
+    RectF bounds = textBoundsScene( scale );
+    setBBox( bounds.left, bounds.right, bounds.top, bounds.bottom );
+  }
+
+  @Override
+  public void computeBounds( RectF bounds, boolean exact )
+  {
+    RectF text_bounds = textBoundsScene( 1.0f );
+    bounds.set( text_bounds );
+  }
+
+  private static float worldLineHeightScene( SketchTextStyle style )
+  {
+    if ( style == null ) return 0.0f;
+    float metres = ( style.sizeMode() == SketchTextStyle.SizeMode.AUTO_GRID )
+      ? TDSetting.mUnitGrid * style.height()
+      : style.height();
+    return metres * DrawingUtil.SCALE_FIX;
+  }
+
+  private float pointScaleFactor()
   {
     switch ( mScale ) {
       case PointScale.SCALE_XS: return 0.50f;
@@ -203,67 +309,155 @@ public class DrawingLabelPath extends DrawingPointPath
       case PointScale.SCALE_L:  return 1.41f;
       case PointScale.SCALE_XL: return 2.00f;
     }
-    return 1;
+    return 1.0f;
   }
 
-  /** create the path for the label text
-   */
-  private void makeLabelPath( /* float f */ )
+  private static float matrixScale( Matrix matrix )
   {
-    Rect r = new Rect();
-    mPaint.getTextBounds( mPointText, 0, mPointText.length(), r );
-    // float len = 20 * f * mPointText.length();
-    float len = 2 * r.width(); // FIXME multiplying by 10 is a hack
-
-    float a = (float)(mOrientation) * TDMath.DEG2RAD;
-    float ca = len * TDMath.cos( a );
-    float sa = len * TDMath.sin( a );
-    makeStraightPath( 0, 0, ca, sa, cx, cy );
+    float[] vector = { 1.0f, 0.0f };
+    matrix.mapVectors( vector );
+    float value = (float)Math.sqrt( vector[0] * vector[0] + vector[1] * vector[1] );
+    return ( value > 0.0f ) ? value : 1.0f;
   }
 
-  /** set the point scale
-   * @param scale   (Therion) scale
-   */
+  private static float safeScale( float scale )
+  {
+    return ( scale > 0.0f && ! Float.isNaN( scale ) && ! Float.isInfinite( scale ) ) ? scale : 1.0f;
+  }
+
+  public boolean hasExplicitTextStyle() { return mTextStyle != null; }
+
+  public SketchTextStyle getTextStyle()
+  {
+    return mTextStyle;
+  }
+
+  public SketchTextStyle getTextStyleForEditor()
+  {
+    return renderStyle();
+  }
+
+  /** normalized Android paint size needed for one unit of requested line height */
+  public float getTextPaintSizePerLineHeight()
+  {
+    String text = mPointText;
+    SketchTextStyle style = renderStyle();
+    return layoutFor( text, style ).paintSizePerLineHeight;
+  }
+
+  /** requested scene-space line height; screen-sized text uses its vector fallback scale */
+  public float getTextExportLineHeightScene()
+  {
+    SketchTextStyle style = mTextStyle;
+    if ( style != null && style.sizeMode() != SketchTextStyle.SizeMode.SCREEN ) {
+      return worldLineHeightScene( style );
+    }
+    return TDSetting.mSvgLabelSize * getScaleValue()
+      / Math.max( 0.0001f, TDSetting.mToSvg )
+      / Math.max( 0.0001f, getTextPaintSizePerLineHeight() );
+  }
+
+  String getPublicOptions()
+  {
+    return SketchPrivateOptions.stripAll( mOptions );
+  }
+
+  void setTextStyle( SketchTextStyle style )
+  {
+    mTextStyle = ( style == null ) ? null : style;
+    mOptions = SketchTextStyleCodec.storeInOptions( mOptions, mTextStyle );
+    if ( mTextStyle != null ) syncFallbackScale();
+    invalidateLayout();
+  }
+
+  void applyTextEdit( String text, SketchTextStyle style, boolean make_explicit,
+                      double orientation, int level, String public_options )
+  {
+    mPointText = ( text == null ) ? "" : text;
+    mOrientation = TDMath.in360( orientation );
+    mLevel = level;
+    if ( mTextStyle != null || make_explicit ) {
+      mTextStyle = ( style == null ) ? SketchTextStyle.defaultStyle() : style;
+      mOptions = SketchTextStyleCodec.storeInOptions( public_options, mTextStyle );
+      syncFallbackScale();
+    } else {
+      mOptions = SketchTextStyleCodec.stripOptions( public_options );
+    }
+    refreshPaint();
+    invalidateLayout();
+  }
+
+  @Override
+  void setPointText( String text )
+  {
+    mPointText = text;
+    invalidateLayout();
+  }
+
   @Override
   void setScale( int scale )
   {
-    if ( scale != mScale ) doSetScale( scale );
-  }
-
-  /** set the point scale and make the label path
-   * @param scale   (Therion) scale
-   */
-  private void doSetScale( int scale )
-  {
+    if ( scale == mScale ) return;
     mScale = scale;
-    float f = fontSize();
-    mPaint = BrushManager.labelPaint; // was new Paint( ... )
-    mPaint.setTextSize( mTextSize * f );
-    makeLabelPath( /* f */ );
+    if ( mTextStyle == null ) invalidateLayout();
+    updateSceneBounds( 1.0f );
   }
 
-  /** set the orientation
-   * @param angle   orientation [degrees] - 0 = vertical
-   */
   @Override
-  public void setOrientation( double angle )  // TH2EDIT package
-  { 
+  public void setOrientation( double angle )
+  {
     mOrientation = TDMath.in360( angle );
-    makeLabelPath( /* fontSize() */ );
+    updateSceneBounds( 1.0f );
   }
 
-  /** set the size of the text according to the point scale
-   */ 
-  private void setTextSize()
+  private SketchTextStyle legacyStyleForEditor( String text )
   {
-    float f = 1.0f;
-    switch ( mScale ) {
-      case PointScale.SCALE_XS: f = 0.50f; break;
-      case PointScale.SCALE_S:  f = 0.72f; break;
-      case PointScale.SCALE_L:  f = 1.41f; break;
-      case PointScale.SCALE_XL: f = 2.00f; break;
+    SketchTextStyle base = SketchTextStyle.defaultStyle();
+    SketchTextLayoutSnapshot layout = SketchTextLayoutSnapshot.create( text, base );
+    float paint_size = TDSetting.mLabelSize * pointScaleFactor();
+    int color = ( BrushManager.labelPaint == null ) ? SketchTextStyle.DEFAULT_COLOR : BrushManager.labelPaint.getColor();
+    if ( TDSetting.mScalableLabel ) {
+      float line_height_metres =
+        ( TDSetting.mLabelSize * 0.1f * pointScaleFactor() / layout.paintSizePerLineHeight ) / DrawingUtil.SCALE_FIX;
+      return SketchTextStyle.of( SketchFontRegistry.FONT_DEFAULT, SketchTextStyle.SizeMode.WORLD,
+                                 line_height_metres, false, false, false,
+                                 SketchTextStyle.Alignment.LEFT, color );
     }
-    mPaint.setTextSize( mTextSize * f );
+    float line_height_dp = paint_size
+      / layout.paintSizePerLineHeight
+      / Math.max( 0.1f, TopoDroidApp.getDisplayDensity() );
+    return SketchTextStyle.of( SketchFontRegistry.FONT_DEFAULT, SketchTextStyle.SizeMode.SCREEN,
+                               line_height_dp, false, false, false,
+                               SketchTextStyle.Alignment.LEFT, color );
+  }
+
+  private void syncFallbackScale()
+  {
+    float ratio;
+    if ( mTextStyle.sizeMode() == SketchTextStyle.SizeMode.AUTO_GRID ) {
+      ratio = mTextStyle.height();
+    } else if ( mTextStyle.sizeMode() == SketchTextStyle.SizeMode.WORLD ) {
+      ratio = mTextStyle.height() / Math.max( 0.0001f, TDSetting.mUnitGrid );
+    } else {
+      ratio = mTextStyle.height() / SketchTextStyle.DEFAULT_SCREEN_HEIGHT;
+    }
+    if ( ratio < 0.61f ) mScale = PointScale.SCALE_XS;
+    else if ( ratio < 0.86f ) mScale = PointScale.SCALE_S;
+    else if ( ratio < 1.20f ) mScale = PointScale.SCALE_M;
+    else if ( ratio < 1.70f ) mScale = PointScale.SCALE_L;
+    else mScale = PointScale.SCALE_XL;
+  }
+
+  private void refreshPaint()
+  {
+    mPaint = SketchTextRenderer.newPaint( renderStyle() );
+  }
+
+  private void invalidateLayout()
+  {
+    mTextLayout = null;
+    refreshPaint();
+    updateSceneBounds( 1.0f );
   }
 
   /** @return Therion string representation of the label point
@@ -273,8 +467,15 @@ public class DrawingLabelPath extends DrawingPointPath
   {
     StringWriter sw = new StringWriter();
     PrintWriter pw  = new PrintWriter(sw);
-    pw.format(Locale.US, "point %.2f %.2f label -text \"%s\"", cx*TDSetting.mToTherion, -cy*TDSetting.mToTherion, mPointText );
+    pw.format(Locale.US, "point %.2f %.2f label -text \"%s\"",
+              cx*TDSetting.mToTherion, -cy*TDSetting.mToTherion, therionText() );
     toTherionOrientation( pw );
+    if ( mTextStyle != null ) {
+      String align = "l";
+      if ( mTextStyle.alignment() == SketchTextStyle.Alignment.CENTER ) align = "c";
+      else if ( mTextStyle.alignment() == SketchTextStyle.Alignment.RIGHT ) align = "r";
+      pw.format( " -align %s", align );
+    }
     toTherionOptions( pw );
     pw.format("\n");
     return sw.getBuffer().toString();
@@ -312,14 +513,51 @@ public class DrawingLabelPath extends DrawingPointPath
   { 
     // int size = mScale - PointScale.SCALE_XS;
     pw.format("<item type=\"point\" name=\"label\" cave=\"%s\" branch=\"%s\" text=\"%s\" ",
-      cave, branch, mPointText );
-    if ( bind != null ) pw.format( " bind=\"%s\"", bind );
+      xmlAttribute( cave ), xmlAttribute( branch ), xmlAttribute( mPointText ) );
+    if ( bind != null ) pw.format( " bind=\"%s\" ", xmlAttribute( bind ) );
     String options = getExportOptions();
-    pw.format(Locale.US, "scale=\"%d\" orientation=\"%.2f\" options=\"%s\" >\n", mScale, mOrientation, ((options == null)? "" : options) );
+    pw.format(Locale.US, "scale=\"%d\" orientation=\"%.2f\" options=\"%s\" >\n",
+      mScale, mOrientation, xmlAttribute( (options == null)? "" : options ) );
     float x = DrawingUtil.sceneToWorldX( cx, cy ); // convert to world coords.
     float y = DrawingUtil.sceneToWorldY( cx, cy );
     pw.format(Locale.US, " <points data=\"%.2f %.2f \" />\n", x, y );
     pw.format("</item>\n");
+  }
+
+  private String therionText()
+  {
+    String text = ( mPointText == null ) ? "" : mPointText;
+    text = text.replace( "&", "&amp;" )
+               .replace( "<", "&lt;" )
+               .replace( ">", "&gt;" )
+               .replace( "\\", "\\\\" )
+               .replace( "\"", "\\\"" )
+               .replace( "\r\n", "\n" )
+               .replace( '\r', '\n' )
+               .replace( "\n", "<br>" );
+    if ( mTextStyle == null ) return text;
+    StringBuilder prefix = new StringBuilder();
+    if ( mTextStyle.bold() ) prefix.append( "<bf>" );
+    if ( mTextStyle.italic() ) prefix.append( "<it>" );
+    if ( mPointText != null && mPointText.indexOf( '\n' ) >= 0 ) {
+      if ( mTextStyle.alignment() == SketchTextStyle.Alignment.CENTER ) prefix.append( "<centre>" );
+      else if ( mTextStyle.alignment() == SketchTextStyle.Alignment.RIGHT ) prefix.append( "<right>" );
+      else prefix.append( "<left>" );
+    }
+    return prefix.append( text ).toString();
+  }
+
+  private static String xmlAttribute( String text )
+  {
+    if ( text == null ) return "";
+    return text.replace( "&", "&amp;" )
+               .replace( "<", "&lt;" )
+               .replace( ">", "&gt;" )
+               .replace( "\"", "&quot;" )
+               .replace( "'", "&apos;" )
+               .replace( "\r\n", "&#10;" )
+               .replace( "\r", "&#10;" )
+               .replace( "\n", "&#10;" );
   }
 
   /** serialize the label point

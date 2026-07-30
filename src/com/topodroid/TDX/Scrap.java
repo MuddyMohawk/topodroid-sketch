@@ -40,6 +40,8 @@ public class Scrap
   private List< ICanvasCommand > mRedoStack;
   private Selection mSelection;
   private SelectionSet mSelected;
+  private volatile List< DrawingLabelPath > mTextOverlaySnapshot = Collections.emptyList();
+  private volatile boolean mTextOverlayDirty = true;
   private int mMultiselectionType = -1;  // current multiselection type (DRAWING_PATH_POINT / LINE / AREA
   private List< DrawingPath > mMultiselected;
   boolean isMultiselection = false; 
@@ -170,6 +172,7 @@ public class Scrap
         }
       }
       mCurrentStack.clear();
+      mTextOverlayDirty = true;
     }
     synchronized( TDPath.mStationsLock ) { mUserStations.clear(); }
     mRedoStack.clear();
@@ -293,6 +296,7 @@ public class Scrap
         mSelection.insertPath( retrace.mPath );
       }
     }
+    mTextOverlayDirty = true;
     // checkLines();
   }
   // end UNDO/REDO -----------------------------------------------
@@ -311,16 +315,30 @@ public class Scrap
    */
   SelectionSet getItemsAt( float x, float y, float radius, int mode, 
 		           boolean legs, boolean splays, boolean stations, DrawingStationSplay station_splay,
-			   Selection selection_fixed // FIXME-HIDE
+			   Selection selection_fixed, float scene_per_pixel // FIXME-HIDE
                          )
   {
     // TDLog.v("Scrap get items at " + x + " " + y );
+    List< DrawingLabelPath > overlays =
+      ( mode == Drawing.FILTER_ALL || mode == Drawing.FILTER_POINT )
+        ? textOverlaySnapshot()
+        : Collections.emptyList();
     // synchronized ( TDPath.mSelectedLock ) {
     synchronized ( TDPath.mSelectionLock ) {
       mSelected.clear();
+      for ( int i = overlays.size() - 1; i >= 0; --i ) {
+        DrawingLabelPath label = overlays.get( i );
+        if ( ! DrawingLevel.isLevelVisibleOrAnyLevelNoVisible( label ) ) continue;
+        if ( label.hitText( x, y, scene_per_pixel, radius ) ) {
+          SelectionPoint point = new SelectionPoint( label, null, null );
+          point.setDistance( 0.0f );
+          mSelected.addPoint( point );
+        }
+      }
       // FIXME_LATEST latest splays are not considered in the selection
       mSelection.selectAt( mSelected, x, y, radius, mode, legs, splays, stations, station_splay ); 
       selection_fixed.selectAt( mSelected, x, y, radius, mode, legs, splays, stations, station_splay ); // FIXME-HIDE
+      mSelected.removeDuplicateTextItems();
       // FIXME-HIDE if ( mSelected.mPoints.size() > 0 ) {
         // TDLog.v( "selected " + mSelected.mPoints.size() + " points " );
         mSelected.nextHotItem();
@@ -334,10 +352,23 @@ public class Scrap
    * @param y   Y coordinate
    * @param radius radius of selection [pxl]
    */
-  void addItemAt( float x, float y, float radius )
+  void addItemAt( float x, float y, float radius, float scene_per_pixel )
   {
+    List< DrawingLabelPath > overlays =
+      ( mMultiselectionType == DrawingPath.DRAWING_PATH_POINT )
+        ? textOverlaySnapshot()
+        : Collections.emptyList();
     synchronized ( TDPath.mSelectionLock ) {
       mSelected.clear();
+      if ( mMultiselectionType == DrawingPath.DRAWING_PATH_POINT ) {
+        for ( int i = overlays.size() - 1; i >= 0; --i ) {
+          DrawingLabelPath label = overlays.get( i );
+          if ( DrawingLevel.isLevelVisibleOrAnyLevelNoVisible( label )
+              && label.hitText( x, y, scene_per_pixel, radius ) ) {
+            addMultiselection( label );
+          }
+        }
+      }
       mSelection.selectAt( mSelected, x, y, radius, mMultiselectionType );
       for ( SelectionPoint sp : mSelected.mPoints ) {
         addMultiselection( sp.mItem );
@@ -373,6 +404,7 @@ public class Scrap
   {
     synchronized( TDPath.mCommandsLock ) {
       mCurrentStack.remove( path );
+      if ( path instanceof DrawingLabelPath ) mTextOverlayDirty = true;
     }
     synchronized( TDPath.mSelectionLock ) {
       mSelection.removePath( path );
@@ -899,6 +931,7 @@ public class Scrap
       }
     }
     // checkLines();
+    if ( erased ) mTextOverlayDirty = true;
     return erased;
   }
 
@@ -935,6 +968,7 @@ public class Scrap
             mSelection.removePath( pp );
 	  }
         }
+        mTextOverlayDirty = true;
       }
     }
     return paths;
@@ -1022,6 +1056,7 @@ public class Scrap
     }
     synchronized( TDPath.mCommandsLock ) {
       mCurrentStack.add( path );
+      if ( path instanceof DrawingLabelPath ) mTextOverlayDirty = true;
     }
     if ( path.mType != DrawingPath.DRAWING_PATH_NORTH ) {
       synchronized( TDPath.mSelectionLock ) {
@@ -2841,6 +2876,13 @@ public class Scrap
         }
         if ( path.isPoint() ) { // path instanceof DrawingPointPath
           DrawingPointPath pt = (DrawingPointPath)path;
+          if ( path instanceof DrawingLabelPath ) {
+            // A text-bounds hit uses a transient SelectionPoint rather than the
+            // label's anchor SelectionPoint, so re-bucket the canonical point.
+            mSelection.rebucketPath( path );
+            if ( selection_fixed != null ) selection_fixed.shiftPathPointsBy( path, dx, dy );
+            return;
+          }
           if ( BrushManager.isPointSection( pt.mPointType )  ) {
             String scrap_name = TDUtil.replacePrefix( TDInstance.survey, pt.getOption( TDString.OPTION_SCRAP ) );
             if ( scrap_name != null ) {
@@ -3058,6 +3100,7 @@ public class Scrap
         mSelection.insertPath( retrace.mPath );
       }
     }
+    mTextOverlayDirty = true;
     // checkLines();
   }
 
@@ -3206,6 +3249,47 @@ public class Scrap
         && BrushManager.getAreaLinePattern( ((DrawingAreaPath)path).mAreaType ) != null;
   }
 
+  /** Return an immutable, command-ordered snapshot of text objects.
+   * Rebuilding is lazy and only follows a command-membership/order mutation.
+   */
+  private List< DrawingLabelPath > textOverlaySnapshot()
+  {
+    if ( ! mTextOverlayDirty ) return mTextOverlaySnapshot;
+    synchronized( TDPath.mCommandsLock ) {
+      if ( ! mTextOverlayDirty ) return mTextOverlaySnapshot;
+      ArrayList< DrawingLabelPath > labels = new ArrayList<>();
+      for ( ICanvasCommand command : mCurrentStack ) {
+        if ( command.commandType() == 0 && command instanceof DrawingLabelPath ) {
+          labels.add( (DrawingLabelPath)command );
+        }
+      }
+      mTextOverlaySnapshot = Collections.unmodifiableList( labels );
+      mTextOverlayDirty = false;
+      return mTextOverlaySnapshot;
+    }
+  }
+
+  /** Draw text after all persistent cave content while preserving text command order. */
+  void drawTextOverlays( Canvas canvas, Matrix matrix, float scale, RectF bbox,
+                         boolean landscape, int xor_color )
+  {
+    for ( DrawingLabelPath label : textOverlaySnapshot() ) {
+      label.mLandscape = landscape;
+      if ( TDSetting.mWithLevels != 0 && ! DrawingLevel.isLevelVisible( label ) ) continue;
+      label.draw( canvas, matrix, scale, bbox, xor_color );
+    }
+  }
+
+  void drawTextOverlays( Canvas canvas, Matrix matrix, float scale, RectF bbox,
+                         boolean landscape )
+  {
+    for ( DrawingLabelPath label : textOverlaySnapshot() ) {
+      label.mLandscape = landscape;
+      if ( TDSetting.mWithLevels != 0 && ! DrawingLevel.isLevelVisible( label ) ) continue;
+      label.draw( canvas, matrix, scale, bbox );
+    }
+  }
+
   /** grouping identity for patterned areas: differently styled colors/opacities
    * must not collapse into one union and inherit whichever area was encountered first
    */
@@ -3341,6 +3425,7 @@ public class Scrap
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
             path.mLandscape = landscape;
+            if ( path instanceof DrawingLabelPath ) continue;
             if ( path.isArea() && ( TDSetting.mAreaOverlapDarken || isPatternedArea( path ) ) ) continue;
             cmd.draw( canvas, matrix, scale, bbox, xor_color );
             if ( path.isLine() ) { // path instanceof DrawingLinePath
@@ -3365,6 +3450,7 @@ public class Scrap
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
             path.mLandscape = landscape;
+            if ( path instanceof DrawingLabelPath ) continue;
             if ( DrawingLevel.isLevelVisible( (DrawingPath)cmd ) ) {
               if ( path.isArea() && ( TDSetting.mAreaOverlapDarken || isPatternedArea( path ) ) ) continue;
               cmd.draw( canvas, matrix, scale, bbox, xor_color );
@@ -3463,6 +3549,7 @@ public class Scrap
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
             path.mLandscape = landscape;
+            if ( path instanceof DrawingLabelPath ) continue;
             if ( path.isArea() && ( TDSetting.mAreaOverlapDarken || isPatternedArea( path ) ) ) continue;
             cmd.draw( canvas, matrix, scale, bbox );
             if ( path.isLine() ) { // path instanceof DrawingLinePath
@@ -3481,6 +3568,7 @@ public class Scrap
           if ( cmd.commandType() == 0 ) {
             DrawingPath path = (DrawingPath)cmd;
             path.mLandscape = landscape;
+            if ( path instanceof DrawingLabelPath ) continue;
             if ( DrawingLevel.isLevelVisible( (DrawingPath)cmd ) ) {
               if ( path.isArea() && ( TDSetting.mAreaOverlapDarken || isPatternedArea( path ) ) ) continue;
               cmd.draw( canvas, matrix, scale, bbox );
@@ -3624,9 +3712,13 @@ public class Scrap
       if ( mMultiselectionType == DrawingPath.DRAWING_PATH_POINT ) {
         float radius = 4*TDSetting.mDotRadius/zoom;
         for ( DrawingPath item : mMultiselected ) {
-          float x = item.cx;
-          float y = item.cy;
-          path.addCircle( x, y, radius, Path.Direction.CCW );
+          if ( item instanceof DrawingLabelPath ) {
+            path.addPath( ((DrawingLabelPath)item).textBoundsPath( scale ) );
+          } else {
+            float x = item.cx;
+            float y = item.cy;
+            path.addCircle( x, y, radius, Path.Direction.CCW );
+          }
         }
       } else { // if ( mMultiselectionType == DrawingPath.DRAWING_PATH_LINE || mMultiselectionType == DrawingPath.DRAWING_PATH_LINE ) 
         for ( DrawingPath item : mMultiselected ) {
@@ -3667,8 +3759,12 @@ public class Scrap
           x = item.cx;
           y = item.cy;
         }
-        path = new Path();
-        path.addCircle( x, y, radius, Path.Direction.CCW );
+        path = ( item instanceof DrawingLabelPath )
+          ? ((DrawingLabelPath)item).textBoundsPath( scale )
+          : new Path();
+        if ( ! ( item instanceof DrawingLabelPath ) ) {
+          path.addCircle( x, y, radius, Path.Direction.CCW );
+        }
         path.transform( matrix );
         canvas.drawPath( path, BrushManager.highlightPaint2 );
         if ( lp != null && lp.has_cp ) {
@@ -3753,8 +3849,14 @@ public class Scrap
       radius = radius/3; // 2/zoom;
       for ( SelectionPoint pt : mSelected.mPoints ) {
         // float x, y;
-        path = new Path();
-        if ( pt.mPoint != null ) { // line-point
+        if ( pt.mItem instanceof DrawingLabelPath ) {
+          path = ((DrawingLabelPath)pt.mItem).textBoundsPath( scale );
+        } else {
+          path = new Path();
+        }
+        if ( pt.mItem instanceof DrawingLabelPath ) {
+          // The transformed layout outline is the selection affordance.
+        } else if ( pt.mPoint != null ) { // line-point
           path.addCircle( pt.mPoint.x, pt.mPoint.y, radius, Path.Direction.CCW );
         } else {
           path.addCircle( pt.mItem.cx, pt.mItem.cy, radius, Path.Direction.CCW );
@@ -3884,6 +3986,7 @@ public class Scrap
         for ( DrawingPath path : mMultiselected ) mCurrentStack.remove( path );
       }
       mMultiselected.clear();
+      mTextOverlayDirty = true;
     }
   }
 
@@ -3973,6 +4076,8 @@ public class Scrap
         }
       }
       scrap.clearSelected();
+      scrap.mTextOverlayDirty = true;
+      this.mTextOverlayDirty = true;
       // scrap.resetMultiselection();
     }
     return true; // clear saved scrap in command-manager
