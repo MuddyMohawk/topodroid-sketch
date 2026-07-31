@@ -41,7 +41,7 @@ import java.util.zip.ZipInputStream;
 public class TopoDroidSketchSymbolSliceInstrumentedTest
 {
   private static final int WIDTH = 1440;
-  private static final int HEIGHT = 7162;
+  private static final int HEIGHT = 7386;
   private static final float LEFT = 260.0f;
   private static final float COL = 370.0f;
   private static final float LINE_ROW = 70.0f;
@@ -81,6 +81,8 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
   {
     Set< String > entries = new HashSet<>();
     int fileCount = 0;
+    int crossbarLineCount = 0;
+    int dashedCrossbarLineCount = 0;
 
     ZipInputStream zip = new ZipInputStream(
       mContext.getResources().openRawResource( R.raw.symbols_topodroid_sketch ) );
@@ -88,6 +90,8 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
       ZipEntry entry;
       while ( (entry = zip.getNextEntry()) != null ) {
         String name = entry.getName();
+        if ( name.equals( "symbols_topodroid_sketch/line/crossbar-line" ) ) ++crossbarLineCount;
+        if ( name.equals( "symbols_topodroid_sketch/line/crossbar-line-dashed" ) ) ++dashedCrossbarLineCount;
         assertTrue( "Default symbol pack entry should use symbols_topodroid_sketch root: " + name,
                     name.startsWith( "symbols_topodroid_sketch/" ) );
         assertTrue( "Default symbol pack should not use old symbols_nss root: " + name,
@@ -104,6 +108,14 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertTrue( "Default TopoDroid Sketch symbol pack is unexpectedly small", fileCount > 40 );
     assertTrue( "Missing sketch pit line in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/line/pit" ) );
+    assertTrue( "Missing sketch ceiling-ledge line in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/line/chimney" ) );
+    assertTrue( "Missing paired-rail ceiling-channel line in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/line/ceiling-meander" ) );
+    assertTrue( "Missing paired-rail floor-channel line in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/line/floor-meander" ) );
+    assertEquals( "Crossbar Line should occur exactly once in the default raw pack", 1, crossbarLineCount );
+    assertEquals( "Dashed Crossbar Line should occur exactly once in the default raw pack", 1, dashedCrossbarLineCount );
     assertTrue( "Missing sketch flowstone line in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/line/flowstone" ) );
     assertTrue( "Missing sketch pool-fingers line in default raw pack",
@@ -199,6 +211,29 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     }
     assertTrue( "Gypsum Wall Crust must add repeat spacing between rosettes",
                 gypsumWallCrust.contains( "moveTo -3.1 0" ) );
+
+    String crossbarLine = readRawSymbolEntry( "symbols_topodroid_sketch/line/crossbar-line" );
+    String dashedCrossbarLine = readRawSymbolEntry( "symbols_topodroid_sketch/line/crossbar-line-dashed" );
+    assertTrue( "Crossbar Line must retain the Pit width", crossbarLine.contains( "width 2" ) );
+    assertTrue( "Crossbar Line must retain the Pit repeat advance", crossbarLine.contains( "lineTo 4.2 1" ) );
+    assertTrue( "Crossbar Line must retain the Pit crossbar width", crossbarLine.contains( "moveTo 1.7 -3.4" )
+                && crossbarLine.contains( "lineTo 2.7 -3.4" ) );
+    assertTrue( "Crossbar Line must extend symmetrically through the carrier",
+                crossbarLine.contains( "lineTo 2.7 4.4" ) );
+    assertTrue( "Crossbar Line carrier must remain solid", ! crossbarLine.contains( "\ndash " ) );
+    assertTrue( "Dashed Crossbar Line must retain the Ceiling Ledge width",
+                dashedCrossbarLine.contains( "width 2" ) );
+    assertTrue( "Dashed Crossbar Line must retain the Ceiling Ledge dash cycle",
+                dashedCrossbarLine.contains( "dash 4.2 1.4" ) );
+    assertTrue( "Dashed Crossbar Line must retain the Ceiling Ledge repeat and crossbar width",
+                dashedCrossbarLine.contains( "lineTo 4.2 1" )
+                && dashedCrossbarLine.contains( "moveTo 1.7 -1.7" )
+                && dashedCrossbarLine.contains( "lineTo 2.7 -1.7" ) );
+    assertTrue( "Dashed Crossbar Line must extend symmetrically through the carrier",
+                dashedCrossbarLine.contains( "lineTo 2.7 2.7" ) );
+    assertEquals( "Crossbar Line must be symmetric around its carrier", 0, hachureDirection( crossbarLine ) );
+    assertEquals( "Dashed Crossbar Line must be symmetric around its carrier", 0,
+                  hachureDirection( dashedCrossbarLine ) );
   }
 
   @Test
@@ -245,8 +280,10 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawDirectionalLineRow( canvas, label, "Shelfstone", "shelfstone", y ); y += DIRECTIONAL_LINE_ROW;
     drawDirectionalLineRow( canvas, label, "Gyp wall crust", "gypsum-wall-crust", y ); y += DIRECTIONAL_LINE_ROW;
     drawLineRow( canvas, label, "Ceiling ledge", "chimney", y ); y += LINE_ROW;
+    drawDirectionalLineRow( canvas, label, "Dashed crossbar", SymbolLibrary.CROSSBAR_LINE_DASHED, y ); y += DIRECTIONAL_LINE_ROW;
     drawLineRow( canvas, label, "Ceiling channel", "ceiling-meander", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Pit", "pit", y ); y += LINE_ROW;
+    drawDirectionalLineRow( canvas, label, "Crossbar line", SymbolLibrary.CROSSBAR_LINE, y ); y += DIRECTIONAL_LINE_ROW;
     drawLineRow( canvas, label, "Floor channel", "floor-meander", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Water flow", "water-flow", y ); y += LINE_ROW + 32.0f;
     assertLineMissing( "arrow" );

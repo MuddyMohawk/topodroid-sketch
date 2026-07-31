@@ -1,0 +1,34 @@
+encoding utf-8
+symbol line
+name pool_fingers
+th_name pool-fingers
+group floor
+color 0xffffff 0xff
+width 2
+# units: line-widths (1 = ink thickness); the drawn line is the carrier
+# and one representative four-finger group from pool_fingers.svg repeats.
+effect
+  moveTo 0.7 -1
+  lineTo 0.2 -3.4
+  moveTo 2.6 -1
+  lineTo 2.5 -4
+  moveTo 4.7 -1
+  lineTo 5 -3.6
+  moveTo 6.7 -1
+  lineTo 7.3 -3.2
+endeffect
+sketch_effect 1
+  stroke
+  carrier 0 1
+  stamp
+    moveTo 0.7 -1
+    lineTo 0.2 -3.4
+    moveTo 2.6 -1
+    lineTo 2.5 -4
+    moveTo 4.7 -1
+    lineTo 5 -3.6
+    moveTo 6.7 -1
+    lineTo 7.3 -3.2
+  endstamp
+endsketch_effect
+endsymbol

@@ -48,6 +48,8 @@ public class SymbolLibrary
   public final static String FAULT   = "fault";
   public final static String FLOOR_MEANDER   = "floor-meander";
   public final static String CEILING_MEANDER = "ceiling-meander";
+  public final static String CROSSBAR_LINE = "crossbar-line";
+  public final static String CROSSBAR_LINE_DASHED = "crossbar-line-dashed";
   public final static String WALL_PRESUMED   = "wall:presumed";
   public final static String ROCK_BORDER = "rock-border";
   public final static String BLOCKS  = "blocks";

@@ -1,0 +1,33 @@
+encoding utf-8
+symbol line
+name shelfstone
+th_name shelfstone
+group floor
+color 0xffffff 0xff
+width 2
+# units: line-widths (1 = ink thickness). The outer Flowstone arcs are doubled
+# and mirrored; the centered interior arcs retain their original size for clearance.
+effect
+  moveTo 0 0
+  cubicTo 1.12 -3.36 5.6 -3.36 6.72 0
+  moveTo 2.52 -0.42
+  cubicTo 2.8 -1.26 3.92 -1.26 4.2 -0.42
+  moveTo 6.72 0
+  cubicTo 7.84 -3.36 12.32 -3.36 13.44 0
+  moveTo 9.24 -0.42
+  cubicTo 9.52 -1.26 10.64 -1.26 10.92 -0.42
+endeffect
+sketch_effect 1
+  stroke
+  stamp
+    moveTo 0 0
+    cubicTo 1.12 -3.36 5.6 -3.36 6.72 0
+    moveTo 2.52 -0.42
+    cubicTo 2.8 -1.26 3.92 -1.26 4.2 -0.42
+    moveTo 6.72 0
+    cubicTo 7.84 -3.36 12.32 -3.36 13.44 0
+    moveTo 9.24 -0.42
+    cubicTo 9.52 -1.26 10.64 -1.26 10.92 -0.42
+  endstamp
+endsketch_effect
+endsymbol

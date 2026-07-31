@@ -1,0 +1,32 @@
+encoding utf-8
+symbol line
+name gypsum_wall_crust
+th_name gypsum-wall-crust
+group wall
+color 0xffffff 0xff
+width 2
+# units: line-widths (1 = ink thickness). The rosette is the central motif
+# from the gypsum-crystals point symbol, mirrored to the standard hachure side.
+# The leading move sets a wider repeat advance so neighboring rosettes do not touch.
+effect
+  moveTo -3.1 0
+  moveTo -0.268 -1.041
+  lineTo 1.858 -4.728
+  moveTo -1.331 -2.88
+  lineTo 2.926 -2.885
+  moveTo -0.268 -4.728
+  lineTo 1.863 -1.041
+endeffect
+sketch_effect 1
+  stroke
+  carrier 0 1
+  stamp
+    moveTo -0.268 -1.041
+    lineTo 1.858 -4.728
+    moveTo -1.331 -2.88
+    lineTo 2.926 -2.885
+    moveTo -0.268 -4.728
+    lineTo 1.863 -1.041
+  endstamp
+endsketch_effect
+endsymbol

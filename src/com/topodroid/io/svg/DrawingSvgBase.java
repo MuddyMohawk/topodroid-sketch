@@ -361,6 +361,7 @@ public class DrawingSvgBase
     else if ( th_name.equals( SymbolLibrary.FAULT ) )           pw.format(" stroke-dasharray=\"8 4\"");
     else if ( th_name.equals( SymbolLibrary.FLOOR_MEANDER ) )   pw.format(" stroke-dasharray=\"6 2\"");
     else if ( th_name.equals( SymbolLibrary.CEILING_MEANDER ) ) pw.format(" stroke-dasharray=\"6 2\"");
+    else if ( th_name.equals( SymbolLibrary.CROSSBAR_LINE_DASHED ) ) pw.format(" stroke-dasharray=\"6 2\"");
     toSvgPointLine( pw, line, xoff, yoff, line.isClosed() );
     if ( TDSetting.mSvgLineDirection ) {
       if ( BrushManager.hasLineEffect( line.lineType() ) ) {

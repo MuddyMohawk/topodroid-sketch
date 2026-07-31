@@ -1,0 +1,35 @@
+encoding utf-8
+symbol line
+name crossbar_line
+th_name crossbar-line
+group floor
+color 0xffffff 0xff
+width 2
+# units: line-widths (1 = ink thickness); carrier/crossbar width 1 = line weight
+# The Pit hachure is mirrored through the carrier center for a symmetric crossbar.
+effect
+  moveTo 0 1
+  lineTo 1.7 1
+  lineTo 1.7 4.4
+  lineTo 2.7 4.4
+  lineTo 2.7 1
+  lineTo 4.2 1
+  lineTo 4.2 0
+  lineTo 2.7 0
+  lineTo 2.7 -3.4
+  lineTo 1.7 -3.4
+  lineTo 1.7 0
+  lineTo 0 0
+  lineTo 0 1
+endeffect
+sketch_effect 1
+  carrier 0 1
+  stamp
+    moveTo 1.7 -3.4
+    lineTo 2.7 -3.4
+    lineTo 2.7 4.4
+    lineTo 1.7 4.4
+    lineTo 1.7 -3.4
+  endstamp
+endsketch_effect
+endsymbol
