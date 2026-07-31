@@ -3,6 +3,7 @@
 The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles.
 
 ## TODO
+- need to be able to delete sketches?
 - need a more intuitive settings name for the style and presets toolbar
 - rename/display the symbol pack name?
 - new test/demo survey with actual survey lines
@@ -39,6 +40,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - stackable boulders, rocks?
   - different scaling factor for leaves? or maybe they're just small
   - are the bedrock area lines too thin?
+  - gypsum crystals should probably be a single crystal
 
 ## Known bugs
 - Sometimes drawing a section line causes the splay lines it crosses to stop rendered. Fixed by re-opening the sketch

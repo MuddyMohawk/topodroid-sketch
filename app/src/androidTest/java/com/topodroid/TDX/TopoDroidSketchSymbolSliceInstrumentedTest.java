@@ -41,10 +41,11 @@ import java.util.zip.ZipInputStream;
 public class TopoDroidSketchSymbolSliceInstrumentedTest
 {
   private static final int WIDTH = 1440;
-  private static final int HEIGHT = 6826;
+  private static final int HEIGHT = 7162;
   private static final float LEFT = 260.0f;
   private static final float COL = 370.0f;
   private static final float LINE_ROW = 70.0f;
+  private static final float DIRECTIONAL_LINE_ROW = 112.0f;
   private static final float POINT_ROW = 94.0f;
   private static final RectF BBOX = new RectF( -20.0f, -20.0f, WIDTH + 20.0f, HEIGHT + 20.0f );
 
@@ -105,6 +106,14 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                 entries.contains( "symbols_topodroid_sketch/line/pit" ) );
     assertTrue( "Missing sketch flowstone line in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/line/flowstone" ) );
+    assertTrue( "Missing sketch pool-fingers line in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/line/pool-fingers" ) );
+    assertTrue( "Missing sketch shelfstone line in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/line/shelfstone" ) );
+    assertTrue( "Missing sketch gypsum-wall-crust line in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/line/gypsum-wall-crust" ) );
+    assertTrue( "Flowstone Covered Wall is a composite, not a standalone line symbol",
+                ! entries.contains( "symbols_topodroid_sketch/line/flowstone-covered-wall" ) );
     assertTrue( "Missing sketch sand point in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/point/sand" ) );
     assertTrue( "Missing sketch debris point in default raw pack",
@@ -121,8 +130,10 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                 entries.contains( "symbols_topodroid_sketch/point/midden" ) );
     assertTrue( "Missing sketch rusticles point in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/point/rusticles" ) );
-    assertTrue( "Missing sketch green-plants point in default raw pack",
-                entries.contains( "symbols_topodroid_sketch/point/green-plants" ) );
+    assertTrue( "Missing sketch vegetation point in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/point/vegetation" ) );
+    assertTrue( "Retired green-plants ID remains in default raw pack",
+                ! entries.contains( "symbols_topodroid_sketch/point/green-plants" ) );
     assertTrue( "Missing sketch mudcrack point in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/point/mudcrack" ) );
     assertTrue( "Missing sketch subaqueous-helictites point in default raw pack",
@@ -141,6 +152,30 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                 ! entries.contains( "symbols_topodroid_sketch/point/gypsum-wall-crust" ) );
     assertTrue( "Missing sketch bedrock area in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/area/bedrock" ) );
+
+    String flowstone = readRawSymbolEntry( "symbols_topodroid_sketch/line/flowstone" );
+    String shelfstone = readRawSymbolEntry( "symbols_topodroid_sketch/line/shelfstone" );
+    String[] flowstoneArcs = {
+      "cubicTo 0.56 1.68 2.8 1.68 3.36 0",
+      "cubicTo 3.92 1.68 6.16 1.68 6.72 0"
+    };
+    for ( String arc : flowstoneArcs ) {
+      assertTrue( "Flowstone reference arc is missing: " + arc, flowstone.contains( arc ) );
+      assertTrue( "Shelfstone must reuse the Flowstone outer arc exactly: " + arc, shelfstone.contains( arc ) );
+    }
+
+    String gypsumCrystals = readRawSymbolEntry( "symbols_topodroid_sketch/point/gypsum-crystals" );
+    String gypsumWallCrust = readRawSymbolEntry( "symbols_topodroid_sketch/line/gypsum-wall-crust" );
+    String[] centralCrystal = {
+      "moveTo -0.268 1.041", "lineTo 1.858 4.728",
+      "moveTo -1.331 2.88", "lineTo 2.926 2.885",
+      "moveTo -0.268 4.728", "lineTo 1.863 1.041"
+    };
+    for ( String command : centralCrystal ) {
+      assertTrue( "Gypsum Crystals reference command is missing: " + command, gypsumCrystals.contains( command ) );
+      assertTrue( "Gypsum Wall Crust must reuse the central crystal exactly: " + command,
+                  gypsumWallCrust.contains( command ) );
+    }
   }
 
   @Test
@@ -177,6 +212,9 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawLineRow( canvas, label, "Wall", SymbolLibrary.WALL, y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Dripline", "dripline", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Flowstone", "flowstone", y ); y += LINE_ROW;
+    drawDirectionalLineRow( canvas, label, "Pool fingers", "pool-fingers", y ); y += DIRECTIONAL_LINE_ROW;
+    drawDirectionalLineRow( canvas, label, "Shelfstone", "shelfstone", y ); y += DIRECTIONAL_LINE_ROW;
+    drawDirectionalLineRow( canvas, label, "Gyp wall crust", "gypsum-wall-crust", y ); y += DIRECTIONAL_LINE_ROW;
     drawLineRow( canvas, label, "Ceiling ledge", "chimney", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Ceiling channel", "ceiling-meander", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Pit", "pit", y ); y += LINE_ROW;
@@ -243,7 +281,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawPointRow( canvas, label, "Bat skeleton", "bat-skeleton", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Midden", "midden", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Rusticles", "rusticles", y, 0.0 ); y += POINT_ROW;
-    drawPointRow( canvas, label, "Green plants", "green-plants", y, 0.0, false ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Vegetation", "vegetation", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Mud cracks", "mudcrack", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Subaq. helictites", "subaqueous-helictites", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Gyp dripholes", "gypsum-dripholes", y, 0.0, false ); y += POINT_ROW;
@@ -279,6 +317,27 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawStyledLine( canvas, lineType, LEFT, y, lineStyle( thName, SketchBrushStyle.DEFAULT_WEIGHT_THIN ) );
     drawStyledLine( canvas, lineType, LEFT + COL, y, lineStyle( thName, SketchBrushStyle.DEFAULT_WEIGHT_STANDARD ) );
     drawStyledLine( canvas, lineType, LEFT + 2.0f * COL, y, lineStyle( thName, SketchBrushStyle.DEFAULT_WEIGHT_THICK ) );
+  }
+
+  private void drawDirectionalLineRow( Canvas canvas, Paint label, String title, String thName, float y )
+  {
+    int lineType = BrushManager.getLineIndexByThName( thName );
+    assertTrue( "Missing TopoDroid Sketch line symbol " + thName, lineType >= 0 );
+    canvas.drawText( title, 18.0f, y + 7.0f, label );
+    canvas.drawText( "F", LEFT - 24.0f, y - 20.0f, label );
+    canvas.drawText( "R", LEFT - 24.0f, y + 34.0f, label );
+    drawStyledCurvedLine( canvas, lineType, LEFT, y - 25.0f,
+      lineStyle( thName, SketchBrushStyle.DEFAULT_WEIGHT_THIN ), false );
+    drawStyledCurvedLine( canvas, lineType, LEFT, y + 25.0f,
+      lineStyle( thName, SketchBrushStyle.DEFAULT_WEIGHT_THIN ), true );
+    drawStyledCurvedLine( canvas, lineType, LEFT + COL, y - 25.0f,
+      lineStyle( thName, SketchBrushStyle.DEFAULT_WEIGHT_STANDARD ), false );
+    drawStyledCurvedLine( canvas, lineType, LEFT + COL, y + 25.0f,
+      lineStyle( thName, SketchBrushStyle.DEFAULT_WEIGHT_STANDARD ), true );
+    drawStyledCurvedLine( canvas, lineType, LEFT + 2.0f * COL, y - 25.0f,
+      lineStyle( thName, SketchBrushStyle.DEFAULT_WEIGHT_THICK ), false );
+    drawStyledCurvedLine( canvas, lineType, LEFT + 2.0f * COL, y + 25.0f,
+      lineStyle( thName, SketchBrushStyle.DEFAULT_WEIGHT_THICK ), true );
   }
 
   private void assertLineMissing( String thName )
@@ -375,6 +434,18 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     line.setSketchBrushStyle( style );
     line.addStartPoint( x, y );
     line.addPoint( x + 210.0f, y );
+    line.computeUnitNormal();
+    line.draw( canvas, new Matrix(), BBOX );
+  }
+
+  private void drawStyledCurvedLine( Canvas canvas, int lineType, float x, float y,
+                                     SketchBrushStyle style, boolean reversed )
+  {
+    DrawingLinePath line = new DrawingLinePath( lineType, 0 );
+    line.setSketchBrushStyle( style );
+    line.addStartPoint( x, y );
+    line.addPoint3( x + 55.0f, y - 16.0f, x + 155.0f, y + 16.0f, x + 210.0f, y );
+    line.setReversed( reversed );
     line.computeUnitNormal();
     line.draw( canvas, new Matrix(), BBOX );
   }
