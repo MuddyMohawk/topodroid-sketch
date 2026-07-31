@@ -1,0 +1,47 @@
+encoding utf-8
+symbol line
+name dogtooth_spar
+th_name dogtooth-spar
+group floor
+color 0xffffff 0xff
+width 2
+# units: line-widths (1 = ink thickness). One complete five-part cluster from
+# approved masters/dogtooth_spar.svg repeats across a 22.5-unit span.
+effect
+  moveTo 0 -1.097
+  lineTo 0.993 2.982
+  lineTo 4.261 0.368
+  moveTo 3.897 -4.019
+  lineTo 5.116 3.171
+  lineTo 10.722 -2.316
+  moveTo 13.77 0.977
+  lineTo 10.358 3.9
+  lineTo 8.654 0.242
+  moveTo 12.796 -1.097
+  lineTo 15.844 4.019
+  lineTo 19.131 -1.461
+  moveTo 21.815 -1.951
+  lineTo 22.5 2.781
+  lineTo 18.283 0.732
+endeffect
+sketch_effect 1
+  stroke
+  stamp
+    moveTo 0 -1.097
+    lineTo 0.993 2.982
+    lineTo 4.261 0.368
+    moveTo 3.897 -4.019
+    lineTo 5.116 3.171
+    lineTo 10.722 -2.316
+    moveTo 13.77 0.977
+    lineTo 10.358 3.9
+    lineTo 8.654 0.242
+    moveTo 12.796 -1.097
+    lineTo 15.844 4.019
+    lineTo 19.131 -1.461
+    moveTo 21.815 -1.951
+    lineTo 22.5 2.781
+    lineTo 18.283 0.732
+  endstamp
+endsketch_effect
+endsymbol

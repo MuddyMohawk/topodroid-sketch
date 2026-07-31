@@ -3,26 +3,14 @@ symbol point
 name gypsum_crystals
 th_name gypsum-crystals
 group mineral
-orientation yes
+orientation no
 color 0xffffff
 path
-  moveTo -9.937 -4.728
-  lineTo -7.81 -1.041
-  moveTo -11 -2.885
-  lineTo -6.743 -2.885
-  moveTo -9.937 -1.041
-  lineTo -7.806 -4.723
-  moveTo 7.806 -3.499
-  lineTo 9.932 0.183
-  moveTo 6.743 -1.66
-  lineTo 11 -1.656
-  moveTo 7.806 0.187
-  lineTo 9.937 -3.499
-  moveTo -0.268 1.041
-  lineTo 1.858 4.728
-  moveTo -1.331 2.88
-  lineTo 2.926 2.885
-  moveTo -0.268 4.728
-  lineTo 1.863 1.041
+  moveTo -5.631 -9.742
+  lineTo 5.608 9.742
+  moveTo -11.25 0
+  lineTo 11.25 0
+  moveTo -5.631 9.742
+  lineTo 5.631 -9.719
 endpath
 endsymbol

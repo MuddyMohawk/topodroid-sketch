@@ -5,8 +5,8 @@ th_name gypsum-wall-crust
 group wall
 color 0xffffff 0xff
 width 2
-# units: line-widths (1 = ink thickness). The rosette is the central motif
-# from the gypsum-crystals point symbol, mirrored to the standard hachure side.
+# units: line-widths (1 = ink thickness). The rosette is a compact copy of the
+# single gypsum-crystals point motif, mirrored to the standard hachure side.
 # The leading move sets a wider repeat advance so neighboring rosettes do not touch.
 effect
   moveTo -3.1 0

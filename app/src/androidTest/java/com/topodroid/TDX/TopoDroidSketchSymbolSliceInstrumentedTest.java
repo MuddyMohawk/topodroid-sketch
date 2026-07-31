@@ -41,7 +41,7 @@ import java.util.zip.ZipInputStream;
 public class TopoDroidSketchSymbolSliceInstrumentedTest
 {
   private static final int WIDTH = 1440;
-  private static final int HEIGHT = 7386;
+  private static final int HEIGHT = 7500;
   private static final float LEFT = 260.0f;
   private static final float COL = 370.0f;
   private static final float LINE_ROW = 70.0f;
@@ -83,6 +83,9 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     int fileCount = 0;
     int crossbarLineCount = 0;
     int dashedCrossbarLineCount = 0;
+    int dogtoothSparLineCount = 0;
+    int dogtoothSparPointCount = 0;
+    int gypsumCrystalsCount = 0;
 
     ZipInputStream zip = new ZipInputStream(
       mContext.getResources().openRawResource( R.raw.symbols_topodroid_sketch ) );
@@ -92,6 +95,9 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
         String name = entry.getName();
         if ( name.equals( "symbols_topodroid_sketch/line/crossbar-line" ) ) ++crossbarLineCount;
         if ( name.equals( "symbols_topodroid_sketch/line/crossbar-line-dashed" ) ) ++dashedCrossbarLineCount;
+        if ( name.equals( "symbols_topodroid_sketch/line/dogtooth-spar" ) ) ++dogtoothSparLineCount;
+        if ( name.equals( "symbols_topodroid_sketch/point/dogtooth-spar" ) ) ++dogtoothSparPointCount;
+        if ( name.equals( "symbols_topodroid_sketch/point/gypsum-crystals" ) ) ++gypsumCrystalsCount;
         assertTrue( "Default symbol pack entry should use symbols_topodroid_sketch root: " + name,
                     name.startsWith( "symbols_topodroid_sketch/" ) );
         assertTrue( "Default symbol pack should not use old symbols_nss root: " + name,
@@ -116,6 +122,13 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                 entries.contains( "symbols_topodroid_sketch/line/floor-meander" ) );
     assertEquals( "Crossbar Line should occur exactly once in the default raw pack", 1, crossbarLineCount );
     assertEquals( "Dashed Crossbar Line should occur exactly once in the default raw pack", 1, dashedCrossbarLineCount );
+    assertEquals( "Dogtooth Spar line should occur exactly once in the default raw pack", 1, dogtoothSparLineCount );
+    assertEquals( "Dogtooth Spar point should be removed from the default raw pack", 0, dogtoothSparPointCount );
+    assertEquals( "Gypsum Crystals should occur exactly once in the default raw pack", 1, gypsumCrystalsCount );
+    assertTrue( "Generic Spar remains deferred",
+                ! entries.contains( "symbols_topodroid_sketch/point/spar" ) );
+    assertTrue( "Generic Crystals should not be restored as a duplicate",
+                ! entries.contains( "symbols_topodroid_sketch/point/crystal" ) );
     assertTrue( "Missing sketch flowstone line in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/line/flowstone" ) );
     assertTrue( "Missing sketch pool-fingers line in default raw pack",
@@ -191,23 +204,52 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                   shelfstone.contains( command ) );
     }
 
+    String dogtoothSpar = readRawSymbolEntry( "symbols_topodroid_sketch/line/dogtooth-spar" );
+    assertTrue( "Dogtooth Spar must be a line symbol", dogtoothSpar.contains( "\nsymbol line\n" ) );
+    assertTrue( "Dogtooth Spar must use standard line width", dogtoothSpar.contains( "\nwidth 2\n" ) );
+    assertTrue( "Dogtooth Spar must remain carrier-free", ! dogtoothSpar.contains( "\n  carrier " ) );
+    assertTrue( "Dogtooth Spar must define matching effect and sketch geometry",
+                dogtoothSpar.contains( "\neffect\n" ) && dogtoothSpar.contains( "\nsketch_effect 1\n" ) );
+    assertEquals( "Dogtooth Spar must retain all five source paths in both renderers", 10,
+                  countOccurrences( dogtoothSpar, "moveTo " ) );
+    assertEquals( "Each Dogtooth Spar source path must retain its two segments in both renderers", 20,
+                  countOccurrences( dogtoothSpar, "lineTo " ) );
+    String[] dogtoothCommands = {
+      "moveTo 0 -1.097", "lineTo 0.993 2.982", "lineTo 4.261 0.368",
+      "moveTo 3.897 -4.019", "lineTo 5.116 3.171", "lineTo 10.722 -2.316",
+      "moveTo 13.77 0.977", "lineTo 10.358 3.9", "lineTo 8.654 0.242",
+      "moveTo 12.796 -1.097", "lineTo 15.844 4.019", "lineTo 19.131 -1.461",
+      "moveTo 21.815 -1.951", "lineTo 22.5 2.781", "lineTo 18.283 0.732"
+    };
+    for ( String command : dogtoothCommands ) {
+      assertEquals( "Dogtooth Spar source command must match in effect and sketch geometry: " + command, 2,
+                    countOccurrences( dogtoothSpar, command ) );
+    }
+
     String gypsumCrystals = readRawSymbolEntry( "symbols_topodroid_sketch/point/gypsum-crystals" );
     String gypsumWallCrust = readRawSymbolEntry( "symbols_topodroid_sketch/line/gypsum-wall-crust" );
-    String[] centralCrystal = {
-      "moveTo -0.268 1.041", "lineTo 1.858 4.728",
-      "moveTo -1.331 2.88", "lineTo 2.926 2.885",
-      "moveTo -0.268 4.728", "lineTo 1.863 1.041"
+    assertTrue( "Gypsum Crystals must be non-orientable", gypsumCrystals.contains( "\norientation no\n" ) );
+    assertEquals( "Gypsum Crystals must contain one three-stroke rosette", 3,
+                  countOccurrences( gypsumCrystals, "\n  moveTo " ) );
+    assertEquals( "Gypsum Crystals must contain one three-stroke rosette", 3,
+                  countOccurrences( gypsumCrystals, "\n  lineTo " ) );
+    String[] singleCrystal = {
+      "moveTo -5.631 -9.742", "lineTo 5.608 9.742",
+      "moveTo -11.25 0", "lineTo 11.25 0",
+      "moveTo -5.631 9.742", "lineTo 5.631 -9.719"
     };
-    String[] mirroredCentralCrystal = {
+    for ( String command : singleCrystal ) {
+      assertTrue( "Gypsum Crystals single-rosette command is missing: " + command,
+                  gypsumCrystals.contains( command ) );
+    }
+    String[] compactWallCrystal = {
       "moveTo -0.268 -1.041", "lineTo 1.858 -4.728",
       "moveTo -1.331 -2.88", "lineTo 2.926 -2.885",
       "moveTo -0.268 -4.728", "lineTo 1.863 -1.041"
     };
-    for ( int k = 0; k < centralCrystal.length; ++k ) {
-      assertTrue( "Gypsum Crystals reference command is missing: " + centralCrystal[k],
-                  gypsumCrystals.contains( centralCrystal[k] ) );
-      assertTrue( "Gypsum Wall Crust must mirror the central crystal exactly: " + mirroredCentralCrystal[k],
-                  gypsumWallCrust.contains( mirroredCentralCrystal[k] ) );
+    for ( String command : compactWallCrystal ) {
+      assertTrue( "Gypsum Wall Crust must retain the compact mirrored rosette: " + command,
+                  gypsumWallCrust.contains( command ) );
     }
     assertTrue( "Gypsum Wall Crust must add repeat spacing between rosettes",
                 gypsumWallCrust.contains( "moveTo -3.1 0" ) );
@@ -276,6 +318,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawLineRow( canvas, label, "Wall", SymbolLibrary.WALL, y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Dripline", "dripline", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Flowstone", "flowstone", y ); y += LINE_ROW;
+    drawDirectionalLineRow( canvas, label, "Dogtooth spar", "dogtooth-spar", y ); y += DIRECTIONAL_LINE_ROW;
     drawDirectionalLineRow( canvas, label, "Pool fingers", "pool-fingers", y ); y += DIRECTIONAL_LINE_ROW;
     drawDirectionalLineRow( canvas, label, "Shelfstone", "shelfstone", y ); y += DIRECTIONAL_LINE_ROW;
     drawDirectionalLineRow( canvas, label, "Gyp wall crust", "gypsum-wall-crust", y ); y += DIRECTIONAL_LINE_ROW;
@@ -312,10 +355,11 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawPointRow( canvas, label, "Boxwork", "boxwork", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Calcite crust", "calcite-crust", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Calcite spar", "calcite-spar", y, 0.0, false ); y += POINT_ROW;
+    assertPointMissing( "dogtooth-spar" );
     drawPointRow( canvas, label, "Cave pearl", "cave-pearl", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Chert", "chert", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Column", "column", y, 0.0 ); y += POINT_ROW;
-    drawPointRow( canvas, label, "Gypsum crystals", "gypsum-crystals", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Gypsum crystals", "gypsum-crystals", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Guano", "guano", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Helictite", "helictite", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Lead", "continuation", y, 0.0 ); y += POINT_ROW;
@@ -411,6 +455,11 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertTrue( "Unexpected TopoDroid Sketch line symbol " + thName, BrushManager.getLineIndexByThName( thName ) < 0 );
   }
 
+  private void assertPointMissing( String thName )
+  {
+    assertTrue( "Unexpected TopoDroid Sketch point symbol " + thName, BrushManager.getPointIndexByThName( thName ) < 0 );
+  }
+
   private String readRawSymbolEntry( String entryName ) throws Exception
   {
     ZipInputStream zip = new ZipInputStream(
@@ -435,6 +484,17 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     int read;
     while ( (read = zip.read( buffer )) >= 0 ) output.write( buffer, 0, read );
     return output.toByteArray();
+  }
+
+  private static int countOccurrences( String text, String needle )
+  {
+    int count = 0;
+    int offset = 0;
+    while ( ( offset = text.indexOf( needle, offset ) ) >= 0 ) {
+      ++count;
+      offset += needle.length();
+    }
+    return count;
   }
 
   private static int hachureDirection( String symbol )
