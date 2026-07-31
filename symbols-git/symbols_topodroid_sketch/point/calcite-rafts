@@ -1,0 +1,90 @@
+encoding utf-8
+symbol point
+name calcite_rafts
+th_name calcite-rafts
+group mineral
+orientation yes
+color 0xffffff
+path
+  moveTo -9.6 -2.949
+  lineTo -9.028 -3.304
+  lineTo -8.456 -3.557
+  lineTo -7.849 -3.745
+  lineTo -7.313 -3.81
+  lineTo -6.828 -3.774
+  lineTo -6.322 -3.615
+  lineTo -5.721 -3.398
+  lineTo -5.084 -3.173
+  lineTo -4.57 -3.014
+  lineTo -3.97 -2.949
+  lineTo -3.398 -3.014
+  lineTo -2.949 -3.173
+  lineTo -2.348 -3.463
+  lineTo -1.994 -3.68
+  lineTo -1.777 -3.81
+  moveTo 3.427 3.391
+  lineTo 3.998 3.043
+  lineTo 4.57 2.783
+  lineTo 5.171 2.594
+  lineTo 5.714 2.529
+  lineTo 6.191 2.566
+  lineTo 6.698 2.725
+  lineTo 7.306 2.942
+  lineTo 7.943 3.166
+  lineTo 8.456 3.325
+  lineTo 9.05 3.391
+  lineTo 9.629 3.325
+  lineTo 10.07 3.166
+  lineTo 10.678 2.884
+  lineTo 11.026 2.66
+  lineTo 11.25 2.529
+  moveTo -4.889 0.843
+  lineTo -4.317 0.496
+  lineTo -3.745 0.235
+  lineTo -3.137 0.047
+  lineTo -2.594 -0.018
+  lineTo -2.117 0.018
+  lineTo -1.61 0.177
+  lineTo -1.01 0.394
+  lineTo -0.373 0.619
+  lineTo 0.141 0.778
+  lineTo 0.742 0.843
+  lineTo 1.314 0.778
+  lineTo 1.762 0.619
+  lineTo 2.363 0.337
+  lineTo 2.718 0.112
+  lineTo 2.935 -0.018
+  moveTo 2.218 -3.311
+  lineTo 2.79 -3.658
+  lineTo 3.362 -3.912
+  lineTo 3.97 -4.107
+  lineTo 4.505 -4.172
+  lineTo 4.99 -4.136
+  lineTo 5.497 -3.977
+  lineTo 6.097 -3.76
+  lineTo 6.734 -3.535
+  lineTo 7.248 -3.376
+  lineTo 7.849 -3.311
+  lineTo 8.42 -3.376
+  lineTo 8.869 -3.535
+  lineTo 9.47 -3.818
+  lineTo 9.817 -4.042
+  lineTo 10.041 -4.172
+  moveTo -11.25 4.172
+  lineTo -10.678 3.825
+  lineTo -10.107 3.571
+  lineTo -9.499 3.383
+  lineTo -8.963 3.318
+  lineTo -8.478 3.354
+  lineTo -7.979 3.514
+  lineTo -7.371 3.731
+  lineTo -6.734 3.955
+  lineTo -6.22 4.114
+  lineTo -5.62 4.172
+  lineTo -5.048 4.114
+  lineTo -4.599 3.955
+  lineTo -3.998 3.666
+  lineTo -3.651 3.448
+  lineTo -3.427 3.318
+endpath
+endsymbol

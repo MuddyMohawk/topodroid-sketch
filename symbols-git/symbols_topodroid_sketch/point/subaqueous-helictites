@@ -1,0 +1,15 @@
+encoding utf-8
+symbol point
+name subaqueous_helictites
+th_name subaqueous-helictites
+group speleothem
+orientation no
+color 0xffffff
+path
+  moveTo -5.003 -9.215
+  cubicTo -8.416 -0.039 -0.462 -2.169 2.654 -1.026
+  cubicTo 6.975 0.556 8.228 -2.231 8.416 11.25
+  moveTo 6.85 -9.543
+  cubicTo -0.869 -11.25 1.026 6.318 1.495 10.608
+endpath
+endsymbol

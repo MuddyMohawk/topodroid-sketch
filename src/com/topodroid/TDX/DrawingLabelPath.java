@@ -133,9 +133,8 @@ public class DrawingLabelPath extends DrawingPointPath
   /** draw the label on the screen
    * @param canvas   canvas
    * @param matrix   transform matrix
-   * @param scale    scaling factor, (smaller = zoom-in, larger = zoom_out) - not-used
+   * @param scale    scene units per pixel (smaller = zoom-in, larger = zoom-out)
    * @param bbox     clipping rectangle
-   * @note scale is not used but this signature is necessary because DrawingLabelPath extends DrawingPointPath
    */
   @Override
   public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox )
@@ -146,11 +145,9 @@ public class DrawingLabelPath extends DrawingPointPath
   /** draw the label on the screen
    * @param canvas    canvas
    * @param matrix    transform matrix
-   * @param scale     scaling factor - not used
+   * @param scale     scene units per pixel
    * @param bbox      clipping rectangle
    * @param xor_color xor color
-   * @note scale is not used but this signature is necessary because DrawingLabelPath extends DrawingPointPath
-   * @note text size is reduced by 25 %
    */
   @Override
   public void draw( Canvas canvas, Matrix matrix, float scale, RectF bbox, int xor_color )
@@ -203,7 +200,8 @@ public class DrawingLabelPath extends DrawingPointPath
     }
     if ( style.sizeMode() == SketchTextStyle.SizeMode.SCREEN ) {
       float export_scale = DrawingCommandManager.getExportTextScale();
-      return style.height() * TopoDroidApp.getDisplayDensity() * export_scale;
+      return style.height() * textWeightScale( style )
+          * TopoDroidApp.getDisplayDensity() * export_scale;
     }
     float scene_height = worldLineHeightScene( style );
     return scene_height * matrixScale( matrix );
@@ -229,7 +227,7 @@ public class DrawingLabelPath extends DrawingPointPath
       return paint_size * safeScale( scale ) / layout.paintSizePerLineHeight;
     }
     if ( style.sizeMode() == SketchTextStyle.SizeMode.SCREEN ) {
-      return style.height() * TopoDroidApp.getDisplayDensity()
+      return style.height() * textWeightScale( style ) * TopoDroidApp.getDisplayDensity()
           * DrawingCommandManager.getExportTextScale() * safeScale( scale );
     }
     return worldLineHeightScene( style );
@@ -298,7 +296,12 @@ public class DrawingLabelPath extends DrawingPointPath
     float metres = ( style.sizeMode() == SketchTextStyle.SizeMode.AUTO_GRID )
       ? TDSetting.mUnitGrid * style.height()
       : style.height();
-    return metres * DrawingUtil.SCALE_FIX;
+    return metres * DrawingUtil.SCALE_FIX * textWeightScale( style );
+  }
+
+  private static float textWeightScale( SketchTextStyle style )
+  {
+    return SketchTextRenderer.footprintScale( style );
   }
 
   private float pointScaleFactor()
@@ -349,8 +352,14 @@ public class DrawingLabelPath extends DrawingPointPath
   public float getTextExportLineHeightScene()
   {
     SketchTextStyle style = mTextStyle;
-    if ( style != null && style.sizeMode() != SketchTextStyle.SizeMode.SCREEN ) {
-      return worldLineHeightScene( style );
+    if ( style != null ) {
+      if ( style.sizeMode() != SketchTextStyle.SizeMode.SCREEN ) {
+        return worldLineHeightScene( style );
+      }
+      float base_scale = style.height() / SketchTextStyle.DEFAULT_SCREEN_HEIGHT;
+      return TDSetting.mSvgLabelSize * base_scale * textWeightScale( style )
+        / Math.max( 0.0001f, TDSetting.mToSvg )
+        / Math.max( 0.0001f, getTextPaintSizePerLineHeight() );
     }
     return TDSetting.mSvgLabelSize * getScaleValue()
       / Math.max( 0.0001f, TDSetting.mToSvg )
@@ -441,6 +450,7 @@ public class DrawingLabelPath extends DrawingPointPath
     } else {
       ratio = mTextStyle.height() / SketchTextStyle.DEFAULT_SCREEN_HEIGHT;
     }
+    ratio *= textWeightScale( mTextStyle );
     if ( ratio < 0.61f ) mScale = PointScale.SCALE_XS;
     else if ( ratio < 0.86f ) mScale = PointScale.SCALE_S;
     else if ( ratio < 1.20f ) mScale = PointScale.SCALE_M;

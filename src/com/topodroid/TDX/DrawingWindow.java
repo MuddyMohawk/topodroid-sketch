@@ -6554,7 +6554,12 @@ public class DrawingWindow extends ItemDrawer
 
   SketchTextStyle loadTextObjectDefault()
   {
-    return SketchTextDefaults.load( mApp_mData, TDInstance.sid );
+    SketchTextStyle style = SketchTextDefaults.load( mApp_mData, TDInstance.sid );
+    SketchBrushStyle brush_style = getActiveSketchBrushStyle();
+    float weight = ( brush_style == null )
+      ? SketchTextStyle.DEFAULT_LINE_WEIGHT
+      : brush_style.weightOr( SketchTextStyle.DEFAULT_LINE_WEIGHT );
+    return style.withLineWeight( weight );
   }
 
   void rememberTextObjectDefault( SketchTextStyle style )

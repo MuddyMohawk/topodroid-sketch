@@ -50,8 +50,13 @@ class SketchBrushRenderer
   static float effectScale( SketchBrushStyle style )
   {
     if ( style == null || ! style.hasWeight() ) return 1.0f;
-    return normalizedScale( style.weightOr( SketchBrushStyle.DEFAULT_WEIGHT_STANDARD ),
-                            SketchBrushStyle.DEFAULT_WEIGHT_STANDARD );
+    return footprintScale( style.weightOr( SketchBrushStyle.DEFAULT_WEIGHT_STANDARD ) );
+  }
+
+  /** @return point-like object scale for a stored weight (standard weight = 1) */
+  static float footprintScale( float weight )
+  {
+    return normalizedScale( weight, SketchBrushStyle.DEFAULT_WEIGHT_STANDARD );
   }
 
   /** @return source ARGB with the style color/opacity overrides applied */

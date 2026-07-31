@@ -1,0 +1,26 @@
+encoding utf-8
+symbol point
+name sediment_cone
+th_name sediment-cone
+group sediment
+orientation no
+color 0xffffff
+path
+  moveTo 3.186 3.179
+  lineTo 11.25 11.198
+  moveTo -11.25 -11.198
+  lineTo -3.708 -3.686
+  moveTo 3.686 -3.657
+  lineTo 11.25 -11.198
+  moveTo -11.25 11.198
+  lineTo -3.142 3.12
+  moveTo 3.061 0.066
+  lineTo 7.277 0.066
+  moveTo -7.269 0.066
+  lineTo -2.656 0.066
+  moveTo 0 -3.201
+  lineTo 0 -7.211
+  moveTo 0 7.983
+  lineTo 0 1.582
+endpath
+endsymbol

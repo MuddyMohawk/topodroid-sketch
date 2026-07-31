@@ -104,6 +104,29 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="@string/text_line_weight" />
+
+      <EditText
+          android:id="@+id/text_line_weight"
+          style="@style/edit_number"
+          android:layout_width="96dp"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="@dimen/marginsmall"
+          android:importantForAutofill="no"
+          android:inputType="numberDecimal"
+          android:maxLines="1"
+          android:singleLine="true" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
       <CheckBox
           android:id="@+id/text_auto_size"
           android:layout_width="wrap_content"

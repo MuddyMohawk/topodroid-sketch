@@ -1116,12 +1116,13 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="text_bold">Bold</string>
     <string name="text_italic">Italic</string>
     <string name="text_underline">Underline</string>
+    <string name="text_line_weight">Line weight</string>
     <string name="text_align_left">Left</string>
     <string name="text_align_center">Center</string>
     <string name="text_align_right">Right</string>
     <string name="text_auto_size">Match grid</string>
     <string name="text_scale_with_sketch">Scale with sketch</string>
-    <string name="text_height">Height</string>
+    <string name="text_height">Base height</string>
     <string name="text_unit_grid">grid squares</string>
     <string name="text_unit_screen">dp</string>
     <string name="text_color">Color</string>
@@ -1129,6 +1130,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="text_missing">Enter some text</string>
     <string name="text_too_long">Text is too long to save</string>
     <string name="text_invalid_size">Enter a valid text height</string>
+    <string name="text_invalid_weight">Enter a valid line weight</string>
     <string name="hint_comment">comment</string>
     <string name="hint_size">size [m]</string>
     <string name="hint_text">text</string>

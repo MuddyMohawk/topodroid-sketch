@@ -3,8 +3,9 @@
 
 The approved NSS masters exported by drawing tools often contain helper
 rectangles and clip-path scaffolding. This converter intentionally keeps only
-styled visible stroke paths, applies SVG transforms, recenters the resulting
-geometry, and writes TopoDroid's point-symbol path language.
+visible stroked path and line geometry, applies inherited presentation styles
+and SVG transforms, recenters the resulting geometry, and writes TopoDroid's
+point-symbol path language.
 """
 
 from __future__ import annotations
@@ -16,12 +17,13 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 
 COMMAND_RE = re.compile(r"[MmLlCcZz]|[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?")
 TRANSFORM_RE = re.compile(r"(matrix|translate|scale)\s*\(([^)]*)\)")
 SKIP_TAGS = {"defs", "clipPath", "mask", "pattern", "metadata", "title", "desc"}
+PRESENTATION_KEYS = ("display", "visibility", "stroke")
 
 
 @dataclass
@@ -79,14 +81,33 @@ def apply_matrix(matrix: Sequence[float], point: Tuple[float, float]) -> Tuple[f
     return (a * x + c * y + e, b * x + d * y + f)
 
 
-def is_visible_stroke(elem: ET.Element) -> bool:
-    style = elem.attrib.get("style", "")
-    stroke = elem.attrib.get("stroke", "")
-    if "display:none" in style.replace(" ", "") or "visibility:hidden" in style.replace(" ", ""):
+def parse_style(style: str) -> Dict[str, str]:
+    declarations: Dict[str, str] = {}
+    for declaration in style.split(";"):
+        if ":" not in declaration:
+            continue
+        key, value = declaration.split(":", 1)
+        declarations[key.strip()] = value.strip()
+    return declarations
+
+
+def effective_presentation(elem: ET.Element, inherited: Dict[str, str]) -> Dict[str, str]:
+    presentation = dict(inherited)
+    for key in PRESENTATION_KEYS:
+        if key in elem.attrib:
+            presentation[key] = elem.attrib[key].strip()
+    style = parse_style(elem.attrib.get("style", ""))
+    for key in PRESENTATION_KEYS:
+        if key in style:
+            presentation[key] = style[key]
+    return presentation
+
+
+def is_visible_stroke(presentation: Dict[str, str]) -> bool:
+    if presentation.get("display") == "none" or presentation.get("visibility") == "hidden":
         return False
-    if "stroke:none" in style.replace(" ", "") or stroke == "none":
-        return False
-    return "stroke:" in style or bool(stroke)
+    stroke = presentation.get("stroke", "")
+    return bool(stroke) and stroke != "none"
 
 
 def next_number(tokens: Sequence[str], idx: int) -> Tuple[float, int]:
@@ -175,15 +196,36 @@ def parse_path(d: str, matrix: Sequence[float]) -> List[Segment]:
     return out
 
 
-def walk_visible_paths(elem: ET.Element, inherited: Sequence[float]) -> Iterable[Tuple[ET.Element, Tuple[float, float, float, float, float, float]]]:
+def parse_line(elem: ET.Element, matrix: Sequence[float]) -> List[Segment]:
+    start = apply_matrix(matrix, (float(elem.attrib.get("x1", "0")), float(elem.attrib.get("y1", "0"))))
+    end = apply_matrix(matrix, (float(elem.attrib.get("x2", "0")), float(elem.attrib.get("y2", "0"))))
+    return [Segment("moveTo", (start,)), Segment("lineTo", (end,))]
+
+
+def parse_geometry(elem: ET.Element, matrix: Sequence[float]) -> List[Segment]:
+    tag = local_name(elem.tag)
+    if tag == "path":
+        return parse_path(elem.attrib["d"], matrix)
+    if tag == "line":
+        return parse_line(elem, matrix)
+    raise ValueError(f"unsupported SVG geometry element: {tag}")
+
+
+def walk_visible_geometry(
+    elem: ET.Element,
+    inherited_matrix: Sequence[float],
+    inherited_presentation: Dict[str, str],
+) -> Iterable[Tuple[ET.Element, Tuple[float, float, float, float, float, float]]]:
     tag = local_name(elem.tag)
     if tag in SKIP_TAGS:
         return
-    matrix = multiply(inherited, parse_transform(elem.attrib.get("transform")))
-    if tag == "path" and elem.attrib.get("d") and is_visible_stroke(elem):
+    matrix = multiply(inherited_matrix, parse_transform(elem.attrib.get("transform")))
+    presentation = effective_presentation(elem, inherited_presentation)
+    has_geometry = (tag == "path" and bool(elem.attrib.get("d"))) or tag == "line"
+    if has_geometry and is_visible_stroke(presentation):
         yield elem, matrix
     for child in elem:
-        yield from walk_visible_paths(child, matrix)
+        yield from walk_visible_geometry(child, matrix, presentation)
 
 
 def transformed_bounds(segments: Sequence[Segment]) -> Tuple[float, float, float, float]:
@@ -281,22 +323,44 @@ def main() -> int:
     parser.add_argument("--group", default="")
     parser.add_argument("--target-max", type=float, default=18.0)
     parser.add_argument("--orientable", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument(
+        "--element-index",
+        action="append",
+        type=int,
+        default=[],
+        help="keep only these zero-based visible, in-view source geometry elements (repeatable)",
+    )
     args = parser.parse_args()
 
+    if any(index < 0 for index in args.element_index):
+        parser.error("--element-index values must be non-negative")
+
     root = ET.parse(args.svg).getroot()
-    segments: List[Segment] = []
+    drawables: List[List[Segment]] = []
     viewbox = parse_viewbox(root)
-    for elem, matrix in walk_visible_paths(root, (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)):
-        parsed = parse_path(elem.attrib["d"], matrix)
+    for elem, matrix in walk_visible_geometry(root, (1.0, 0.0, 0.0, 1.0, 0.0, 0.0), {}):
+        parsed = parse_geometry(elem, matrix)
         if viewbox and not intersects(transformed_bounds(parsed), viewbox):
             continue
-        segments.extend(parsed)
+        drawables.append(parsed)
+
+    selected_indexes = set(args.element_index)
+    if selected_indexes:
+        missing = sorted(selected_indexes.difference(range(len(drawables))))
+        if missing:
+            sys.exit(
+                f"source geometry indexes {missing} are unavailable; "
+                f"{args.svg} has {len(drawables)} visible, in-view elements"
+            )
+        drawables = [drawable for index, drawable in enumerate(drawables) if index in selected_indexes]
+
+    segments = [segment for drawable in drawables for segment in drawable]
     if not segments:
-        sys.exit(f"no visible stroke paths found in {args.svg}")
+        sys.exit(f"no visible stroked geometry found in {args.svg}")
 
     normalized = normalize_segments(segments, args.target_max)
     write_symbol(args, normalized)
-    print(f"wrote {args.output} from {len(segments)} path commands")
+    print(f"wrote {args.output} from {len(segments)} path commands across {len(drawables)} source elements")
     return 0
 
 

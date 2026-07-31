@@ -1,0 +1,28 @@
+encoding utf-8
+symbol point
+name mudcrack
+th_name mudcrack
+group mud
+orientation no
+color 0xffffff
+path
+  moveTo 0.48 5.486
+  lineTo -5.418 2.307
+  moveTo -6.017 1.482
+  lineTo -6.948 -3.667
+  moveTo -6.588 -4.553
+  lineTo 1.351 -10.196
+  moveTo 2.282 -10.206
+  lineTo 7.205 -6.875
+  moveTo 7.763 -5.998
+  lineTo 9.088 2.247
+  moveTo 8.644 2.998
+  lineTo 1.512 5.563
+  moveTo 1.006 6.888
+  lineTo 1.087 10.206
+  moveTo -8.12 -4.601
+  lineTo -11.25 -5.704
+  moveTo 8.584 -7.232
+  lineTo 11.25 -9.21
+endpath
+endsymbol

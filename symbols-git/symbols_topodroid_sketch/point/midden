@@ -1,0 +1,26 @@
+encoding utf-8
+symbol point
+name midden
+th_name midden
+group organic
+orientation yes
+color 0xffffff
+path
+  moveTo -11.25 3.461
+  lineTo 11.25 -3.461
+  moveTo 11.25 3.461
+  lineTo -11.25 -3.461
+  moveTo 1.222 -4.32
+  cubicTo 1.222 -3.758 0.661 -3.279 0 -3.279
+  cubicTo -0.661 -3.279 -1.206 -3.758 -1.206 -4.32
+  cubicTo -1.206 -4.898 -0.661 -5.361 0 -5.361
+  cubicTo 0.661 -5.361 1.222 -4.898 1.222 -4.32
+  moveTo 1.222 -4.32
+  moveTo 1.222 4.336
+  cubicTo 1.222 4.898 0.661 5.361 0 5.361
+  cubicTo -0.661 5.361 -1.206 4.898 -1.206 4.336
+  cubicTo -1.206 3.758 -0.661 3.296 0 3.296
+  cubicTo 0.661 3.296 1.222 3.758 1.222 4.336
+  moveTo 1.222 4.336
+endpath
+endsymbol

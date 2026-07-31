@@ -1,0 +1,21 @@
+encoding utf-8
+symbol point
+name rusticles
+th_name rusticles
+group speleothem
+orientation yes
+color 0xffffff
+path
+  moveTo -9.882 -10.566
+  lineTo 11.25 -10.446
+  moveTo -5.809 -10.115
+  cubicTo -11.25 -6.553 -7.793 -0.271 -5.809 1.247
+  moveTo 2.142 -10.566
+  cubicTo -3.825 -10.235 -2.412 -1.683 0.894 0.827
+  cubicTo 5.884 4.644 -0.759 8.883 -3.074 10.566
+  moveTo 8.995 -10.446
+  cubicTo 7.958 -10.296 6.44 -9.409 5.554 -8.417
+  cubicTo 4.366 -6.959 3.57 -4.238 5.043 -3.292
+  cubicTo 7.763 -0.646 9.792 4.238 7.477 6.508
+endpath
+endsymbol

@@ -1,0 +1,26 @@
+encoding utf-8
+symbol point
+name gypsum_dripholes
+th_name gypsum-dripholes
+group gypsum
+orientation no
+color 0xffffff
+style fill
+path
+  moveTo 0 -11.25
+  cubicTo 6.202 -11.25 11.25 -6.202 11.25 0
+  cubicTo 11.25 6.202 6.202 11.25 0 11.25
+  cubicTo -6.231 11.25 -11.25 6.202 -11.25 0
+  cubicTo -11.25 -6.202 -6.231 -11.25 0 -11.25
+  moveTo 0 -10.75
+  cubicTo -5.937 -10.75 -10.75 -5.937 -10.75 0
+  cubicTo -10.75 5.937 -5.937 10.75 0 10.75
+  cubicTo 5.937 10.75 10.75 5.937 10.75 0
+  cubicTo 10.75 -5.937 5.937 -10.75 0 -10.75
+  moveTo 0 -4.904
+  cubicTo 2.683 -4.904 4.875 -2.712 4.875 0
+  cubicTo 4.875 2.683 2.683 4.875 0 4.875
+  cubicTo -2.712 4.875 -4.904 2.683 -4.904 0
+  cubicTo -4.904 -2.712 -2.712 -4.904 0 -4.904
+endpath
+endsymbol

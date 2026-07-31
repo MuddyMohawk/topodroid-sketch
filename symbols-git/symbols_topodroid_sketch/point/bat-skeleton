@@ -1,0 +1,32 @@
+encoding utf-8
+symbol point
+name bat_skeleton
+th_name bat-skeleton
+group organic
+orientation yes
+color 0xffffff
+path
+  moveTo -3.155 5.055
+  cubicTo -3.155 5.055 0.898 2.579 0.898 6.633
+  lineTo 1.578 5.734
+  cubicTo 1.578 5.734 1.578 5.285 2.245 5.055
+  cubicTo 3.144 4.606 4.272 4.387 5.4 6.402
+  lineTo 5.619 7.531
+  cubicTo 7.646 4.387 11.25 9.339 11.25 9.339
+  lineTo 9.903 -1.462
+  cubicTo 10.122 -1.693 2.694 1.681 3.593 -5.516
+  lineTo -3.155 5.055
+  moveTo -3.155 5.055
+  moveTo -3.155 5.285
+  cubicTo -3.155 5.285 -1.578 0.783 -5.4 1.911
+  lineTo -4.733 1.002
+  cubicTo -4.733 1.002 -4.502 1.002 -4.284 0.104
+  cubicTo -4.284 -0.564 -4.284 -1.923 -6.529 -2.372
+  lineTo -7.876 -2.372
+  cubicTo -5.4 -5.067 -11.25 -6.863 -11.25 -6.863
+  lineTo -0.679 -9.12
+  cubicTo -0.449 -9.339 -1.359 -1.244 5.17 -4.399
+  lineTo -3.155 5.285
+  moveTo -3.155 5.285
+endpath
+endsymbol
