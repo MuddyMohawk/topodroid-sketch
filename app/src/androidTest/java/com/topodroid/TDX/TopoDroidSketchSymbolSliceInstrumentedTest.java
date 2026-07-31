@@ -41,7 +41,7 @@ import java.util.zip.ZipInputStream;
 public class TopoDroidSketchSymbolSliceInstrumentedTest
 {
   private static final int WIDTH = 1440;
-  private static final int HEIGHT = 7500;
+  private static final int HEIGHT = 7620;
   private static final float LEFT = 260.0f;
   private static final float COL = 370.0f;
   private static final float LINE_ROW = 70.0f;
@@ -86,6 +86,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     int dogtoothSparLineCount = 0;
     int dogtoothSparPointCount = 0;
     int gypsumCrystalsCount = 0;
+    int talusLineCount = 0;
 
     ZipInputStream zip = new ZipInputStream(
       mContext.getResources().openRawResource( R.raw.symbols_topodroid_sketch ) );
@@ -98,6 +99,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
         if ( name.equals( "symbols_topodroid_sketch/line/dogtooth-spar" ) ) ++dogtoothSparLineCount;
         if ( name.equals( "symbols_topodroid_sketch/point/dogtooth-spar" ) ) ++dogtoothSparPointCount;
         if ( name.equals( "symbols_topodroid_sketch/point/gypsum-crystals" ) ) ++gypsumCrystalsCount;
+        if ( name.equals( "symbols_topodroid_sketch/line/talus" ) ) ++talusLineCount;
         assertTrue( "Default symbol pack entry should use symbols_topodroid_sketch root: " + name,
                     name.startsWith( "symbols_topodroid_sketch/" ) );
         assertTrue( "Default symbol pack should not use old symbols_nss root: " + name,
@@ -125,6 +127,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertEquals( "Dogtooth Spar line should occur exactly once in the default raw pack", 1, dogtoothSparLineCount );
     assertEquals( "Dogtooth Spar point should be removed from the default raw pack", 0, dogtoothSparPointCount );
     assertEquals( "Gypsum Crystals should occur exactly once in the default raw pack", 1, gypsumCrystalsCount );
+    assertEquals( "Talus should occur exactly once in the default raw pack", 1, talusLineCount );
     assertTrue( "Generic Spar remains deferred",
                 ! entries.contains( "symbols_topodroid_sketch/point/spar" ) );
     assertTrue( "Generic Crystals should not be restored as a duplicate",
@@ -276,6 +279,33 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertEquals( "Crossbar Line must be symmetric around its carrier", 0, hachureDirection( crossbarLine ) );
     assertEquals( "Dashed Crossbar Line must be symmetric around its carrier", 0,
                   hachureDirection( dashedCrossbarLine ) );
+
+    String talus = readRawSymbolEntry( "symbols_topodroid_sketch/line/talus" );
+    assertTrue( "Talus must retain the Pit width", talus.contains( "\nwidth 2\n" ) );
+    assertTrue( "Talus must remain in the floor group", talus.contains( "\ngroup floor\n" ) );
+    assertTrue( "Talus must be carrier-free", ! talus.contains( "\n  carrier " ) );
+    assertTrue( "Talus must reserve a 10.0 repeat for its 1.5x visible gap",
+                talus.contains( "moveTo 0 0" ) && talus.contains( "moveTo 10 0" ) );
+    String[] talusOpenRectangle = {
+      "moveTo 3.5 0", "lineTo 3.5 3.4", "lineTo 6.5 3.4", "lineTo 6.5 0"
+    };
+    for ( String command : talusOpenRectangle ) {
+      assertEquals( "Talus effect and sketch stamp must match: " + command, 2,
+                    countOccurrences( talus, command ) );
+    }
+    assertTrue( "Talus rectangles must leave the path-side end open",
+                ! talus.contains( "lineTo 3.5 0" ) );
+    assertTrue( "Talus rectangles must face the corrected side of the path",
+                talus.contains( "lineTo 3.5 3.4" ) && ! talus.contains( "lineTo 3.5 -3.4" ) );
+    int talusIndex = BrushManager.getLineIndexByThName( "talus" );
+    assertTrue( "Talus must load into the line library", talusIndex >= 0 );
+    SymbolLine talusSymbol = BrushManager.getLineByIndex( talusIndex );
+    assertNotNull( "Talus line symbol must be available", talusSymbol );
+    assertNotNull( "Talus line symbol must retain its repeat effect", talusSymbol.mLineEffect );
+    java.lang.reflect.Field advanceField = LineSymbolEffect.class.getDeclaredField( "mAdvance" );
+    advanceField.setAccessible( true );
+    assertEquals( "Talus parser must honor the trailing empty repeat space", 10.0f,
+                  advanceField.getFloat( talusSymbol.mLineEffect ), 0.001f );
   }
 
   @Test
@@ -326,6 +356,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawDirectionalLineRow( canvas, label, "Dashed crossbar", SymbolLibrary.CROSSBAR_LINE_DASHED, y ); y += DIRECTIONAL_LINE_ROW;
     drawLineRow( canvas, label, "Ceiling channel", "ceiling-meander", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Pit", "pit", y ); y += LINE_ROW;
+    drawDirectionalLineRow( canvas, label, "Talus", "talus", y ); y += DIRECTIONAL_LINE_ROW;
     drawDirectionalLineRow( canvas, label, "Crossbar line", SymbolLibrary.CROSSBAR_LINE, y ); y += DIRECTIONAL_LINE_ROW;
     drawLineRow( canvas, label, "Floor channel", "floor-meander", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Water flow", "water-flow", y ); y += LINE_ROW + 32.0f;

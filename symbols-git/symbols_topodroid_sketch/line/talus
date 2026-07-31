@@ -1,0 +1,28 @@
+encoding utf-8
+symbol line
+name talus
+th_name talus
+group floor
+color 0xffffff 0xff
+width 2
+# units: line-widths (1 = ink thickness). Retain Pit's 3.4 depth. Each centered
+# stamp spans 3.0 between side centerlines and 4.0 including its round stroke caps.
+# A 10.0 repeat leaves a clear 6.0 gap (1.5x the rendered rectangle width).
+effect
+  moveTo 0 0
+  moveTo 3.5 0
+  lineTo 3.5 3.4
+  lineTo 6.5 3.4
+  lineTo 6.5 0
+  moveTo 10 0
+endeffect
+sketch_effect 1
+  stroke
+  stamp
+    moveTo 3.5 0
+    lineTo 3.5 3.4
+    lineTo 6.5 3.4
+    lineTo 6.5 0
+  endstamp
+endsketch_effect
+endsymbol

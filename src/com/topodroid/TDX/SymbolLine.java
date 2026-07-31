@@ -652,6 +652,10 @@ public class SymbolLine extends Symbol
                       if ( ! moved_to ) {
                         xmin = xmax = x;
                         moved_to = true;
+                      } else {
+                        // Disconnected move commands can intentionally reserve empty
+                        // space at either edge of a repeating pattern.
+                        if ( x < xmin ) xmin = x; else if ( x > xmax ) xmax = x;
                       }
 	              if ( y > ymax ) { ymax = y; } else if ( y < ymin ) { ymin = y; }
                     } catch ( NumberFormatException e ) {
