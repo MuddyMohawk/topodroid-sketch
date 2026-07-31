@@ -161,7 +161,22 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     };
     for ( String arc : flowstoneArcs ) {
       assertTrue( "Flowstone reference arc is missing: " + arc, flowstone.contains( arc ) );
-      assertTrue( "Shelfstone must reuse the Flowstone outer arc exactly: " + arc, shelfstone.contains( arc ) );
+    }
+    String[] doubledMirroredShelfstoneArcs = {
+      "cubicTo 1.12 -3.36 5.6 -3.36 6.72 0",
+      "cubicTo 7.84 -3.36 12.32 -3.36 13.44 0"
+    };
+    for ( String arc : doubledMirroredShelfstoneArcs ) {
+      assertTrue( "Shelfstone must double and mirror the Flowstone outer-arc geometry: " + arc,
+                  shelfstone.contains( arc ) );
+    }
+    String[] separatedShelfstoneInterior = {
+      "moveTo 2.52 -0.42", "cubicTo 2.8 -1.26 3.92 -1.26 4.2 -0.42",
+      "moveTo 9.24 -0.42", "cubicTo 9.52 -1.26 10.64 -1.26 10.92 -0.42"
+    };
+    for ( String command : separatedShelfstoneInterior ) {
+      assertTrue( "Shelfstone must retain a centered, separated interior arc: " + command,
+                  shelfstone.contains( command ) );
     }
 
     String gypsumCrystals = readRawSymbolEntry( "symbols_topodroid_sketch/point/gypsum-crystals" );
@@ -171,11 +186,19 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
       "moveTo -1.331 2.88", "lineTo 2.926 2.885",
       "moveTo -0.268 4.728", "lineTo 1.863 1.041"
     };
-    for ( String command : centralCrystal ) {
-      assertTrue( "Gypsum Crystals reference command is missing: " + command, gypsumCrystals.contains( command ) );
-      assertTrue( "Gypsum Wall Crust must reuse the central crystal exactly: " + command,
-                  gypsumWallCrust.contains( command ) );
+    String[] mirroredCentralCrystal = {
+      "moveTo -0.268 -1.041", "lineTo 1.858 -4.728",
+      "moveTo -1.331 -2.88", "lineTo 2.926 -2.885",
+      "moveTo -0.268 -4.728", "lineTo 1.863 -1.041"
+    };
+    for ( int k = 0; k < centralCrystal.length; ++k ) {
+      assertTrue( "Gypsum Crystals reference command is missing: " + centralCrystal[k],
+                  gypsumCrystals.contains( centralCrystal[k] ) );
+      assertTrue( "Gypsum Wall Crust must mirror the central crystal exactly: " + mirroredCentralCrystal[k],
+                  gypsumWallCrust.contains( mirroredCentralCrystal[k] ) );
     }
+    assertTrue( "Gypsum Wall Crust must add repeat spacing between rosettes",
+                gypsumWallCrust.contains( "moveTo -3.1 0" ) );
   }
 
   @Test
@@ -183,11 +206,17 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
   {
     int pitDirection = hachureDirection( readRawSymbolEntry( "symbols_topodroid_sketch/line/pit" ) );
     int ceilingLedgeDirection = hachureDirection( readRawSymbolEntry( "symbols_topodroid_sketch/line/chimney" ) );
+    int poolFingersDirection = hachureDirection( readRawSymbolEntry( "symbols_topodroid_sketch/line/pool-fingers" ) );
+    int gypsumWallCrustDirection = hachureDirection( readRawSymbolEntry( "symbols_topodroid_sketch/line/gypsum-wall-crust" ) );
 
     assertTrue( "Could not parse pit hachure direction", pitDirection != 0 );
     assertTrue( "Could not parse ceiling-ledge hachure direction", ceilingLedgeDirection != 0 );
     assertEquals( "Pit and ceiling-ledge hachures should point to the same side while drawing",
                   pitDirection, ceilingLedgeDirection );
+    assertEquals( "Pool Fingers should point to the Pit side while drawing",
+                  pitDirection, poolFingersDirection );
+    assertEquals( "Gypsum Wall Crust should point to the Pit side while drawing",
+                  pitDirection, gypsumWallCrustDirection );
   }
 
   @Test
