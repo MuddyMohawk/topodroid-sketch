@@ -137,6 +137,33 @@ public class SymbolPreviewRendererInstrumentedTest
     assertTrue( "Rotating an orientable point should change its preview", alphaHash( before ) != alphaHash( after ) );
   }
 
+  @Test public void patternedAreaScenes_keepReadableRowsAndOpaqueFadeCore()
+  {
+    float ink = TDSetting.inkUnit();
+
+    int bedrockIndex = BrushManager.getAreaIndexByThName( SymbolLibrary.BEDROCK );
+    AreaLinePattern bedrock = BrushManager.getAreaLinePattern( bedrockIndex );
+    SymbolPreviewRenderer bedrockRenderer = renderer( SymbolType.AREA, bedrockIndex );
+    RectF bedrockFrame = bedrockRenderer.getSceneFrameForTest();
+    float bedrockHeight = bedrockFrame.height() - 2.0f * ink;
+    assertTrue( "Bedrock preview should show at least four production rows",
+        bedrockHeight >= 4.0f * bedrock.mSpacingScale * ink );
+    assertTrue( "Bedrock preview should not zoom out to dozens of illegible rows",
+        bedrockHeight <= 6.0f * bedrock.mSpacingScale * ink );
+
+    int waterIndex = BrushManager.getAreaIndexByThName( SymbolLibrary.WATER );
+    AreaLinePattern water = BrushManager.getAreaLinePattern( waterIndex );
+    SymbolPreviewRenderer waterRenderer = renderer( SymbolType.AREA, waterIndex );
+    RectF waterFrame = waterRenderer.getSceneFrameForTest();
+    float waterHeight = waterFrame.height() - 2.0f * ink;
+    float readableCore = waterHeight - 2.0f * water.mFadeScale * ink;
+    assertTrue( "Water preview should retain at least three fully legible stripe rows",
+        readableCore >= 3.0f * water.mSpacingScale * ink - 0.01f );
+
+    assertPreviewFits( SymbolType.AREA, bedrockIndex, 48, 48 );
+    assertPreviewFits( SymbolType.AREA, waterIndex, 48, 48 );
+  }
+
   private void assertPreviewFits( int type, int index, int widthDp, int heightDp )
   {
     assertTrue( "Missing symbol index for type " + type, index >= 0 );
@@ -151,18 +178,25 @@ public class SymbolPreviewRendererInstrumentedTest
 
   private Bitmap render( int type, int index, int widthDp, int heightDp )
   {
-    Symbol symbol = symbol( type, index );
-    assertNotNull( symbol );
+    SymbolPreviewRenderer renderer = renderer( type, index );
     float density = mContext.getResources().getDisplayMetrics().density;
     int width = Math.max( 1, Math.round( widthDp * density ) );
     int height = Math.max( 1, Math.round( heightDp * density ) );
-    SymbolPreviewRenderer renderer = SymbolPreviewRenderer.create( type, index, symbol, density );
-    assertNotNull( "Missing preview renderer for type/index " + type + "/" + index, renderer );
     Bitmap bitmap = Bitmap.createBitmap( width, height, Bitmap.Config.ARGB_8888 );
     Canvas canvas = new Canvas( bitmap );
     canvas.drawColor( Color.TRANSPARENT, PorterDuff.Mode.CLEAR );
     renderer.draw( canvas, new RectF( 0.0f, 0.0f, width, height ) );
     return bitmap;
+  }
+
+  private SymbolPreviewRenderer renderer( int type, int index )
+  {
+    Symbol symbol = symbol( type, index );
+    assertNotNull( symbol );
+    float density = mContext.getResources().getDisplayMetrics().density;
+    SymbolPreviewRenderer renderer = SymbolPreviewRenderer.create( type, index, symbol, density );
+    assertNotNull( "Missing preview renderer for type/index " + type + "/" + index, renderer );
+    return renderer;
   }
 
   private Symbol symbol( int type, int index )

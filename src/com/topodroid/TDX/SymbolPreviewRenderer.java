@@ -102,6 +102,8 @@ class SymbolPreviewRenderer
 
   RectF getInkBoundsForTest() { return new RectF( mInkBounds ); }
 
+  RectF getSceneFrameForTest() { return new RectF( mScene.mProbeFrame ); }
+
   private static Scene makeScene( int symbol_type, int index, SymbolInterface symbol )
   {
     switch ( symbol_type ) {
@@ -172,12 +174,24 @@ class SymbolPreviewRenderer
     float width = 32.0f * ink;
     float height = 24.0f * ink;
     if ( pattern != null ) {
-      float across = Math.max( ink, pattern.mSpacingScale * ink );
-      float along = ( pattern.mType == AreaLinePattern.TYPE_PARALLEL ) ? across : Math.max( ink, pattern.mPeriodScale * ink );
-      width = Math.max( width, 4.0f * along );
-      height = Math.max( height, 4.0f * across );
-      if ( width < height * 4.0f / 3.0f ) width = height * 4.0f / 3.0f;
-      if ( height < width * 3.0f / 4.0f ) height = width * 3.0f / 4.0f;
+      float row = Math.max( ink, pattern.mSpacingScale * ink );
+      float fade = Math.max( 0.0f, pattern.mFadeScale * ink );
+
+      // Four readable rows communicate the fill without shrinking fine strokes into
+      // sub-pixel noise. A fading pattern also needs a real opaque core: otherwise a
+      // water swatch whose fade is deeper than half its height is translucent everywhere.
+      height = Math.max( height, 4.0f * row );
+      if ( fade > 0.0f ) height = Math.max( height, 2.0f * fade + 3.0f * row );
+      width = height * 4.0f / 3.0f;
+
+      // Dashes and bedrock need enough horizontal context to show their stagger, but
+      // four full periods made tall 4:3 swatches contain dozens of tiny rows. One and
+      // a half periods preserves the production rhythm at a legible semantic zoom.
+      if ( pattern.mType != AreaLinePattern.TYPE_PARALLEL ) {
+        float period = Math.max( ink, pattern.mPeriodScale * ink );
+        width = Math.max( width, 1.5f * period );
+        height = width * 3.0f / 4.0f;
+      }
     }
     DrawingAreaPath area = new DrawingAreaPath( index, 1, "preview", false, 0 );
     area.setSketchBrushStyle( STANDARD_STYLE );
