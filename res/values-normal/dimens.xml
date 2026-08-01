@@ -39,8 +39,6 @@
   <!-- dimen name="divider">5dp</dimen -->
   <dimen name="dividerbig">10dp</dimen>
 
-  <string name="dimxp" translatable="false">1.6f</string>
-  <string name="dimxl" translatable="false">2.2f</string>
   <string name="dimyl" translatable="false">1.9f</string>
   <!-- string name="dimpd" translatable="false">2</string -->
   <string name="dimmx" translatable="false">5</string>
@@ -48,8 +46,4 @@
 
   <!-- string name="dimorientation" translatable="false">60</string -->
 
-  <string name="size_factor_xp" translatable="false">1.5</string>
-  <string name="size_factor_yp" translatable="false">1.5</string>
-  <string name="size_factor_xl" translatable="false">2.2</string>
-  <string name="size_factor_yl" translatable="false">1.7</string>
 </resources>

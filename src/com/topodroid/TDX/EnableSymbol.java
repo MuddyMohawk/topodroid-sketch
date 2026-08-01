@@ -11,8 +11,6 @@
  */
 package com.topodroid.TDX;
 
-import com.topodroid.prefs.TDSetting;
-
 import android.content.Context;
 
 import android.widget.CheckBox;
@@ -22,11 +20,9 @@ import android.view.View;
 class EnableSymbol implements View.OnClickListener
 {
   private int mType;   // symbol type POINT (0) LINE (1) AREA (2)
-  // int mIndex;  // symbol index
+  int mIndex;  // symbol index
   boolean mEnabled;
   SymbolInterface mSymbol;
-  float sx;
-  float sy;
 
   /** @return true is the enabled value must be saved
    */
@@ -78,13 +74,10 @@ class EnableSymbol implements View.OnClickListener
   EnableSymbol( Context context, int type, int index, SymbolInterface symbol )
   {  
     mType  = type;
-    // mIndex = index;
+    mIndex = index;
     // mMustSave = false;
     mSymbol = symbol;
     mEnabled = mSymbol.isEnabled();
-    sx = Symbol.sizeX( mType, TDSetting.mSymbolSize );
-    sy = Symbol.sizeY( mType, TDSetting.mSymbolSize );
   }
 
 }
-

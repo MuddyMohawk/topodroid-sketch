@@ -205,6 +205,31 @@ class LineSymbolEffect
     return drew;
   }
 
+  /** @return the dominant repeat length for a straight sample [scene units]. */
+  float sampleRepeatLength( float unit, boolean reversed )
+  {
+    if ( ! ( unit > MIN_UNIT ) || Float.isNaN( unit ) || Float.isInfinite( unit ) ) unit = 1.0f;
+    ScaledPattern sp = scaled( unit, reversed );
+    return Math.max( sp.advance, dashCycle( sp.dash ) );
+  }
+
+  /** @return bounds of one scaled stamp/carrier unit, for sizing a render probe. */
+  RectF samplePatternBounds( float unit, boolean reversed )
+  {
+    if ( ! ( unit > MIN_UNIT ) || Float.isNaN( unit ) || Float.isInfinite( unit ) ) unit = 1.0f;
+    ScaledPattern sp = scaled( unit, reversed );
+    RectF bounds = new RectF( sp.bounds );
+    if ( sp.carriers != null ) {
+      for ( Carrier carrier : sp.carriers ) {
+        RectF carrier_bounds = new RectF( 0.0f, carrier.y0, Math.max( unit, sp.advance ), carrier.y1 );
+        if ( bounds.isEmpty() ) bounds.set( carrier_bounds ); else bounds.union( carrier_bounds );
+      }
+    }
+    if ( bounds.isEmpty() ) bounds.set( 0.0f, -0.5f * unit, Math.max( unit, sp.advance ), 0.5f * unit );
+    if ( mSketchStroke ) bounds.inset( -0.5f * unit, -0.5f * unit );
+    return bounds;
+  }
+
   private ScaledPattern scaled( float unit, boolean reversed )
   {
     long key = ( ( (long)Float.floatToIntBits( unit ) ) << 1 ) | ( reversed ? 1L : 0L );

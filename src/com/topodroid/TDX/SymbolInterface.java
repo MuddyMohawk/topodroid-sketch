@@ -21,9 +21,7 @@ interface SymbolInterface
   String getGroupName(); 
   String getThName();
   Paint  getPaint();
-  Paint  getPreviewPaint();
   Path   getPath();
-  Path   getScaledPath();
   String getDefaultOptions(); 
   boolean isOrientable();
   boolean isEnabled();

@@ -59,6 +59,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Making the toolbars smaller causes point symbols to become illegible. Even smaller, and other rendering problems come up
 
 ## Future possible features / brainstorming
+- z-order is basically a property of the render order, rather than an explicit property of the symbol. Should it become necessary, consider refactoring so that symbols have an explicit rendered z-order
 - make the symbol toolbar sizing controls different than the line styles/preset style controls
 - stamp point symbol from random selection (eg leaf variants, rock variants)
 - settings/symbol set profiles

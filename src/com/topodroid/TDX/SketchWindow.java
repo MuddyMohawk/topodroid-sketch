@@ -1276,7 +1276,7 @@ public class SketchWindow extends ItemDrawer
       //     }
       //   }
       // );
-      mBtnRecentL[k] = new ItemButton( this );
+      mBtnRecentL[k] = new SymbolPreviewButton( this );
       mBtnRecentL[k].setOnClickListener(
         new View.OnClickListener() {
           @Override public void onClick( View v ) {
@@ -2766,8 +2766,9 @@ public class SketchWindow extends ItemDrawer
       Symbol p = recents[k];
       if ( p == null || buttons[k] == null ) break;
       if ( p.isPoint() && p.isSection() ) continue;
-      buttons[kk].resetPaintPath( p.getPreviewPaint(), p.getScaledPath(), mRecentDimX, mRecentDimY );
-      buttons[kk].invalidate();
+      if ( buttons[kk] instanceof SymbolPreviewButton ) {
+        ( (SymbolPreviewButton)buttons[kk] ).bind( SymbolType.LINE, BrushManager.getLineIndex( p ), p );
+      }
       ++kk;
     }
   }
@@ -2890,8 +2891,6 @@ public class SketchWindow extends ItemDrawer
   public void onRecentSymbolsLoaded()
   {
     // TDLog.v("on recent symbols loaded");
-    mRecentDimX  = Float.parseFloat( getResources().getString( R.string.dimxl ) );
-    mRecentDimY  = Float.parseFloat( getResources().getString( R.string.dimyl ) );
     setBtnRecentAll( );
   }
 

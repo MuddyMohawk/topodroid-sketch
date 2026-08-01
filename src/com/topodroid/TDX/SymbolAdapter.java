@@ -12,8 +12,6 @@
 package com.topodroid.TDX;
 
 import com.topodroid.util.TDLog;
-import com.topodroid.ui.ItemButton;
-
 import java.util.ArrayList;
 
 // import android.app.Activity;
@@ -78,7 +76,7 @@ class SymbolAdapter extends ArrayAdapter< EnableSymbol >
   private static class ViewHolder
   { 
     CheckBox     mCheckBox;
-    ItemButton   mButton;
+    SymbolPreviewButton mButton;
     Button       mEditButton;
     TextView     mTextView;
     TextView     mGroupView;
@@ -96,7 +94,7 @@ class SymbolAdapter extends ArrayAdapter< EnableSymbol >
       convertView = mLayoutInflater.inflate( R.layout.enable_symbol_x, parent, false );
       holder = new ViewHolder();
       holder.mCheckBox = (CheckBox) convertView.findViewById( R.id.enable_symbol_cb );
-      holder.mButton   = (ItemButton) convertView.findViewById( R.id.enable_symbol_bt );
+      holder.mButton   = (SymbolPreviewButton) convertView.findViewById( R.id.enable_symbol_bt );
       holder.mEditButton = (Button) convertView.findViewById( R.id.enable_symbol_edit );
       holder.mTextView = (TextView) convertView.findViewById( R.id.enable_symbol_tv );
       holder.mGroupView = (TextView) convertView.findViewById( R.id.enable_symbol_grp );
@@ -120,7 +118,13 @@ class SymbolAdapter extends ArrayAdapter< EnableSymbol >
     // holder.mCheckBox.setText( b.getName() );
     holder.mTextView.setText( b.getName() );
     holder.mGroupView.setText( b.getGroupName() );
-    holder.mButton.resetPaintPath( b.mSymbol.getPreviewPaint(), b.mSymbol.getScaledPath(), b.sx, b.sy );
+    holder.mButton.bind( b.getType(), b.mIndex, b.mSymbol );
+    int density_width = SymbolPreviewButton.fixedBoxWidthPx( getContext(), b.getType() );
+    int density_height = SymbolPreviewButton.fixedBoxHeightPx( getContext() );
+    ViewGroup.LayoutParams preview_lp = holder.mButton.getLayoutParams();
+    preview_lp.width = density_width;
+    preview_lp.height = density_height;
+    holder.mButton.setLayoutParams( preview_lp );
     convertView.invalidate();
     return convertView;
   }

@@ -93,8 +93,6 @@ abstract class ItemDrawer extends Activity
   static int[] mRecentLineAge  = makeAgeArray();
   static int[] mRecentAreaAge  = makeAgeArray();
   static Symbol[] mRecentTools = mRecentLine;
-  static float mRecentDimX;
-  static float mRecentDimY;
   protected int mActiveToolbarRow = 0;
   protected int mActiveToolbarType = SymbolType.LINE;
   protected int mActiveToolbarSlot = 0;

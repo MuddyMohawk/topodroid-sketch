@@ -136,7 +136,6 @@ class TDPrefKey
   /** main settings:
    * size of text [pt]
    * size of buttons (S, N, M, L, XL)
-   * symbol size
    * activity Level
    * enable local man pages
    * language
@@ -146,7 +145,6 @@ class TDPrefKey
     new TDPrefKey( B,       GEN, "DISTOX_EXTRA_BUTTONS",   R.string.pref_extra_buttons_title,R.string.pref_extra_buttons_summary, TDString.ONE, R.array.extraButtons, R.array.extraButtonsValue ),
     new TDPrefKey( B, LONG, UI,  "DISTOX_TEXT_SIZE",       R.string.pref_text_size_title,    R.string.pref_text_size_summary,     TDString.TWENTY ),
     new TDPrefKey( B,       UI,  "DISTOX_SIZE_BUTTONS",    R.string.pref_size_buttons_title, R.string.pref_size_buttons_summary,  TDString.FOUR, R.array.sizeButtons, R.array.sizeButtonsValue ),
-    new TDPrefKey( B, FLT,  UI,  "DISTOX_SYMBOL_SIZE",     R.string.pref_symbol_size_title,  R.string.pref_symbol_size_summary,   "1.8"           ),  
     new TDPrefKey( N, BOOL, UI,  "DISTOX_HIDE_NAVBAR",     R.string.pref_hide_navbar_title,  R.string.pref_hide_navbar_summary,   FALSE ),
     new TDPrefKey( T,       UI,  "DISTOX_ORIENTATION",     R.string.pref_orientation_title,  R.string.pref_orientation_summary,   TDString.ZERO,  R.array.orientation, R.array.orientationValue ),
     new TDPrefKey( N,       GEN, "DISTOX_LOCALE",          R.string.pref_locale_title,       R.string.pref_locale_summary,        TDString.EMPTY, R.array.locale, R.array.localeValue ), 
@@ -1253,6 +1251,8 @@ class TDPrefKey
    */
   static boolean checkKeyGroup( String kay, int flag )
   {
+    // Retired UI preference retained for settings-file round trips only.
+    if ( "DISTOX_SYMBOL_SIZE".equals( kay ) ) return ( flag & (1<<UI) ) != 0;
     for ( TDPrefKey[] keyset : mKeySet ) {
       if ( keyset == null ) continue;
       for ( TDPrefKey k : keyset ) {

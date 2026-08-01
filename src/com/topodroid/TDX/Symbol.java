@@ -11,37 +11,11 @@
  */
 package com.topodroid.TDX;
 
-import com.topodroid.prefs.TDSetting;
-import com.topodroid.types.SymbolType;
-import com.topodroid.util.TDLog;
-
 import android.graphics.Paint;
 import android.graphics.Path;
 
 public class Symbol implements SymbolInterface
 {
-  private static boolean hasSizeFactors = false;
-  private static float sizeFactorXP = 1.5f;
-  private static float sizeFactorYP = 1.5f;
-  private static float sizeFactorXL = 2.2f;
-  private static float sizeFactorYL = 1.7f;
-
-  /** set the symbols size-factors from the resources
-   */
-  static void setSizeFactors()
-  { 
-    if ( hasSizeFactors ) return;
-    try {
-      sizeFactorXP = Float.parseFloat( TDInstance.context.getResources().getString( R.string.size_factor_xp ) );
-      sizeFactorYP = Float.parseFloat( TDInstance.context.getResources().getString( R.string.size_factor_yp ) );
-      sizeFactorXL = Float.parseFloat( TDInstance.context.getResources().getString( R.string.size_factor_xl ) );
-      sizeFactorYL = Float.parseFloat( TDInstance.context.getResources().getString( R.string.size_factor_yl ) );
-    } catch ( NumberFormatException e ) {
-      TDLog.e("SIZE FACTORS exception " + e.getMessage() );
-    }
-    hasSizeFactors = true;
-  }
-
   public static final int W2D_NONE       = 0; // Walls roundtrip values
   public static final int W2D_WALLS_SHP  = 1;
   public static final int W2D_WALLS_SYM  = 2;
@@ -209,17 +183,9 @@ public class Symbol implements SymbolInterface
    */
   public Paint  getPaint()      { return null; } // Overridden
 
-  /** @return the symbol paint for previews - default to getPaint()
-   */
-  public Paint  getPreviewPaint() { return getPaint(); }
-
   /** @return the symbol path - default to null
    */
   public Path   getPath()       { return null; }
-
-  /** @return the symbol scaled path - default to getPath()
-   */
-  public Path   getScaledPath() { return getPath(); }
 
   // /** @return the original path
   //  */
@@ -289,16 +255,6 @@ public class Symbol implements SymbolInterface
   /** @return the symbol orientation angle, 0 degrees by default
    */
   public int getAngle() { return 0; }
-
-  /** @return the symbol X-dimension
-   * @param type   symbol type (point, line, or area)
-   */
-  static float sizeX( int type, float unit ) { return ( type == SymbolType.POINT )? unit * sizeFactorXP : unit * sizeFactorXL; }
-
-  /** @return the symbol Y-dimension
-   * @param type   symbol type (point, line, or area)
-   */
-  static float sizeY( int type, float unit ) { return ( type == SymbolType.POINT )? unit * sizeFactorYP : unit * sizeFactorYL; }
 
   /** @return the therion name, removing the "u:" prefix if present
    * @param name  full therion name

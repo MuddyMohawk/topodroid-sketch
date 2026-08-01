@@ -2825,7 +2825,6 @@ public class DrawingWindow extends ItemDrawer
     int type = getToolbarDisplayType( row );
     Symbol[] symbols = getToolbarSymbols( row, type );
     if ( symbols == null ) return;
-    setRecentDims( type );
     int slots = getToolbarSlotCount();
     for ( int slot = 0; slot < slots; ++slot ) {
       ItemButton button = mBtnManualToolbar[row][slot];
@@ -2837,20 +2836,24 @@ public class DrawingWindow extends ItemDrawer
         continue;
       }
       button.setVisibility( View.VISIBLE );
-      button.resetPaintPath( symbol.getPreviewPaint(), symbol.getScaledPath(), mRecentDimX, mRecentDimY );
-      button.invalidate();
+      bindSymbolPreview( button, type, symbol );
     }
   }
 
-  private void setRecentDims( int type )
+  private void bindSymbolPreview( ItemButton button, int type, Symbol symbol )
   {
+    if ( ! ( button instanceof SymbolPreviewButton ) || symbol == null ) return;
+    int index;
     if ( type == SymbolType.POINT ) {
-      mRecentDimX = Float.parseFloat( getResources().getString( R.string.dimxp ) );
-      mRecentDimY = Float.parseFloat( getResources().getString( R.string.dimxp ) );
+      index = BrushManager.getPointIndex( symbol );
+    } else if ( type == SymbolType.LINE ) {
+      index = BrushManager.getLineIndex( symbol );
+    } else if ( type == SymbolType.AREA ) {
+      index = BrushManager.getAreaIndex( symbol );
     } else {
-      mRecentDimX = Float.parseFloat( getResources().getString( R.string.dimxl ) );
-      mRecentDimY = Float.parseFloat( getResources().getString( R.string.dimyl ) );
+      return;
     }
+    ( (SymbolPreviewButton)button ).bind( type, index, symbol );
   }
 
   /** refresh drawing lines after the line library has been reloaded
@@ -2872,8 +2875,6 @@ public class DrawingWindow extends ItemDrawer
         mCurrentPoint = mapSymbolIndex( indexMap, mCurrentPoint );
         if ( mDrawingSurface != null ) mDrawingSurface.refreshPointPaints( indexMap );
         if ( mBtnRecentP != null && mLayoutTools != null ) {
-          mRecentDimX = Float.parseFloat( getResources().getString( R.string.dimxp ) );
-          mRecentDimY = Float.parseFloat( getResources().getString( R.string.dimxp ) );
           setButtonRecent( mBtnRecentP, mRecentPoint );
           setToolsToolbars();
         }
@@ -2884,8 +2885,6 @@ public class DrawingWindow extends ItemDrawer
         if ( mDrawingSurface != null ) mDrawingSurface.refreshLinePaints( indexMap );
         if ( mCurrentLinePath != null ) mCurrentLinePath.setLineType( mapSymbolIndex( indexMap, mCurrentLinePath.mLineType ) );
         if ( mBtnRecentL != null && mLayoutTools != null ) {
-          mRecentDimX = Float.parseFloat( getResources().getString( R.string.dimxl ) );
-          mRecentDimY = Float.parseFloat( getResources().getString( R.string.dimyl ) );
           setButtonRecent( mBtnRecentL, mRecentLine );
           setToolsToolbars();
         }
@@ -2896,8 +2895,6 @@ public class DrawingWindow extends ItemDrawer
         if ( mDrawingSurface != null ) mDrawingSurface.refreshAreaPaints( indexMap );
         if ( mCurrentAreaPath != null ) mCurrentAreaPath.setAreaType( mapSymbolIndex( indexMap, mCurrentAreaPath.mAreaType ) );
         if ( mBtnRecentA != null && mLayoutTools != null ) {
-          mRecentDimX = Float.parseFloat( getResources().getString( R.string.dimxl ) );
-          mRecentDimY = Float.parseFloat( getResources().getString( R.string.dimyl ) );
           setButtonRecent( mBtnRecentA, mRecentArea );
           setToolsToolbars();
         }
@@ -3163,12 +3160,9 @@ public class DrawingWindow extends ItemDrawer
     setTheTitle();
   }
 
-  /** reset the recent toolbars
-   * @NOTE called by TopoDroidApp when the symbol-size setting is changed
-   */
+  /** reset the recent toolbars */
   void resetRecentTools()
   {
-    // TDLog.v("RESET recent tools - symbol size " + TDSetting.mSymbolSize );
     removeManualToolbarRows();
     mBtnRecentP = new ItemButton[ NR_RECENT + 1 ];
     mBtnRecentL = new ItemButton[ NR_RECENT + 1 ];
@@ -3177,7 +3171,7 @@ public class DrawingWindow extends ItemDrawer
     mBtnManualToolbar = new ItemButton[ NR_TOOLBAR_ROWS ][ NR_RECENT ];
     mBtnManualPicker = new ItemButton[ NR_TOOLBAR_ROWS ];
     for ( int k = 0; k<NR_RECENT; ++k ) {
-      mBtnRecentP[k] = new ItemButton( this );
+      mBtnRecentP[k] = new SymbolPreviewButton( this );
       mBtnRecentP[k].setOnClickListener(
         new View.OnClickListener() {
           @Override public void onClick( View v ) {
@@ -3192,7 +3186,7 @@ public class DrawingWindow extends ItemDrawer
           }
         }
       );
-      mBtnRecentL[k] = new ItemButton( this );
+      mBtnRecentL[k] = new SymbolPreviewButton( this );
       mBtnRecentL[k].setOnClickListener(
         new View.OnClickListener() {
           @Override public void onClick( View v ) {
@@ -3207,7 +3201,7 @@ public class DrawingWindow extends ItemDrawer
           }
         }
       );
-      mBtnRecentA[k] = new ItemButton( this );
+      mBtnRecentA[k] = new SymbolPreviewButton( this );
       mBtnRecentA[k].setOnClickListener(
         new View.OnClickListener() {
           @Override public void onClick( View v ) {
@@ -3222,7 +3216,7 @@ public class DrawingWindow extends ItemDrawer
     }
     for ( int row = 0; row < NR_TOOLBAR_ROWS; ++row ) {
       for ( int slot = 0; slot < NR_RECENT; ++slot ) {
-        mBtnManualToolbar[row][slot] = new ItemButton( this );
+        mBtnManualToolbar[row][slot] = new SymbolPreviewButton( this );
         final int toolbarRow = row;
         final int toolbarSlot = slot;
         mBtnManualToolbar[row][slot].setOnClickListener(
@@ -11459,12 +11453,8 @@ public class DrawingWindow extends ItemDrawer
     }
     if ( mRecentTools == mRecentPoint ) {
       mRecentTools = mRecentLine;
-      mRecentDimX  = Float.parseFloat( getResources().getString( R.string.dimxp ) );
-      mRecentDimY  = Float.parseFloat( getResources().getString( R.string.dimxp ) );
     } else if ( mRecentTools == mRecentLine ) {
       mRecentTools = mRecentArea;
-      mRecentDimX  = Float.parseFloat( getResources().getString( R.string.dimxl ) );
-      mRecentDimY  = Float.parseFloat( getResources().getString( R.string.dimyl ) );
     } else if ( mRecentTools == mRecentArea ) {
       mRecentTools = mRecentPoint;
       // mRecentDimX  = Float.parseFloat( getResources().getString( R.string.dimxl ) );
@@ -11831,8 +11821,7 @@ public class DrawingWindow extends ItemDrawer
       if ( p == null || buttons[k] == null ) break;
       if ( p.isPoint() && p.isSection() ) continue;
       if ( p.isPoint() ) TDLog.v("SET button point " + p.getThName() );
-      buttons[kk].resetPaintPath( p.getPreviewPaint(), p.getScaledPath(), mRecentDimX, mRecentDimY );
-      buttons[kk].invalidate();
+      bindSymbolPreview( buttons[kk], p.mSymbolType, p );
       ++kk;
     }
   }
@@ -11982,8 +11971,6 @@ public class DrawingWindow extends ItemDrawer
   public void onRecentSymbolsLoaded()
   {
     // TDLog.v("on recent symbols loaded");
-    mRecentDimX  = Float.parseFloat( getResources().getString( R.string.dimxl ) );
-    mRecentDimY  = Float.parseFloat( getResources().getString( R.string.dimyl ) );
     setBtnRecentAll( );
   }
 

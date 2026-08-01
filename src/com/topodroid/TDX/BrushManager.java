@@ -438,6 +438,7 @@ public class BrushManager
   {
     // TDLog.v("BRUSH load point library" );
     mPointLib = new SymbolPointLibrary( ctx, res );
+    SymbolPreviewRenderer.invalidateCache();
     // mPointLib.loadUserPoints();
     TopoDroidApp.refreshDrawingAfterSymbolLibraryReload( SymbolType.POINT );
   }
@@ -449,6 +450,7 @@ public class BrushManager
   {
     // TDLog.v("BRUSH load line library" );
     mLineLib = new SymbolLineLibrary( res );
+    SymbolPreviewRenderer.invalidateCache();
     TopoDroidApp.refreshDrawingAfterLineLibraryReload();
   }
 
@@ -459,6 +461,7 @@ public class BrushManager
   {
     // TDLog.v("BRUSH load area library" );
     mAreaLib = new SymbolAreaLibrary( res );
+    SymbolPreviewRenderer.invalidateCache();
     // mAreaLib.loadUserAreas();
     TopoDroidApp.refreshDrawingAfterSymbolLibraryReload( SymbolType.AREA );
   }

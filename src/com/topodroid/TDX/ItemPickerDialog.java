@@ -46,9 +46,6 @@ class ItemPickerDialog extends MyDialog
                        // , View.OnLongClickListener
                        // , AdapterView.OnItemClickListener
 {
-  private static float DIMXP = 1.6f; // 1.8f;
-  private static float DIMXL = 2.2f;
-  private static float DIMYL = 1.9f;
   // private static int DIMPD = 2;
   private static int DIMMX = 5;
   private static int DIMMY = 2;
@@ -140,9 +137,6 @@ class ItemPickerDialog extends MyDialog
   {
     super.onCreate( savedInstanceState );
 
-    DIMXP = Float.parseFloat( resString( R.string.dimxp ) );
-    DIMXL = Float.parseFloat( resString( R.string.dimxl ) );
-    DIMYL = Float.parseFloat( resString( R.string.dimyl ) );
     // DIMPD = Integer.parseInt( resString( R.string.dimpd ) );
     DIMMX = Integer.parseInt( resString( R.string.dimmx ) );
     DIMMY = Integer.parseInt( resString( R.string.dimmy ) );
@@ -152,7 +146,7 @@ class ItemPickerDialog extends MyDialog
       TDToast.makeWarn( "Symbols not ready" );
       return;
     }
-    // TDLog.v("Dims " + DIMXP + " " + DIMXL + " " + DIMYL + " " + DIMMX + " " + DIMMY );
+    // TDLog.v("Dims " + DIMMX + " " + DIMMY );
 
     // createAdapters( ( TDSetting.mPickerType == TDSetting.PICKER_LIST /* || TDSetting.mPickerType == TDSetting.PICKER_RECENT */ ) );
     createAdapters( );

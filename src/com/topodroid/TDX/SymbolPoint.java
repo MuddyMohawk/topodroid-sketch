@@ -139,15 +139,6 @@ public class SymbolPoint extends Symbol
     return makeScaledPath( mPathStr, TDSetting.pointInkUnit() );
   }
 
-  /** @return the point scaled path
-   * @NOTE used for symbol tollbar, picker, enabler 
-   * scaledPath could be precomputed, if recomputed every time symbolSize setting changes
-   */
-  public Path getScaledPath()
-  {
-    return makeScaledPath( mPathStr, TDSetting.mSymbolSize );
-  }
- 
   /** @return the point paint
    */
   @Override public Paint getPaint( ) { return mPaint; }
@@ -192,7 +183,6 @@ public class SymbolPoint extends Symbol
     makePointPath( path, TDSetting.pointInkUnit() );
     // mOrigPath = new Path( mPath );
     mPathStr  = path;
-    // mScaledPath = makeScaledPath( path, TDSetting.mSymbolSize );
     
     mOrientable  = orientable;
     mScalable    = true;
@@ -223,7 +213,6 @@ public class SymbolPoint extends Symbol
     makePointPath( path, TDSetting.pointInkUnit() );
     // mOrigPath = new Path( mPath );
     mPathStr  = path;
-    // mScaledPath = makeScaledPath( path, TDSetting.mSymbolSize );
 
     mOrientable  = orientable;
     mScalable    = true;
@@ -460,7 +449,6 @@ public class SymbolPoint extends Symbol
                   makePointPath( path, TDSetting.pointInkUnit() );
                   // mOrigPath = new Path( mPath );
                   mPathStr  = path;
-                  // mScaledPath = makeScaledPath( path, TDSetting.mSymbolSize );
                   mDefaultOptions = options;
                   // TDLog.v("POINT " + "Name " + mName + " ThName " + getThName() );
                   // mPoint1 = new SymbolPointBasic( name, th_name, null, fname, color, path );

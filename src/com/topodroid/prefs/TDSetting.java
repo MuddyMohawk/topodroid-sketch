@@ -152,11 +152,12 @@ public class TDSetting
     return null;
   }
 
+  /** Retired preview-size preference kept only for settings import/export compatibility. */
+  @Deprecated
   public static String setSymbolSize( float fs )
   {
     if ( fs > 0.1f && fs != mSymbolSize ) {
       mSymbolSize = fs;
-      TopoDroidApp.resetRecentTools();
       return Float.toString( mSymbolSize );
     }
     return null;
@@ -253,7 +254,7 @@ public class TDSetting
   public static int mSizeBtns     = 0;      // action bar buttons scale (3: medium)
   public static int mSizeButtons  = BTN_SIZE_UNUSED;     // default 52 
   public static int mTextSize     = 16;     // list text size 
-  public static float mSymbolSize = 1.8f;   // symbol size
+  public static float mSymbolSize = 1.8f;   // retired preview-size preference; settings-file compatibility only
   public static boolean mKeyboard = false;
   public static boolean mNoCursor = true;
   public static boolean mBulkExport = false;
@@ -1224,11 +1225,11 @@ public class TDSetting
     key = TDPrefKey.mMain;
     setTextSize( tryInt(    prefs,  key[1].key, key[1].dflt ) );      // DISTOX_TEXT_SIZE
     setSizeButtons( tryInt( prefs,  key[2].key, key[2].dflt ) );      // DISTOX_SIZE_BUTTONS
-    setSymbolSize( tryFloat( prefs, key[3].key, key[3].dflt ) );      // DISTOX_SYMBOL_SIZE
-    setHideNavBar(                   prefs.getBoolean( key[4].key, bool(key[4].dflt) ) ); // DISTOX_HIDE_NAVBAR
-    mOrientation = Integer.parseInt( prefs.getString(  key[5].key, key[5].dflt ) ); // DISTOX_ORIENTATION choice: 0, 1, 2
-    setLocale(                       prefs.getString(  key[6].key, TDString.EMPTY ), false ); // DISTOX_LOCALE
-    handleLocalUserMan(              prefs.getString(  key[7].key, key[7].dflt ), false ); // DISTOX_LOCAL_MAN
+    setSymbolSize( tryFloat( prefs, "DISTOX_SYMBOL_SIZE", defaultSymbolSize ) ); // retired compatibility value
+    setHideNavBar(                   prefs.getBoolean( key[3].key, bool(key[3].dflt) ) ); // DISTOX_HIDE_NAVBAR
+    mOrientation = Integer.parseInt( prefs.getString(  key[4].key, key[4].dflt ) ); // DISTOX_ORIENTATION choice: 0, 1, 2
+    setLocale(                       prefs.getString(  key[5].key, TDString.EMPTY ), false ); // DISTOX_LOCALE
+    handleLocalUserMan(              prefs.getString(  key[6].key, key[6].dflt ), false ); // DISTOX_LOCAL_MAN
     // setLocale( prefs.getString( keyMain[7], defMain[7] ), false ); // DISTOX_LOCALE
     // TDLog.Profile("locale");
     // boolean co_survey = prefs.getBoolean( keyMain[8], bool(defMain[8]) );        // DISTOX_COSURVEY 
@@ -1856,19 +1857,17 @@ public class TDSetting
       if ( setSizeButtons( tryIntValue( hlp, k, v, defaultButtonSize ) ) ) {
         TopoDroidApp.resetButtonBar();
       }
-    } else if ( k.equals( key[ 3 ].key ) ) {             // DISTOX_SYMBOL_SIZE
-      ret = setSymbolSize( tryFloatValue( hlp, k, v, defaultSymbolSize ) );
-    } else if ( k.equals( key[ 4 ].key ) ) {           // DISTOX_HIDE_NAVBAR
-      setHideNavBar( tryBooleanValue( hlp, k, v, bool(key[4].dflt) ) );
-    } else if ( k.equals( key[ 5 ].key ) ) {           // DISTOX_ORIENTATION (choice)
-      mOrientation = tryIntValue( hlp, k, v, key[5].dflt );
+    } else if ( k.equals( key[ 3 ].key ) ) {           // DISTOX_HIDE_NAVBAR
+      setHideNavBar( tryBooleanValue( hlp, k, v, bool(key[3].dflt) ) );
+    } else if ( k.equals( key[ 4 ].key ) ) {           // DISTOX_ORIENTATION (choice)
+      mOrientation = tryIntValue( hlp, k, v, key[4].dflt );
       TopoDroidApp.setScreenOrientation( );
       TDandroid.setScreenOrientation( TDPrefActivity.mPrefActivityAll );
 
-    } else if ( k.equals( key[ 6 ].key ) ) {           // DISTOX_LOCALE (choice)
-      setLocale( tryStringValue( hlp, k, v, key[6].dflt ), true );
-    } else if ( k.equals( key[ 7 ].key ) ) {           // DISTOX_LOCAL_MAN (choice)
-      handleLocalUserMan( tryStringValue( hlp, k, v, key[7].dflt ), true );
+    } else if ( k.equals( key[ 5 ].key ) ) {           // DISTOX_LOCALE (choice)
+      setLocale( tryStringValue( hlp, k, v, key[5].dflt ), true );
+    } else if ( k.equals( key[ 6 ].key ) ) {           // DISTOX_LOCAL_MAN (choice)
+      handleLocalUserMan( tryStringValue( hlp, k, v, key[6].dflt ), true );
     /* ---- IF_COSURVEY
     } else if ( k.equals( key[ 8 ] ) ) {           // DISTOX_COSURVEY (bool)
       boolean co_survey = tryBooleanValue( hlp, k, v, false );

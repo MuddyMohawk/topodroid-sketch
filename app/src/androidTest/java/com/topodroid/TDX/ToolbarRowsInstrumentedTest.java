@@ -5,8 +5,6 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
-import android.graphics.Paint;
-import android.graphics.RectF;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
@@ -110,52 +108,14 @@ public class ToolbarRowsInstrumentedTest
     assertEquals( "bedrock", BrushManager.getPointName( bedrock ) );
     assertEquals( 0xffffffff, BrushManager.getLineColor( wall ) );
 
-    Symbol flowstoneSymbol = BrushManager.getLineByThName( SymbolLibrary.FLOWSTONE );
-    RectF previewBounds = new RectF();
-    RectF scaledPreviewBounds = new RectF();
-    flowstoneSymbol.getPath().computeBounds( previewBounds, true );
-    flowstoneSymbol.getScaledPath().computeBounds( scaledPreviewBounds, true );
-    assertTrue( "Flowstone preview should use visible stroked sketch arcs", previewBounds.height() > 1.0f );
-    assertTrue( "Flowstone scaled preview should be substantially larger than the raw preview",
-                scaledPreviewBounds.height() > previewBounds.height() * 1.5f );
-    assertTrue( "Flowstone scaled preview should keep the pattern proportions",
-                scaledPreviewBounds.width() > previewBounds.width() * 1.5f );
-    assertEquals( "Flowstone scaled preview should stay vertically centered",
-                  previewBounds.centerY(), scaledPreviewBounds.centerY(), 0.001f );
-    assertTrue( "Flowstone preview should not use the legacy path effect",
-                flowstoneSymbol.getPreviewPaint().getPathEffect() == null );
-    assertEquals( "Flowstone preview should remain a stroked sketch stamp",
-                  Paint.Style.STROKE, flowstoneSymbol.getPreviewPaint().getStyle() );
+    assertTrue( "Flowstone should have a production preview renderer",
+        SymbolPreviewRenderer.create( SymbolType.LINE, flowstone,
+            BrushManager.getLineByIndex( flowstone ), contextDensity() ) != null );
+  }
 
-    Symbol ceilingChannelSymbol = BrushManager.getLineByThName( SymbolLibrary.CEILING_MEANDER );
-    RectF ceilingChannelBounds = new RectF();
-    ceilingChannelSymbol.getPath().computeBounds( ceilingChannelBounds, true );
-    assertTrue( "Ceiling channel preview should use visible carrier and hachure geometry",
-                ceilingChannelBounds.height() > 1.0f );
-    assertTrue( "Ceiling channel preview should not use the legacy path effect",
-                ceilingChannelSymbol.getPreviewPaint().getPathEffect() == null );
-    assertEquals( "Ceiling channel preview should remain filled sketch geometry",
-                  Paint.Style.FILL, ceilingChannelSymbol.getPreviewPaint().getStyle() );
-
-    Symbol dashedSymbol = BrushManager.getLineByThName( "dashed" );
-    Symbol dottedSymbol = BrushManager.getLineByThName( "dotted" );
-    Symbol userSymbol = BrushManager.getLineByThName( SymbolLibrary.USER );
-    Symbol wallSymbol = BrushManager.getLineByThName( SymbolLibrary.WALL );
-    Symbol sectionSymbol = BrushManager.getLineByThName( SymbolLibrary.SECTION );
-    assertTrue( "Dashed preview stroke should be larger than sketch stroke",
-                dashedSymbol.getPreviewPaint().getStrokeWidth() > dashedSymbol.getPaint().getStrokeWidth() );
-    assertTrue( "Dotted preview stroke should be larger than sketch stroke",
-                dottedSymbol.getPreviewPaint().getStrokeWidth() > dottedSymbol.getPaint().getStrokeWidth() );
-    assertTrue( "User preview stroke should be larger than sketch stroke",
-                userSymbol.getPreviewPaint().getStrokeWidth() > userSymbol.getPaint().getStrokeWidth() );
-    assertTrue( "Wall preview stroke should be larger than sketch stroke",
-                wallSymbol.getPreviewPaint().getStrokeWidth() > wallSymbol.getPaint().getStrokeWidth() );
-    assertTrue( "Section preview stroke should be larger than sketch stroke",
-                sectionSymbol.getPreviewPaint().getStrokeWidth() > sectionSymbol.getPaint().getStrokeWidth() );
-    assertTrue( "Dashed preview should keep a dash effect",
-                dashedSymbol.getPreviewPaint().getPathEffect() != null );
-    assertTrue( "Dotted preview should keep a dash effect",
-                dottedSymbol.getPreviewPaint().getPathEffect() != null );
+  private float contextDensity()
+  {
+    return TDInstance.context.getResources().getDisplayMetrics().density;
   }
 
   @Test

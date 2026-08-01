@@ -44,8 +44,4 @@
 
   <!-- string name="dimorientation" translatable="false">40</string -->
 
-  <string name="size_factor_xp" translatable="false">4.0</string>
-  <string name="size_factor_yp" translatable="false">4.0</string>
-  <string name="size_factor_xl" translatable="false">9.0</string>
-  <string name="size_factor_yl" translatable="false">5.0</string>
 </resources>

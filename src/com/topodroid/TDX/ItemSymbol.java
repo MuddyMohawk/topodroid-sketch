@@ -13,9 +13,7 @@ package com.topodroid.TDX;
 
 // import com.topodroid.util.TDLog;
 // import com.topodroid.util.TDColor;
-import com.topodroid.ui.ItemButton;
 // import com.topodroid.types.SymbolType;
-import com.topodroid.prefs.TDSetting;
 
 // import java.util.ArrayList;
 
@@ -35,12 +33,10 @@ class ItemSymbol
   int mType;   // symbol type POINT (1) LINE (2) AREA (3)
   int mIndex;  // symbol index
   CheckBox     mCheckBox = null;
-  ItemButton   mButton   = null;
+  SymbolPreviewButton mButton = null;
   // private TextView     mTextView = null;
   LinearLayout mView;
   SymbolInterface mSymbol;
-  private float sx;
-  private float sy;
   // private boolean mUseText;
 
   // private Context mContext;
@@ -60,8 +56,6 @@ class ItemSymbol
     mSymbol = symbol;
     int pad = 4;
 
-    sx = Symbol.sizeX( mType, TDSetting.mSymbolSize );
-    sy = Symbol.sizeY( mType, TDSetting.mSymbolSize );
     // TDLog.v( "Item " + mType + "/" + mIndex + " " + mSymbol.getName() );
 
     LinearLayout ll = new LinearLayout( context );
@@ -78,8 +72,13 @@ class ItemSymbol
     // }
     lllp.setMargins(2,1,2,1);
 
-    mButton = new ItemButton( context, mSymbol.getPreviewPaint(), mSymbol.getScaledPath(), sx, sy, pad );
-    ll.addView( mButton, lllp );
+    mButton = new SymbolPreviewButton( context );
+    mButton.bind( mType, mIndex, mSymbol );
+    int density_width = SymbolPreviewButton.fixedBoxWidthPx( context, mType );
+    int density_height = SymbolPreviewButton.fixedBoxHeightPx( context );
+    LinearLayout.LayoutParams preview_lp = new LinearLayout.LayoutParams( density_width, density_height );
+    preview_lp.setMargins( 2, 1, 2, 1 );
+    ll.addView( mButton, preview_lp );
 
     // if ( mUseText ) {
       TextView textView = new TextView( context );
@@ -145,8 +144,7 @@ class ItemSymbol
   {
     // TDLog.v( "item " + mType + "/" + mIndex + " " + mSymbol.getName() + " set angle " + angle );
     if ( mSymbol.setAngle( angle ) ) {
-      mButton.resetPath( mSymbol.getScaledPath(), sx, sy );
-      mButton.invalidate();
+      mButton.bind( mType, mIndex, mSymbol );
     }
   }
 
