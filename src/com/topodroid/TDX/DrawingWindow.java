@@ -578,6 +578,7 @@ public class DrawingWindow extends ItemDrawer
 
   private int mHotItemType     = -1;
   private DrawingPath mHotPath = null;
+  private SketchAffineGizmo.Drag mAffineGizmoDrag = null;
   private boolean mHasSelected = false;
   private boolean hasPointActions  = false;
 
@@ -3504,14 +3505,23 @@ public class DrawingWindow extends ItemDrawer
   private void updatePointFromPlacementDrag( DrawingPointPath point, float x_shift, float y_shift, boolean landscape )
   {
     if ( point == null ) return;
-    if ( isSmoothScalablePoint( point.mPointType ) ) {
+    if ( point.hasSketchAffineTransform() ) {
       float distance = (float)Math.sqrt( x_shift * x_shift + y_shift * y_shift );
-      point.setExactPointScale( mPointDragBaseScale * SketchPointScale.scaleFromDragDistance( distance ) );
-    }
-    if ( BrushManager.isPointOrientable( point.mPointType ) ) {
-      float angle = TDMath.atan2d( x_shift, -y_shift );
+      float multiplier = isSmoothScalablePoint( point.mPointType ) ? SketchPointScale.scaleFromDragDistance( distance ) : 1.0f;
+      float angle = BrushManager.isPointOrientable( point.mPointType ) ? TDMath.atan2d( x_shift, -y_shift ) : 0.0f;
       if ( landscape ) angle = TDMath.in360( angle + 90.0f );
-      point.setOrientation( angle );
+      SketchAffineTransform placement = SketchAffineTransform.rotationScale( angle, multiplier );
+      if ( placement != null ) point.setSketchAffineTransform( placement );
+    } else {
+      if ( isSmoothScalablePoint( point.mPointType ) ) {
+        float distance = (float)Math.sqrt( x_shift * x_shift + y_shift * y_shift );
+        point.setExactPointScale( mPointDragBaseScale * SketchPointScale.scaleFromDragDistance( distance ) );
+      }
+      if ( BrushManager.isPointOrientable( point.mPointType ) ) {
+        float angle = TDMath.atan2d( x_shift, -y_shift );
+        if ( landscape ) angle = TDMath.in360( angle + 90.0f );
+        point.setOrientation( angle );
+      }
     }
     mDrawingSurface.requestRender(); // the point is a live overlay during the drag: a frame is enough
   }
@@ -5383,6 +5393,7 @@ public class DrawingWindow extends ItemDrawer
         finishErasing();
       }
       clearPendingSketchStroke();
+      mAffineGizmoDrag = null;
       mDrawingSurface.resetPreviewPath();
       updateSketchPresetButtons();
       updateSketchStyleButtons();
@@ -5795,9 +5806,13 @@ public class DrawingWindow extends ItemDrawer
           placePendingSectionAt( xs, ys );
         }
       } else if ( mMode == MODE_EDIT ) {
-        if ( Math.abs(mStartX - xc) < TDSetting.mPointingRadius 
-          && Math.abs(mStartY - yc) < TDSetting.mPointingRadius ) {
-          doSelectAt( xs, ys, mSelectSize );
+        if ( mAffineGizmoDrag != null ) {
+          mAffineGizmoDrag = null;
+        } else {
+          if ( Math.abs(mStartX - xc) < TDSetting.mPointingRadius
+            && Math.abs(mStartY - yc) < TDSetting.mPointingRadius ) {
+            doSelectAt( xs, ys, mSelectSize );
+          }
         }
         mEditMove = false;
       } else if ( mMode == MODE_SHIFT ) {
@@ -5957,13 +5972,20 @@ public class DrawingWindow extends ItemDrawer
       mStartX = xc;
       mStartY = yc;
       mEditMove = true;
+      mAffineGizmoDrag = null;
       SelectionPoint pt = mDrawingSurface.hotItem();
       if ( pt != null ) {
-        if ( mLandscape ) {
-          mEditMove = ( pt.distance( -ys, xs ) < d0 );
-        } else {
-          mEditMove = ( pt.distance( xs, ys ) < d0 );
+        float edit_x = mLandscape ? -ys : xs;
+        float edit_y = mLandscape ? xs : ys;
+        if ( pt.mItem instanceof DrawingPointPath ) {
+          DrawingPointPath affine = (DrawingPointPath)pt.mItem;
+          if ( affine.hasSketchAffineTransform() ) {
+            int handle = SketchAffineGizmo.hitHandle( affine, edit_x, edit_y, mZoom );
+            mAffineGizmoDrag = SketchAffineGizmo.beginDrag( affine, handle, edit_x, edit_y, mZoom );
+            if ( mAffineGizmoDrag != null ) mEditMove = false;
+          }
         }
+        if ( mAffineGizmoDrag == null ) mEditMove = ( pt.distance( edit_x, edit_y ) < d0 );
       } 
       // doSelectAt( xs, ys, mSelectSize );
       mSaveX = xc;
@@ -6125,6 +6147,13 @@ public class DrawingWindow extends ItemDrawer
         TDAzimuth.mRefAzimuth = TDMath.in360( TDAzimuth.mRefAzimuth + x_shift/2 );
         setButtonAzimuth();
         // TDLog.v("rotated azimuth by " + x_shift + ": " + TDAzimuth.mRefAzimuth );
+      } else if ( mMode == MODE_EDIT && mAffineGizmoDrag != null ) {
+        float edit_x = mLandscape ? -ys : xs;
+        float edit_y = mLandscape ? xs : ys;
+        if ( mAffineGizmoDrag.update( edit_x, edit_y ) ) {
+          mDrawingSurface.requestSceneRender();
+          modified();
+        }
       } else if (  mMode == MODE_MOVE
                || mMode == MODE_PLACE_SECTION
                || (mMode == MODE_EDIT && mEditMove ) 

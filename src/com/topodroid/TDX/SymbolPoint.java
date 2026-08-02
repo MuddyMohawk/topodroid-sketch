@@ -54,6 +54,9 @@ public class SymbolPoint extends Symbol
   Path   mPath;
   // private Path   mOrigPath;
   private String mPathStr = null;
+  private String mDetailPathStr = null;
+  private float mDetailStrokeScale = 1.0f;
+  private Path mOrigOcclusionSilhouette = null;
   // private Path   mScaledPath;
   String mName;
   private SymbolPointDxf mDxf;
@@ -63,6 +66,8 @@ public class SymbolPoint extends Symbol
   int mHasText;                // whether the point has a text (1), value (2), or none (0)
   boolean mOrientable;         // PRIVATE
   boolean mScalable = true;    // whether the user can scale point placements
+  boolean mAffine = false;     // Sketch: point placements may carry a free 2x2 transform
+  String mDefaultOccludeGroup = null; // Sketch: placement default, never retroactive
   double mOrientation;         // orientation [degrees]
   boolean mDeclinable = false; // whether the symbol should be rotated by the declination (must be orientable)
   // SymbolPointBasic mPoint1; // basic point
@@ -73,6 +78,10 @@ public class SymbolPoint extends Symbol
   /** @return true if the point is orientable
    */
   @Override public boolean isOrientable() { return mOrientable; }
+
+  boolean isAffine() { return mAffine; }
+
+  String defaultOccludeGroup() { return mDefaultOccludeGroup; }
 
   /** @return true if the point is declinable
    */
@@ -137,6 +146,22 @@ public class SymbolPoint extends Symbol
   Path getOrigPath( )
   {
     return makeScaledPath( mPathStr, TDSetting.pointInkUnit() );
+  }
+
+  /** @return optional independently weighted point-detail path, in original orientation
+   */
+  Path getOrigDetailPath( )
+  {
+    return ( mDetailPathStr == null ) ? null : makeScaledPath( mDetailPathStr, TDSetting.pointInkUnit() );
+  }
+
+  /** @return detail stroke width as a fraction of the normal point stroke
+   */
+  float getDetailStrokeScale( ) { return mDetailStrokeScale; }
+
+  Path getOrigOcclusionSilhouette()
+  {
+    return ( mOrigOcclusionSilhouette == null ) ? null : new Path( mOrigOcclusionSilhouette );
   }
 
   /** @return the point paint
@@ -261,12 +286,17 @@ public class SymbolPoint extends Symbol
    *      has_text yes | NO
    *      has_value yes | NO
    *      orientation yes | NO
+   *      sketch_affine yes | NO
+   *      sketch_occlude GROUP_NAME
    *      scalable yes | NO
    *      color 0xHHHHHH_COLOR 0xAA_ALPHA
    *      style fill | STROKE 
    *      path
    *        MULTILINE_PATH_STRING
    *      endpath
+   *      detail_path STROKE_SCALE
+   *        MULTILINE_PATH_STRING
+   *      enddetail_path
    *      endsymbol
    */
   private void readFile( String pathname, String locale, String iso )
@@ -280,6 +310,8 @@ public class SymbolPoint extends Symbol
     int alpha      = 0xff;
     Paint.Style style = Paint.Style.STROKE;
     String path    = null;
+    String detail_path = null;
+    float detail_stroke_scale = 1.0f;
     String options = null;
     int cnt   = 0;
 
@@ -305,7 +337,12 @@ public class SymbolPoint extends Symbol
               color = TDColor.TRANSPARENT;
               alpha = 0xff;
               path = null;
+              detail_path = null;
+              detail_stroke_scale = 1.0f;
               mScalable = true;
+              mAffine = false;
+              mDefaultOccludeGroup = null;
+              mOrigOcclusionSilhouette = null;
               in_symbol = true;
             }
           } else {
@@ -362,6 +399,28 @@ public class SymbolPoint extends Symbol
                 ++k; while ( k < s && vals[k].length() == 0 ) ++k;
                 if ( k < s ) {
                   mOrientable = ( vals[k].equals("yes") || vals[k].equals( TDString.ONE ) );
+                }
+              }
+            } else if ( vals[k].equals("sketch_affine") ) {
+              if ( cnt == 0 ) {
+                ++k; while ( k < s && vals[k].length() == 0 ) ++k;
+                if ( k < s ) {
+                  if ( vals[k].equals("yes") || vals[k].equals( TDString.ONE ) ) {
+                    mAffine = true;
+                  } else if ( vals[k].equals("no") || vals[k].equals("NO") || vals[k].equals("0") ) {
+                    mAffine = false;
+                  } else {
+                    TDLog.e("Unknown sketch_affine value " + vals[k] );
+                  }
+                }
+              }
+            } else if ( vals[k].equals("sketch_occlude") ) {
+              if ( cnt == 0 ) {
+                ++k; while ( k < s && vals[k].length() == 0 ) ++k;
+                if ( k < s && SketchOcclusionCodec.isValidGroup( vals[k] ) ) {
+                  mDefaultOccludeGroup = vals[k];
+                } else {
+                  TDLog.e("Invalid sketch_occlude group" );
                 }
               }
             } else if ( vals[k].equals("scalable") ) {
@@ -433,6 +492,27 @@ public class SymbolPoint extends Symbol
                   path = path + " " + line;
                 }
               }
+            } else if ( vals[k].equals("detail_path") ) {
+              ++k; while ( k < s && vals[k].length() == 0 ) ++k;
+              if ( k < s ) {
+                try {
+                  float parsed_scale = Float.parseFloat( vals[k] );
+                  if ( Float.isFinite( parsed_scale ) && parsed_scale > 0.0f ) {
+                    detail_stroke_scale = parsed_scale;
+                  } else {
+                    TDLog.e("Invalid point detail scale " + vals[k] );
+                  }
+                } catch ( NumberFormatException e ) {
+                  TDLog.e("Non-numeric point detail scale " + vals[k] );
+                }
+              }
+              StringBuilder detail = new StringBuilder();
+              while ( ( line = br.readLine() ) != null ) {
+                if ( line.trim().startsWith( "enddetail_path" ) ) break;
+                if ( detail.length() > 0 ) detail.append( ' ' );
+                detail.append( line );
+              }
+              if ( detail.length() > 0 ) detail_path = detail.toString();
             } else if ( vals[k].equals("endsymbol") ) {
               if ( name == null ) {
                 TDLog.e("NULL name " + pathname );
@@ -449,6 +529,16 @@ public class SymbolPoint extends Symbol
                   makePointPath( path, TDSetting.pointInkUnit() );
                   // mOrigPath = new Path( mPath );
                   mPathStr  = path;
+                  mDetailPathStr = detail_path;
+                  mDetailStrokeScale = detail_stroke_scale;
+                  if ( mDefaultOccludeGroup != null ) {
+                    mOrigOcclusionSilhouette = makeOuterSilhouette( path, TDSetting.pointInkUnit() );
+                    if ( mOrigOcclusionSilhouette == null || mOrigOcclusionSilhouette.isEmpty() ) {
+                      TDLog.e("Invalid occlusion silhouette " + pathname );
+                      mOrigOcclusionSilhouette = null;
+                      mDefaultOccludeGroup = null;
+                    }
+                  }
                   mDefaultOptions = options;
                   // TDLog.v("POINT " + "Name " + mName + " ThName " + getThName() );
                   // mPoint1 = new SymbolPointBasic( name, th_name, null, fname, color, path );
@@ -849,6 +939,85 @@ public class SymbolPoint extends Symbol
       }
     }
     return ret;
+  }
+
+  /** Build the closed first non-degenerate structural subpath used as a Sketch occlusion mask. */
+  static Path makeOuterSilhouette( String path, float unit )
+  {
+    if ( path == null ) return null;
+    String[] values = path.trim().split( "\\s+" );
+    Path result = new Path();
+    boolean started = false;
+    boolean drew = false;
+    boolean intrinsically_closed = false;
+    float start_x = 0.0f;
+    float start_y = 0.0f;
+    float end_x = 0.0f;
+    float end_y = 0.0f;
+    try {
+      for ( int i = 0; i < values.length; ) {
+        String command = values[i++];
+        if ( "moveTo".equals( command ) ) {
+          if ( i + 1 >= values.length ) return null;
+          float x = Float.parseFloat( values[i++] ) * unit;
+          float y = Float.parseFloat( values[i++] ) * unit;
+          if ( drew ) break;
+          if ( started ) result.rewind();
+          result.moveTo( x, y );
+          start_x = end_x = x;
+          start_y = end_y = y;
+          started = true;
+        } else if ( "lineTo".equals( command ) ) {
+          if ( ! started || i + 1 >= values.length ) return null;
+          end_x = Float.parseFloat( values[i++] ) * unit;
+          end_y = Float.parseFloat( values[i++] ) * unit;
+          result.lineTo( end_x, end_y );
+          drew = true;
+        } else if ( "cubicTo".equals( command ) ) {
+          if ( ! started || i + 5 >= values.length ) return null;
+          float x1 = Float.parseFloat( values[i++] ) * unit;
+          float y1 = Float.parseFloat( values[i++] ) * unit;
+          float x2 = Float.parseFloat( values[i++] ) * unit;
+          float y2 = Float.parseFloat( values[i++] ) * unit;
+          end_x = Float.parseFloat( values[i++] ) * unit;
+          end_y = Float.parseFloat( values[i++] ) * unit;
+          result.cubicTo( x1, y1, x2, y2, end_x, end_y );
+          drew = true;
+        } else if ( "addCircle".equals( command ) ) {
+          if ( drew || i + 2 >= values.length ) break;
+          float x = Float.parseFloat( values[i++] ) * unit;
+          float y = Float.parseFloat( values[i++] ) * unit;
+          float radius = Float.parseFloat( values[i++] ) * unit;
+          if ( radius <= 0.0f ) return null;
+          result.addCircle( x, y, radius, Path.Direction.CCW );
+          started = drew = intrinsically_closed = true;
+          break;
+        } else if ( "arcTo".equals( command ) ) {
+          if ( ! started || i + 5 >= values.length ) return null;
+          float left = Float.parseFloat( values[i++] ) * unit;
+          float top = Float.parseFloat( values[i++] ) * unit;
+          float right = Float.parseFloat( values[i++] ) * unit;
+          float bottom = Float.parseFloat( values[i++] ) * unit;
+          float start = Float.parseFloat( values[i++] );
+          float sweep = Float.parseFloat( values[i++] );
+          result.arcTo( new RectF( left, top, right, bottom ), start, sweep );
+          double end_radians = Math.toRadians( start + sweep );
+          end_x = 0.5f * ( left + right ) + 0.5f * ( right - left ) * (float)Math.cos( end_radians );
+          end_y = 0.5f * ( top + bottom ) + 0.5f * ( bottom - top ) * (float)Math.sin( end_radians );
+          drew = true;
+        } else {
+          // Unknown commands do not have a known arity, so the mask is unsafe.
+          return null;
+        }
+      }
+    } catch ( NumberFormatException e ) {
+      return null;
+    }
+    if ( ! started || ! drew ) return null;
+    float tolerance = Math.max( 0.0001f, Math.abs( unit ) * 0.001f );
+    if ( ! intrinsically_closed && ( Math.abs( end_x - start_x ) > tolerance || Math.abs( end_y - start_y ) > tolerance ) ) return null;
+    result.close();
+    return result;
   }
 
   /** @return a paint

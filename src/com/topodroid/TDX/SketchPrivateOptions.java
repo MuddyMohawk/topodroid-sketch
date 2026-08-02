@@ -15,6 +15,8 @@ final class SketchPrivateOptions
 {
   static final String OPTION_BRUSH = "-tdx-brush";
   static final String OPTION_TEXT = "-tdx-text";
+  static final String OPTION_AFFINE = "-tdx-affine";
+  static final String OPTION_OCCLUDE = "-tdx-occlude";
 
   private SketchPrivateOptions() { }
 
@@ -48,7 +50,7 @@ final class SketchPrivateOptions
 
   static String stripAll( String options )
   {
-    return stripOption( stripOption( options, OPTION_BRUSH ), OPTION_TEXT );
+    return stripOption( stripOption( stripOption( stripOption( options, OPTION_BRUSH ), OPTION_TEXT ), OPTION_AFFINE ), OPTION_OCCLUDE );
   }
 
   static String stripOption( String options, String key )

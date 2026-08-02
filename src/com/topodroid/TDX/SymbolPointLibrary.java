@@ -113,6 +113,12 @@ public class SymbolPointLibrary extends SymbolLibrary
   double getPointOrientation( int k )
   { return ( k < 0 || k >= size() )? 0.0 : ((SymbolPoint)mSymbols.get(k)).mOrientation; }
 
+  boolean isPointAffine( int k )
+  { return k >= 0 && k < size() && ((SymbolPoint)mSymbols.get(k)).isAffine(); }
+
+  String pointDefaultOccludeGroup( int k )
+  { return ( k < 0 || k >= size() ) ? null : ((SymbolPoint)mSymbols.get(k)).defaultOccludeGroup(); }
+
   /** reset the orientation of all points
    */
   @Override
@@ -143,6 +149,25 @@ public class SymbolPointLibrary extends SymbolLibrary
   Path getPointOrigPath( int k )
   {
     return ( k < 0 || k >= size() )? null : ((SymbolPoint)mSymbols.get(k)).getOrigPath( );
+  }
+
+  /** @return optional original detail path for a point symbol
+   */
+  Path getPointOrigDetailPath( int k )
+  {
+    return ( k < 0 || k >= size() ) ? null : ((SymbolPoint)mSymbols.get(k)).getOrigDetailPath();
+  }
+
+  /** @return detail stroke width as a fraction of the normal point stroke
+   */
+  float getPointDetailStrokeScale( int k )
+  {
+    return ( k < 0 || k >= size() ) ? 1.0f : ((SymbolPoint)mSymbols.get(k)).getDetailStrokeScale();
+  }
+
+  Path getPointOrigOcclusionSilhouette( int k )
+  {
+    return ( k < 0 || k >= size() ) ? null : ((SymbolPoint)mSymbols.get(k)).getOrigOcclusionSilhouette();
   }
 
   // ========================================================================

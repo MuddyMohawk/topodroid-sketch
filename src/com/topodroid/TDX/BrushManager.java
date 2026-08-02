@@ -248,12 +248,17 @@ public class BrushManager
   public static boolean isPointDeclinable( int index )  { return mPointLib != null && mPointLib.isSymbolDeclinable( index ); } // TH2EDIT package
   public static boolean isPointOrientable( int index )  { return mPointLib != null && mPointLib.isSymbolOrientable( index ); } // TH2EDIT package
   public static boolean isPointScalable( int index )    { return mPointLib == null || mPointLib.isSymbolScalable( index ); }
+  public static boolean isPointAffine( int index )      { return mPointLib != null && mPointLib.isPointAffine( index ); }
+  static String pointDefaultOccludeGroup( int index )   { return (mPointLib == null)? null : mPointLib.pointDefaultOccludeGroup( index ); }
   static double getPointOrientation( int index ) { return (mPointLib == null)? 0 : mPointLib.getPointOrientation( index ); }
   // test should not be necessary but Xperia Z Ultra Android 5.1 crashed 2019-10-07
   public static void resetPointOrientations( )              { if ( mPointLib != null ) mPointLib.resetOrientations(); } // TH2EDIT package
   public static void rotateGradPoint( int index, double a ) { if ( mPointLib != null ) mPointLib.rotateGrad( index, a ); } // TH2EDIT package
   static Path getPointPath( int i )                  { return (mPointLib == null)? null : mPointLib.getPointPath( i ); }
   static Path getPointOrigPath( int i )              { return (mPointLib == null)? null : mPointLib.getPointOrigPath( i ); }
+  static Path getPointOrigDetailPath( int i )        { return (mPointLib == null)? null : mPointLib.getPointOrigDetailPath( i ); }
+  static float getPointDetailStrokeScale( int i )    { return (mPointLib == null)? 1.0f : mPointLib.getPointDetailStrokeScale( i ); }
+  static Path getPointOrigOcclusionSilhouette( int i ) { return (mPointLib == null)? null : mPointLib.getPointOrigOcclusionSilhouette( i ); }
 
   // system and special points
   public static boolean isPointUser( int index )    { return mPointLib != null && index == mPointLib.mPointUserIndex; }

@@ -30,6 +30,8 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Matrix;
+import android.graphics.Region;
+import android.graphics.PointF;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -50,6 +52,12 @@ public class DrawingPointPath extends DrawingPath
   public volatile String mPointText;   // point text value (if any)
   public IDrawingLink mLink;  // linked drawing item
   private SketchBrushStyle mSketchBrushStyle;
+  private SketchAffineTransform mSketchAffineTransform;
+  private float mAffineBasePointScale = Float.NaN;
+  private String mSketchOcclusionGroup;
+  private Path mOcclusionSilhouette;
+  private Path mDetailPath;
+  private float mDetailStrokeScale = 1.0f;
 
   // FIXME-COPYPATH
   // @Override
@@ -124,16 +132,17 @@ public class DrawingPointPath extends DrawingPath
     mPointType = type;
     setCenter( x, y );
     // mScale   = PointScale.SCALE_NONE;
+    mScale = scale;
     mOrientation = 0.0;
+    if ( BrushManager.isPointOrientable( mPointType ) ) mOrientation = BrushManager.getPointOrientation( mPointType );
     setOptions( BrushManager.getPointDefaultOptions( mPointType ) );
+    if ( BrushManager.isPointAffine( mPointType ) ) setSketchAffineTransform( SketchAffineTransform.identity() );
+    String occlusion_group = BrushManager.pointDefaultOccludeGroup( mPointType );
+    if ( occlusion_group != null ) setSketchOcclusionGroup( occlusion_group );
     mPointText = null; // getTextFromOptions( options ); // this can also reset mOptions
     mLevel     = BrushManager.getPointLevel( mPointType );
 
-    if ( BrushManager.isPointOrientable( mPointType ) ) {
-      mOrientation = BrushManager.getPointOrientation( mPointType );
-    }
     setPathPaint( BrushManager.getPointPaint( mPointType ) );
-    mScale = scale;
     resetPath( 1.0f );
     mLink = null;
   }
@@ -154,16 +163,14 @@ public class DrawingPointPath extends DrawingPath
     mPointType = type;
     setCenter( x, y );
     // mScale   = PointScale.SCALE_NONE;
+    mScale = scale;
     mOrientation = 0.0;
+    if ( BrushManager.isPointOrientable( type ) ) mOrientation = BrushManager.getPointOrientation(type);
     setOptions( options );
     mPointText = text; // getTextFromOptions( options ); // this can also reset mOptions
     mLevel     = BrushManager.getPointLevel( type );
 
-    if ( BrushManager.isPointOrientable( type ) ) {
-      mOrientation = BrushManager.getPointOrientation(type);
-    }
     setPathPaint( BrushManager.getPointPaint( mPointType ) );
-    mScale = scale;
     resetPath( 1.0f );
     mLink = null;
     // TDLog.v( "Point cstr " + type + " orientation " + mOrientation );
@@ -291,6 +298,8 @@ public class DrawingPointPath extends DrawingPath
     cx += dx;
     cy += dy;
     mPath.offset( dx, dy );
+    if ( mDetailPath != null ) mDetailPath.offset( dx, dy );
+    if ( mOcclusionSilhouette != null ) mOcclusionSilhouette.offset( dx, dy );
     left   += dx;
     right  += dx;
     top    += dy;
@@ -306,11 +315,18 @@ public class DrawingPointPath extends DrawingPath
   {
     cx *= z;
     cy *= z;
+    if ( mSketchAffineTransform != null ) {
+      SketchAffineTransform scaled = mSketchAffineTransform.scaleBy( z );
+      if ( scaled != null ) {
+        storeSketchAffineTransform( scaled );
+        resetPath( 1.0f );
+        return;
+      }
+    }
     mPath.transform( m );
-    left   *= z;
-    right  *= z;
-    top    *= z;
-    bottom *= z;
+    if ( mDetailPath != null ) mDetailPath.transform( m );
+    if ( mOcclusionSilhouette != null ) mOcclusionSilhouette.transform( m );
+    updatePointBounds();
   }
 
   /** affine transform the point symbol - with respect to the scene
@@ -323,11 +339,18 @@ public class DrawingPointPath extends DrawingPath
     float x = mm[0] * cx + mm[1] * cy + mm[2];
          cy = mm[3] * cx + mm[4] * cy + mm[5];
          cx = x;
+    if ( mSketchAffineTransform != null ) {
+      SketchAffineTransform transformed = mSketchAffineTransform.leftMultiply( mm[0], mm[1], mm[3], mm[4] );
+      if ( transformed != null ) {
+        storeSketchAffineTransform( transformed );
+        resetPath( 1.0f );
+        return;
+      }
+    }
     mPath.transform( m );
-    left   = cx;   // simplified
-    right  = cx+1;
-    top    = cy;
-    bottom = cy+1;
+    if ( mDetailPath != null ) mDetailPath.transform( m );
+    if ( mOcclusionSilhouette != null ) mOcclusionSilhouette.transform( m );
+    updatePointBounds();
   }
 
   // from ICanvasCommand
@@ -433,6 +456,7 @@ public class DrawingPointPath extends DrawingPath
           canvas.rotate( 90, cx, cy );
         }
         drawSketchStyledPath( mPath, canvas );
+        drawSketchDetailPath( canvas );
         if ( mLink != null ) {
           Path link = new Path();
           link.moveTo( cx, cy );
@@ -468,6 +492,7 @@ public class DrawingPointPath extends DrawingPath
           canvas.rotate( 90, cx, cy );
         }
         drawSketchStyledPath( mPath, canvas, xor_color );
+        drawSketchDetailPath( canvas, xor_color );
         if ( mLink != null ) {
           Path link = new Path();
           link.moveTo( cx, cy );
@@ -486,6 +511,15 @@ public class DrawingPointPath extends DrawingPath
   void setScale( int scale )
   {
     if ( ! BrushManager.isPointScalable( mPointType ) ) return;
+    if ( mSketchAffineTransform != null ) {
+      float exact = SketchPointScale.legacyScaleValue( scale );
+      mAffineBasePointScale = exact;
+      mSketchBrushStyle = ( mSketchBrushStyle == null ) ? SketchBrushStyle.pointScaleOnly( exact ) : mSketchBrushStyle.withPointScale( exact );
+      mOptions = SketchBrushStyleCodec.storeInOptions( mOptions, mSketchBrushStyle );
+      syncLegacyFromAffine();
+      resetPath( 1.0f );
+      return;
+    }
     if ( scale != mScale ) {
       mScale = scale;
       if ( mSketchBrushStyle != null ) {
@@ -504,9 +538,14 @@ public class DrawingPointPath extends DrawingPath
   {
     if ( ! BrushManager.isPointScalable( mPointType ) ) return false;
     float normalized = SketchPointScale.normalize( scale, getSketchPointScaleValue() );
-    mScale = SketchPointScale.nearestLegacyScale( normalized );
     mSketchBrushStyle = ( mSketchBrushStyle == null ) ? SketchBrushStyle.pointScaleOnly( normalized ) : mSketchBrushStyle.withPointScale( normalized );
     mOptions = SketchBrushStyleCodec.storeInOptions( mOptions, mSketchBrushStyle );
+    if ( mSketchAffineTransform != null ) {
+      mAffineBasePointScale = normalized;
+      syncLegacyFromAffine();
+    } else {
+      mScale = SketchPointScale.nearestLegacyScale( normalized );
+    }
     resetPath( 1.0f );
     return true;
   }
@@ -528,6 +567,7 @@ public class DrawingPointPath extends DrawingPath
    */
   public float getSketchPointScaleValue()
   {
+    if ( mSketchAffineTransform != null && Float.isFinite( mAffineBasePointScale ) ) return mAffineBasePointScale;
     return ( mSketchBrushStyle != null ) ? mSketchBrushStyle.pointScaleOr( getScaleValue() ) : getScaleValue();
   }
 
@@ -553,9 +593,21 @@ public class DrawingPointPath extends DrawingPath
    */
   void setSketchBrushStyle( SketchBrushStyle style )
   {
+    if ( mSketchAffineTransform != null && ( style == null || ! style.hasPointScale() ) ) {
+      float base = Float.isFinite( mAffineBasePointScale ) ? mAffineBasePointScale : SketchPointScale.legacyScaleValue( mScale );
+      style = ( style == null ) ? SketchBrushStyle.pointScaleOnly( base ) : style.withPointScale( base );
+    }
     mSketchBrushStyle = style;
-    if ( style != null && style.hasPointScale() ) mScale = SketchPointScale.nearestLegacyScale( style.pointScaleOr( getScaleValue() ) );
+    if ( style != null && style.hasPointScale() ) {
+      float point_scale = style.pointScaleOr( getScaleValue() );
+      if ( mSketchAffineTransform != null ) {
+        mAffineBasePointScale = point_scale;
+      } else {
+        mScale = SketchPointScale.nearestLegacyScale( point_scale );
+      }
+    }
     mOptions = SketchBrushStyleCodec.storeInOptions( mOptions, style );
+    if ( mSketchAffineTransform != null ) syncLegacyFromAffine();
     if ( mPath != null ) resetPath( 1.0f );
   }
 
@@ -571,7 +623,19 @@ public class DrawingPointPath extends DrawingPath
   {
     super.setOptions( options );
     mSketchBrushStyle = SketchBrushStyleCodec.fromOptions( mOptions );
-    if ( mSketchBrushStyle != null && mSketchBrushStyle.hasPointScale() ) {
+    SketchAffineTransform parsed_affine = SketchAffineTransformCodec.fromOptions( mOptions );
+    mSketchAffineTransform = BrushManager.isPointAffine( mPointType ) ? parsed_affine : null;
+    String parsed_group = SketchOcclusionCodec.fromOptions( mOptions );
+    String default_group = BrushManager.pointDefaultOccludeGroup( mPointType );
+    mSketchOcclusionGroup = ( parsed_group != null && parsed_group.equals( default_group )
+        && BrushManager.getPointOrigOcclusionSilhouette( mPointType ) != null ) ? parsed_group : null;
+    mAffineBasePointScale = Float.NaN;
+    if ( mSketchAffineTransform != null ) {
+      mAffineBasePointScale = ( mSketchBrushStyle != null && mSketchBrushStyle.hasPointScale() )
+          ? mSketchBrushStyle.pointScaleOr( SketchPointScale.legacyScaleValue( mScale ) )
+          : SketchPointScale.legacyScaleValue( mScale );
+      syncLegacyFromAffine();
+    } else if ( mSketchBrushStyle != null && mSketchBrushStyle.hasPointScale() ) {
       mScale = SketchPointScale.nearestLegacyScale( mSketchBrushStyle.pointScaleOr( getScaleValue() ) );
     }
     if ( mPath != null ) resetPath( 1.0f );
@@ -585,12 +649,227 @@ public class DrawingPointPath extends DrawingPath
     // TDLog.v( "Reset path " + mOrientation + " scale " + mScale );
     Matrix m = new Matrix();
     if ( ! BrushManager.isPointLabel( mPointType ) ) {
-      if ( BrushManager.isPointOrientable( mPointType ) ) {
-        m.postRotate( (float)mOrientation );
-      }
       f *= getSketchPointFootprintScaleValue();
-      m.postScale(f,f);
+      if ( mSketchAffineTransform != null ) {
+        m = mSketchAffineTransform.matrix( f );
+      } else {
+        if ( BrushManager.isPointOrientable( mPointType ) ) m.postRotate( (float)mOrientation );
+        m.postScale(f,f);
+      }
       makePath( BrushManager.getPointOrigPath( mPointType ), m, cx, cy );
+      Path detail = BrushManager.getPointOrigDetailPath( mPointType );
+      if ( detail == null || detail.isEmpty() ) {
+        mDetailPath = null;
+      } else {
+        mDetailPath = new Path( detail );
+        mDetailPath.transform( m );
+        mDetailPath.offset( cx, cy );
+      }
+      mDetailStrokeScale = BrushManager.getPointDetailStrokeScale( mPointType );
+      Path silhouette = BrushManager.getPointOrigOcclusionSilhouette( mPointType );
+      if ( mSketchOcclusionGroup == null || silhouette == null || silhouette.isEmpty() ) {
+        mOcclusionSilhouette = null;
+      } else {
+        mOcclusionSilhouette = new Path( silhouette );
+        mOcclusionSilhouette.transform( m );
+        mOcclusionSilhouette.offset( cx, cy );
+      }
+      updatePointBounds();
+    }
+  }
+
+  private void updatePointBounds()
+  {
+    RectF bounds = new RectF();
+    boolean has_path = mPath != null && ! mPath.isEmpty();
+    if ( has_path ) mPath.computeBounds( bounds, true );
+    if ( mDetailPath != null && ! mDetailPath.isEmpty() ) {
+      RectF detail_bounds = new RectF();
+      mDetailPath.computeBounds( detail_bounds, true );
+      if ( has_path ) bounds.union( detail_bounds ); else { bounds.set( detail_bounds ); has_path = true; }
+    }
+    if ( ! has_path ) {
+      left = cx;
+      right = cx + 1.0f;
+      top = cy;
+      bottom = cy + 1.0f;
+      return;
+    }
+    Paint point_paint = getSketchPointPaint();
+    float stroke = ( point_paint == null ) ? 0.0f : Math.abs( point_paint.getStrokeWidth() );
+    float half_stroke = 0.5f * stroke;
+    left = bounds.left - half_stroke;
+    right = bounds.right + half_stroke;
+    top = bounds.top - half_stroke;
+    bottom = bounds.bottom + half_stroke;
+  }
+
+  boolean hasSketchAffineTransform() { return mSketchAffineTransform != null; }
+
+  SketchAffineTransform getSketchAffineTransform() { return mSketchAffineTransform; }
+
+  boolean setSketchAffineTransform( SketchAffineTransform transform )
+  {
+    if ( transform == null || ! BrushManager.isPointAffine( mPointType ) ) return false;
+    if ( ! Float.isFinite( mAffineBasePointScale ) ) {
+      mAffineBasePointScale = ( mSketchBrushStyle != null && mSketchBrushStyle.hasPointScale() )
+          ? mSketchBrushStyle.pointScaleOr( SketchPointScale.legacyScaleValue( mScale ) )
+          : SketchPointScale.legacyScaleValue( mScale );
+    }
+    if ( mSketchBrushStyle == null || ! mSketchBrushStyle.hasPointScale() ) {
+      mSketchBrushStyle = ( mSketchBrushStyle == null ) ? SketchBrushStyle.pointScaleOnly( mAffineBasePointScale )
+                                                        : mSketchBrushStyle.withPointScale( mAffineBasePointScale );
+      mOptions = SketchBrushStyleCodec.storeInOptions( mOptions, mSketchBrushStyle );
+    }
+    storeSketchAffineTransform( transform );
+    if ( mPath != null ) resetPath( 1.0f );
+    return true;
+  }
+
+  private void storeSketchAffineTransform( SketchAffineTransform transform )
+  {
+    mSketchAffineTransform = transform;
+    mOptions = SketchAffineTransformCodec.storeInOptions( mOptions, transform );
+    syncLegacyFromAffine();
+  }
+
+  private void syncLegacyFromAffine()
+  {
+    if ( mSketchAffineTransform == null ) return;
+    mOrientation = TDMath.in360( mSketchAffineTransform.closestRotationDegrees() );
+    if ( mSketchBrushStyle == null || ! mSketchBrushStyle.hasPointScale() ) return;
+    float base = Float.isFinite( mAffineBasePointScale ) ? mAffineBasePointScale : SketchPointScale.legacyScaleValue( mScale );
+    mScale = SketchPointScale.nearestLegacyScale( base * mSketchAffineTransform.closestUniformScale() );
+  }
+
+  boolean hasSketchOcclusion() { return mSketchOcclusionGroup != null && mOcclusionSilhouette != null; }
+
+  String getSketchOcclusionGroup() { return mSketchOcclusionGroup; }
+
+  boolean setSketchOcclusionGroup( String group )
+  {
+    String default_group = BrushManager.pointDefaultOccludeGroup( mPointType );
+    if ( ! SketchOcclusionCodec.isValidGroup( group ) || ! group.equals( default_group )
+        || BrushManager.getPointOrigOcclusionSilhouette( mPointType ) == null ) return false;
+    mSketchOcclusionGroup = group;
+    mOptions = SketchOcclusionCodec.storeInOptions( mOptions, group );
+    if ( mPath != null ) resetPath( 1.0f );
+    return true;
+  }
+
+  void prepareForOcclusionDraw( float scale )
+  {
+    if ( TDSetting.mUnscaledPoints ) resetPath( 4.0f * scale );
+  }
+
+  Path copyOcclusionSilhouette()
+  {
+    return ( mOcclusionSilhouette == null ) ? null : new Path( mOcclusionSilhouette );
+  }
+
+  Path copySketchStructurePath() { return ( mPath == null ) ? null : new Path( mPath ); }
+
+  Path copySketchDetailPath() { return ( mDetailPath == null ) ? null : new Path( mDetailPath ); }
+
+  Paint sketchPointPaintForOcclusion() { return getSketchPointPaint(); }
+
+  Paint sketchDetailPaintForOcclusion() { return getSketchDetailPaint(); }
+
+  float getSketchAffineFootprintScale() { return getSketchPointFootprintScaleValue(); }
+
+  RectF getSketchAffineLocalBounds()
+  {
+    Path silhouette = BrushManager.getPointOrigOcclusionSilhouette( mPointType );
+    if ( silhouette == null ) silhouette = BrushManager.getPointOrigPath( mPointType );
+    RectF bounds = new RectF();
+    if ( silhouette != null ) silhouette.computeBounds( bounds, true );
+    return bounds;
+  }
+
+  boolean mapSketchAffineLocalPoint( float local_x, float local_y, PointF output )
+  {
+    if ( output == null || mSketchAffineTransform == null ) return false;
+    float footprint = getSketchAffineFootprintScale();
+    output.x = cx + footprint * ( mSketchAffineTransform.m00 * local_x + mSketchAffineTransform.m01 * local_y );
+    output.y = cy + footprint * ( mSketchAffineTransform.m10 * local_x + mSketchAffineTransform.m11 * local_y );
+    return true;
+  }
+
+  boolean inverseSketchAffinePoint( float scene_x, float scene_y, float[] output )
+  {
+    if ( output == null || output.length < 2 || mSketchAffineTransform == null ) return false;
+    float footprint = getSketchAffineFootprintScale();
+    float det = mSketchAffineTransform.determinant() * footprint * footprint;
+    if ( det < SketchAffineTransform.MIN_DETERMINANT * footprint * footprint ) return false;
+    float dx = scene_x - cx;
+    float dy = scene_y - cy;
+    output[0] = footprint * ( mSketchAffineTransform.m11 * dx - mSketchAffineTransform.m01 * dy ) / det;
+    output[1] = footprint * ( -mSketchAffineTransform.m10 * dx + mSketchAffineTransform.m00 * dy ) / det;
+    return Float.isFinite( output[0] ) && Float.isFinite( output[1] );
+  }
+
+  boolean hitSketchAffineSilhouette( float scene_x, float scene_y, float scene_slop )
+  {
+    if ( mSketchAffineTransform == null ) return false;
+    Path silhouette = BrushManager.getPointOrigOcclusionSilhouette( mPointType );
+    if ( silhouette == null || silhouette.isEmpty() ) return false;
+    float[] local = new float[2];
+    if ( ! inverseSketchAffinePoint( scene_x, scene_y, local ) ) return false;
+    float footprint = getSketchAffineFootprintScale();
+    float min_axis = Math.min( (float)Math.hypot( mSketchAffineTransform.m00, mSketchAffineTransform.m10 ),
+                               (float)Math.hypot( mSketchAffineTransform.m01, mSketchAffineTransform.m11 ) );
+    float local_slop = ( footprint > 0.0f && min_axis > 0.0f ) ? Math.max( 0.0f, scene_slop ) / ( footprint * min_axis ) : 0.0f;
+    Path hit_path = new Path( silhouette );
+    if ( local_slop > 0.0f ) {
+      Paint outline = new Paint( Paint.ANTI_ALIAS_FLAG );
+      outline.setStyle( Paint.Style.STROKE );
+      outline.setStrokeWidth( 2.0f * local_slop );
+      outline.setStrokeJoin( Paint.Join.ROUND );
+      Path expanded = new Path();
+      outline.getFillPath( silhouette, expanded );
+      hit_path.addPath( expanded );
+    }
+    final float region_scale = 128.0f;
+    Matrix scale = new Matrix();
+    scale.setScale( region_scale, region_scale );
+    hit_path.transform( scale );
+    RectF hit_bounds = new RectF();
+    hit_path.computeBounds( hit_bounds, true );
+    Region clip = new Region( (int)Math.floor( hit_bounds.left ) - 2, (int)Math.floor( hit_bounds.top ) - 2,
+                              (int)Math.ceil( hit_bounds.right ) + 2, (int)Math.ceil( hit_bounds.bottom ) + 2 );
+    Region region = new Region();
+    region.setPath( hit_path, clip );
+    return region.contains( Math.round( local[0] * region_scale ), Math.round( local[1] * region_scale ) );
+  }
+
+  void drawVisibleOcclusionInk( Canvas canvas, Matrix matrix, RectF bbox, Path structure_ink, Path detail_ink,
+                                boolean landscape, int xor_color )
+  {
+    if ( ! intersects( bbox ) ) return;
+    int save = canvas.save();
+    try {
+      canvas.concat( matrix );
+      if ( landscape && ! BrushManager.isPointOrientable( mPointType ) ) canvas.rotate( 90, cx, cy );
+      Paint structure = sketchPointPaintForOcclusion();
+      if ( structure != null && structure_ink != null ) {
+        structure = ( xor_color > 0 ) ? DrawingPath.xorPaint( structure, xor_color ) : new Paint( structure );
+        structure.setStyle( Paint.Style.FILL );
+        canvas.drawPath( structure_ink, structure );
+      }
+      Paint detail = sketchDetailPaintForOcclusion();
+      if ( detail != null && detail_ink != null ) {
+        detail = ( xor_color > 0 ) ? DrawingPath.xorPaint( detail, xor_color ) : new Paint( detail );
+        detail.setStyle( Paint.Style.FILL );
+        canvas.drawPath( detail_ink, detail );
+      }
+      if ( mLink != null ) {
+        Path link = new Path();
+        link.moveTo( cx, cy );
+        link.lineTo( mLink.getLinkX(), mLink.getLinkY() );
+        canvas.drawPath( link, BrushManager.fixedOrangePaint );
+      }
+    } finally {
+      canvas.restoreToCount( save );
     }
   }
 
@@ -621,6 +900,39 @@ public class DrawingPointPath extends DrawingPath
     }
   }
 
+  private Paint getSketchDetailPaint()
+  {
+    Paint point = getSketchPointPaint();
+    if ( point == null ) return null;
+    Paint detail = new Paint( point );
+    detail.setStrokeWidth( point.getStrokeWidth() * mDetailStrokeScale );
+    return detail;
+  }
+
+  private void drawSketchDetailPath( Canvas canvas )
+  {
+    if ( mDetailPath == null ) return;
+    Paint paint = mPaint;
+    mPaint = getSketchDetailPaint();
+    try {
+      drawPath( mDetailPath, canvas );
+    } finally {
+      mPaint = paint;
+    }
+  }
+
+  private void drawSketchDetailPath( Canvas canvas, int xor_color )
+  {
+    if ( mDetailPath == null ) return;
+    Paint paint = mPaint;
+    mPaint = getSketchDetailPaint();
+    try {
+      drawPath( mDetailPath, canvas, xor_color );
+    } finally {
+      mPaint = paint;
+    }
+  }
+
   // void setPos( float x, float y ) 
   // {
   //   setCenter( x, y );
@@ -636,7 +948,7 @@ public class DrawingPointPath extends DrawingPath
       mLevel = BrushManager.getPointLevel( mPointType );
       setPathPaint( BrushManager.getPointPaint( mPointType ) );
       if ( ! BrushManager.isPointOrientable( mPointType ) ) mOrientation = 0.0;
-      resetPath( 1.0f );
+      setOptions( mOptions );
     }
   }
 
@@ -658,7 +970,16 @@ public class DrawingPointPath extends DrawingPath
   { 
     // TDLog.Log( TDLog.LOG_PATH, "Point " + mPointType + " set Orientation " + angle );
     // TDLog.v( "Point::set Orientation " + angle );
-    mOrientation = TDMath.in360( angle ); 
+    if ( mSketchAffineTransform != null ) {
+      float target = (float)TDMath.in360( angle );
+      float delta = target - (float)mOrientation;
+      if ( delta > 180.0f ) delta -= 360.0f;
+      if ( delta < -180.0f ) delta += 360.0f;
+      SketchAffineTransform rotated = mSketchAffineTransform.rotateBy( delta );
+      if ( rotated != null ) storeSketchAffineTransform( rotated );
+    } else {
+      mOrientation = TDMath.in360( angle );
+    }
     resetPath( 1.0f );
   }
 

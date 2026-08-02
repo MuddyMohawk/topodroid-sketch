@@ -41,7 +41,7 @@ import java.util.zip.ZipInputStream;
 public class TopoDroidSketchSymbolSliceInstrumentedTest
 {
   private static final int WIDTH = 1440;
-  private static final int HEIGHT = 7620;
+  private static final int HEIGHT = 7900;
   private static final float LEFT = 260.0f;
   private static final float COL = 370.0f;
   private static final float LINE_ROW = 70.0f;
@@ -170,6 +170,25 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                 entries.contains( "symbols_topodroid_sketch/point/gypsum-dripholes" ) );
     assertTrue( "Missing sketch sediment-cone point in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/point/sediment-cone" ) );
+    assertTrue( "Missing traced rounded breakdown point in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/point/boulder" ) );
+    assertTrue( "Missing traced angular breakdown point in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/point/angular-block" ) );
+    assertTrue( "Missing traced bedding-slab point in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/point/bedding-slab" ) );
+    String[] breakdownEntries = {
+      "symbols_topodroid_sketch/point/boulder",
+      "symbols_topodroid_sketch/point/angular-block",
+      "symbols_topodroid_sketch/point/bedding-slab"
+    };
+    for ( String breakdownEntry : breakdownEntries ) {
+      String symbol = readRawSymbolEntry( breakdownEntry );
+      assertTrue( breakdownEntry + " should declare affine editing", symbol.contains( "sketch_affine yes" ) );
+      assertTrue( breakdownEntry + " should declare breakdown occlusion",
+                  symbol.contains( "sketch_occlude breakdown" ) );
+      assertTrue( breakdownEntry + " should keep optional shading at quarter stroke weight",
+                  symbol.contains( "detail_path 0.25" ) );
+    }
     assertTrue( "Pool Fingers is deferred to a future line symbol",
                 ! entries.contains( "symbols_topodroid_sketch/point/pool-fingers" ) );
     assertTrue( "Shelfstone is deferred to a future line symbol",
@@ -380,6 +399,9 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawPointRow( canvas, label, "Aragonite", "aragonite", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Archeo exc.", "archeo-excavation", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Blocks", "blocks", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Round breakdown", "boulder", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Angular breakdown", "angular-block", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Bedding slab", "bedding-slab", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Small rocks", "debris:small", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Pebbles", "pebbles", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Bones", "bones", y, 0.0 ); y += POINT_ROW;

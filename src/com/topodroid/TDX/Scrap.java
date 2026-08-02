@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
 
 import android.graphics.Canvas;
@@ -42,6 +43,8 @@ public class Scrap
   private SelectionSet mSelected;
   private volatile List< DrawingLabelPath > mTextOverlaySnapshot = Collections.emptyList();
   private volatile boolean mTextOverlayDirty = true;
+  private volatile OcclusionSnapshot mOcclusionSnapshot = OcclusionSnapshot.EMPTY;
+  private volatile long mOcclusionFingerprint = Long.MIN_VALUE;
   private int mMultiselectionType = -1;  // current multiselection type (DRAWING_PATH_POINT / LINE / AREA
   private List< DrawingPath > mMultiselected;
   boolean isMultiselection = false; 
@@ -323,6 +326,20 @@ public class Scrap
       ( mode == Drawing.FILTER_ALL || mode == Drawing.FILTER_POINT )
         ? textOverlaySnapshot()
         : Collections.emptyList();
+    ArrayList< DrawingPointPath > affine_hits = new ArrayList<>();
+    if ( mode == Drawing.FILTER_ALL || mode == Drawing.FILTER_POINT ) {
+      synchronized( TDPath.mCommandsLock ) {
+        for ( int i = mCurrentStack.size() - 1; i >= 0; --i ) {
+          ICanvasCommand command = mCurrentStack.get( i );
+          if ( command.commandType() != 0 || ! ( command instanceof DrawingPointPath )
+              || command instanceof DrawingLabelPath ) continue;
+          DrawingPointPath point = (DrawingPointPath)command;
+          if ( ! point.hasSketchAffineTransform() ) continue;
+          if ( ! DrawingLevel.isLevelVisibleOrAnyLevelNoVisible( point ) ) continue;
+          if ( point.hitSketchAffineSilhouette( x, y, radius ) ) affine_hits.add( point );
+        }
+      }
+    }
     // synchronized ( TDPath.mSelectedLock ) {
     synchronized ( TDPath.mSelectionLock ) {
       mSelected.clear();
@@ -335,10 +352,16 @@ public class Scrap
           mSelected.addPoint( point );
         }
       }
+      for ( DrawingPointPath affine : affine_hits ) {
+        SelectionPoint point = new SelectionPoint( affine, null, null );
+        point.setDistance( 0.0f );
+        mSelected.addPoint( point );
+      }
       // FIXME_LATEST latest splays are not considered in the selection
       mSelection.selectAt( mSelected, x, y, radius, mode, legs, splays, stations, station_splay ); 
       selection_fixed.selectAt( mSelected, x, y, radius, mode, legs, splays, stations, station_splay ); // FIXME-HIDE
       mSelected.removeDuplicateTextItems();
+      mSelected.removeDuplicateAffineItems();
       // FIXME-HIDE if ( mSelected.mPoints.size() > 0 ) {
         // TDLog.v( "selected " + mSelected.mPoints.size() + " points " );
         mSelected.nextHotItem();
@@ -795,9 +818,27 @@ public class Scrap
   private boolean eraseAtSample( float x, float y, float erase_radius, EraseCommand eraseCmd, int erase_mode )
   {
     SelectionSet sel = new SelectionSet();
+    if ( erase_mode == Drawing.FILTER_ALL || erase_mode == Drawing.FILTER_POINT ) {
+      synchronized( TDPath.mCommandsLock ) {
+        for ( int i = mCurrentStack.size() - 1; i >= 0; --i ) {
+          ICanvasCommand command = mCurrentStack.get( i );
+          if ( command.commandType() != 0 || ! ( command instanceof DrawingPointPath )
+              || command instanceof DrawingLabelPath ) continue;
+          DrawingPointPath point = (DrawingPointPath)command;
+          if ( ! point.hasSketchAffineTransform() ) continue;
+          if ( ! DrawingLevel.isLevelVisibleOrAnyLevelNoVisible( point ) ) continue;
+          if ( point.hitSketchAffineSilhouette( x, y, erase_radius ) ) {
+            SelectionPoint hit = new SelectionPoint( point, null, null );
+            hit.setDistance( 0.0f );
+            sel.addPoint( hit );
+          }
+        }
+      }
+    }
     synchronized ( TDPath.mSelectionLock ) {
       mSelection.selectAtForErase( sel, x, y, erase_radius, erase_mode );
     }
+    sel.removeDuplicateAffineItems();
     boolean erased = false;
     if ( sel.size() > 0 ) {
       synchronized( TDPath.mCommandsLock ) {
@@ -3375,6 +3416,183 @@ public class Scrap
     }
   }
 
+  static boolean isOccludingPoint( DrawingPath path )
+  {
+    return path instanceof DrawingPointPath && ! ( path instanceof DrawingLabelPath )
+        && ((DrawingPointPath)path).hasSketchOcclusion();
+  }
+
+  boolean hasOccludingPoints()
+  {
+    synchronized( TDPath.mCommandsLock ) {
+      for ( ICanvasCommand command : mCurrentStack ) {
+        if ( command.commandType() == 0 && isOccludingPoint( (DrawingPath)command ) ) return true;
+      }
+    }
+    return false;
+  }
+
+  private OcclusionSnapshot occlusionSnapshot( float scale )
+  {
+    ArrayList< DrawingPointPath > visible = new ArrayList<>();
+    long fingerprint = 0xcbf29ce484222325L;
+    boolean with_levels = TDSetting.mWithLevels != 0;
+    fingerprint = mixOcclusionFingerprint( fingerprint, with_levels ? 1 : 0 );
+    for ( ICanvasCommand command : mCurrentStack ) {
+      if ( command.commandType() != 0 || ! ( command instanceof DrawingPointPath )
+          || command instanceof DrawingLabelPath ) continue;
+      DrawingPointPath point = (DrawingPointPath)command;
+      if ( ! point.hasSketchOcclusion() ) continue;
+      point.prepareForOcclusionDraw( scale );
+      boolean level_visible = ! with_levels || DrawingLevel.isLevelVisible( point );
+      fingerprint = mixOcclusionFingerprint( fingerprint, System.identityHashCode( point ) );
+      fingerprint = mixOcclusionFingerprint( fingerprint, point.mPointType );
+      fingerprint = mixOcclusionFingerprint( fingerprint, point.mLevel );
+      fingerprint = mixOcclusionFingerprint( fingerprint, level_visible ? 1 : 0 );
+      fingerprint = mixOcclusionFingerprint( fingerprint, Float.floatToIntBits( point.left ) );
+      fingerprint = mixOcclusionFingerprint( fingerprint, Float.floatToIntBits( point.top ) );
+      fingerprint = mixOcclusionFingerprint( fingerprint, Float.floatToIntBits( point.right ) );
+      fingerprint = mixOcclusionFingerprint( fingerprint, Float.floatToIntBits( point.bottom ) );
+      String options = point.getOptions();
+      fingerprint = mixOcclusionFingerprint( fingerprint, ( options == null ) ? 0 : options.hashCode() );
+      Paint paint = point.sketchPointPaintForOcclusion();
+      if ( paint != null ) {
+        fingerprint = mixOcclusionFingerprint( fingerprint, paint.getColor() );
+        fingerprint = mixOcclusionFingerprint( fingerprint, Float.floatToIntBits( paint.getStrokeWidth() ) );
+      }
+      if ( level_visible ) visible.add( point );
+    }
+    fingerprint = mixOcclusionFingerprint( fingerprint, visible.size() );
+    if ( fingerprint == mOcclusionFingerprint ) return mOcclusionSnapshot;
+    OcclusionSnapshot rebuilt = buildOcclusionSnapshot( visible );
+    mOcclusionSnapshot = rebuilt;
+    mOcclusionFingerprint = fingerprint;
+    return rebuilt;
+  }
+
+  private static long mixOcclusionFingerprint( long hash, int value )
+  {
+    hash ^= value;
+    return hash * 0x100000001b3L;
+  }
+
+  private static OcclusionSnapshot buildOcclusionSnapshot( ArrayList< DrawingPointPath > points )
+  {
+    if ( points.isEmpty() ) return OcclusionSnapshot.EMPTY;
+    IdentityHashMap< DrawingPointPath, OcclusionEntry > entries = new IdentityHashMap<>();
+    LinkedHashMap< String, ArrayList< DrawingPointPath > > groups = new LinkedHashMap<>();
+    for ( DrawingPointPath point : points ) {
+      entries.put( point, new OcclusionEntry( point, null, null ) );
+      String group_name = point.getSketchOcclusionGroup();
+      ArrayList< DrawingPointPath > group = groups.get( group_name );
+      if ( group == null ) {
+        group = new ArrayList<>();
+        groups.put( group_name, group );
+      }
+      group.add( point );
+    }
+
+    for ( ArrayList< DrawingPointPath > group : groups.values() ) {
+      boolean[] used = new boolean[group.size()];
+      for ( int seed = 0; seed < group.size(); ++seed ) {
+        if ( used[seed] ) continue;
+        ArrayList< Integer > pending = new ArrayList<>();
+        ArrayList< Integer > cluster_indices = new ArrayList<>();
+        pending.add( seed );
+        used[seed] = true;
+        for ( int cursor = 0; cursor < pending.size(); ++cursor ) {
+          int index = pending.get( cursor );
+          cluster_indices.add( index );
+          DrawingPointPath point = group.get( index );
+          for ( int other = 0; other < group.size(); ++other ) {
+            if ( used[other] || ! RectF.intersects( point, group.get( other ) ) ) continue;
+            used[other] = true;
+            pending.add( other );
+          }
+        }
+        if ( cluster_indices.size() < 2 ) continue;
+        Collections.sort( cluster_indices );
+        buildOcclusionCluster( group, cluster_indices, entries );
+      }
+    }
+
+    ArrayList< OcclusionEntry > ordered = new ArrayList<>();
+    for ( DrawingPointPath point : points ) ordered.add( entries.get( point ) );
+    return new OcclusionSnapshot( Collections.unmodifiableList( ordered ) );
+  }
+
+  private static void buildOcclusionCluster( ArrayList< DrawingPointPath > group, ArrayList< Integer > indices,
+                                             IdentityHashMap< DrawingPointPath, OcclusionEntry > entries )
+  {
+    Path newer_silhouettes = new Path();
+    boolean has_newer = false;
+    for ( int position = indices.size() - 1; position >= 0; --position ) {
+      DrawingPointPath point = group.get( indices.get( position ) );
+      boolean affected = false;
+      for ( int newer = position + 1; newer < indices.size(); ++newer ) {
+        if ( RectF.intersects( point, group.get( indices.get( newer ) ) ) ) { affected = true; break; }
+      }
+      if ( affected && has_newer ) {
+        Path structure_ink = visibleStrokeInk( point.copySketchStructurePath(), point.sketchPointPaintForOcclusion(), newer_silhouettes );
+        Path detail_ink = visibleStrokeInk( point.copySketchDetailPath(), point.sketchDetailPaintForOcclusion(), newer_silhouettes );
+        if ( structure_ink != null ) entries.put( point, new OcclusionEntry( point, structure_ink, detail_ink ) );
+      }
+      Path silhouette = point.copyOcclusionSilhouette();
+      if ( silhouette != null ) {
+        if ( has_newer ) {
+          if ( ! newer_silhouettes.op( silhouette, Path.Op.UNION ) ) newer_silhouettes.addPath( silhouette );
+        } else {
+          newer_silhouettes.set( silhouette );
+          has_newer = true;
+        }
+      }
+    }
+  }
+
+  private static Path visibleStrokeInk( Path stroke_path, Paint stroke_paint, Path newer_silhouettes )
+  {
+    if ( stroke_path == null || stroke_path.isEmpty() || stroke_paint == null ) return null;
+    Path ink = new Path();
+    stroke_paint.getFillPath( stroke_path, ink );
+    return ink.op( newer_silhouettes, Path.Op.DIFFERENCE ) ? ink : null;
+  }
+
+  private void drawOccludingPoints( Canvas canvas, Matrix matrix, float scale, RectF bbox,
+                                    boolean landscape, int xor_color )
+  {
+    OcclusionSnapshot snapshot = occlusionSnapshot( scale );
+    for ( OcclusionEntry entry : snapshot.mEntries ) {
+      DrawingPointPath point = entry.mPoint;
+      point.mLandscape = landscape;
+      if ( entry.mStructureInk == null ) {
+        if ( xor_color > 0 ) point.draw( canvas, matrix, scale, bbox, xor_color );
+        else point.draw( canvas, matrix, scale, bbox );
+      } else {
+        point.drawVisibleOcclusionInk( canvas, matrix, bbox, entry.mStructureInk, entry.mDetailInk, landscape, xor_color );
+      }
+    }
+  }
+
+  private static final class OcclusionSnapshot
+  {
+    static final OcclusionSnapshot EMPTY = new OcclusionSnapshot( Collections.< OcclusionEntry >emptyList() );
+    final List< OcclusionEntry > mEntries;
+    OcclusionSnapshot( List< OcclusionEntry > entries ) { mEntries = entries; }
+  }
+
+  private static final class OcclusionEntry
+  {
+    final DrawingPointPath mPoint;
+    final Path mStructureInk;
+    final Path mDetailInk;
+    OcclusionEntry( DrawingPointPath point, Path structure_ink, Path detail_ink )
+    {
+      mPoint = point;
+      mStructureInk = structure_ink;
+      mDetailInk = detail_ink;
+    }
+  }
+
   /** draw all sketch items
    * @param canvas    canvas
    * @param matrix    transform matrix
@@ -3426,6 +3644,7 @@ public class Scrap
             DrawingPath path = (DrawingPath)cmd;
             path.mLandscape = landscape;
             if ( path instanceof DrawingLabelPath ) continue;
+            if ( isOccludingPoint( path ) ) continue;
             if ( path.isArea() && ( TDSetting.mAreaOverlapDarken || isPatternedArea( path ) ) ) continue;
             cmd.draw( canvas, matrix, scale, bbox, xor_color );
             if ( path.isLine() ) { // path instanceof DrawingLinePath
@@ -3451,6 +3670,7 @@ public class Scrap
             DrawingPath path = (DrawingPath)cmd;
             path.mLandscape = landscape;
             if ( path instanceof DrawingLabelPath ) continue;
+            if ( isOccludingPoint( path ) ) continue;
             if ( DrawingLevel.isLevelVisible( (DrawingPath)cmd ) ) {
               if ( path.isArea() && ( TDSetting.mAreaOverlapDarken || isPatternedArea( path ) ) ) continue;
               cmd.draw( canvas, matrix, scale, bbox, xor_color );
@@ -3473,6 +3693,7 @@ public class Scrap
           }
         }
       }
+      drawOccludingPoints( canvas, matrix, scale, bbox, landscape, xor_color );
     }
   }
 
@@ -3550,6 +3771,7 @@ public class Scrap
             DrawingPath path = (DrawingPath)cmd;
             path.mLandscape = landscape;
             if ( path instanceof DrawingLabelPath ) continue;
+            if ( isOccludingPoint( path ) ) continue;
             if ( path.isArea() && ( TDSetting.mAreaOverlapDarken || isPatternedArea( path ) ) ) continue;
             cmd.draw( canvas, matrix, scale, bbox );
             if ( path.isLine() ) { // path instanceof DrawingLinePath
@@ -3569,6 +3791,7 @@ public class Scrap
             DrawingPath path = (DrawingPath)cmd;
             path.mLandscape = landscape;
             if ( path instanceof DrawingLabelPath ) continue;
+            if ( isOccludingPoint( path ) ) continue;
             if ( DrawingLevel.isLevelVisible( (DrawingPath)cmd ) ) {
               if ( path.isArea() && ( TDSetting.mAreaOverlapDarken || isPatternedArea( path ) ) ) continue;
               cmd.draw( canvas, matrix, scale, bbox );
@@ -3585,6 +3808,7 @@ public class Scrap
           }
         }
       }
+      drawOccludingPoints( canvas, matrix, scale, bbox, landscape, 0 );
     }
   }
 
@@ -3744,6 +3968,11 @@ public class Scrap
       if ( sp != null ) {
         if ( sp.mItem instanceof DrawingReferencePath ) {
           drawReferenceSelection( canvas, matrix, zoom, (DrawingReferencePath)sp.mItem, sp );
+          return;
+        }
+        if ( sp.mItem instanceof DrawingPointPath
+            && ((DrawingPointPath)sp.mItem).hasSketchAffineTransform() ) {
+          SketchAffineGizmo.draw( canvas, matrix, zoom, (DrawingPointPath)sp.mItem );
           return;
         }
         float x, y;

@@ -5,7 +5,9 @@ The approved NSS masters exported by drawing tools often contain helper
 rectangles and clip-path scaffolding. This converter intentionally keeps only
 visible stroked path and line geometry, applies inherited presentation styles
 and SVG transforms, recenters the resulting geometry, and writes TopoDroid's
-point-symbol path language.
+point-symbol path language. Geometry marked ``data-tdx-role="detail"`` is
+written as an independently weighted detail layer; all other geometry is the
+structural path.
 """
 
 from __future__ import annotations
@@ -24,6 +26,9 @@ COMMAND_RE = re.compile(r"[MmLlCcZz]|[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+
 TRANSFORM_RE = re.compile(r"(matrix|translate|scale)\s*\(([^)]*)\)")
 SKIP_TAGS = {"defs", "clipPath", "mask", "pattern", "metadata", "title", "desc"}
 PRESENTATION_KEYS = ("display", "visibility", "stroke")
+ROLE_ATTRIBUTE = "data-tdx-role"
+STRUCTURE_ROLE = "structure"
+DETAIL_ROLE = "detail"
 
 
 @dataclass
@@ -215,17 +220,19 @@ def walk_visible_geometry(
     elem: ET.Element,
     inherited_matrix: Sequence[float],
     inherited_presentation: Dict[str, str],
-) -> Iterable[Tuple[ET.Element, Tuple[float, float, float, float, float, float]]]:
+    inherited_role: str,
+) -> Iterable[Tuple[ET.Element, Tuple[float, float, float, float, float, float], str]]:
     tag = local_name(elem.tag)
     if tag in SKIP_TAGS:
         return
     matrix = multiply(inherited_matrix, parse_transform(elem.attrib.get("transform")))
     presentation = effective_presentation(elem, inherited_presentation)
+    role = elem.attrib.get(ROLE_ATTRIBUTE, inherited_role).strip().lower()
     has_geometry = (tag == "path" and bool(elem.attrib.get("d"))) or tag == "line"
     if has_geometry and is_visible_stroke(presentation):
-        yield elem, matrix
+        yield elem, matrix, role
     for child in elem:
-        yield from walk_visible_geometry(child, matrix, presentation)
+        yield from walk_visible_geometry(child, matrix, presentation, role)
 
 
 def transformed_bounds(segments: Sequence[Segment]) -> Tuple[float, float, float, float]:
@@ -258,8 +265,12 @@ def intersects(a: Tuple[float, float, float, float], b: Tuple[float, float, floa
     )
 
 
-def normalize_segments(segments: Sequence[Segment], target_max: float) -> List[Segment]:
-    min_x, min_y, max_x, max_y = transformed_bounds(segments)
+def normalize_segments(
+    segments: Sequence[Segment],
+    target_max: float,
+    bounds_segments: Optional[Sequence[Segment]] = None,
+) -> List[Segment]:
+    min_x, min_y, max_x, max_y = transformed_bounds(bounds_segments or segments)
     width = max_x - min_x
     height = max_y - min_y
     if width <= 0 or height <= 0:
@@ -282,20 +293,7 @@ def fmt(n: float) -> str:
     return "0" if text == "-0" else text
 
 
-def write_symbol(args: argparse.Namespace, segments: Sequence[Segment]) -> str:
-    lines = [
-        "encoding utf-8",
-        "symbol point",
-        f"name {args.name}",
-        f"th_name {args.th_name}",
-    ]
-    if args.group:
-        lines.append(f"group {args.group}")
-    lines.extend([
-        f"orientation {'yes' if args.orientable else 'no'}",
-        "color 0xffffff",
-        "path",
-    ])
+def append_segments(lines: List[str], segments: Sequence[Segment]) -> None:
     for seg in segments:
         if seg.kind == "moveTo":
             (x, y), = seg.points
@@ -306,7 +304,37 @@ def write_symbol(args: argparse.Namespace, segments: Sequence[Segment]) -> str:
         elif seg.kind == "cubicTo":
             (x1, y1), (x2, y2), (x, y) = seg.points
             lines.append(f"  cubicTo {fmt(x1)} {fmt(y1)} {fmt(x2)} {fmt(y2)} {fmt(x)} {fmt(y)}")
-    lines.extend(["endpath", "endsymbol", ""])
+
+
+def write_symbol(
+    args: argparse.Namespace,
+    structure_segments: Sequence[Segment],
+    detail_segments: Sequence[Segment],
+) -> str:
+    lines = [
+        "encoding utf-8",
+        "symbol point",
+        f"name {args.name}",
+        f"th_name {args.th_name}",
+    ]
+    if args.group:
+        lines.append(f"group {args.group}")
+    if args.sketch_affine:
+        lines.append("sketch_affine yes")
+    if args.sketch_occlude:
+        lines.append(f"sketch_occlude {args.sketch_occlude}")
+    lines.extend([
+        f"orientation {'yes' if args.orientable else 'no'}",
+        "color 0xffffff",
+        "path",
+    ])
+    append_segments(lines, structure_segments)
+    lines.append("endpath")
+    if detail_segments:
+        lines.append(f"detail_path {fmt(args.detail_stroke_scale)}")
+        append_segments(lines, detail_segments)
+        lines.append("enddetail_path")
+    lines.extend(["endsymbol", ""])
     text = "\n".join(lines)
     os.makedirs(os.path.dirname(os.path.abspath(args.output)), exist_ok=True)
     with open(args.output, "w", encoding="utf-8", newline="\n") as f:
@@ -321,7 +349,15 @@ def main() -> int:
     parser.add_argument("--name", required=True)
     parser.add_argument("--th-name", required=True)
     parser.add_argument("--group", default="")
+    parser.add_argument("--sketch-affine", action="store_true")
+    parser.add_argument("--sketch-occlude", default="")
     parser.add_argument("--target-max", type=float, default=18.0)
+    parser.add_argument(
+        "--detail-stroke-scale",
+        type=float,
+        default=0.25,
+        help="detail layer stroke width as a fraction of the normal point stroke (default: 0.25)",
+    )
     parser.add_argument("--orientable", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument(
         "--element-index",
@@ -334,15 +370,24 @@ def main() -> int:
 
     if any(index < 0 for index in args.element_index):
         parser.error("--element-index values must be non-negative")
+    if not math.isfinite(args.detail_stroke_scale) or args.detail_stroke_scale <= 0.0:
+        parser.error("--detail-stroke-scale must be a finite positive number")
 
     root = ET.parse(args.svg).getroot()
-    drawables: List[List[Segment]] = []
+    drawables: List[Tuple[str, List[Segment]]] = []
     viewbox = parse_viewbox(root)
-    for elem, matrix in walk_visible_geometry(root, (1.0, 0.0, 0.0, 1.0, 0.0, 0.0), {}):
+    for elem, matrix, role in walk_visible_geometry(
+        root,
+        (1.0, 0.0, 0.0, 1.0, 0.0, 0.0),
+        {},
+        STRUCTURE_ROLE,
+    ):
+        if role not in (STRUCTURE_ROLE, DETAIL_ROLE):
+            sys.exit(f"unsupported {ROLE_ATTRIBUTE} value {role!r} in {args.svg}")
         parsed = parse_geometry(elem, matrix)
         if viewbox and not intersects(transformed_bounds(parsed), viewbox):
             continue
-        drawables.append(parsed)
+        drawables.append((role, parsed))
 
     selected_indexes = set(args.element_index)
     if selected_indexes:
@@ -354,13 +399,21 @@ def main() -> int:
             )
         drawables = [drawable for index, drawable in enumerate(drawables) if index in selected_indexes]
 
-    segments = [segment for drawable in drawables for segment in drawable]
-    if not segments:
+    structure_segments = [segment for role, drawable in drawables if role == STRUCTURE_ROLE for segment in drawable]
+    detail_segments = [segment for role, drawable in drawables if role == DETAIL_ROLE for segment in drawable]
+    all_segments = structure_segments + detail_segments
+    if not all_segments:
         sys.exit(f"no visible stroked geometry found in {args.svg}")
+    if not structure_segments:
+        sys.exit(f"no structural geometry found in {args.svg}")
 
-    normalized = normalize_segments(segments, args.target_max)
-    write_symbol(args, normalized)
-    print(f"wrote {args.output} from {len(segments)} path commands across {len(drawables)} source elements")
+    normalized_structure = normalize_segments(structure_segments, args.target_max, all_segments)
+    normalized_detail = normalize_segments(detail_segments, args.target_max, all_segments) if detail_segments else []
+    write_symbol(args, normalized_structure, normalized_detail)
+    print(
+        f"wrote {args.output} from {len(all_segments)} path commands across {len(drawables)} source elements "
+        f"({len(structure_segments)} structure, {len(detail_segments)} detail)"
+    )
     return 0
 
 

@@ -111,6 +111,25 @@ class SelectionSet
     }
   }
 
+  /** Filled-silhouette affine hits precede the ordinary anchor query. Keep the
+   * newest-to-oldest hit and remove its later anchor duplicate. */
+  void removeDuplicateAffineItems()
+  {
+    IdentityHashMap< DrawingPath, Boolean > seen = new IdentityHashMap<>();
+    for ( int i = 0; i < mPoints.size(); ) {
+      SelectionPoint point = mPoints.get( i );
+      if ( point.mItem instanceof DrawingPointPath
+          && ((DrawingPointPath)point.mItem).hasSketchAffineTransform() ) {
+        if ( seen.containsKey( point.mItem ) ) {
+          mPoints.remove( i );
+          continue;
+        }
+        seen.put( point.mItem, Boolean.TRUE );
+      }
+      ++i;
+    }
+  }
+
   int size() { return mPoints.size(); }
 
   void clear() 
