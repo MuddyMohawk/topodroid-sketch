@@ -186,6 +186,8 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
       assertTrue( breakdownEntry + " should declare affine editing", symbol.contains( "sketch_affine yes" ) );
       assertTrue( breakdownEntry + " should declare breakdown occlusion",
                   symbol.contains( "sketch_occlude breakdown" ) );
+      assertTrue( breakdownEntry + " structural ink should match same-weight lines",
+                  symbol.contains( "sketch_stroke_scale 1" ) );
       assertTrue( breakdownEntry + " should keep optional shading at quarter stroke weight",
                   symbol.contains( "detail_path 0.25" ) );
     }

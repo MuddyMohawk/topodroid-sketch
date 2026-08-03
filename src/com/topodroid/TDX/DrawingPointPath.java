@@ -875,7 +875,8 @@ public class DrawingPointPath extends DrawingPath
 
   private Paint getSketchPointPaint()
   {
-    return SketchBrushRenderer.pointPaint( mPaint, mSketchBrushStyle );
+    return SketchBrushRenderer.pointPaint( mPaint, mSketchBrushStyle,
+                                           BrushManager.getPointSketchStrokeScale( mPointType ) );
   }
 
   private void drawSketchStyledPath( Path path, Canvas canvas )

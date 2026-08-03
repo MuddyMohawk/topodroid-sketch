@@ -120,7 +120,8 @@ class SymbolPreviewRenderer
     point.setSketchBrushStyle( STANDARD_STYLE );
     if ( BrushManager.isPointOrientable( index ) ) point.setOrientation( symbol.getAngle() );
 
-    Paint paint = SketchBrushRenderer.pointPaint( BrushManager.getPointPaint( index ), STANDARD_STYLE );
+    Paint paint = SketchBrushRenderer.pointPaint( BrushManager.getPointPaint( index ), STANDARD_STYLE,
+                                                  BrushManager.getPointSketchStrokeScale( index ) );
     Path path = point.mPath;
     boolean direct = path == null || path.isEmpty();
     if ( direct ) path = symbol.getPath();

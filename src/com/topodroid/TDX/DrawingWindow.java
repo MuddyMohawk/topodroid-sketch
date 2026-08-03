@@ -3507,7 +3507,8 @@ public class DrawingWindow extends ItemDrawer
     if ( point == null ) return;
     if ( point.hasSketchAffineTransform() ) {
       float distance = (float)Math.sqrt( x_shift * x_shift + y_shift * y_shift );
-      float multiplier = isSmoothScalablePoint( point.mPointType ) ? SketchPointScale.scaleFromDragDistance( distance ) : 1.0f;
+      float multiplier = isSmoothScalablePoint( point.mPointType )
+          ? SketchPointScale.scaleFromAffinePlacementDragDistance( distance ) : 1.0f;
       float angle = BrushManager.isPointOrientable( point.mPointType ) ? TDMath.atan2d( x_shift, -y_shift ) : 0.0f;
       if ( landscape ) angle = TDMath.in360( angle + 90.0f );
       SketchAffineTransform placement = SketchAffineTransform.rotationScale( angle, multiplier );
@@ -5816,7 +5817,10 @@ public class DrawingWindow extends ItemDrawer
         }
         mEditMove = false;
       } else if ( mMode == MODE_SHIFT ) {
-        if ( TDLevel.overExpert && mType == PlotType.PLOT_EXTENDED ) {
+        if ( mAffineGizmoDrag != null ) {
+          mAffineGizmoDrag = null;
+          mShiftMove = false;
+        } else if ( TDLevel.overExpert && mType == PlotType.PLOT_EXTENDED ) {
           SelectionPoint hot = mDrawingSurface.hotItem();
           if ( hot != null ) {
             DrawingPath path = hot.mItem;
@@ -5891,6 +5895,19 @@ public class DrawingWindow extends ItemDrawer
       }
     }
     return true;
+  }
+
+  /** Give a selected affine point's visible gizmo first refusal on a touch. */
+  private boolean beginAffineGizmoDrag( SelectionPoint selected, float scene_x, float scene_y )
+  {
+    if ( selected == null || ! ( selected.mItem instanceof DrawingPointPath ) ) return false;
+    DrawingPointPath point = (DrawingPointPath)selected.mItem;
+    if ( ! point.hasSketchAffineTransform() ) return false;
+    float edit_x = mLandscape ? -scene_y : scene_x;
+    float edit_y = mLandscape ? scene_x : scene_y;
+    int handle = SketchAffineGizmo.hitHandle( point, edit_x, edit_y, mZoom );
+    mAffineGizmoDrag = SketchAffineGizmo.beginDrag( point, handle, edit_x, edit_y, mZoom );
+    return mAffineGizmoDrag != null;
   }
 
   /** react to a touch-down event
@@ -5977,14 +5994,7 @@ public class DrawingWindow extends ItemDrawer
       if ( pt != null ) {
         float edit_x = mLandscape ? -ys : xs;
         float edit_y = mLandscape ? xs : ys;
-        if ( pt.mItem instanceof DrawingPointPath ) {
-          DrawingPointPath affine = (DrawingPointPath)pt.mItem;
-          if ( affine.hasSketchAffineTransform() ) {
-            int handle = SketchAffineGizmo.hitHandle( affine, edit_x, edit_y, mZoom );
-            mAffineGizmoDrag = SketchAffineGizmo.beginDrag( affine, handle, edit_x, edit_y, mZoom );
-            if ( mAffineGizmoDrag != null ) mEditMove = false;
-          }
-        }
+        if ( beginAffineGizmoDrag( pt, xs, ys ) ) mEditMove = false;
         if ( mAffineGizmoDrag == null ) mEditMove = ( pt.distance( edit_x, edit_y ) < d0 );
       } 
       // doSelectAt( xs, ys, mSelectSize );
@@ -5995,6 +6005,7 @@ public class DrawingWindow extends ItemDrawer
     } else if ( mMode == MODE_SHIFT ) {
       mShiftMove = true; // whether to move canvas in point-shift mode
                          // false if moving the hot point
+      mAffineGizmoDrag = null;
       mStartX = xc;
       mStartY = yc;
       // PATH_MULTISELECTION
@@ -6004,7 +6015,9 @@ public class DrawingWindow extends ItemDrawer
       } else {
         SelectionPoint pt = mDrawingSurface.hotItem();
         if ( pt != null ) {
-          if ( mLandscape ) {
+          if ( beginAffineGizmoDrag( pt, xs, ys ) ) {
+            mShiftMove = false;
+          } else if ( mLandscape ) {
             if ( pt.distance( -ys, xs ) < d0*4 ) {
               mShiftMove = false;
               mStartX = xs;  // save start position
@@ -6147,7 +6160,7 @@ public class DrawingWindow extends ItemDrawer
         TDAzimuth.mRefAzimuth = TDMath.in360( TDAzimuth.mRefAzimuth + x_shift/2 );
         setButtonAzimuth();
         // TDLog.v("rotated azimuth by " + x_shift + ": " + TDAzimuth.mRefAzimuth );
-      } else if ( mMode == MODE_EDIT && mAffineGizmoDrag != null ) {
+      } else if ( ( mMode == MODE_EDIT || mMode == MODE_SHIFT ) && mAffineGizmoDrag != null ) {
         float edit_x = mLandscape ? -ys : xs;
         float edit_y = mLandscape ? xs : ys;
         if ( mAffineGizmoDrag.update( edit_x, edit_y ) ) {

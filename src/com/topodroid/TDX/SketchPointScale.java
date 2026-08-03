@@ -18,6 +18,7 @@ class SketchPointScale
   private static final float MIN_SCALE = 0.05f;
   private static final float DEFAULT_SCALE = 1.0f;
   private static final float DRAG_STEP = 75.0f;
+  private static final float AFFINE_PLACEMENT_DRAG_SENSITIVITY = 3.0f;
 
   private static final float[] LEGACY_VALUES = { 0.50f, 0.72f, 1.0f, 1.41f, 2.0f };
   private static final int[] LEGACY_SCALES = {
@@ -72,6 +73,13 @@ class SketchPointScale
   {
     if ( Float.isNaN( distance ) || Float.isInfinite( distance ) || distance <= 0.0f ) return LEGACY_VALUES[0];
     return interpolateAnchors( distance / DRAG_STEP );
+  }
+
+  /** Affine symbols are visually shaped during placement, so their initial size
+   *  tracks the stylus more closely than the legacy point-size gesture. */
+  static float scaleFromAffinePlacementDragDistance( float distance )
+  {
+    return scaleFromDragDistance( distance * AFFINE_PLACEMENT_DRAG_SENSITIVITY );
   }
 
   static float scaleFromEditProgress( int progress )

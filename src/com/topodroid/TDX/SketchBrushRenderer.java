@@ -23,7 +23,7 @@ import android.graphics.Paint;
 class SketchBrushRenderer
 {
   private static final float EPS = 1.0e-4f;
-  private static final float POINT_STROKE_WEIGHT_SCALE = 0.5f;
+  static final float DEFAULT_POINT_STROKE_WEIGHT_SCALE = 0.5f;
 
   private SketchBrushRenderer() { }
 
@@ -34,7 +34,13 @@ class SketchBrushRenderer
 
   static Paint pointPaint( Paint source, SketchBrushStyle style )
   {
-    return paint( source, style, POINT_STROKE_WEIGHT_SCALE );
+    return pointPaint( source, style, DEFAULT_POINT_STROKE_WEIGHT_SCALE );
+  }
+
+  /** point ink with a symbol-declared width relative to same-weight line ink */
+  static Paint pointPaint( Paint source, SketchBrushStyle style, float stroke_scale )
+  {
+    return paint( source, style, normalizedPositive( stroke_scale, DEFAULT_POINT_STROKE_WEIGHT_SCALE ) );
   }
 
   /** @return the ink thickness [scene units] for a brush style (fallback: standard weight) */

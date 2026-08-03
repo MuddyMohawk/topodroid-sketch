@@ -1,0 +1,42 @@
+encoding utf-8
+symbol point
+name angular_block
+th_name angular-block
+group blocks
+sketch_affine yes
+sketch_occlude breakdown
+sketch_stroke_scale 1
+orientation yes
+color 0xffffff
+path
+  moveTo -7.344 -7.368
+  cubicTo -2.928 -7.08 3 -5.856 9 -4.32
+  cubicTo 7.536 -0.768 5.784 3.408 4.176 7.368
+  cubicTo 0.216 7.368 -4.344 7.344 -6.984 6.912
+  cubicTo -7.848 6.72 -8.544 6.264 -9 5.64
+  cubicTo -8.688 2.712 -8.52 -0.552 -8.28 -3.744
+  lineTo -7.344 -7.368
+  moveTo -8.088 -1.272
+  cubicTo -7.968 0.816 -7.488 2.856 -6.72 4.272
+  cubicTo -3.192 4.488 0.576 4.92 3.624 4.944
+  cubicTo 5.184 3 6.6 0.288 7.8 -2.448
+endpath
+detail_path 0.25
+  moveTo -8.088 2.664
+  cubicTo -8.16 3.672 -8.088 4.752 -7.872 5.472
+  moveTo -7.68 2.496
+  cubicTo -7.8 3.576 -7.68 4.608 -7.368 5.184
+  moveTo -7.728 4.056
+  cubicTo -7.776 4.704 -7.656 5.16 -7.512 5.448
+  moveTo -6.624 4.92
+  cubicTo -3.216 5.16 0.504 5.64 3.408 5.664
+  moveTo -6.912 5.52
+  cubicTo -3.816 5.568 0.144 6.432 3.216 6.456
+  moveTo -6.096 6.096
+  cubicTo -3.912 6.072 -1.8 6.72 0.144 6.84
+  moveTo 4.056 5.4
+  cubicTo 4.776 4.488 5.304 3.576 5.736 2.496
+  moveTo 3.864 6.744
+  cubicTo 4.56 5.784 5.088 4.8 5.376 3.96
+enddetail_path
+endsymbol

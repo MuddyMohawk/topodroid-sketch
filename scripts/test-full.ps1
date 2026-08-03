@@ -105,7 +105,7 @@ $FullTests = @(
   },
   @{
     Name = "Model/rendering/style tests"
-    Class = "com.topodroid.TDX.LinePatternInstrumentedTest,com.topodroid.TDX.AreaLinePatternInstrumentedTest,com.topodroid.TDX.AreaPatternRendererInstrumentedTest,com.topodroid.TDX.PresetBarInstrumentedTest,com.topodroid.TDX.ToolbarRowsInstrumentedTest,com.topodroid.TDX.SymbolPreviewRendererInstrumentedTest,com.topodroid.prefs.RetiredSymbolSizePreferenceInstrumentedTest,com.topodroid.TDX.LineStyleSnappingInstrumentedTest,com.topodroid.TDX.SketchBrushStyleInstrumentedTest,com.topodroid.TDX.SketchBrushCompatibilityInstrumentedTest,com.topodroid.TDX.SmoothPointScaleInstrumentedTest,com.topodroid.TDX.SymbolOpacityParserInstrumentedTest,com.topodroid.TDX.TopoDroidSketchSymbolSliceInstrumentedTest"
+    Class = "com.topodroid.TDX.LinePatternInstrumentedTest,com.topodroid.TDX.AreaLinePatternInstrumentedTest,com.topodroid.TDX.AreaPatternRendererInstrumentedTest,com.topodroid.TDX.PresetBarInstrumentedTest,com.topodroid.TDX.ToolbarRowsInstrumentedTest,com.topodroid.TDX.SymbolPreviewRendererInstrumentedTest,com.topodroid.prefs.RetiredSymbolSizePreferenceInstrumentedTest,com.topodroid.TDX.LineStyleSnappingInstrumentedTest,com.topodroid.TDX.SketchBrushStyleInstrumentedTest,com.topodroid.TDX.SketchBrushCompatibilityInstrumentedTest,com.topodroid.TDX.SmoothPointScaleInstrumentedTest,com.topodroid.TDX.SymbolOpacityParserInstrumentedTest,com.topodroid.TDX.TopoDroidSketchSymbolSliceInstrumentedTest,com.topodroid.TDX.SketchAffinePointInstrumentedTest,com.topodroid.TDX.BreakdownRockOcclusionInstrumentedTest"
     Estimate = 45
     Timeout = 300
     IdleTimeout = 150
@@ -141,6 +141,13 @@ $FullTests = @(
   @{
     Name = "Toolbar toggle restyle"
     Class = "com.topodroid.TDX.ToolbarToggleRestyleInstrumentedTest"
+    Estimate = 150
+    Timeout = 360
+    IdleTimeout = 240
+  },
+  @{
+    Name = "Breakdown rock selected-state affine handles"
+    Class = "com.topodroid.TDX.BreakdownRockWindowInteractionInstrumentedTest"
     Estimate = 150
     Timeout = 360
     IdleTimeout = 240

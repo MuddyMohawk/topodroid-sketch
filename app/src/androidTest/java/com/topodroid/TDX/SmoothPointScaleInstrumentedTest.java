@@ -60,6 +60,11 @@ public class SmoothPointScaleInstrumentedTest
     assertEquals( 2.00f, SketchPointScale.scaleFromDragDistance( 300.0f ), 0.0001f );
     assertTrue( SketchPointScale.scaleFromDragDistance( 375.0f ) > 2.0f );
 
+    assertEquals( SketchPointScale.scaleFromDragDistance( 225.0f ),
+                  SketchPointScale.scaleFromAffinePlacementDragDistance( 75.0f ), 0.0001f );
+    assertEquals( SketchPointScale.scaleFromDragDistance( 450.0f ),
+                  SketchPointScale.scaleFromAffinePlacementDragDistance( 150.0f ), 0.0001f );
+
     assertEquals( 1.0f, SketchPointScale.normalize( Float.NaN ), 0.0001f );
     assertEquals( 1.0f, SketchPointScale.normalize( -4.0f ), 0.0001f );
     assertEquals( PointScale.SCALE_L, SketchPointScale.nearestLegacyScale( 1.60f ) );

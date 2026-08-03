@@ -323,6 +323,8 @@ def write_symbol(
         lines.append("sketch_affine yes")
     if args.sketch_occlude:
         lines.append(f"sketch_occlude {args.sketch_occlude}")
+    if args.sketch_stroke_scale is not None:
+        lines.append(f"sketch_stroke_scale {fmt(args.sketch_stroke_scale)}")
     lines.extend([
         f"orientation {'yes' if args.orientable else 'no'}",
         "color 0xffffff",
@@ -351,6 +353,12 @@ def main() -> int:
     parser.add_argument("--group", default="")
     parser.add_argument("--sketch-affine", action="store_true")
     parser.add_argument("--sketch-occlude", default="")
+    parser.add_argument(
+        "--sketch-stroke-scale",
+        type=float,
+        default=None,
+        help="structural stroke width relative to a same-weight Sketch line",
+    )
     parser.add_argument("--target-max", type=float, default=18.0)
     parser.add_argument(
         "--detail-stroke-scale",
@@ -372,6 +380,10 @@ def main() -> int:
         parser.error("--element-index values must be non-negative")
     if not math.isfinite(args.detail_stroke_scale) or args.detail_stroke_scale <= 0.0:
         parser.error("--detail-stroke-scale must be a finite positive number")
+    if args.sketch_stroke_scale is not None and (
+        not math.isfinite(args.sketch_stroke_scale) or args.sketch_stroke_scale <= 0.0
+    ):
+        parser.error("--sketch-stroke-scale must be a finite positive number")
 
     root = ET.parse(args.svg).getroot()
     drawables: List[Tuple[str, List[Segment]]] = []

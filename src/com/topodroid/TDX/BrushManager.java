@@ -258,6 +258,7 @@ public class BrushManager
   static Path getPointOrigPath( int i )              { return (mPointLib == null)? null : mPointLib.getPointOrigPath( i ); }
   static Path getPointOrigDetailPath( int i )        { return (mPointLib == null)? null : mPointLib.getPointOrigDetailPath( i ); }
   static float getPointDetailStrokeScale( int i )    { return (mPointLib == null)? 1.0f : mPointLib.getPointDetailStrokeScale( i ); }
+  static float getPointSketchStrokeScale( int i )    { return (mPointLib == null)? SketchBrushRenderer.DEFAULT_POINT_STROKE_WEIGHT_SCALE : mPointLib.getPointSketchStrokeScale( i ); }
   static Path getPointOrigOcclusionSilhouette( int i ) { return (mPointLib == null)? null : mPointLib.getPointOrigOcclusionSilhouette( i ); }
 
   // system and special points

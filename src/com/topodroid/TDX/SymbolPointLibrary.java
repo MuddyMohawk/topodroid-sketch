@@ -165,6 +165,12 @@ public class SymbolPointLibrary extends SymbolLibrary
     return ( k < 0 || k >= size() ) ? 1.0f : ((SymbolPoint)mSymbols.get(k)).getDetailStrokeScale();
   }
 
+  float getPointSketchStrokeScale( int k )
+  {
+    return ( k < 0 || k >= size() ) ? SketchBrushRenderer.DEFAULT_POINT_STROKE_WEIGHT_SCALE
+                                    : ((SymbolPoint)mSymbols.get(k)).getSketchStrokeScale();
+  }
+
   Path getPointOrigOcclusionSilhouette( int k )
   {
     return ( k < 0 || k >= size() ) ? null : ((SymbolPoint)mSymbols.get(k)).getOrigOcclusionSilhouette();

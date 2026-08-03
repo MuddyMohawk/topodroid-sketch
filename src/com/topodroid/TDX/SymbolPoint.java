@@ -55,6 +55,7 @@ public class SymbolPoint extends Symbol
   // private Path   mOrigPath;
   private String mPathStr = null;
   private String mDetailPathStr = null;
+  private float mSketchStrokeScale = SketchBrushRenderer.DEFAULT_POINT_STROKE_WEIGHT_SCALE;
   private float mDetailStrokeScale = 1.0f;
   private Path mOrigOcclusionSilhouette = null;
   // private Path   mScaledPath;
@@ -158,6 +159,9 @@ public class SymbolPoint extends Symbol
   /** @return detail stroke width as a fraction of the normal point stroke
    */
   float getDetailStrokeScale( ) { return mDetailStrokeScale; }
+
+  /** @return structural stroke width relative to a same-weight Sketch line */
+  float getSketchStrokeScale( ) { return mSketchStrokeScale; }
 
   Path getOrigOcclusionSilhouette()
   {
@@ -288,6 +292,7 @@ public class SymbolPoint extends Symbol
    *      orientation yes | NO
    *      sketch_affine yes | NO
    *      sketch_occlude GROUP_NAME
+   *      sketch_stroke_scale POSITIVE_FLOAT
    *      scalable yes | NO
    *      color 0xHHHHHH_COLOR 0xAA_ALPHA
    *      style fill | STROKE 
@@ -339,6 +344,7 @@ public class SymbolPoint extends Symbol
               path = null;
               detail_path = null;
               detail_stroke_scale = 1.0f;
+              mSketchStrokeScale = SketchBrushRenderer.DEFAULT_POINT_STROKE_WEIGHT_SCALE;
               mScalable = true;
               mAffine = false;
               mDefaultOccludeGroup = null;
@@ -421,6 +427,22 @@ public class SymbolPoint extends Symbol
                   mDefaultOccludeGroup = vals[k];
                 } else {
                   TDLog.e("Invalid sketch_occlude group" );
+                }
+              }
+            } else if ( vals[k].equals("sketch_stroke_scale") ) {
+              if ( cnt == 0 ) {
+                ++k; while ( k < s && vals[k].length() == 0 ) ++k;
+                if ( k < s ) {
+                  try {
+                    float parsed_scale = Float.parseFloat( vals[k] );
+                    if ( Float.isFinite( parsed_scale ) && parsed_scale > 0.0f ) {
+                      mSketchStrokeScale = parsed_scale;
+                    } else {
+                      TDLog.e("Invalid sketch_stroke_scale " + vals[k] );
+                    }
+                  } catch ( NumberFormatException e ) {
+                    TDLog.e("Non-numeric sketch_stroke_scale " + vals[k] );
+                  }
                 }
               }
             } else if ( vals[k].equals("scalable") ) {

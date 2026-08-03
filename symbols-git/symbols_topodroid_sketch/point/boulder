@@ -5,6 +5,7 @@ th_name boulder
 group blocks
 sketch_affine yes
 sketch_occlude breakdown
+sketch_stroke_scale 1
 orientation yes
 color 0xffffff
 path

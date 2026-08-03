@@ -79,20 +79,27 @@ public class SymbolOpacityParserInstrumentedTest
     assertNotNull( point.getOrigDetailPath() );
     assertFalse( point.getOrigDetailPath().isEmpty() );
     assertEquals( 0.25f, point.getDetailStrokeScale(), 0.0001f );
+    assertEquals( SketchBrushRenderer.DEFAULT_POINT_STROKE_WEIGHT_SCALE,
+                  point.getSketchStrokeScale(), 0.0001f );
   }
 
   @Test
   public void pointSketchCapabilitiesValidateValuesAndClosedSilhouette() throws Exception
   {
-    SymbolPoint valid = parseCapabilities( "sketch_affine yes\nsketch_occlude breakdown\n", closedPath() );
+    SymbolPoint valid = parseCapabilities(
+        "sketch_affine yes\nsketch_occlude breakdown\nsketch_stroke_scale 1\n", closedPath() );
     assertTrue( valid.isAffine() );
     assertEquals( "breakdown", valid.defaultOccludeGroup() );
     assertNotNull( valid.getOrigOcclusionSilhouette() );
+    assertEquals( 1.0f, valid.getSketchStrokeScale(), 0.0001f );
 
-    SymbolPoint malformed = parseCapabilities( "sketch_affine maybe\nsketch_occlude bad/group\n", closedPath() );
+    SymbolPoint malformed = parseCapabilities(
+        "sketch_affine maybe\nsketch_occlude bad/group\nsketch_stroke_scale nope\n", closedPath() );
     assertFalse( malformed.isAffine() );
     assertNull( malformed.defaultOccludeGroup() );
     assertNull( malformed.getOrigOcclusionSilhouette() );
+    assertEquals( SketchBrushRenderer.DEFAULT_POINT_STROKE_WEIGHT_SCALE,
+                  malformed.getSketchStrokeScale(), 0.0001f );
 
     SymbolPoint empty = parseCapabilities( "sketch_affine no\nsketch_occlude\n", closedPath() );
     assertFalse( empty.isAffine() );
