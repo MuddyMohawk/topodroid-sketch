@@ -1,0 +1,16 @@
+encoding utf-8
+symbol point
+name pit depth
+th_name u:pit-depth
+sketch_stroke_scale 1
+orientation no
+has_value yes
+color 0xcccccc
+path
+  moveTo -5.76 -5.76
+  lineTo 5.76 -5.76
+  lineTo 5.76 5.76
+  lineTo -5.76 5.76
+  lineTo -5.76 -5.76
+endpath
+endsymbol
