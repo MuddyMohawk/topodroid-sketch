@@ -23,10 +23,17 @@ final class FramedTextPointRenderer implements SpecialPointRenderer
   private static final float WAVE_HALF_WIDTH = 4.0f;
 
   private final FrameShape mShape;
+  private final float mBaseScale;
 
   FramedTextPointRenderer( FrameShape shape )
   {
+    this( shape, 1.0f );
+  }
+
+  FramedTextPointRenderer( FrameShape shape, float base_scale )
+  {
     mShape = ( shape == null ) ? FrameShape.OVAL : shape;
+    mBaseScale = ( base_scale > 0.0f && Float.isFinite( base_scale ) ) ? base_scale : 1.0f;
   }
 
   @Override public void draw( DrawingSemanticPointPath point, Canvas canvas, int xor_color )
@@ -106,7 +113,7 @@ final class FramedTextPointRenderer implements SpecialPointRenderer
       state.fontId(), SketchTextStyle.SizeMode.AUTO_GRID, 1.0f,
       state.bold(), state.italic(), state.underline(), SketchTextStyle.Alignment.CENTER, color );
 
-    float point_scale = Math.max( 0.01f, point.specialPointScale() );
+    float point_scale = Math.max( 0.01f, point.specialPointScale() * mBaseScale );
     float text_scale = Math.max( 50, Math.min( 200, state.textScalePercent() ) ) / 100.0f;
     float line_height = TEXT_LINE_HEIGHT * point_scale * text_scale;
     float[] centers = new float[ rows.length ];

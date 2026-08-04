@@ -4,6 +4,8 @@
  */
 package com.topodroid.TDX;
 
+import com.topodroid.types.PointScale;
+
 import java.util.Locale;
 
 import org.json.JSONException;
@@ -13,9 +15,10 @@ final class CeilingHeightPointBehavior implements SpecialPointBehavior
 {
   static final String THERION_NAME = "passage-height";
   static final String BEHAVIOR_ID = "ceiling-height";
+  static final float BASE_FOOTPRINT_SCALE = SketchPointScale.legacyScaleValue( PointScale.SCALE_S );
   private static final int STATE_VERSION = 1;
   private static final SpecialPointRenderer RENDERER =
-    new FramedTextPointRenderer( FramedTextPointRenderer.FrameShape.OVAL );
+    new FramedTextPointRenderer( FramedTextPointRenderer.FrameShape.OVAL, BASE_FOOTPRINT_SCALE );
 
   @Override public String therionName() { return THERION_NAME; }
   @Override public String behaviorId() { return BEHAVIOR_ID; }

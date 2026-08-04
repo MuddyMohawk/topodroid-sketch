@@ -7,10 +7,10 @@ orientation no
 has_value yes
 color 0xcccccc
 path
-  moveTo -8 0
-  cubicTo -8 -4.418 -4.418 -8 0 -8
-  cubicTo 4.418 -8 8 -4.418 8 0
-  cubicTo 8 4.418 4.418 8 0 8
-  cubicTo -4.418 8 -8 4.418 -8 0
+  moveTo -5.76 0
+  cubicTo -5.76 -3.181 -3.181 -5.76 0 -5.76
+  cubicTo 3.181 -5.76 5.76 -3.181 5.76 0
+  cubicTo 5.76 3.181 3.181 5.76 0 5.76
+  cubicTo -3.181 5.76 -5.76 3.181 -5.76 0
 endpath
 endsymbol

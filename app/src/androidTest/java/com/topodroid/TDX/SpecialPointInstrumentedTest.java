@@ -89,6 +89,8 @@ public class SpecialPointInstrumentedTest
     assertEquals( "10", preview.getPointText() );
     assertEquals( 175,
       ((CeilingHeightPointState)((DrawingSemanticPointPath)ceiling).specialState()).textScalePercent() );
+    assertEquals( SketchPointScale.legacyScaleValue( PointScale.SCALE_S ),
+      CeilingHeightPointBehavior.BASE_FOOTPRINT_SCALE, 0.001f );
   }
 
   @Test public void lrudCalculator_handlesDirectAndReverseSplaysWithPresence()
