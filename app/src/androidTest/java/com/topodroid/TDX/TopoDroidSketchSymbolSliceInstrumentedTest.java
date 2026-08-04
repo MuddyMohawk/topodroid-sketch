@@ -193,6 +193,18 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
       assertTrue( breakdownEntry + " should keep optional shading at quarter stroke weight",
                   symbol.contains( "detail_path 0.25" ) );
     }
+    assertTrue( "Rounded breakdown picker name is missing",
+                readRawSymbolEntry( breakdownEntries[0] ).contains( "name breakdown:_round" ) );
+    assertTrue( "Square breakdown picker name is missing",
+                readRawSymbolEntry( breakdownEntries[1] ).contains( "name breakdown:_square" ) );
+    assertTrue( "Rectangle breakdown picker name is missing",
+                readRawSymbolEntry( breakdownEntries[2] ).contains( "name breakdown:_rectangle" ) );
+    assertEquals( "breakdown: round",
+                  BrushManager.getPointName( BrushManager.getPointIndexByThName( "boulder" ) ) );
+    assertEquals( "breakdown: square",
+                  BrushManager.getPointName( BrushManager.getPointIndexByThName( "angular-block" ) ) );
+    assertEquals( "breakdown: rectangle",
+                  BrushManager.getPointName( BrushManager.getPointIndexByThName( "bedding-slab" ) ) );
     assertTrue( "Pool Fingers is deferred to a future line symbol",
                 ! entries.contains( "symbols_topodroid_sketch/point/pool-fingers" ) );
     assertTrue( "Shelfstone is deferred to a future line symbol",
@@ -403,9 +415,9 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawPointRow( canvas, label, "Aragonite", "aragonite", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Archeo exc.", "archeo-excavation", y, 0.0, false ); y += POINT_ROW;
     drawPointRow( canvas, label, "Blocks", "blocks", y, 0.0 ); y += POINT_ROW;
-    drawPointRow( canvas, label, "Round breakdown", "boulder", y, 0.0 ); y += POINT_ROW;
-    drawPointRow( canvas, label, "Angular breakdown", "angular-block", y, 0.0 ); y += POINT_ROW;
-    drawPointRow( canvas, label, "Bedding slab", "bedding-slab", y, 0.0 ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Breakdown: round", "boulder", y, 0.0, true, 4.0f ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Breakdown: square", "angular-block", y, 0.0, true, 4.0f ); y += POINT_ROW;
+    drawPointRow( canvas, label, "Breakdown: rectangle", "bedding-slab", y, 0.0, true, 4.0f ); y += POINT_ROW;
     drawPointRow( canvas, label, "Small rocks", "debris:small", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Pebbles", "pebbles", y, 0.0 ); y += POINT_ROW;
     drawPointRow( canvas, label, "Bones", "bones", y, 0.0 ); y += POINT_ROW;
@@ -640,14 +652,20 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
 
   private void drawPointRow( Canvas canvas, Paint label, String title, String thName, float y, double orientation, boolean expectOrientable )
   {
+    drawPointRow( canvas, label, title, thName, y, orientation, expectOrientable, 1.0f );
+  }
+
+  private void drawPointRow( Canvas canvas, Paint label, String title, String thName, float y, double orientation,
+                             boolean expectOrientable, float pointScale )
+  {
     int pointType = BrushManager.getPointIndexByThName( thName );
     assertTrue( "Missing TopoDroid Sketch point symbol " + thName, pointType >= 0 );
     assertTrue( "Unexpected orientable state for TopoDroid Sketch point " + thName,
       BrushManager.isPointOrientable( pointType ) == expectOrientable );
     canvas.drawText( title, 18.0f, y + 7.0f, label );
-    drawStyledPoint( canvas, pointType, LEFT + 105.0f, y, style( SketchBrushStyle.DEFAULT_WEIGHT_THIN, 1.0f ), orientation );
-    drawStyledPoint( canvas, pointType, LEFT + COL + 105.0f, y, style( SketchBrushStyle.DEFAULT_WEIGHT_STANDARD, 1.0f ), orientation );
-    drawStyledPoint( canvas, pointType, LEFT + 2.0f * COL + 105.0f, y, style( SketchBrushStyle.DEFAULT_WEIGHT_THICK, 1.0f ), orientation );
+    drawStyledPoint( canvas, pointType, LEFT + 105.0f, y, style( SketchBrushStyle.DEFAULT_WEIGHT_THIN, pointScale ), orientation );
+    drawStyledPoint( canvas, pointType, LEFT + COL + 105.0f, y, style( SketchBrushStyle.DEFAULT_WEIGHT_STANDARD, pointScale ), orientation );
+    drawStyledPoint( canvas, pointType, LEFT + 2.0f * COL + 105.0f, y, style( SketchBrushStyle.DEFAULT_WEIGHT_THICK, pointScale ), orientation );
   }
 
   private void drawScaleRow( Canvas canvas, Paint label, float y )

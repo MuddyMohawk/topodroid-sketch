@@ -1,6 +1,6 @@
 encoding utf-8
 symbol point
-name boulder
+name breakdown:_round
 th_name boulder
 group blocks
 sketch_affine yes
@@ -19,10 +19,10 @@ path
   cubicTo -3.034 -5.491 -0.681 -6.193 1.755 -6.317
   cubicTo 4.273 -6.378 6.523 -5.966 7.761 -5.202
   cubicTo 8.257 -4.872 8.525 -4.438 8.649 -3.984
-  moveTo -7.576 2.972
-  cubicTo -7.761 1.817 -7.39 0.743 -6.523 -0.227
-  cubicTo -4.995 -1.899 -2.807 -3.055 -0.124 -3.86
-  cubicTo 2.745 -4.686 5.511 -4.644 8.03 -3.53
+  moveTo -8.36 2.931
+  cubicTo -7.411 1.569 -6.956 0.557 -5.966 -0.392
+  cubicTo -4.294 -1.817 -2.126 -2.787 0.31 -3.447
+  cubicTo 2.849 -4.087 5.739 -3.984 8.773 -3.179
 endpath
 detail_path 0.25
   moveTo -8.03 -0.144
