@@ -1,0 +1,58 @@
+/* @file CeilingHeightPointState.java
+ *
+ * @brief Immutable state for the ceiling-height special point
+ */
+package com.topodroid.TDX;
+
+final class CeilingHeightPointState implements FramedTextPointState
+{
+  static final int MIN_TEXT_SCALE = 50;
+  static final int MAX_TEXT_SCALE = 200;
+  static final int DEFAULT_TEXT_SCALE = 175;
+
+  final boolean waterEnabled;
+  final String waterDepth;
+  private final String mFontId;
+  private final boolean mBold;
+  private final boolean mItalic;
+  private final boolean mUnderline;
+  private final int mTextScalePercent;
+
+  CeilingHeightPointState( boolean water_enabled, String water_depth, String font_id,
+                           boolean bold, boolean italic, boolean underline, int text_scale_percent )
+  {
+    waterEnabled = water_enabled;
+    waterDepth = ( water_depth == null ) ? "" : water_depth;
+    mFontId = SketchFontRegistry.normalizeFontId( font_id );
+    mBold = bold;
+    mItalic = italic;
+    mUnderline = underline;
+    mTextScalePercent = Math.max( MIN_TEXT_SCALE, Math.min( MAX_TEXT_SCALE, text_scale_percent ) );
+  }
+
+  static CeilingHeightPointState defaultState()
+  {
+    return new CeilingHeightPointState( false, "", SketchFontRegistry.FONT_DEFAULT,
+                                        false, false, false, DEFAULT_TEXT_SCALE );
+  }
+
+  CeilingHeightPointState withTypography( SketchTextStyle style )
+  {
+    if ( style == null ) return this;
+    return new CeilingHeightPointState( waterEnabled, waterDepth, style.fontId(),
+                                        style.bold(), style.italic(), style.underline(), mTextScalePercent );
+  }
+
+  @Override public String[] displayRows( String primary_text )
+  {
+    String ceiling = ( primary_text == null ) ? "" : primary_text;
+    return waterEnabled ? new String[] { ceiling, waterDepth } : new String[] { ceiling };
+  }
+
+  @Override public Separator separator() { return waterEnabled ? Separator.WAVE : Separator.NONE; }
+  @Override public String fontId() { return mFontId; }
+  @Override public boolean bold() { return mBold; }
+  @Override public boolean italic() { return mItalic; }
+  @Override public boolean underline() { return mUnderline; }
+  @Override public int textScalePercent() { return mTextScalePercent; }
+}

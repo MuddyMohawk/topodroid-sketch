@@ -157,6 +157,12 @@
     android:hint="@string/hint_text"
     android:importantForAutofill="no"
   />
+  <LinearLayout android:id="@+id/special_point_extension"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone"
+  />
   <EditText android:id="@+id/point_options"
     style="@style/edit_text_light"
     android:layout_width="match_parent" 

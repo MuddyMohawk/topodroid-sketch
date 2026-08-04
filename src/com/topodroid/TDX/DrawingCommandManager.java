@@ -1073,6 +1073,23 @@ public class DrawingCommandManager
     return null;
   }
 
+  /** Return the nearest plotted station, without a distance cutoff. */
+  DrawingStationName getNearestStation( float x, float y )
+  {
+    DrawingStationName nearest = null;
+    double best = Double.POSITIVE_INFINITY;
+    for ( DrawingStationName station : mStations ) {
+      double dx = x - station.cx;
+      double dy = y - station.cy;
+      double distance = dx * dx + dy * dy;
+      if ( distance < best ) {
+        best = distance;
+        nearest = station;
+      }
+    }
+    return nearest;
+  }
+
   /** @return a station name by the name
    * @param name   name of the station
    */

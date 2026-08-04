@@ -222,9 +222,7 @@ public class DrawingPointPath extends DrawingPath
       //   scrapname = scrapname.replace( mApp.mSurvey + "-", "" ); // remove survey name from options
       //   option = TDString.OPTION_SCRAP + " " + scrapname;
       // }
-      DrawingPointPath ret = BrushManager.isPointReference( type )
-                           ? new DrawingReferencePath( type, ccx, ccy, scale, text, options, scrap )
-                           : new DrawingPointPath( type, ccx, ccy, scale, text, options, scrap );
+      DrawingPointPath ret = DrawingPointFactory.createLoaded( type, name, ccx, ccy, scale, text, options, scrap );
       ret.mLevel = level;
       ret.setOrientation( orientation );
       return ret;
@@ -879,6 +877,15 @@ public class DrawingPointPath extends DrawingPath
                                            BrushManager.getPointSketchStrokeScale( mPointType ) );
   }
 
+  /** Resolved point ink for registered special-point renderers. */
+  Paint resolvedSketchPointPaint() { return getSketchPointPaint(); }
+
+  /** Resolved full-width line ink for framed special-point renderers. */
+  Paint resolvedSketchLinePaint() { return SketchBrushRenderer.linePaint( mPaint, mSketchBrushStyle ); }
+
+  /** Resolved point footprint for registered special-point renderers. */
+  float resolvedSketchPointFootprintScale() { return getSketchPointFootprintScaleValue(); }
+
   private void drawSketchStyledPath( Path path, Canvas canvas )
   {
     Paint paint = mPaint;
@@ -1155,11 +1162,14 @@ public class DrawingPointPath extends DrawingPath
     if ( mPointText != null && mPointText.length() > 0 ) {
       if ( BrushManager.pointHasText(mPointType) ) { // label, remark
         pw.format(" -text \"%s\"", mPointText );
-      } else if ( BrushManager.pointHasValue(mPointType) ) { // passage-height
+      } else if ( pointUsesValue() ) { // passage-height and registered value points
         pw.format(" -value %s", mPointText );
       }
     }
   }
+
+  /** Whether this point's primary text is exported as a Therion value. */
+  protected boolean pointUsesValue() { return BrushManager.pointHasValue( mPointType ); }
 
   String getExportOptions()
   {

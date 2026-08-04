@@ -927,11 +927,17 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
    */
   boolean commitLiveItem()
   {
+    return commitLiveItemPath() != null;
+  }
+
+  /** Commit and return the pending live item so its post-placement lifecycle can run. */
+  DrawingPath commitLiveItemPath()
+  {
     DrawingPath live = mLiveItem;
     mLiveItem = null;
-    if ( live == null ) return false;
+    if ( live == null ) return null;
     addDrawingPath( live ); // bakes it: invalidates the scene cache once
-    return true;
+    return live;
   }
 
   private volatile long mCacheSuppressedUntilMs = 0;
@@ -1448,6 +1454,11 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   // UNUSED
   // x,y canvas coords
   // DrawingStationName getStationAt( float x, float y, float size ) { return commandManager.getStationAt( x, y, size ); }
+
+  DrawingStationName getNearestStation( float x, float y )
+  {
+    return ( commandManager == null ) ? null : commandManager.getNearestStation( x, y );
+  }
 
   // UNUSED
   // DrawingStationName getStation( String name ) { return commandManager.getStation( name ); }

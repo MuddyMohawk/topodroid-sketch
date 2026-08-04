@@ -21,6 +21,7 @@ import com.topodroid.types.PointScale;
 
 import android.os.Bundle;
 import android.content.Context;
+import android.view.inputmethod.InputMethodManager;
 
 import android.widget.EditText;
 import android.widget.Button;
@@ -37,6 +38,8 @@ class DrawingPointDialog extends MyDialog
   private final boolean mOrientable;
   private final int mPointType;
   private final boolean  mDoOptions;
+  private final boolean mFocusTextOnOpen;
+  private final SpecialPointEditorController mSpecialEditor;
   // private boolean  mHasXSectionOutline;
   // private String mXSectionName; // full section name = scrap-name
 
@@ -69,6 +72,11 @@ class DrawingPointDialog extends MyDialog
 
   DrawingPointDialog( Context context, DrawingWindow parent, DrawingPointPath point )
   {
+    this( context, parent, point, false );
+  }
+
+  DrawingPointDialog( Context context, DrawingWindow parent, DrawingPointPath point, boolean focus_text )
+  {
     super( context, null, R.string.DrawingPointDialog ); // null app
     mParent = parent;
     mPoint  = point;
@@ -77,6 +85,9 @@ class DrawingPointDialog extends MyDialog
     // mXSectionName = null;
     // mHasXSectionOutline = false;
     mDoOptions = BrushManager.pointHasText( mPointType ) || TDLevel.overAdvanced;
+    mFocusTextOnOpen = focus_text;
+    mSpecialEditor = ( point instanceof DrawingSemanticPointPath )
+      ? ((DrawingSemanticPointPath)point).createEditorController( parent ) : null;
   }
 
 // -------------------------------------------------------------------
@@ -90,7 +101,8 @@ class DrawingPointDialog extends MyDialog
     // mTVtype = (TextView) findViewById( R.id.point_type );
     mEToptions = (EditText) findViewById( R.id.point_options );
     if ( mDoOptions ) {
-      if ( mPoint.mOptions != null ) mEToptions.setText( mPoint.mOptions );
+      String public_options = SketchPrivateOptions.stripAll( mPoint.mOptions );
+      if ( public_options != null ) mEToptions.setText( public_options );
     } else {
       mEToptions.setVisibility( View.GONE );
     }
@@ -99,12 +111,20 @@ class DrawingPointDialog extends MyDialog
     // mBTdraw     = (Button) findViewById( R.id.button_draw );
     
     mETtext    = (EditText) findViewById( R.id.point_text );
-    if ( BrushManager.pointHasTextOrValue( mPoint.mPointType ) ) {
+    if ( hasEditablePointText() ) {
       String text = mPoint.getPointText();
       mETtext.setText( (text == null)? "" : text );
     } else {
       // mETtext.setEnabled( false );
       mETtext.setVisibility( View.GONE );
+    }
+
+    LinearLayout special_container = (LinearLayout)findViewById( R.id.special_point_extension );
+    if ( mSpecialEditor == null ) {
+      special_container.setVisibility( View.GONE );
+    } else {
+      special_container.setVisibility( View.VISIBLE );
+      mSpecialEditor.bind( special_container, mETtext );
     }
 
     mOrientationWidget = new MyOrientationWidget( this, mOrientable, mPoint.mOrientation );
@@ -155,6 +175,15 @@ class DrawingPointDialog extends MyDialog
     mBtnCancel = (Button) findViewById( R.id.button_cancel );
     mBtnOk.setOnClickListener( this );
     mBtnCancel.setOnClickListener( this );
+
+    if ( mFocusTextOnOpen && mETtext.getVisibility() == View.VISIBLE ) {
+      mETtext.requestFocus();
+      mETtext.setSelection( 0, mETtext.length() );
+      mETtext.post( () -> {
+        InputMethodManager keyboard = (InputMethodManager)getContext().getSystemService( Context.INPUT_METHOD_SERVICE );
+        if ( keyboard != null ) keyboard.showSoftInput( mETtext, InputMethodManager.SHOW_IMPLICIT );
+      } );
+    }
   }
 
   private void setCBlayers()
@@ -197,7 +226,8 @@ class DrawingPointDialog extends MyDialog
     Button b = (Button)v;
     if ( b == mBtnOk ) {
       if ( mDoOptions ) {
-        mPoint.setOptions( TDUtil.getTextOrEmpty( mEToptions ) );
+        mPoint.setOptions( SketchPrivateOptions.mergePublicOptions(
+          mPoint.mOptions, TDUtil.getTextOrEmpty( mEToptions ) ) );
       }
       if ( mBtnScaleXS.isChecked() )      mPoint.setScale( PointScale.SCALE_XS );
       else if ( mBtnScaleS.isChecked() )  mPoint.setScale( PointScale.SCALE_S  );
@@ -215,11 +245,16 @@ class DrawingPointDialog extends MyDialog
         mPoint.setOrientation( mOrientationWidget.mOrient );
         // TDLog.v( "Point type " + mPoint.mPointType + " orientation " + mPoint.mOrientation );
       }
-      if ( BrushManager.pointHasTextOrValue( mPoint.mPointType ) ) {
-        mPoint.setPointText( mETtext.getText().toString().trim() ); // TRIM
+      if ( hasEditablePointText() ) {
+        String text = mETtext.getText().toString();
+        mPoint.setPointText( ( mPoint instanceof DrawingSemanticPointPath ) ? text : text.trim() );
       }
 
+      if ( mSpecialEditor != null ) mSpecialEditor.apply();
+
       if ( TDSetting.mWithLevels > 1 ) setLevel();
+
+      mParent.updatePointObject( mPoint );
 
     // } else if ( b == mBTdraw ) {
     //   mParent.openXSectionDraw( mXSectionName );
@@ -229,5 +264,10 @@ class DrawingPointDialog extends MyDialog
     dismiss();
   }
 
-}
+  private boolean hasEditablePointText()
+  {
+    return mPoint instanceof DrawingSemanticPointPath
+        || BrushManager.pointHasTextOrValue( mPoint.mPointType );
+  }
 
+}

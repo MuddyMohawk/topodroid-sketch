@@ -5741,7 +5741,7 @@ public class DrawingWindow extends ItemDrawer
         else
         { // SymbolType.POINT
           // mLastLinePath = null;
-          if ( mDrawingSurface.commitLiveItem() ) modified(); // drag-placed point: bake it into the scene now
+          if ( commitLivePointPlacement() ) modified(); // drag-placed point: bake it into the scene now
           if ( (! mPointerDown) && (!HBXP_PointDown)) { // HBXP
             float radius = ( ( BrushManager.isPointOrientable( mCurrentPoint ) )? 6 : 2 ) * TDSetting.mPointingRadius;
 	    float shift = Math.abs( x_shift ) + Math.abs( y_shift );
@@ -5767,7 +5767,8 @@ public class DrawingWindow extends ItemDrawer
                 defer_modified = true;
               } else {
     	        if ( mLandscape ) {
-                  DrawingPointPath point = new DrawingPointPath( mCurrentPoint, -ys, xs, mPointScale, mDrawingSurface.scrapIndex() );
+                  DrawingPointPath point = DrawingPointFactory.createPlacement(
+                    mCurrentPoint, -ys, xs, mPointScale, mDrawingSurface.scrapIndex() );
                   applySketchBrushStyle( point );
     	          if ( BrushManager.isPointOrientable( mCurrentPoint ) ) {
 		    if ( shift > TDSetting.mPointingRadius ) {
@@ -5778,8 +5779,10 @@ public class DrawingWindow extends ItemDrawer
                     if ( ! BrushManager.isPointLabel( mCurrentPoint ) ) point.rotateBy( 90 );
     	          }
                   mDrawingSurface.addDrawingPath( point );
-    	        } else {
-                  DrawingPointPath point = new DrawingPointPath( mCurrentPoint, xs, ys, mPointScale, mDrawingSurface.scrapIndex() ); // no text, no options
+                  finalizePointPlacement( point );
+	        } else {
+                  DrawingPointPath point = DrawingPointFactory.createPlacement(
+                    mCurrentPoint, xs, ys, mPointScale, mDrawingSurface.scrapIndex() );
                   applySketchBrushStyle( point );
     	          if ( BrushManager.isPointOrientable( mCurrentPoint ) ) {
 		    if ( shift > TDSetting.mPointingRadius ) {
@@ -5789,7 +5792,8 @@ public class DrawingWindow extends ItemDrawer
 		    }
                   }
                   mDrawingSurface.addDrawingPath( point );
-    	        }
+                  finalizePointPlacement( point );
+	        }
                 // undoBtn.setEnabled(true);
                 // redoBtn.setEnabled(false);
                 // canRedo = false;
@@ -5920,7 +5924,7 @@ public class DrawingWindow extends ItemDrawer
   private boolean onTouchDown( float xc, float yc, float xs, float ys )
   {
     HBXP_PointDown = false; // HBXP
-    if ( mDrawingSurface.commitLiveItem() ) modified(); // safety: commit any stray live point (e.g. cancelled gesture)
+    if ( commitLivePointPlacement() ) modified(); // safety: commit any stray live point (e.g. cancelled gesture)
     mDrawingSurface.endEraser();
     float d0 = TDSetting.mCloseCutoff + mSelectSize / mZoom;
     // TDLog.v( "on touch down. mode " + mMode + " " + mTouchMode );
@@ -6116,7 +6120,8 @@ public class DrawingWindow extends ItemDrawer
                   // Reference underlays are inserted only after the image picker returns.
                 } else {
                   if ( mLandscape ) {
-                    DrawingPointPath point = new DrawingPointPath( mCurrentPoint, -ys, xs, mPointScale, mDrawingSurface.scrapIndex() );
+                    DrawingPointPath point = DrawingPointFactory.createPlacement(
+                      mCurrentPoint, -ys, xs, mPointScale, mDrawingSurface.scrapIndex() );
                     point.mLandscape = true; // live overlay draws before the scene stamps this flag
                     applySketchBrushStyle( point );
                     updatePointFromPlacementDrag( point, x_shift, y_shift, true );
@@ -6131,7 +6136,8 @@ public class DrawingWindow extends ItemDrawer
                         }
                     }
                   } else {
-                    DrawingPointPath point = new DrawingPointPath( mCurrentPoint, xs, ys, mPointScale, mDrawingSurface.scrapIndex() ); // no text, no options
+                    DrawingPointPath point = DrawingPointFactory.createPlacement(
+                      mCurrentPoint, xs, ys, mPointScale, mDrawingSurface.scrapIndex() );
                     applySketchBrushStyle( point );
                     updatePointFromPlacementDrag( point, x_shift, y_shift, false );
                     if ( !HBXP_PointDown ){
@@ -6601,6 +6607,51 @@ public class DrawingWindow extends ItemDrawer
   void rememberTextObjectDefault( SketchTextStyle style )
   {
     SketchTextDefaults.save( mApp_mData, TDInstance.sid, style );
+  }
+
+  /** Calculate LRUD at the nearest plotted station for a survey-aware point. */
+  StationLrudResult computeNearestStationLrud( float scene_x, float scene_y )
+  {
+    DrawingStationName station = mDrawingSurface.getNearestStation( scene_x, scene_y );
+    if ( station == null ) return new StationLrudResult();
+    List< DBlock > legs = mApp_mData.selectShotsAt( TDInstance.sid, station.getName(), true );
+    List< DBlock > splays = mApp_mData.selectShotsAt( TDInstance.sid, station.getName(), false );
+    DBlock reference = ( legs == null || legs.isEmpty() ) ? null : legs.get( 0 );
+    return StationLrudCalculator.computeAtStation( reference, splays, station.getName() );
+  }
+
+  /** Apply point-property changes through the cached drawing lifecycle. */
+  void updatePointObject( DrawingPointPath point )
+  {
+    if ( point instanceof DrawingSemanticPointPath ) {
+      ((DrawingSemanticPointPath)point).refreshSpecialBounds();
+    }
+    mDrawingSurface.requestSceneRender();
+    modified();
+  }
+
+  /** Run a committed live point through the same lifecycle as a tapped point. */
+  private boolean commitLivePointPlacement()
+  {
+    DrawingPath committed = mDrawingSurface.commitLiveItemPath();
+    if ( committed == null ) return false;
+    if ( committed instanceof DrawingPointPath ) finalizePointPlacement( (DrawingPointPath)committed );
+    return true;
+  }
+
+  /** Invoke the registered special behavior exactly once after point commit. */
+  private void finalizePointPlacement( DrawingPointPath point )
+  {
+    if ( ! ( point instanceof DrawingSemanticPointPath ) ) return;
+    DrawingSemanticPointPath semantic = (DrawingSemanticPointPath)point;
+    SpecialPointPlacementAction action = semantic.initializePlacement( new SpecialPointPlacementContext( this ) );
+    if ( action == SpecialPointPlacementAction.OPEN_EDITOR ) {
+      new DrawingPointDialog( mActivity, this, point, true ).show();
+    } else if ( action == SpecialPointPlacementAction.LAUNCH_WORKFLOW ) {
+      // Reserved for strike/dip and similar calculation workflows.
+      TDLog.e( "Special point requested an unimplemented external workflow: "
+        + semantic.specialBehavior().behaviorId() );
+    }
   }
 
   double textObjectDefaultOrientation()
@@ -7417,7 +7468,7 @@ public class DrawingWindow extends ItemDrawer
         // TDLog.v("set mode from " + mMode + " to " + mode + " (skip)");
         return;
       }
-      if ( mDrawingSurface.commitLiveItem() ) modified(); // never strand a live point across a mode switch
+      if ( commitLivePointPlacement() ) modified(); // never strand a live point across a mode switch
 
       if ( mMode == MODE_DRAW ) {  // this has annoying glitches 
         mZoomView.setTranslationY( 0 );

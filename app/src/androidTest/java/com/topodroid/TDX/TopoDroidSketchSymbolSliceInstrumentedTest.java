@@ -118,6 +118,8 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                 entries.contains( "symbols_topodroid_sketch/line/pit" ) );
     assertTrue( "Missing sketch ceiling-ledge line in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/line/chimney" ) );
+    assertTrue( "Missing smart passage-height point in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/point/passage-height" ) );
     assertTrue( "Missing paired-rail ceiling-channel line in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/line/ceiling-meander" ) );
     assertTrue( "Missing paired-rail floor-channel line in default raw pack",

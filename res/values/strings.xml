@@ -1116,6 +1116,10 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="text_bold">Bold</string>
     <string name="text_italic">Italic</string>
     <string name="text_underline">Underline</string>
+    <string name="ceiling_height">Ceiling height</string>
+    <string name="water_depth">Water depth</string>
+    <string name="text_formatting">Text formatting</string>
+    <string name="ceiling_text_size">Text size</string>
     <string name="text_line_weight">Line weight</string>
     <string name="text_align_left">Left</string>
     <string name="text_align_center">Center</string>

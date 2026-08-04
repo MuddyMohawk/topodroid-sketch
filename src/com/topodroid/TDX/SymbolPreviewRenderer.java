@@ -116,9 +116,15 @@ class SymbolPreviewRenderer
 
   private static Scene makePointScene( int index, SymbolInterface symbol )
   {
-    DrawingPointPath point = new DrawingPointPath( index, 0.0f, 0.0f, PointScale.SCALE_M, 0 );
+    DrawingPointPath point = DrawingPointFactory.createPreview( index, 0.0f, 0.0f, PointScale.SCALE_M, 0 );
     point.setSketchBrushStyle( STANDARD_STYLE );
     if ( BrushManager.isPointOrientable( index ) ) point.setOrientation( symbol.getAngle() );
+
+    if ( point instanceof DrawingSemanticPointPath
+        && ((DrawingSemanticPointPath)point).hasUsableSpecialState() ) {
+      RectF frame = new RectF( point );
+      return new PointScene( point, null, null, frame );
+    }
 
     Paint paint = SketchBrushRenderer.pointPaint( BrushManager.getPointPaint( index ), STANDARD_STYLE,
                                                   BrushManager.getPointSketchStrokeScale( index ) );
