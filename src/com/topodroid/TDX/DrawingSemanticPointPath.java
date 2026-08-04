@@ -90,8 +90,16 @@ class DrawingSemanticPointPath extends DrawingPointPath
 
   @Override public String getFullThName()
   {
+    String full_name = ( mBehavior == null ) ? null : mBehavior.fullTherionName();
+    if ( full_name != null && full_name.length() > 0 ) return full_name;
     return ( mCanonicalTherionName == null || mCanonicalTherionName.length() == 0 )
       ? super.getFullThName() : mCanonicalTherionName;
+  }
+
+  @Override public String getFullThNameEscapedColon()
+  {
+    String full_name = getFullThName();
+    return ( full_name == null ) ? null : full_name.replace( ':', '_' );
   }
 
   @Override protected boolean pointUsesValue()

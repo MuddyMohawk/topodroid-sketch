@@ -9,26 +9,17 @@ import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.SeekBar;
-import android.widget.Spinner;
-import android.widget.TextView;
 
 final class CeilingHeightPointEditorController implements SpecialPointEditorController
 {
   private final DrawingWindow mParent;
   private final DrawingSemanticPointPath mPoint;
+  private final FramedTextTypographyEditor mTypography = new FramedTextTypographyEditor();
   private CheckBox mWaterEnabled;
   private EditText mWaterDepth;
-  private Spinner mFont;
-  private CheckBox mBold;
-  private CheckBox mItalic;
-  private CheckBox mUnderline;
-  private SeekBar mTextScale;
-  private TextView mTextScaleValue;
 
   CeilingHeightPointEditorController( DrawingWindow parent, DrawingSemanticPointPath point )
   {
@@ -49,54 +40,23 @@ final class CeilingHeightPointEditorController implements SpecialPointEditorCont
     container.addView( root );
     mWaterEnabled = (CheckBox)root.findViewById( R.id.ceiling_water_enabled );
     mWaterDepth = (EditText)root.findViewById( R.id.ceiling_water_depth );
-    mFont = (Spinner)root.findViewById( R.id.ceiling_text_font );
-    mBold = (CheckBox)root.findViewById( R.id.ceiling_text_bold );
-    mItalic = (CheckBox)root.findViewById( R.id.ceiling_text_italic );
-    mUnderline = (CheckBox)root.findViewById( R.id.ceiling_text_underline );
-    mTextScale = (SeekBar)root.findViewById( R.id.ceiling_text_scale );
-    mTextScaleValue = (TextView)root.findViewById( R.id.ceiling_text_scale_value );
-
-    ArrayAdapter< String > fonts = new ArrayAdapter<>(
-      mParent, android.R.layout.simple_spinner_item, SketchFontRegistry.fontLabels() );
-    fonts.setDropDownViewResource( android.R.layout.simple_spinner_dropdown_item );
-    mFont.setAdapter( fonts );
-    mFont.setSelection( SketchFontRegistry.indexOf( state.fontId() ) );
-    mBold.setChecked( state.bold() );
-    mItalic.setChecked( state.italic() );
-    mUnderline.setChecked( state.underline() );
+    mTypography.bind( mParent, root, state,
+      CeilingHeightPointState.MIN_TEXT_SCALE, CeilingHeightPointState.MAX_TEXT_SCALE );
     mWaterEnabled.setChecked( state.waterEnabled );
     mWaterDepth.setText( state.waterDepth );
     showWaterField( state.waterEnabled, false );
-
-    int progress = state.textScalePercent() - CeilingHeightPointState.MIN_TEXT_SCALE;
-    mTextScale.setMax( CeilingHeightPointState.MAX_TEXT_SCALE - CeilingHeightPointState.MIN_TEXT_SCALE );
-    mTextScale.setProgress( progress );
-    updateScaleLabel( state.textScalePercent() );
-    mTextScale.setOnSeekBarChangeListener( new SeekBar.OnSeekBarChangeListener() {
-      @Override public void onProgressChanged( SeekBar seek_bar, int value, boolean from_user )
-      {
-        updateScaleLabel( CeilingHeightPointState.MIN_TEXT_SCALE + value );
-      }
-      @Override public void onStartTrackingTouch( SeekBar seek_bar ) { }
-      @Override public void onStopTrackingTouch( SeekBar seek_bar ) { }
-    } );
     mWaterEnabled.setOnClickListener( view -> showWaterField( mWaterEnabled.isChecked(), true ) );
   }
 
   @Override public void apply()
   {
-    if ( mWaterEnabled == null ) return;
-    String font_id = SketchFontRegistry.fontIdAt( mFont.getSelectedItemPosition() );
-    int scale = CeilingHeightPointState.MIN_TEXT_SCALE + mTextScale.getProgress();
+    if ( mWaterEnabled == null || ! mTypography.isBound() ) return;
     CeilingHeightPointState state = new CeilingHeightPointState(
-      mWaterEnabled.isChecked(), mWaterDepth.getText().toString(), font_id,
-      mBold.isChecked(), mItalic.isChecked(), mUnderline.isChecked(), scale );
+      mWaterEnabled.isChecked(), mWaterDepth.getText().toString(), mTypography.fontId(),
+      mTypography.bold(), mTypography.italic(), mTypography.underline(),
+      mTypography.textScalePercent() );
     mPoint.setSpecialState( state, true );
-
-    SketchTextStyle defaults = mParent.loadTextObjectDefault()
-      .withFontId( font_id )
-      .withEmphasis( state.bold(), state.italic(), state.underline() );
-    mParent.rememberTextObjectDefault( defaults );
+    mTypography.rememberAsTextDefault( mParent );
   }
 
   private void showWaterField( boolean visible, boolean focus )
@@ -111,10 +71,5 @@ final class CeilingHeightPointEditorController implements SpecialPointEditorCont
         if ( keyboard != null ) keyboard.showSoftInput( mWaterDepth, InputMethodManager.SHOW_IMPLICIT );
       } );
     }
-  }
-
-  private void updateScaleLabel( int percent )
-  {
-    if ( mTextScaleValue != null ) mTextScaleValue.setText( percent + "%" );
   }
 }

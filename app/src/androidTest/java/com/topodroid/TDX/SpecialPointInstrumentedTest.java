@@ -71,18 +71,23 @@ public class SpecialPointInstrumentedTest
   @Test public void registryFactory_routesOnlyRegisteredTherionNames()
   {
     int ceiling_type = BrushManager.getPointIndexByThName( CeilingHeightPointBehavior.THERION_NAME );
+    int pit_type = BrushManager.getPointIndexByThName( PitDepthPointBehavior.THERION_NAME );
     int sand_type = BrushManager.getPointIndexByThName( "sand" );
     assertTrue( ceiling_type >= 0 );
+    assertTrue( pit_type >= 0 );
     assertTrue( sand_type >= 0 );
 
     DrawingPointPath ceiling = DrawingPointFactory.createPlacement(
       ceiling_type, 10.0f, 20.0f, PointScale.SCALE_M, 0 );
     DrawingPointPath sand = DrawingPointFactory.createPlacement(
       sand_type, 10.0f, 20.0f, PointScale.SCALE_M, 0 );
+    DrawingPointPath pit = DrawingPointFactory.createPlacement(
+      pit_type, 10.0f, 20.0f, PointScale.SCALE_M, 0 );
     DrawingPointPath preview = DrawingPointFactory.createPreview(
       ceiling_type, 0.0f, 0.0f, PointScale.SCALE_M, 0 );
 
     assertTrue( ceiling instanceof DrawingSemanticPointPath );
+    assertTrue( pit instanceof DrawingSemanticPointPath );
     assertFalse( sand instanceof DrawingSemanticPointPath );
     assertEquals( CeilingHeightPointBehavior.BEHAVIOR_ID,
       ((DrawingSemanticPointPath)ceiling).specialBehavior().behaviorId() );
@@ -91,6 +96,9 @@ public class SpecialPointInstrumentedTest
       ((CeilingHeightPointState)((DrawingSemanticPointPath)ceiling).specialState()).textScalePercent() );
     assertEquals( SketchPointScale.legacyScaleValue( PointScale.SCALE_S ),
       CeilingHeightPointBehavior.BASE_FOOTPRINT_SCALE, 0.001f );
+    assertEquals( PitDepthPointBehavior.BEHAVIOR_ID,
+      ((DrawingSemanticPointPath)pit).specialBehavior().behaviorId() );
+    assertEquals( PitDepthPointBehavior.FULL_THERION_NAME, pit.getFullThName() );
   }
 
   @Test public void lrudCalculator_handlesDirectAndReverseSplaysWithPresence()
@@ -157,6 +165,50 @@ public class SpecialPointInstrumentedTest
       PointScale.SCALE_M, "9", options, 0 );
     assertFalse( point.hasUsableSpecialState() );
     assertEquals( encoded, SketchPrivateOptions.getOptionValue( point.mOptions, SketchPrivateOptions.OPTION_SPECIAL ) );
+  }
+
+  @Test public void pitDepth_usesDownAndRoundTripsFreeformBoxedValue() throws Exception
+  {
+    StationLrudResult lrud = new StationLrudResult();
+    lrud.down = 3.0f;
+    assertEquals( "", PitDepthPointBehavior.initialValue( lrud, 1.0f ) );
+    lrud.hasDown = true;
+    assertEquals( "3", PitDepthPointBehavior.initialValue( lrud, 1.0f ) );
+    assertEquals( "10", PitDepthPointBehavior.initialValue( lrud, 3.28084f ) );
+
+    int type = BrushManager.getPointIndexByThName( PitDepthPointBehavior.THERION_NAME );
+    DrawingSemanticPointPath original = (DrawingSemanticPointPath)DrawingPointFactory.createPlacement(
+      type, 40.0f, 50.0f, PointScale.SCALE_M, 2 );
+    original.setPointText( "10C" );
+    original.setSpecialState( new PitDepthPointState(
+      SketchFontRegistry.FONT_SERIF, true, true, false, 140 ), true );
+
+    RectF boxed = original.specialBehavior().renderer().sceneBounds( original );
+    assertTrue( boxed.width() > boxed.height() );
+
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    DataOutputStream output = new DataOutputStream( bytes );
+    original.toDataStream( output, 2 );
+    output.flush();
+    DataInputStream input = new DataInputStream( new ByteArrayInputStream( bytes.toByteArray() ) );
+    assertEquals( 'P', input.read() );
+    DrawingPointPath loaded_path = DrawingPointPath.loadDataStream( TDR_VERSION, input, 0.0f, 0.0f );
+    assertTrue( loaded_path instanceof DrawingSemanticPointPath );
+    PitDepthPointState loaded = (PitDepthPointState)
+      ((DrawingSemanticPointPath)loaded_path).specialState();
+    assertEquals( "10C", loaded_path.getPointText() );
+    assertEquals( SketchFontRegistry.FONT_SERIF, loaded.fontId() );
+    assertTrue( loaded.bold() );
+    assertTrue( loaded.italic() );
+    assertEquals( 140, loaded.textScalePercent() );
+    assertTrue( loaded_path.toTherion().contains( "u:pit-depth" ) );
+    assertTrue( loaded_path.toTherion().contains( "-value 10C" ) );
+    assertFalse( loaded_path.toTherion().contains( "-tdx-special" ) );
+
+    loaded_path.setPointText( "7" );
+    RectF square = ((DrawingSemanticPointPath)loaded_path).specialBehavior().renderer()
+      .sceneBounds( (DrawingSemanticPointPath)loaded_path );
+    assertEquals( square.width(), square.height(), 0.001f );
   }
 
   @Test public void framedRenderer_growsForWaterAndLongFreeformText()

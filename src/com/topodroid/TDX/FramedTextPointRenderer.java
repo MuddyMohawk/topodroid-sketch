@@ -12,6 +12,7 @@ import android.graphics.RectF;
 final class FramedTextPointRenderer implements SpecialPointRenderer
 {
   enum FrameShape { OVAL, RECTANGLE }
+  enum SingleRowPolicy { NATURAL, EQUAL_SIDES, WIDEN_FROM_SQUARE }
 
   private static final float MIN_WIDTH = 12.0f;
   private static final float SINGLE_MIN_HEIGHT = 16.0f;
@@ -24,16 +25,23 @@ final class FramedTextPointRenderer implements SpecialPointRenderer
 
   private final FrameShape mShape;
   private final float mBaseScale;
+  private final SingleRowPolicy mSingleRowPolicy;
 
   FramedTextPointRenderer( FrameShape shape )
   {
-    this( shape, 1.0f );
+    this( shape, 1.0f, SingleRowPolicy.NATURAL );
   }
 
   FramedTextPointRenderer( FrameShape shape, float base_scale )
   {
+    this( shape, base_scale, SingleRowPolicy.NATURAL );
+  }
+
+  FramedTextPointRenderer( FrameShape shape, float base_scale, SingleRowPolicy single_row_policy )
+  {
     mShape = ( shape == null ) ? FrameShape.OVAL : shape;
     mBaseScale = ( base_scale > 0.0f && Float.isFinite( base_scale ) ) ? base_scale : 1.0f;
+    mSingleRowPolicy = ( single_row_policy == null ) ? SingleRowPolicy.NATURAL : single_row_policy;
   }
 
   @Override public void draw( DrawingSemanticPointPath point, Canvas canvas, int xor_color )
@@ -139,12 +147,16 @@ final class FramedTextPointRenderer implements SpecialPointRenderer
     float min_half_height = 0.5f * ( rows.length > 1 ? MULTI_MIN_HEIGHT : SINGLE_MIN_HEIGHT ) * point_scale;
     float half_height = Math.max( min_half_height,
       Math.max( -content_top, content_bottom ) + VERTICAL_PADDING * point_scale );
-    if ( mShape == FrameShape.OVAL && rows.length == 1 ) {
-      // The dry ceiling-height form is circular. Free-form long text grows the diameter in
-      // both directions so it is never squeezed or allowed to turn the frame back into an oval.
-      float radius = Math.max( half_width, half_height );
-      half_width = radius;
-      half_height = radius;
+    if ( rows.length == 1 ) {
+      if ( mSingleRowPolicy == SingleRowPolicy.EQUAL_SIDES ) {
+        // Circular framed values grow equally in both directions for unusually long text.
+        float radius = Math.max( half_width, half_height );
+        half_width = radius;
+        half_height = radius;
+      } else if ( mSingleRowPolicy == SingleRowPolicy.WIDEN_FROM_SQUARE ) {
+        // Boxed values begin square but can widen into a rectangle for free-form annotations.
+        half_width = Math.max( half_width, half_height );
+      }
     }
     return new Layout( state, rows, layouts, style, centers, point_scale, line_height, half_width, half_height );
   }

@@ -17,6 +17,7 @@ final class SpecialPointRegistry
     HashMap< String, SpecialPointBehavior > therion = new HashMap<>();
     HashMap< String, SpecialPointBehavior > ids = new HashMap<>();
     register( therion, ids, new CeilingHeightPointBehavior() );
+    register( therion, ids, new PitDepthPointBehavior() );
     BY_THERION = Collections.unmodifiableMap( therion );
     BY_ID = Collections.unmodifiableMap( ids );
   }

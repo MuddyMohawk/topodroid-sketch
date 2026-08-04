@@ -35,8 +35,8 @@ public class SymbolPointLibrary extends SymbolLibrary
     CONTINUATION, "corrosion-residue", "curtain", "frostwork", "gypsum-chandelier", "gypsum-crystals", "gypsum-flower",
     "gypsum-hair", "gypsum-needles", "gypsum-rim-vent", DANGER, DEBRIS, "debris:small", DIG, ENTRANCE, GUANO,
     HELICTITE, ICE, "invertebrate-fossils", "mammalaries-cave-clouds", "moonmilk", PEBBLES, PILLAR, "pool-spar",
-    POPCORN, "raft-cone", ROOT, SAND, SECTION, SLOPE, SNOW, SODA_STRAW, STALACTITE, "stalactite:alternate",
-    STALAGMITE, "stalagmite:alternate", WATER_FLOW
+    "pit-depth", POPCORN, "raft-cone", ROOT, SAND, SECTION, SLOPE, SNOW, SODA_STRAW, STALACTITE,
+    "stalactite:alternate", STALAGMITE, "stalagmite:alternate", WATER_FLOW
   };
 
   // ArrayList< SymbolPoint > mPoint;    // enabled points

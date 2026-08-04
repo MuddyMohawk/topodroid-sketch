@@ -11,6 +11,8 @@ interface SpecialPointBehavior
 {
   String therionName();
 
+  default String fullTherionName() { return therionName(); }
+
   String behaviorId();
 
   int stateVersion();

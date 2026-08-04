@@ -6,9 +6,9 @@ package com.topodroid.TDX;
 
 final class CeilingHeightPointState implements FramedTextPointState
 {
-  static final int MIN_TEXT_SCALE = 50;
-  static final int MAX_TEXT_SCALE = 200;
-  static final int DEFAULT_TEXT_SCALE = 175;
+  static final int MIN_TEXT_SCALE = FramedTextPointState.MIN_TEXT_SCALE;
+  static final int MAX_TEXT_SCALE = FramedTextPointState.MAX_TEXT_SCALE;
+  static final int DEFAULT_TEXT_SCALE = FramedTextPointState.DEFAULT_TEXT_SCALE;
 
   final boolean waterEnabled;
   final String waterDepth;

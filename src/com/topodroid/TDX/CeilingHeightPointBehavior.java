@@ -4,10 +4,6 @@
  */
 package com.topodroid.TDX;
 
-import com.topodroid.types.PointScale;
-
-import java.util.Locale;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -15,10 +11,11 @@ final class CeilingHeightPointBehavior implements SpecialPointBehavior
 {
   static final String THERION_NAME = "passage-height";
   static final String BEHAVIOR_ID = "ceiling-height";
-  static final float BASE_FOOTPRINT_SCALE = SketchPointScale.legacyScaleValue( PointScale.SCALE_S );
+  static final float BASE_FOOTPRINT_SCALE = SpecialPointSizing.COMPACT_FRAME_SCALE;
   private static final int STATE_VERSION = 1;
   private static final SpecialPointRenderer RENDERER =
-    new FramedTextPointRenderer( FramedTextPointRenderer.FrameShape.OVAL, BASE_FOOTPRINT_SCALE );
+    new FramedTextPointRenderer( FramedTextPointRenderer.FrameShape.OVAL, BASE_FOOTPRINT_SCALE,
+      FramedTextPointRenderer.SingleRowPolicy.EQUAL_SIDES );
 
   @Override public String therionName() { return THERION_NAME; }
   @Override public String behaviorId() { return BEHAVIOR_ID; }
@@ -88,10 +85,6 @@ final class CeilingHeightPointBehavior implements SpecialPointBehavior
 
   static String formatInitialHeight( float value )
   {
-    float rounded = Math.round( Math.max( 0.0f, value ) * 2.0f ) / 2.0f;
-    if ( Math.abs( rounded - Math.round( rounded ) ) < 0.001f ) {
-      return String.format( Locale.US, "%d", Math.round( rounded ) );
-    }
-    return String.format( Locale.US, "%.1f", rounded );
+    return SpecialPointValueFormatter.halfUnit( value );
   }
 }
