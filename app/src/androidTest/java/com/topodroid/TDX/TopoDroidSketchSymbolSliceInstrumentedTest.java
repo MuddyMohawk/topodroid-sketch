@@ -86,6 +86,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     int dogtoothSparLineCount = 0;
     int dogtoothSparPointCount = 0;
     int gypsumCrystalsCount = 0;
+    int jointLineCount = 0;
     int talusLineCount = 0;
 
     ZipInputStream zip = new ZipInputStream(
@@ -99,6 +100,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
         if ( name.equals( "symbols_topodroid_sketch/line/dogtooth-spar" ) ) ++dogtoothSparLineCount;
         if ( name.equals( "symbols_topodroid_sketch/point/dogtooth-spar" ) ) ++dogtoothSparPointCount;
         if ( name.equals( "symbols_topodroid_sketch/point/gypsum-crystals" ) ) ++gypsumCrystalsCount;
+        if ( name.equals( "symbols_topodroid_sketch/line/joint" ) ) ++jointLineCount;
         if ( name.equals( "symbols_topodroid_sketch/line/talus" ) ) ++talusLineCount;
         assertTrue( "Default symbol pack entry should use symbols_topodroid_sketch root: " + name,
                     name.startsWith( "symbols_topodroid_sketch/" ) );
@@ -133,6 +135,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertEquals( "Dogtooth Spar line should occur exactly once in the default raw pack", 1, dogtoothSparLineCount );
     assertEquals( "Dogtooth Spar point should be removed from the default raw pack", 0, dogtoothSparPointCount );
     assertEquals( "Gypsum Crystals should occur exactly once in the default raw pack", 1, gypsumCrystalsCount );
+    assertEquals( "Joint should occur exactly once in the default raw pack", 1, jointLineCount );
     assertEquals( "Talus should occur exactly once in the default raw pack", 1, talusLineCount );
     assertTrue( "Generic Spar remains deferred",
                 ! entries.contains( "symbols_topodroid_sketch/point/spar" ) );
@@ -345,6 +348,28 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     advanceField.setAccessible( true );
     assertEquals( "Talus parser must honor the trailing empty repeat space", 10.0f,
                   advanceField.getFloat( talusSymbol.mLineEffect ), 0.001f );
+
+    String joint = readRawSymbolEntry( "symbols_topodroid_sketch/line/joint" );
+    assertTrue( "Joint must use the requested purple", joint.contains( "\ncolor 0x7030a0 0xff\n" ) );
+    assertTrue( "Joint must use a centered one-line-width carrier",
+                joint.contains( "\n  carrier -0.5 0.5\n" ) );
+    String[] jointSquare = {
+      "moveTo 4.5 -1.5", "lineTo 7.5 -1.5", "lineTo 7.5 1.5",
+      "lineTo 4.5 1.5", "lineTo 4.5 -1.5"
+    };
+    for ( String command : jointSquare ) {
+      assertEquals( "Joint effect and filled sketch stamp must match: " + command, 2,
+                    countOccurrences( joint, command ) );
+    }
+    assertTrue( "Joint must reserve a 12.0 repeat for a three-square clear gap",
+                joint.contains( "moveTo 0 0" ) && joint.contains( "moveTo 12 0" ) );
+    int jointIndex = BrushManager.getLineIndexByThName( "joint" );
+    assertTrue( "Joint must load into the line library", jointIndex >= 0 );
+    SymbolLine jointSymbol = BrushManager.getLineByIndex( jointIndex );
+    assertNotNull( "Joint line symbol must be available", jointSymbol );
+    assertNotNull( "Joint line symbol must retain its repeat effect", jointSymbol.mLineEffect );
+    assertEquals( "Joint parser must honor the 12.0 line-width repeat", 12.0f,
+                  advanceField.getFloat( jointSymbol.mLineEffect ), 0.001f );
   }
 
   @Test
@@ -396,6 +421,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawLineRow( canvas, label, "Ceiling channel", "ceiling-meander", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Pit", "pit", y ); y += LINE_ROW;
     drawDirectionalLineRow( canvas, label, "Talus", "talus", y ); y += DIRECTIONAL_LINE_ROW;
+    drawLineRow( canvas, label, "Joint", "joint", y ); y += LINE_ROW;
     drawDirectionalLineRow( canvas, label, "Crossbar line", SymbolLibrary.CROSSBAR_LINE, y ); y += DIRECTIONAL_LINE_ROW;
     drawLineRow( canvas, label, "Floor channel", "floor-meander", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Water flow", "water-flow", y ); y += LINE_ROW + 32.0f;

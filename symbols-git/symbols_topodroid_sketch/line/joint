@@ -1,0 +1,30 @@
+encoding utf-8
+symbol line
+name joint
+th_name joint
+group joint
+color 0x7030a0 0xff
+width 2
+# units: line-widths (1 = ink thickness). The 3.0-square is slightly smaller
+# than Talus's 4.0-wide rendered open rectangle. A 12.0 repeat leaves a clear
+# 9.0 gap, exactly three times the square size.
+effect
+  moveTo 0 0
+  moveTo 4.5 -1.5
+  lineTo 7.5 -1.5
+  lineTo 7.5 1.5
+  lineTo 4.5 1.5
+  lineTo 4.5 -1.5
+  moveTo 12 0
+endeffect
+sketch_effect 1
+  carrier -0.5 0.5
+  stamp
+    moveTo 4.5 -1.5
+    lineTo 7.5 -1.5
+    lineTo 7.5 1.5
+    lineTo 4.5 1.5
+    lineTo 4.5 -1.5
+  endstamp
+endsketch_effect
+endsymbol
