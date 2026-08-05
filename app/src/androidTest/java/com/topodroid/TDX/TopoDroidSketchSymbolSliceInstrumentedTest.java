@@ -87,6 +87,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     int dogtoothSparPointCount = 0;
     int gypsumCrystalsCount = 0;
     int jointLineCount = 0;
+    int reverseFaultLineCount = 0;
     int talusLineCount = 0;
     int thrustLineCount = 0;
 
@@ -102,6 +103,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
         if ( name.equals( "symbols_topodroid_sketch/point/dogtooth-spar" ) ) ++dogtoothSparPointCount;
         if ( name.equals( "symbols_topodroid_sketch/point/gypsum-crystals" ) ) ++gypsumCrystalsCount;
         if ( name.equals( "symbols_topodroid_sketch/line/joint" ) ) ++jointLineCount;
+        if ( name.equals( "symbols_topodroid_sketch/line/reverse-fault" ) ) ++reverseFaultLineCount;
         if ( name.equals( "symbols_topodroid_sketch/line/talus" ) ) ++talusLineCount;
         if ( name.equals( "symbols_topodroid_sketch/line/thrust" ) ) ++thrustLineCount;
         assertTrue( "Default symbol pack entry should use symbols_topodroid_sketch root: " + name,
@@ -138,6 +140,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertEquals( "Dogtooth Spar point should be removed from the default raw pack", 0, dogtoothSparPointCount );
     assertEquals( "Gypsum Crystals should occur exactly once in the default raw pack", 1, gypsumCrystalsCount );
     assertEquals( "Joint should occur exactly once in the default raw pack", 1, jointLineCount );
+    assertEquals( "Reverse Fault should occur exactly once in the default raw pack", 1, reverseFaultLineCount );
     assertEquals( "Talus should occur exactly once in the default raw pack", 1, talusLineCount );
     assertEquals( "Thrust Fault should occur exactly once in the default raw pack", 1, thrustLineCount );
     assertTrue( "Generic Spar remains deferred",
@@ -395,6 +398,31 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertNotNull( "Thrust Fault line symbol must retain its repeat effect", thrustSymbol.mLineEffect );
     assertEquals( "Thrust Fault parser must honor the 16.0 line-width repeat", 16.0f,
                   advanceField.getFloat( thrustSymbol.mLineEffect ), 0.001f );
+
+    String reverseFault = readRawSymbolEntry( "symbols_topodroid_sketch/line/reverse-fault" );
+    assertTrue( "Reverse Fault must use the requested purple",
+                reverseFault.contains( "\ncolor 0x7030a0 0xff\n" ) );
+    assertTrue( "Reverse Fault must remain in the fault group",
+                reverseFault.contains( "\ngroup fault\n" ) );
+    assertTrue( "Reverse Fault must use the same one-line-width carrier as Pit",
+                reverseFault.contains( "\n  carrier 0 1\n" ) );
+    String[] reverseFaultHalfSquare = {
+      "moveTo 4.5 0", "lineTo 7.5 0", "lineTo 7.5 -1.5",
+      "lineTo 4.5 -1.5", "lineTo 4.5 0"
+    };
+    for ( String command : reverseFaultHalfSquare ) {
+      assertTrue( "Reverse Fault filled half-square command is missing: " + command,
+                  reverseFault.contains( command ) );
+    }
+    assertTrue( "Reverse Fault must reserve Joint's 12.0 repeat for a three-base-width clear gap",
+                reverseFault.contains( "lineTo 12 1" ) && reverseFault.contains( "lineTo 12 0" ) );
+    int reverseFaultIndex = BrushManager.getLineIndexByThName( "reverse-fault" );
+    assertTrue( "Reverse Fault must load into the line library", reverseFaultIndex >= 0 );
+    SymbolLine reverseFaultSymbol = BrushManager.getLineByIndex( reverseFaultIndex );
+    assertNotNull( "Reverse Fault line symbol must be available", reverseFaultSymbol );
+    assertNotNull( "Reverse Fault line symbol must retain its repeat effect", reverseFaultSymbol.mLineEffect );
+    assertEquals( "Reverse Fault parser must honor Joint's 12.0 line-width repeat", 12.0f,
+                  advanceField.getFloat( reverseFaultSymbol.mLineEffect ), 0.001f );
   }
 
   @Test
@@ -405,6 +433,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     int poolFingersDirection = hachureDirection( readRawSymbolEntry( "symbols_topodroid_sketch/line/pool-fingers" ) );
     int gypsumWallCrustDirection = hachureDirection( readRawSymbolEntry( "symbols_topodroid_sketch/line/gypsum-wall-crust" ) );
     int thrustDirection = hachureDirection( readRawSymbolEntry( "symbols_topodroid_sketch/line/thrust" ) );
+    int reverseFaultDirection = hachureDirection( readRawSymbolEntry( "symbols_topodroid_sketch/line/reverse-fault" ) );
 
     assertTrue( "Could not parse pit hachure direction", pitDirection != 0 );
     assertTrue( "Could not parse ceiling-ledge hachure direction", ceilingLedgeDirection != 0 );
@@ -416,6 +445,8 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                   pitDirection, gypsumWallCrustDirection );
     assertEquals( "Thrust Fault teeth should point to the Pit side while drawing",
                   pitDirection, thrustDirection );
+    assertEquals( "Reverse Fault tabs should point to the Pit side while drawing",
+                  pitDirection, reverseFaultDirection );
   }
 
   @Test
@@ -451,6 +482,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawDirectionalLineRow( canvas, label, "Talus", "talus", y ); y += DIRECTIONAL_LINE_ROW;
     drawLineRow( canvas, label, "Joint", "joint", y ); y += LINE_ROW;
     drawDirectionalLineRow( canvas, label, "Thrust fault", "thrust", y ); y += DIRECTIONAL_LINE_ROW;
+    drawDirectionalLineRow( canvas, label, "Reverse fault", "reverse-fault", y ); y += DIRECTIONAL_LINE_ROW;
     drawDirectionalLineRow( canvas, label, "Crossbar line", SymbolLibrary.CROSSBAR_LINE, y ); y += DIRECTIONAL_LINE_ROW;
     drawLineRow( canvas, label, "Floor channel", "floor-meander", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Water flow", "water-flow", y ); y += LINE_ROW + 32.0f;

@@ -1,0 +1,31 @@
+encoding utf-8
+symbol line
+name reverse_fault
+th_name reverse-fault
+group fault
+color 0x7030a0 0xff
+width 2
+# units: line-widths (1 = ink thickness). Each filled half-square has a
+# 3.0-wide base and 1.5 depth. Matching Joint, the 12.0 repeat leaves a clear
+# 9.0 gap, exactly three times the tab-base width.
+effect
+  moveTo 0 1
+  lineTo 12 1
+  lineTo 12 0
+  lineTo 7.5 0
+  lineTo 7.5 -1.5
+  lineTo 4.5 -1.5
+  lineTo 4.5 0
+  lineTo 0 0
+endeffect
+sketch_effect 1
+  carrier 0 1
+  stamp
+    moveTo 4.5 0
+    lineTo 7.5 0
+    lineTo 7.5 -1.5
+    lineTo 4.5 -1.5
+    lineTo 4.5 0
+  endstamp
+endsketch_effect
+endsymbol
