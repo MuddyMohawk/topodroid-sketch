@@ -9,7 +9,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public final class BeddingPlaneFitter
@@ -17,6 +19,13 @@ public final class BeddingPlaneFitter
   private static final double COARSE_STEP = 2.0;
   private static final double REGION_68_DELTA = 2.30;
   private static final double REGION_95_DELTA = 5.99;
+  // Fixed-seed coverage calibration shows that the lower-noise DistoX model's
+  // ordinary two-parameter likelihood threshold under-covers dip direction for
+  // very shallow beds. This versioned polar threshold is intentionally
+  // conservative and applies only where azimuth is geometrically ill-conditioned.
+  private static final double DISTOX_SHALLOW_DIP_LIMIT = 12.0;
+  private static final double DISTOX_SHALLOW_REGION_68_DELTA = 3.70;
+  private static final double DISTOX_SHALLOW_REGION_95_DELTA = 6.80;
   private static final double CANDIDATE_DELTA = 8.0;
   private static final int MAX_BASINS = 16;
   // A five-degree leave-one-out swing is already large enough to change the
@@ -135,10 +144,18 @@ public final class BeddingPlaneFitter
       }
     }
 
+    double region68_delta = isDistoxShallow( model, best )
+      ? DISTOX_SHALLOW_REGION_68_DELTA : REGION_68_DELTA;
+    double region95_delta = isDistoxShallow( model, best )
+      ? DISTOX_SHALLOW_REGION_95_DELTA : REGION_95_DELTA;
+    addThresholdBoundarySamples( region_samples, coarse, best.objective + region68_delta,
+      observations, model );
+    addThresholdBoundarySamples( region_samples, coarse, best.objective + region95_delta,
+      observations, model );
     BeddingFitResult.AttitudeRegion region68 = makeRegion( region_samples, refined, best,
-      REGION_68_DELTA, 0.68 );
+      region68_delta, 0.68, compute_influence );
     BeddingFitResult.AttitudeRegion region95 = makeRegion( region_samples, refined, best,
-      REGION_95_DELTA, 0.95 );
+      region95_delta, 0.95, compute_influence );
     addRegionIssues( issues, region95 );
 
     double[] residuals = new double[count];
@@ -175,6 +192,13 @@ public final class BeddingPlaneFitter
       region68, region95, issues );
   }
 
+  private static boolean isDistoxShallow( BeddingMeasurementModel model, Candidate best )
+  {
+    return model != null && best != null
+      && BeddingMeasurementModel.DISTOX_CONSERVATIVE_V1.equals( model.id )
+      && best.dip <= DISTOX_SHALLOW_DIP_LIMIT;
+  }
+
   private static BeddingFitResult invalidWith( BeddingFitResult.Issue issue,
                                                EnumSet< BeddingFitResult.Issue > existing )
   {
@@ -198,7 +222,11 @@ public final class BeddingPlaneFitter
     for ( int omitted = 0; omitted < observations.size(); ++omitted ) {
       ArrayList< BeddingObservation > subset = new ArrayList<>( observations.size() - 1 );
       for ( int i = 0; i < observations.size(); ++i ) if ( i != omitted ) subset.add( observations.get( i ) );
-      Candidate seed = tlsSeed( subset, model );
+      ArrayList< Candidate > coarse = globalGrid( subset, model );
+      Candidate seed = null;
+      for ( Candidate candidate : coarse ) {
+        if ( seed == null || candidate.objective < seed.objective ) seed = candidate;
+      }
       Candidate fitted = seed == null ? null : refine( seed, subset, model );
       if ( fitted == null || ! Double.isFinite( fitted.objective ) ) { ++invalid; continue; }
       double change = planeAngleDegrees( full.normal, fitted.normal );
@@ -216,32 +244,6 @@ public final class BeddingPlaneFitter
     double median = changes.size() % 2 == 0
       ? 0.5 * ( changes.get( middle - 1 ) + changes.get( middle ) ) : changes.get( middle );
     return new InfluenceSummary( maximum, median, maximum_id, invalid );
-  }
-
-  private static Candidate tlsSeed( List< BeddingObservation > observations,
-                                    BeddingMeasurementModel model )
-  {
-    if ( observations == null || observations.size() < 3 ) return null;
-    GeoVector3 sum = new GeoVector3( 0, 0, 0 );
-    for ( BeddingObservation observation : observations ) sum = sum.plus( observation.endpoint );
-    GeoVector3 centroid = sum.times( 1.0 / observations.size() );
-    double[][] scatter = new double[3][3];
-    for ( BeddingObservation observation : observations ) {
-      accumulateOuter( scatter, observation.endpoint.minus( centroid ), 1.0 / observations.size() );
-    }
-    SymmetricEigen3.Result eigen = SymmetricEigen3.solve( scatter );
-    if ( ! eigen.converged ) return null;
-    double lambda2 = Math.max( 0.0, eigen.values[2] );
-    double lambda1 = Math.max( 0.0, eigen.values[1] );
-    if ( lambda2 <= 1.0e-14 || lambda1 / lambda2 <= 1.0e-8 ) return null;
-    BeddingAttitude attitude = BeddingAttitude.fromNormal( eigen.vectors[0] );
-    if ( attitude == null ) return null;
-    double direction = attitude.dipDirectionDegrees;
-    if ( ! Double.isFinite( direction ) ) {
-      direction = BeddingAttitude.wrap360( Math.toDegrees(
-        Math.atan2( attitude.unitNormal.east, attitude.unitNormal.north ) ) );
-    }
-    return evaluate( attitude.dipDegrees, direction, observations, model );
   }
 
   private static final class InfluenceSummary
@@ -345,6 +347,64 @@ public final class BeddingPlaneFitter
     }
   }
 
+  /** Refine accepted/rejected coarse-grid edges so broad likelihood regions do
+   *  not under-report their extrema by almost one full two-degree grid cell. */
+  private static void addThresholdBoundarySamples( List< Candidate > destination,
+                                                    List< Candidate > coarse,
+                                                    double threshold,
+                                                    List< BeddingObservation > observations,
+                                                    BeddingMeasurementModel model )
+  {
+    if ( coarse == null ) return;
+    Map< Long, Candidate > grid = new HashMap<>();
+    for ( Candidate candidate : coarse ) grid.put( coarseGridKey( candidate.dip, candidate.direction ), candidate );
+    double[][] offsets = { { -COARSE_STEP, 0.0 }, { COARSE_STEP, 0.0 },
+                           { 0.0, -COARSE_STEP }, { 0.0, COARSE_STEP } };
+    for ( Candidate inside : coarse ) {
+      if ( inside.objective > threshold ) continue;
+      for ( double[] offset : offsets ) {
+        double outside_dip = inside.dip + offset[0];
+        if ( outside_dip < 0.0 || outside_dip > 90.0 ) continue;
+        double outside_direction = inside.direction + offset[1];
+        Candidate outside = grid.get( coarseGridKey( outside_dip, outside_direction ) );
+        if ( outside == null || outside.objective <= threshold ) continue;
+        double accepted_dip = inside.dip;
+        double accepted_direction = inside.direction;
+        double rejected_dip = outside_dip;
+        double rejected_direction = outside_direction;
+        Candidate boundary = inside;
+        for ( int iteration = 0; iteration < 8; ++iteration ) {
+          double middle_dip = 0.5 * ( accepted_dip + rejected_dip );
+          double middle_direction = 0.5 * ( accepted_direction + rejected_direction );
+          Candidate middle = evaluate( middle_dip, middle_direction, observations, model );
+          if ( middle != null && middle.objective <= threshold ) {
+            boundary = middle;
+            accepted_dip = middle_dip;
+            accepted_direction = middle_direction;
+          } else {
+            rejected_dip = middle_dip;
+            rejected_direction = middle_direction;
+          }
+        }
+        destination.add( boundary );
+      }
+    }
+  }
+
+  private static long coarseGridKey( double dip, double direction )
+  {
+    int dip_index = (int)Math.round( dip / COARSE_STEP );
+    int direction_index;
+    if ( dip_index <= 0 ) {
+      direction_index = 0;
+    } else {
+      int direction_count = dip_index >= (int)Math.round( 90.0 / COARSE_STEP ) ? 90 : 180;
+      direction_index = (int)Math.round( BeddingAttitude.wrap360( direction ) / COARSE_STEP );
+      direction_index %= direction_count;
+    }
+    return ( (long)dip_index << 32 ) ^ ( direction_index & 0xffffffffL );
+  }
+
   private static Candidate evaluate( double raw_dip, double raw_direction,
                                      List< BeddingObservation > observations,
                                      BeddingMeasurementModel model )
@@ -363,10 +423,13 @@ public final class BeddingPlaneFitter
     GeoVector3 normal = attitude.unitNormal;
 
     double weight_sum = 0.0;
+    double[] variances = new double[ observations.size() ];
     GeoVector3 weighted_sum = new GeoVector3( 0, 0, 0 );
-    for ( BeddingObservation observation : observations ) {
+    for ( int i = 0; i < observations.size(); ++i ) {
+      BeddingObservation observation = observations.get( i );
       double variance = observation.normalVariance( normal, model.surfaceScatterMeters );
       if ( ! Double.isFinite( variance ) || variance <= 1.0e-16 ) return null;
+      variances[i] = variance;
       double weight = 1.0 / variance;
       weight_sum += weight;
       weighted_sum = weighted_sum.plus( observation.endpoint.times( weight ) );
@@ -375,10 +438,10 @@ public final class BeddingPlaneFitter
     GeoVector3 centroid = weighted_sum.times( 1.0 / weight_sum );
     double offset = -normal.dot( centroid );
     double objective = 0.0;
-    for ( BeddingObservation observation : observations ) {
+    for ( int i = 0; i < observations.size(); ++i ) {
+      BeddingObservation observation = observations.get( i );
       double residual = normal.dot( observation.endpoint ) + offset;
-      double variance = observation.normalVariance( normal, model.surfaceScatterMeters );
-      objective += residual * residual / variance;
+      objective += residual * residual / variances[i];
     }
     return Double.isFinite( objective )
       ? new Candidate( dip, direction, normal, centroid, offset, objective ) : null;
@@ -387,15 +450,22 @@ public final class BeddingPlaneFitter
   private static BeddingFitResult.AttitudeRegion makeRegion( List< Candidate > samples,
                                                               List< Candidate > basins,
                                                               Candidate best, double delta,
-                                                              double coverage )
+                                                              double coverage,
+                                                              boolean retain_samples )
   {
     ArrayList< Double > directions = new ArrayList<>();
+    ArrayList< Double > accepted_normals = retain_samples ? new ArrayList<>() : null;
     double dip_min = Double.POSITIVE_INFINITY;
     double dip_max = Double.NEGATIVE_INFINITY;
     boolean horizontal = false;
     boolean vertical = false;
     for ( Candidate candidate : samples ) {
       if ( candidate.objective > best.objective + delta ) continue;
+      if ( accepted_normals != null ) {
+        accepted_normals.add( candidate.normal.east );
+        accepted_normals.add( candidate.normal.north );
+        accepted_normals.add( candidate.normal.up );
+      }
       dip_min = Math.min( dip_min, candidate.dip );
       dip_max = Math.max( dip_max, candidate.dip );
       if ( candidate.dip <= 0.05 ) horizontal = true;
@@ -428,8 +498,13 @@ public final class BeddingPlaneFitter
       ? Double.NaN : circular.start;
     double end = status == BeddingFitResult.RegionStatus.DIRECTION_UNRESOLVED
       ? Double.NaN : circular.end;
+    double[] normals = null;
+    if ( accepted_normals != null ) {
+      normals = new double[ accepted_normals.size() ];
+      for ( int i = 0; i < normals.length; ++i ) normals[i] = accepted_normals.get( i );
+    }
     return new BeddingFitResult.AttitudeRegion( coverage, dip_min, dip_max, start, end,
-      circular.wraps, status );
+      circular.wraps, status, normals );
   }
 
   private static void addRegionIssues( EnumSet< BeddingFitResult.Issue > issues,

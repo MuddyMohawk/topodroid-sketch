@@ -11,6 +11,12 @@
     android:layout_marginBottom="@dimen/marginv"
     android:textStyle="bold" />
 
+  <com.topodroid.TDX.BeddingAttitudePreviewView
+    android:id="@+id/bedding_preview"
+    android:layout_width="match_parent"
+    android:layout_height="88dp"
+    android:contentDescription="@string/bedding_preview_description" />
+
   <RadioGroup
     android:id="@+id/bedding_mode"
     android:layout_width="match_parent"
@@ -98,6 +104,39 @@
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
       android:text="@string/bedding_use_manual" />
+    <TextView
+      android:id="@+id/bedding_glyph_suggestion"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:visibility="gone" />
+    <LinearLayout
+      android:id="@+id/bedding_glyph_choices"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical"
+      android:visibility="gone">
+      <Button
+        android:id="@+id/bedding_use_horizontal_glyph"
+        style="@style/button_default"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/bedding_use_horizontal_glyph"
+        android:visibility="gone" />
+      <Button
+        android:id="@+id/bedding_use_vertical_glyph"
+        style="@style/button_default"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/bedding_use_vertical_glyph"
+        android:visibility="gone" />
+      <Button
+        android:id="@+id/bedding_use_fitted_glyph"
+        style="@style/button_default"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/bedding_use_fitted_glyph"
+        android:visibility="gone" />
+    </LinearLayout>
     <TextView
       android:id="@+id/bedding_diagnostics"
       android:layout_width="match_parent"

@@ -134,6 +134,79 @@ public class BeddingGeometryTest
     assertAttitudesEqual( first.attitude, BeddingPlaneFitter.fit( scaled, MODEL ).attitude, 0.003 );
   }
 
+  @Test public void fitter_planeThroughStationAndNoisyRotationBehaveNormally()
+  {
+    double[][] coordinates = { { -3, -1 }, { -2, 2 }, { -0.5, -2.5 },
+      { 1, 2.5 }, { 2.5, -1.5 }, { 3, 1 } };
+    List< BeddingObservation > through_station = observationsOnPlane(
+      128.0, 38.0, 0.0, coordinates );
+    BeddingFitResult exact = BeddingPlaneFitter.fit( through_station, MODEL );
+    assertEquals( BeddingFitResult.Status.VALID, exact.status );
+    assertEquals( 38.0, exact.attitude.dipDegrees, 0.01 );
+    assertAngle( 128.0, exact.attitude.dipDirectionDegrees, 0.01 );
+
+    double[] length_noise = { 0.001, -0.002, 0.0, 0.002, -0.001, 0.0015 };
+    double[] bearing_noise = { 0.18, -0.22, 0.11, -0.16, 0.20, -0.09 };
+    double[] clino_noise = { -0.12, 0.17, -0.20, 0.13, -0.08, 0.19 };
+    ArrayList< BeddingObservation > noisy = new ArrayList<>();
+    ArrayList< BeddingObservation > rotated = new ArrayList<>();
+    for ( int i = 0; i < through_station.size(); ++i ) {
+      BeddingObservation source = through_station.get( i );
+      double length = source.lengthMeters + length_noise[i];
+      double bearing = source.bearingDegrees + bearing_noise[i];
+      double clino = source.clinoDegrees + clino_noise[i];
+      noisy.add( BeddingObservation.fromSplay( i + 1, "noisy", "splay",
+        length, bearing, clino, MODEL ) );
+      rotated.add( BeddingObservation.fromSplay( i + 101, "rotated", "splay",
+        length, bearing + 73.0, clino, MODEL ) );
+    }
+    BeddingFitResult first = BeddingPlaneFitter.fit( noisy, MODEL );
+    Collections.reverse( noisy );
+    BeddingFitResult reordered = BeddingPlaneFitter.fit( noisy, MODEL );
+    BeddingFitResult turned = BeddingPlaneFitter.fit( rotated, MODEL );
+    assertAttitudesEqual( first.attitude, reordered.attitude, 0.003 );
+    assertEquals( first.attitude.dipDegrees, turned.attitude.dipDegrees, 0.003 );
+    assertAngle( first.attitude.dipDirectionDegrees + 73.0,
+      turned.attitude.dipDirectionDegrees, 0.003 );
+  }
+
+  @Test public void fitter_weightingMattersForUnequalNoisySplayLengths()
+  {
+    BeddingAttitude truth = BeddingAttitude.fromDipDirection( 90.0, 35.0 );
+    List< BeddingObservation > exact = observationsOnPlane( 90.0, 35.0, 0.0,
+      new double[][] { { 1.5, 0 }, { 0, 1.5 }, { -1.5, 0 }, { 0, -1.5 },
+        { 10, 4 }, { -10, 4 } } );
+    ArrayList< BeddingObservation > noisy = new ArrayList<>();
+    for ( int i = 0; i < exact.size(); ++i ) {
+      BeddingObservation source = exact.get( i );
+      double clino = source.clinoDegrees + ( i == exact.size() - 1 ? 4.0 : 0.0 );
+      noisy.add( BeddingObservation.fromSplay( i + 1, "weighted", "splay",
+        source.lengthMeters, source.bearingDegrees, clino, MODEL ) );
+    }
+    BeddingAttitude weighted = BeddingPlaneFitter.fit( noisy, MODEL ).attitude;
+    BeddingAttitude unweighted = unweightedTls( noisy );
+    double weighted_error = planeAngleDegrees( truth.unitNormal, weighted.unitNormal );
+    double unweighted_error = planeAngleDegrees( truth.unitNormal, unweighted.unitNormal );
+    assertTrue( "weighted=" + weighted_error + " unweighted=" + unweighted_error,
+      weighted_error + 0.5 < unweighted_error );
+  }
+
+  @Test public void fitter_reportsSmallPatchWeakVerticalAzimuthAndHighResiduals()
+  {
+    BeddingFitResult small = BeddingPlaneFitter.fit( observationsOnPlane( 45.0, 25.0, 5.0,
+      new double[][] { { -0.03, -0.02 }, { 0.03, -0.02 }, { 0.0, 0.035 } } ), MODEL );
+    assertEquals( BeddingFitResult.Status.VALID, small.status );
+    assertTrue( small.issues.contains( BeddingFitResult.Issue.PATCH_TOO_SMALL ) );
+
+    ArrayList< BeddingObservation > steep_shots = new ArrayList<>();
+    steep_shots.add( observationForPoint( 1, new GeoVector3( 0.01, 0.0, 5.0 ) ) );
+    steep_shots.add( observationForPoint( 2, new GeoVector3( 1.0, 0.0, 5.0 ) ) );
+    steep_shots.add( observationForPoint( 3, new GeoVector3( 0.0, 1.0, 5.0 ) ) );
+    BeddingFitResult weak_azimuth = BeddingPlaneFitter.fit( steep_shots, MODEL );
+    assertEquals( BeddingFitResult.Status.VALID, weak_azimuth.status );
+    assertTrue( weak_azimuth.issues.contains( BeddingFitResult.Issue.VERTICAL_AZIMUTH_WEAK ) );
+  }
+
   @Test public void fitter_rejectsDuplicateIdsAndNonFiniteInputs()
   {
     ArrayList< BeddingObservation > observations = new ArrayList<>(
@@ -169,6 +242,7 @@ public class BeddingGeometryTest
       result.issues.contains( BeddingFitResult.Issue.INFLUENTIAL_POINT ) );
     assertEquals( 12L, result.influentialSourceId );
     assertTrue( result.leaveOneOutMaximumAngleDegrees > 5.0 );
+    assertTrue( result.issues.contains( BeddingFitResult.Issue.RESIDUALS_HIGH ) );
   }
 
   @Test public void observationCovariance_matchesFiniteDifferenceJacobian()
@@ -231,6 +305,26 @@ public class BeddingGeometryTest
     assertEquals( right.geologicalApparentDipDegrees, left.geologicalApparentDipDegrees, 1.0e-8 );
     assertEquals( -acuteSigned( right.canvasTraceAngleDegrees ),
       acuteSigned( left.canvasTraceAngleDegrees ), 1.0e-8 );
+  }
+
+  @Test public void fittedJointRegion_projectsToApparentDipAndFallStatus()
+  {
+    BeddingFitResult fit = BeddingPlaneFitter.fit( observationsOnPlane( 90.0, 35.0, 4.0,
+      new double[][] { { -2, -1 }, { -1, 2 }, { 0, -2 }, { 1, 1.5 }, { 2, -0.5 }, { 1.5, 2.5 } } ), MODEL );
+    ProjectionBasis basis = ProjectionBasis.extendedProfile( 90.0, 1.0 );
+    BeddingFitResult.ProjectedRegion region = fit.region68.project( basis );
+    double truth = basis.trace( fit.attitude.unitNormal ).geologicalApparentDipDegrees;
+    assertTrue( region.apparentDipMinimum <= truth );
+    assertTrue( region.apparentDipMaximum >= truth );
+    assertEquals( BeddingFitResult.ProjectedFallStatus.POSITIVE_X, region.fallStatus );
+
+    BeddingFitResult.AttitudeRegion persisted = BeddingFitResult.AttitudeRegion.fromBounds(
+      0.68, fit.region68.dipMinimum, fit.region68.dipMaximum,
+      fit.region68.directionStart, fit.region68.directionEnd,
+      fit.region68.directionWrapsNorth, fit.region68.status );
+    BeddingFitResult.ProjectedRegion conservative = persisted.project( basis );
+    assertTrue( conservative.apparentDipMinimum <= truth );
+    assertTrue( conservative.apparentDipMaximum >= truth );
   }
 
   @Test public void profileTrace_matchesIndependentApparentDipAcrossQuadrants()
@@ -296,6 +390,28 @@ public class BeddingGeometryTest
     double bearing = BeddingAttitude.wrap360( Math.toDegrees( Math.atan2( point.east, point.north ) ) );
     double clino = Math.toDegrees( Math.atan2( point.up, Math.hypot( point.east, point.north ) ) );
     return BeddingObservation.fromSplay( id, "s" + id, "splay", length, bearing, clino, MODEL );
+  }
+
+  private static BeddingAttitude unweightedTls( List< BeddingObservation > observations )
+  {
+    GeoVector3 sum = new GeoVector3( 0, 0, 0 );
+    for ( BeddingObservation observation : observations ) sum = sum.plus( observation.endpoint );
+    GeoVector3 center = sum.times( 1.0 / observations.size() );
+    double[][] scatter = new double[3][3];
+    for ( BeddingObservation observation : observations ) {
+      GeoVector3 q = observation.endpoint.minus( center );
+      double[] value = { q.east, q.north, q.up };
+      for ( int row = 0; row < 3; ++row ) for ( int column = 0; column < 3; ++column ) {
+        scatter[row][column] += value[row] * value[column] / observations.size();
+      }
+    }
+    return BeddingAttitude.fromNormal( SymmetricEigen3.solve( scatter ).vectors[0] );
+  }
+
+  private static double planeAngleDegrees( GeoVector3 first, GeoVector3 second )
+  {
+    double dot = Math.abs( first.dot( second ) );
+    return Math.toDegrees( Math.acos( Math.max( -1.0, Math.min( 1.0, dot ) ) ) );
   }
 
   private static GeoVector3 multiply( double[][] matrix, GeoVector3 vector )

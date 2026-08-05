@@ -14,52 +14,56 @@ import org.junit.Test;
  */
 public class BeddingCoverageCalibrationTest
 {
-  private static final int REPLICATES = 24;
+  private static final int REPLICATES = 400;
 
   @Test public void declaredJointRegions_haveRepresentativeModelCoverage()
   {
     Configuration[] configurations = {
-      new Configuration( 10.0, 5.0, 6, 2.0 ),
-      new Configuration( 95.0, 30.0, 3, 2.0 ),
-      new Configuration( 185.0, 45.0, 4, 2.0 ),
-      new Configuration( 275.0, 65.0, 6, 0.65 ),
-      new Configuration( 330.0, 85.0, 12, 2.0 )
+      new Configuration( "shallow-n6", 10.0, 5.0, 6, 2.0, 0x10L ),
+      new Configuration( "ordinary-n3", 95.0, 30.0, 3, 2.0, 0x30L ),
+      new Configuration( "ordinary-n4", 185.0, 45.0, 4, 2.0, 0x45L ),
+      new Configuration( "narrow-n6", 275.0, 65.0, 6, 0.65, 0x65L ),
+      new Configuration( "steep-n12", 330.0, 85.0, 12, 2.0, 0x85L )
     };
     BeddingMeasurementModel[] models = {
       BeddingMeasurementModel.distoxConservativeV1(),
       BeddingMeasurementModel.manualConservativeV1()
     };
-    Random random = new Random( 0x5eedbeddL );
-    for ( BeddingMeasurementModel model : models ) verifyCoverage( configurations, model, random );
+    for ( BeddingMeasurementModel model : models ) {
+      for ( Configuration configuration : configurations ) verifyCoverage( configuration, model );
+    }
   }
 
-  private static void verifyCoverage( Configuration[] configurations,
-                                      BeddingMeasurementModel model, Random random )
+  private static void verifyCoverage( Configuration configuration,
+                                      BeddingMeasurementModel model )
   {
+    long seed = 0x5eedbeddL ^ configuration.seed
+      ^ ( (long)model.id.hashCode() * 0x9e3779b97f4a7c15L );
+    Random random = new Random( seed );
     int valid = 0;
     int covered68 = 0;
     int covered95 = 0;
-    for ( Configuration configuration : configurations ) {
-      for ( int repetition = 0; repetition < REPLICATES; ++repetition ) {
-        BeddingAttitude truth = BeddingAttitude.fromDipDirection(
-          configuration.direction, configuration.dip );
-        List< BeddingObservation > observations = simulate( configuration, truth, random, model );
-        BeddingFitResult result = BeddingPlaneFitter.fitForCoverage( observations, model );
-        if ( result.status != BeddingFitResult.Status.VALID ) continue;
-        ++valid;
-        if ( contains( result.region68, truth ) ) ++covered68;
-        if ( contains( result.region95, truth ) ) ++covered95;
-      }
+    for ( int repetition = 0; repetition < REPLICATES; ++repetition ) {
+      BeddingAttitude truth = BeddingAttitude.fromDipDirection(
+        configuration.direction, configuration.dip );
+      List< BeddingObservation > observations = simulate( configuration, truth, random, model );
+      BeddingFitResult result = BeddingPlaneFitter.fitForCoverage( observations, model );
+      if ( result.status != BeddingFitResult.Status.VALID ) continue;
+      ++valid;
+      if ( contains( result.region68, truth ) ) ++covered68;
+      if ( contains( result.region95, truth ) ) ++covered95;
     }
 
-    int total = configurations.length * REPLICATES;
-    assertTrue( model.id + " valid fits " + valid + "/" + total, valid >= total - 2 );
+    String label = model.id + "/" + configuration.name;
+    assertTrue( label + " valid fits " + valid + "/" + REPLICATES,
+      valid >= REPLICATES - 2 );
     double rate68 = covered68 / (double)valid;
     double rate95 = covered95 / (double)valid;
-    // With 120 deterministic trials these bounds are intentionally wider than
-    // sampling error, but narrow enough to reject materially dishonest labels.
-    assertTrue( model.id + " 68% coverage was " + rate68, rate68 >= 0.53 && rate68 <= 0.82 );
-    assertTrue( model.id + " 95% coverage was " + rate95, rate95 >= 0.88 && rate95 <= 1.0 );
+    // This fixed-seed acceptance band accommodates the estimator's deliberate
+    // small-sample conservatism while rejecting serious under-coverage or a
+    // confidence region that has expanded until it is effectively meaningless.
+    assertTrue( label + " 68% coverage was " + rate68, rate68 >= 0.63 && rate68 <= 0.79 );
+    assertTrue( label + " 95% coverage was " + rate95, rate95 >= 0.93 && rate95 <= 0.995 );
   }
 
   private static List< BeddingObservation > simulate( Configuration configuration,
@@ -114,17 +118,22 @@ public class BeddingCoverageCalibrationTest
 
   private static final class Configuration
   {
+    final String name;
     final double direction;
     final double dip;
     final int count;
     final double patchRadius;
+    final long seed;
 
-    Configuration( double dip_direction, double dip_degrees, int point_count, double patch_radius )
+    Configuration( String configuration_name, double dip_direction, double dip_degrees,
+                   int point_count, double patch_radius, long configuration_seed )
     {
+      name = configuration_name;
       direction = dip_direction;
       dip = dip_degrees;
       count = point_count;
       patchRadius = patch_radius;
+      seed = configuration_seed;
     }
   }
 }

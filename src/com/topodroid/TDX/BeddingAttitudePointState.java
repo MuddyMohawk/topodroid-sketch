@@ -15,6 +15,7 @@ final class BeddingAttitudePointState implements FramedTextPointState
 {
   enum Mode { MANUAL, FIT }
   enum ViewKind { PLAN, PROJECTED_PROFILE, EXTENDED_PROFILE, UNSUPPORTED }
+  enum PlanGlyphOverride { AUTO, HORIZONTAL, VERTICAL }
 
   static final int MIN_TEXT_SCALE = FramedTextPointState.MIN_TEXT_SCALE;
   static final int MAX_TEXT_SCALE = FramedTextPointState.MAX_TEXT_SCALE;
@@ -59,6 +60,13 @@ final class BeddingAttitudePointState implements FramedTextPointState
   final double extendedReferenceBearingDegrees;
   final double extendedExtendSign;
   final boolean extendedReferenceAmbiguous;
+  final PlanGlyphOverride planGlyphOverride;
+  final double region68ApparentDipMinimum;
+  final double region68ApparentDipMaximum;
+  final String region68FallStatus;
+  final double region95ApparentDipMinimum;
+  final double region95ApparentDipMaximum;
+  final String region95FallStatus;
 
   private final String mFontId;
   private final boolean mBold;
@@ -86,6 +94,13 @@ final class BeddingAttitudePointState implements FramedTextPointState
                              double canvas_trace_angle, double apparent_dip,
                              double extended_reference_bearing, double extended_extend_sign,
                              boolean extended_reference_ambiguous,
+                             PlanGlyphOverride plan_glyph_override,
+                             double region68_apparent_dip_minimum,
+                             double region68_apparent_dip_maximum,
+                             String region68_fall_status,
+                             double region95_apparent_dip_minimum,
+                             double region95_apparent_dip_maximum,
+                             String region95_fall_status,
                              String font_id, boolean bold, boolean italic, boolean underline,
                              int text_scale_percent )
   {
@@ -104,7 +119,7 @@ final class BeddingAttitudePointState implements FramedTextPointState
     sourceClinosDegrees = source_clinos == null ? new double[0] : source_clinos.clone();
     azimuthReference = azimuth_reference == null || azimuth_reference.length() == 0
       ? "SURVEY_MAGNETIC" : azimuth_reference;
-    declinationDegrees = Double.isFinite( declination_degrees ) ? declination_degrees : 0.0;
+    declinationDegrees = Double.isFinite( declination_degrees ) ? declination_degrees : Double.NaN;
     measurementModelId = model_id == null ? "" : model_id;
     sigmaDistanceMeters = sigma_distance;
     sigmaBearingDegrees = sigma_bearing_degrees;
@@ -132,6 +147,13 @@ final class BeddingAttitudePointState implements FramedTextPointState
     extendedReferenceBearingDegrees = extended_reference_bearing;
     extendedExtendSign = extended_extend_sign;
     extendedReferenceAmbiguous = extended_reference_ambiguous;
+    planGlyphOverride = plan_glyph_override == null ? PlanGlyphOverride.AUTO : plan_glyph_override;
+    region68ApparentDipMinimum = region68_apparent_dip_minimum;
+    region68ApparentDipMaximum = region68_apparent_dip_maximum;
+    region68FallStatus = region68_fall_status == null ? "UNAVAILABLE" : region68_fall_status;
+    region95ApparentDipMinimum = region95_apparent_dip_minimum;
+    region95ApparentDipMaximum = region95_apparent_dip_maximum;
+    region95FallStatus = region95_fall_status == null ? "UNAVAILABLE" : region95_fall_status;
     mFontId = SketchFontRegistry.normalizeFontId( font_id );
     mBold = bold;
     mItalic = italic;
@@ -143,7 +165,7 @@ final class BeddingAttitudePointState implements FramedTextPointState
   {
     BeddingAttitude attitude = BeddingAttitude.fromDipDirection( 90.0, 60.0 );
     return manual( false, attitude, "", ViewKind.PLAN, false, Double.NaN, Double.NaN,
-      Double.NaN, Double.NaN, false, 0.0, SketchTextStyle.defaultStyle(), DEFAULT_TEXT_SCALE );
+      Double.NaN, Double.NaN, false, Double.NaN, SketchTextStyle.defaultStyle(), DEFAULT_TEXT_SCALE );
   }
 
   static BeddingAttitudePointState manual( boolean configured, BeddingAttitude attitude,
@@ -164,6 +186,8 @@ final class BeddingAttitudePointState implements FramedTextPointState
       Double.NaN, Double.NaN, Double.NaN, Double.NaN, false, "UNAVAILABLE",
       view_kind, trace_valid,
       trace_angle, apparent_dip, extended_bearing, extended_sign, extended_ambiguous,
+      PlanGlyphOverride.AUTO,
+      Double.NaN, Double.NaN, "UNAVAILABLE", Double.NaN, Double.NaN, "UNAVAILABLE",
       typography.fontId(), typography.bold(), typography.italic(), typography.underline(), text_scale );
   }
 
@@ -171,14 +195,12 @@ final class BeddingAttitudePointState implements FramedTextPointState
                                            double[] source_lengths, double[] source_bearings,
                                            double[] source_clinos,
                                            BeddingMeasurementModel model, double declination_degrees,
-                                           ViewKind view_kind,
-                                           boolean trace_valid, double trace_angle, double apparent_dip,
-                                           double extended_bearing, double extended_sign,
-                                           boolean extended_ambiguous, String font_id,
+                                           BeddingProjection projection, String font_id,
                                            boolean bold, boolean italic, boolean underline,
                                            int text_scale )
   {
     GeoVector3 normal = fit.attitude.unitNormal;
+    BeddingProjection resolved = projection == null ? BeddingProjection.unsupported() : projection;
     return new BeddingAttitudePointState( true, Mode.FIT,
       normal.east, normal.north, normal.up, station, shot_ids, source_lengths,
       source_bearings, source_clinos, "SURVEY_MAGNETIC",
@@ -195,14 +217,34 @@ final class BeddingAttitudePointState implements FramedTextPointState
       regionMinimum( fit.region95 ), regionMaximum( fit.region95 ),
       regionDirectionStart( fit.region95 ), regionDirectionEnd( fit.region95 ),
       regionWraps( fit.region95 ), regionStatus( fit.region95 ),
-      view_kind, trace_valid, trace_angle, apparent_dip,
-      extended_bearing, extended_sign, extended_ambiguous,
+      resolved.viewKind, resolved.traceValid, resolved.canvasTraceAngleDegrees,
+      resolved.apparentDipDegrees, resolved.extendedReferenceBearingDegrees,
+      resolved.extendedExtendSign, resolved.extendedReferenceAmbiguous,
+      PlanGlyphOverride.AUTO,
+      resolved.region68ApparentDipMinimum, resolved.region68ApparentDipMaximum,
+      resolved.region68FallStatus,
+      resolved.region95ApparentDipMinimum, resolved.region95ApparentDipMaximum,
+      resolved.region95FallStatus,
       font_id, bold, italic, underline, text_scale );
   }
 
   BeddingAttitude attitude()
   {
     return BeddingAttitude.fromNormal( new GeoVector3( normalEast, normalNorth, normalUp ) );
+  }
+
+  BeddingAttitude.Kind planGlyphKind()
+  {
+    if ( planGlyphOverride == PlanGlyphOverride.HORIZONTAL ) return BeddingAttitude.Kind.HORIZONTAL;
+    if ( planGlyphOverride == PlanGlyphOverride.VERTICAL ) return BeddingAttitude.Kind.VERTICAL;
+    BeddingAttitude attitude = attitude();
+    return attitude == null ? BeddingAttitude.Kind.INCLINED : attitude.kind;
+  }
+
+  BeddingAttitudePointState withPlanGlyphOverride( PlanGlyphOverride override )
+  {
+    return copy( mFontId, mBold, mItalic, mUnderline, mTextScalePercent,
+      override == null ? PlanGlyphOverride.AUTO : override );
   }
 
   BeddingAttitudePointState withTypography( SketchTextStyle style )
@@ -232,11 +274,23 @@ final class BeddingAttitudePointState implements FramedTextPointState
       resolved.viewKind, resolved.traceValid, resolved.canvasTraceAngleDegrees,
       resolved.apparentDipDegrees, resolved.extendedReferenceBearingDegrees,
       resolved.extendedExtendSign, resolved.extendedReferenceAmbiguous,
+      planGlyphOverride,
+      resolved.region68ApparentDipMinimum, resolved.region68ApparentDipMaximum,
+      resolved.region68FallStatus,
+      resolved.region95ApparentDipMinimum, resolved.region95ApparentDipMaximum,
+      resolved.region95FallStatus,
       mFontId, mBold, mItalic, mUnderline, mTextScalePercent );
   }
 
   private BeddingAttitudePointState copy( String font_id, boolean bold, boolean italic,
                                           boolean underline, int text_scale )
+  {
+    return copy( font_id, bold, italic, underline, text_scale, planGlyphOverride );
+  }
+
+  private BeddingAttitudePointState copy( String font_id, boolean bold, boolean italic,
+                                          boolean underline, int text_scale,
+                                          PlanGlyphOverride glyph_override )
   {
     return new BeddingAttitudePointState( configured, mode, normalEast, normalNorth, normalUp,
       stationName, sourceShotIds, sourceLengthsMeters, sourceBearingsDegrees, sourceClinosDegrees,
@@ -249,7 +303,36 @@ final class BeddingAttitudePointState implements FramedTextPointState
       region95DirectionWrapsNorth, region95Status,
       viewKind, traceValid, canvasTraceAngleDegrees, apparentDipDegrees,
       extendedReferenceBearingDegrees, extendedExtendSign, extendedReferenceAmbiguous,
+      glyph_override,
+      region68ApparentDipMinimum, region68ApparentDipMaximum, region68FallStatus,
+      region95ApparentDipMinimum, region95ApparentDipMaximum, region95FallStatus,
       font_id, bold, italic, underline, text_scale );
+  }
+
+  BeddingFitResult.AttitudeRegion persistedRegion68()
+  {
+    return persistedRegion( 0.68, region68DipMinimum, region68DipMaximum,
+      region68DirectionStart, region68DirectionEnd, region68DirectionWrapsNorth, region68Status );
+  }
+
+  BeddingFitResult.AttitudeRegion persistedRegion95()
+  {
+    return persistedRegion( 0.95, region95DipMinimum, region95DipMaximum,
+      region95DirectionStart, region95DirectionEnd, region95DirectionWrapsNorth, region95Status );
+  }
+
+  private static BeddingFitResult.AttitudeRegion persistedRegion( double coverage,
+      double dip_minimum, double dip_maximum, double direction_start, double direction_end,
+      boolean wraps, String status )
+  {
+    BeddingFitResult.RegionStatus parsed;
+    try {
+      parsed = BeddingFitResult.RegionStatus.valueOf( status );
+    } catch ( IllegalArgumentException | NullPointerException exception ) {
+      parsed = BeddingFitResult.RegionStatus.UNAVAILABLE;
+    }
+    return BeddingFitResult.AttitudeRegion.fromBounds( coverage, dip_minimum, dip_maximum,
+      direction_start, direction_end, wraps, parsed );
   }
 
   private static String[] issueNames( Set< BeddingFitResult.Issue > issues )

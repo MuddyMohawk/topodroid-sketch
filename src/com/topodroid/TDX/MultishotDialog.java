@@ -167,24 +167,12 @@ class MultishotDialog extends MyDialog
       ((LinearLayout) findViewById( R.id.layout_splays )).setVisibility( View.GONE );
     }
 
+    // The legacy tester used a fixed-intercept float fit and wrote localized
+    // prose into shot comments. Keep its preference slot for settings-file
+    // compatibility, but do not expose the known-bad workflow beside the smart
+    // bedding-attitude point.
     mBedding = 0;
-    if ( TDLevel.overExpert && TDSetting.mBedding ) {
-      String from = mBlk.mFrom;
-      if ( mBlks.size() > 1 && from != null && from.length() > 0 ) {
-        mBedding = 1;
-        for ( DBlock blk : mBlks ) {
-          if ( ! from.equals( blk.mFrom ) ) {
-            mBedding = 2;
-            break;
-          }
-        }
-      }
-    }
-    if ( mBedding > 0 ) {
-      mButtonBedding.setOnClickListener( this );
-    } else {
-      ((LinearLayout) findViewById( R.id.layout_bedding )).setVisibility( View.GONE );
-    }
+    ((LinearLayout) findViewById( R.id.layout_bedding )).setVisibility( View.GONE );
 
     mButtonBack.setOnClickListener( this );
 
@@ -292,4 +280,3 @@ class MultishotDialog extends MyDialog
   }
 
 }
-

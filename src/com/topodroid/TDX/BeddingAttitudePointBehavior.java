@@ -40,7 +40,7 @@ final class BeddingAttitudePointBehavior implements SpecialPointBehavior
       doubleArray( payload.optJSONArray( "sourceBearingsDegrees" ) ),
       doubleArray( payload.optJSONArray( "sourceClinosDegrees" ) ),
       payload.optString( "azimuthReference", "SURVEY_MAGNETIC" ),
-      payload.optDouble( "declinationDegrees", 0.0 ), payload.optString( "model", "" ),
+      finiteOrNaN( payload, "declinationDegrees" ), payload.optString( "model", "" ),
       finiteOrNaN( payload, "sigmaDistanceMeters" ),
       finiteOrNaN( payload, "sigmaBearingDegrees" ),
       finiteOrNaN( payload, "sigmaClinoDegrees" ),
@@ -62,6 +62,14 @@ final class BeddingAttitudePointBehavior implements SpecialPointBehavior
       payload.optBoolean( "traceValid", false ), finiteOrNaN( payload, "traceAngle" ),
       finiteOrNaN( payload, "apparentDip" ), finiteOrNaN( payload, "extendedBearing" ),
       finiteOrNaN( payload, "extendedSign" ), payload.optBoolean( "extendedAmbiguous", false ),
+      enumValue( BeddingAttitudePointState.PlanGlyphOverride.class,
+        payload.optString( "planGlyphOverride" ), BeddingAttitudePointState.PlanGlyphOverride.AUTO ),
+      finiteOrNaN( payload, "region68ApparentDipMin" ),
+      finiteOrNaN( payload, "region68ApparentDipMax" ),
+      payload.optString( "region68FallStatus", "UNAVAILABLE" ),
+      finiteOrNaN( payload, "region95ApparentDipMin" ),
+      finiteOrNaN( payload, "region95ApparentDipMax" ),
+      payload.optString( "region95FallStatus", "UNAVAILABLE" ),
       payload.optString( "font", SketchFontRegistry.FONT_DEFAULT ),
       payload.optBoolean( "bold", false ), payload.optBoolean( "italic", false ),
       payload.optBoolean( "underline", false ),
@@ -86,7 +94,7 @@ final class BeddingAttitudePointBehavior implements SpecialPointBehavior
     json.put( "sourceBearingsDegrees", jsonArray( bedding.sourceBearingsDegrees ) );
     json.put( "sourceClinosDegrees", jsonArray( bedding.sourceClinosDegrees ) );
     json.put( "azimuthReference", bedding.azimuthReference );
-    json.put( "declinationDegrees", bedding.declinationDegrees );
+    putFinite( json, "declinationDegrees", bedding.declinationDegrees );
     json.put( "model", bedding.measurementModelId );
     putFinite( json, "sigmaDistanceMeters", bedding.sigmaDistanceMeters );
     putFinite( json, "sigmaBearingDegrees", bedding.sigmaBearingDegrees );
@@ -114,6 +122,13 @@ final class BeddingAttitudePointBehavior implements SpecialPointBehavior
     putFinite( json, "extendedBearing", bedding.extendedReferenceBearingDegrees );
     putFinite( json, "extendedSign", bedding.extendedExtendSign );
     json.put( "extendedAmbiguous", bedding.extendedReferenceAmbiguous );
+    json.put( "planGlyphOverride", bedding.planGlyphOverride.name() );
+    putFinite( json, "region68ApparentDipMin", bedding.region68ApparentDipMinimum );
+    putFinite( json, "region68ApparentDipMax", bedding.region68ApparentDipMaximum );
+    json.put( "region68FallStatus", bedding.region68FallStatus );
+    putFinite( json, "region95ApparentDipMin", bedding.region95ApparentDipMinimum );
+    putFinite( json, "region95ApparentDipMax", bedding.region95ApparentDipMaximum );
+    json.put( "region95FallStatus", bedding.region95FallStatus );
     json.put( "font", bedding.fontId() );
     json.put( "bold", bedding.bold() );
     json.put( "italic", bedding.italic() );
@@ -150,7 +165,7 @@ final class BeddingAttitudePointBehavior implements SpecialPointBehavior
     BeddingAttitude attitude = BeddingAttitude.fromDipDirection( 90.0, 60.0 );
     BeddingAttitudePointState state = BeddingAttitudePointState.manual( true, attitude, "",
       BeddingAttitudePointState.ViewKind.PLAN, false, Double.NaN, Double.NaN,
-      Double.NaN, Double.NaN, false, 0.0, SketchTextStyle.defaultStyle(),
+      Double.NaN, Double.NaN, false, Double.NaN, SketchTextStyle.defaultStyle(),
       BeddingAttitudePointState.DEFAULT_TEXT_SCALE );
     point.setSpecialState( state, false );
     point.setPointText( "60" );

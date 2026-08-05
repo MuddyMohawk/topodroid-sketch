@@ -6,6 +6,7 @@ package com.topodroid.TDX;
 
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
 import android.widget.CheckBox;
 import android.widget.SeekBar;
 import android.widget.Spinner;
@@ -20,6 +21,7 @@ final class FramedTextTypographyEditor
   private SeekBar mTextScale;
   private TextView mTextScaleValue;
   private int mMinimumScale;
+  private Runnable mOnChange;
 
   void bind( DrawingWindow parent, View root, FramedTextPointState state,
              int minimum_scale, int maximum_scale )
@@ -53,10 +55,27 @@ final class FramedTextTypographyEditor
       @Override public void onProgressChanged( SeekBar seek_bar, int value, boolean from_user )
       {
         updateScaleLabel( mMinimumScale + value );
+        notifyChanged();
       }
       @Override public void onStartTrackingTouch( SeekBar seek_bar ) { }
       @Override public void onStopTrackingTouch( SeekBar seek_bar ) { }
     } );
+  }
+
+  void setOnChangeListener( Runnable listener )
+  {
+    mOnChange = listener;
+    if ( ! isBound() ) return;
+    mFont.setOnItemSelectedListener( new AdapterView.OnItemSelectedListener() {
+      @Override public void onItemSelected( AdapterView< ? > parent, View view, int position, long id )
+      {
+        notifyChanged();
+      }
+      @Override public void onNothingSelected( AdapterView< ? > parent ) { }
+    } );
+    mBold.setOnClickListener( view -> notifyChanged() );
+    mItalic.setOnClickListener( view -> notifyChanged() );
+    mUnderline.setOnClickListener( view -> notifyChanged() );
   }
 
   boolean isBound() { return mFont != null && mTextScale != null; }
@@ -78,5 +97,10 @@ final class FramedTextTypographyEditor
   private void updateScaleLabel( int percent )
   {
     if ( mTextScaleValue != null ) mTextScaleValue.setText( percent + "%" );
+  }
+
+  private void notifyChanged()
+  {
+    if ( mOnChange != null ) mOnChange.run();
   }
 }

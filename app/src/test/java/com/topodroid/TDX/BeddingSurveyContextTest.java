@@ -14,6 +14,15 @@ import org.junit.Test;
 
 public class BeddingSurveyContextTest
 {
+  @Test public void declinationSnapshot_preservesKnownAndRejectsUnsetSentinel()
+  {
+    assertEquals( -8.75, DrawingWindow.normalizeBeddingDeclinationSnapshot( -8.75f ), 0.0 );
+    assertEquals( 0.0, DrawingWindow.normalizeBeddingDeclinationSnapshot( 0.0f ), 0.0 );
+    assertTrue( Double.isNaN( DrawingWindow.normalizeBeddingDeclinationSnapshot(
+      SurveyInfo.DECLINATION_UNSET ) ) );
+    assertTrue( Double.isNaN( DrawingWindow.normalizeBeddingDeclinationSnapshot( Float.NaN ) ) );
+  }
+
   @Test public void adapter_reversesBacksplayAndExcludesScanRows()
   {
     DBlock direct = block( 1, "A", "", 4.0f, 25.0f, 15.0f, BlockType.SPLAY );

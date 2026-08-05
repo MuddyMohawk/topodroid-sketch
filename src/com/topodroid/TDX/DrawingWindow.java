@@ -28,6 +28,7 @@ import com.topodroid.num.NumStation;
 import com.topodroid.num.NumShot;
 import com.topodroid.num.NumSplay;
 import com.topodroid.geo.BeddingAttitude;
+import com.topodroid.geo.BeddingFitResult;
 import com.topodroid.geo.ProjectionBasis;
 // import com.topodroid.mag.Geodetic;
 import com.topodroid.math.TDVector;
@@ -6666,7 +6667,53 @@ public class DrawingWindow extends ItemDrawer
       trace.geologicalApparentDipDegrees, reference_bearing, extend_sign, ambiguous );
   }
 
-  double beddingDeclinationSnapshot() { return mDecl; }
+  BeddingProjection computeBeddingProjection( BeddingFitResult fit, String station_name )
+  {
+    if ( fit == null || fit.attitude == null ) return BeddingProjection.unsupported();
+    BeddingProjection projection = computeBeddingProjection( fit.attitude, station_name );
+    ProjectionBasis basis = beddingProjectionBasis( projection );
+    return basis == null ? projection : projection.withRegions(
+      fit.region68 == null ? null : fit.region68.project( basis ),
+      fit.region95 == null ? null : fit.region95.project( basis ) );
+  }
+
+  BeddingProjection computeBeddingProjection( BeddingAttitudePointState state, String station_name )
+  {
+    if ( state == null || state.attitude() == null ) return BeddingProjection.unsupported();
+    BeddingProjection projection = computeBeddingProjection( state.attitude(), station_name );
+    if ( state.mode != BeddingAttitudePointState.Mode.FIT ) return projection;
+    ProjectionBasis basis = beddingProjectionBasis( projection );
+    return basis == null ? projection : projection.withRegions(
+      state.persistedRegion68().project( basis ), state.persistedRegion95().project( basis ) );
+  }
+
+  private ProjectionBasis beddingProjectionBasis( BeddingProjection projection )
+  {
+    if ( projection == null ) return null;
+    if ( projection.viewKind == BeddingAttitudePointState.ViewKind.PROJECTED_PROFILE ) {
+      return mPlot2 == null ? null
+        : ProjectionBasis.projectedProfile( mPlot2.azimuth, mPlot2.clino );
+    }
+    if ( projection.viewKind == BeddingAttitudePointState.ViewKind.EXTENDED_PROFILE
+        && Double.isFinite( projection.extendedReferenceBearingDegrees )
+        && Double.isFinite( projection.extendedExtendSign ) ) {
+      return ProjectionBasis.extendedProfile( projection.extendedReferenceBearingDegrees,
+        projection.extendedExtendSign );
+    }
+    return null;
+  }
+
+  double beddingDeclinationSnapshot()
+  {
+    if ( mApp_mData == null || mSid < 0 ) return Double.NaN;
+    return normalizeBeddingDeclinationSnapshot( mApp_mData.getSurveyDeclination( mSid ) );
+  }
+
+  static double normalizeBeddingDeclinationSnapshot( float declination )
+  {
+    return Float.isFinite( declination ) && declination < SurveyInfo.DECLINATION_MAX
+      ? declination : Double.NaN;
+  }
 
   boolean isBeddingViewSupported()
   {

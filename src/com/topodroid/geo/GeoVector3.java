@@ -4,6 +4,8 @@
  */
 package com.topodroid.geo;
 
+/** Kept separate from the app's TDVector so the fitting package stays
+ *  Android-free and uses double precision throughout its numerical work. */
 public final class GeoVector3
 {
   public final double east;

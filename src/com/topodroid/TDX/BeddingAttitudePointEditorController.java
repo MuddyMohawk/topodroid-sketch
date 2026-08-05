@@ -48,8 +48,14 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
   private TextView mDerivedStrike;
   private TextView mResult;
   private TextView mDiagnostics;
+  private BeddingAttitudePreviewView mPreview;
   private Button mCalculate;
   private Button mUseManual;
+  private TextView mGlyphSuggestion;
+  private View mGlyphChoices;
+  private Button mUseHorizontalGlyph;
+  private Button mUseVerticalGlyph;
+  private Button mUseFittedGlyph;
   private LinearLayout mSplayList;
   private Spinner mStation;
   private boolean mFitDirty;
@@ -85,8 +91,14 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
     mDerivedStrike = (TextView)mRoot.findViewById( R.id.bedding_derived_strike );
     mResult = (TextView)mRoot.findViewById( R.id.bedding_result );
     mDiagnostics = (TextView)mRoot.findViewById( R.id.bedding_diagnostics );
+    mPreview = (BeddingAttitudePreviewView)mRoot.findViewById( R.id.bedding_preview );
     mCalculate = (Button)mRoot.findViewById( R.id.bedding_calculate );
     mUseManual = (Button)mRoot.findViewById( R.id.bedding_use_manual );
+    mGlyphSuggestion = (TextView)mRoot.findViewById( R.id.bedding_glyph_suggestion );
+    mGlyphChoices = mRoot.findViewById( R.id.bedding_glyph_choices );
+    mUseHorizontalGlyph = (Button)mRoot.findViewById( R.id.bedding_use_horizontal_glyph );
+    mUseVerticalGlyph = (Button)mRoot.findViewById( R.id.bedding_use_vertical_glyph );
+    mUseFittedGlyph = (Button)mRoot.findViewById( R.id.bedding_use_fitted_glyph );
     mStation = (Spinner)mRoot.findViewById( R.id.bedding_station );
     mSplayList = (LinearLayout)mRoot.findViewById( R.id.bedding_splay_list );
 
@@ -126,6 +138,12 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
     mCalculate.setOnClickListener( view -> calculateFit() );
     mUseManual.setEnabled( mOriginal.mode == BeddingAttitudePointState.Mode.FIT && mOriginal.configured );
     mUseManual.setOnClickListener( view -> useFittedValuesManually() );
+    mUseHorizontalGlyph.setOnClickListener( view -> setPlanGlyphOverride(
+      BeddingAttitudePointState.PlanGlyphOverride.HORIZONTAL ) );
+    mUseVerticalGlyph.setOnClickListener( view -> setPlanGlyphOverride(
+      BeddingAttitudePointState.PlanGlyphOverride.VERTICAL ) );
+    mUseFittedGlyph.setOnClickListener( view -> setPlanGlyphOverride(
+      BeddingAttitudePointState.PlanGlyphOverride.AUTO ) );
     TextWatcher manual_watcher = new TextWatcher() {
       @Override public void beforeTextChanged( CharSequence value, int start, int count, int after ) { }
       @Override public void onTextChanged( CharSequence value, int start, int before, int count )
@@ -136,6 +154,8 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
     };
     mDipDirection.addTextChangedListener( manual_watcher );
     mDip.addTextChangedListener( manual_watcher );
+    mPreview.setInkColor( mResult.getCurrentTextColor() );
+    mTypography.setOnChangeListener( this::updateCurrentPreview );
     showMode( fit_mode );
     if ( fit_mode && mOriginal.mode == BeddingAttitudePointState.Mode.FIT ) {
       showState( mOriginal );
@@ -159,9 +179,15 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
         mDiagnostics.setText( R.string.bedding_recalculate );
         return false;
       }
-      mDraft = mDraft.withStationAndProjection( mSurvey.stationName,
-        mParent.computeBeddingProjection( mDraft.attitude(), mSurvey.stationName ) );
-      mProjectionChanged = false;
+      // A newly calculated fit already carries a projection of the actual
+      // accepted confidence-region samples. Reproject only when the drawing
+      // basis changed; otherwise replacing it with the persisted bounding
+      // envelope would make the interval needlessly more conservative.
+      if ( mProjectionChanged ) {
+        mDraft = mDraft.withStationAndProjection( mSurvey.stationName,
+          mParent.computeBeddingProjection( mDraft, mSurvey.stationName ) );
+        mProjectionChanged = false;
+      }
       return true;
     }
     Double dip = parseNumber( mDip );
@@ -224,6 +250,7 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
         mFitDirty = true;
         mTransientInfluentialId = -1L;
         mUseManual.setEnabled( false );
+        mPreview.setState( null );
         clearSplayAnnotations();
         if ( mFitMode.isChecked() ) mDiagnostics.setText( R.string.bedding_recalculate );
       } );
@@ -257,6 +284,7 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
         mFitDirty = true;
         mTransientInfluentialId = -1L;
         mUseManual.setEnabled( false );
+        mPreview.setState( null );
         if ( mFitMode.isChecked() ) mDiagnostics.setText( R.string.bedding_recalculate );
         else updateManualPreview();
       }
@@ -270,11 +298,16 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
     mManualFields.setVisibility( fit ? View.GONE : View.VISIBLE );
     if ( fit ) {
       if ( mCalculating ) mDiagnostics.setText( R.string.bedding_calculating );
-      else if ( mFitDirty ) mDiagnostics.setText( R.string.bedding_recalculate );
+      else if ( mFitDirty ) {
+        mDiagnostics.setText( R.string.bedding_recalculate );
+        mPreview.setState( null );
+        showGlyphControls( null );
+      }
       else showState( mDraft );
     } else {
       updateManualPreview();
       mDiagnostics.setText( R.string.bedding_manual_diagnostics );
+      showGlyphControls( null );
     }
   }
 
@@ -348,13 +381,10 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
         fit == null ? "numerical failure" : issueSummary( fit.issues ) ) );
       return;
     }
-    BeddingProjection projection = mParent.computeBeddingProjection( fit.attitude, mSurvey.stationName );
+    BeddingProjection projection = mParent.computeBeddingProjection( fit, mSurvey.stationName );
     mDraft = BeddingAttitudePointState.fitted( fit, mSurvey.stationName, source_ids,
       source_lengths, source_bearings, source_clinos, model,
-      mParent.beddingDeclinationSnapshot(),
-      projection.viewKind, projection.traceValid, projection.canvasTraceAngleDegrees,
-      projection.apparentDipDegrees, projection.extendedReferenceBearingDegrees,
-      projection.extendedExtendSign, projection.extendedReferenceAmbiguous,
+      mParent.beddingDeclinationSnapshot(), projection,
       mTypography.fontId(), mTypography.bold(), mTypography.italic(), mTypography.underline(),
       mTypography.textScalePercent() );
     mTransientInfluentialId = fit.influentialSourceId;
@@ -373,6 +403,7 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
     if ( dip == null || dip < 0.0 || dip > 90.0 || ( dip > 1.0e-8
         && ( direction == null || direction < 0.0 || direction >= 360.0 ) ) ) {
       mDerivedStrike.setText( "" );
+      mPreview.setState( null );
       return;
     }
     if ( direction == null ) direction = 0.0;
@@ -381,6 +412,14 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
     mDerivedStrike.setText( Double.isFinite( attitude.strikeRhrDegrees )
       ? mParent.getString( R.string.bedding_strike_rhr, attitude.strikeRhrDegrees ) : "" );
     mResult.setText( formatAttitude( attitude ) );
+    BeddingProjection projection = mSurvey == null ? BeddingProjection.plan()
+      : mParent.computeBeddingProjection( attitude, mSurvey.stationName );
+    mPreview.setState( BeddingAttitudePointState.manual( true, attitude,
+      mSurvey == null ? "" : mSurvey.stationName,
+      projection.viewKind, projection.traceValid, projection.canvasTraceAngleDegrees,
+      projection.apparentDipDegrees, projection.extendedReferenceBearingDegrees,
+      projection.extendedExtendSign, projection.extendedReferenceAmbiguous,
+      Double.NaN, typographyStyle(), mTypography.textScalePercent() ) );
   }
 
   private void useFittedValuesManually()
@@ -404,6 +443,9 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
   {
     if ( state == null || state.attitude() == null ) return;
     mResult.setText( formatAttitude( state.attitude() ) );
+    mPreview.setState( state.withTypography( mTypography.fontId(), mTypography.bold(),
+      mTypography.italic(), mTypography.underline(), mTypography.textScalePercent() ) );
+    showGlyphControls( state );
     if ( state.mode != BeddingAttitudePointState.Mode.FIT ) return;
     String warning = state.fitIssues.length == 0 ? "" : " · " + issueSummary( state.fitIssues );
     if ( mTransientInfluentialId >= 0 ) warning += " (shot #" + mTransientInfluentialId + ")";
@@ -428,10 +470,13 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
         state.region68Status.toLowerCase( Locale.US ).replace( '_', ' ' ) );
     }
     if ( state.viewKind != BeddingAttitudePointState.ViewKind.PLAN ) {
-      if ( state.traceValid && Double.isFinite( state.apparentDipDegrees ) ) {
-        String fall = Math.sin( Math.toRadians( state.canvasTraceAngleDegrees ) ) >= 0.0
-          ? mParent.getString( R.string.bedding_falling_right )
-          : mParent.getString( R.string.bedding_falling_left );
+      if ( Double.isFinite( state.region68ApparentDipMinimum )
+          && Double.isFinite( state.region68ApparentDipMaximum ) ) {
+        diagnostics += mParent.getString( R.string.bedding_profile_apparent_region,
+          state.region68ApparentDipMinimum, state.region68ApparentDipMaximum,
+          profileFallDescription( state.region68FallStatus, state.canvasTraceAngleDegrees ) );
+      } else if ( state.traceValid && Double.isFinite( state.apparentDipDegrees ) ) {
+        String fall = profileFallDescription( "", state.canvasTraceAngleDegrees );
         diagnostics += mParent.getString( R.string.bedding_profile_apparent,
           state.apparentDipDegrees, fall );
       } else {
@@ -449,6 +494,59 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
         state.sigmaClinoDegrees, state.surfaceScatterMeters );
     }
     mDiagnostics.setText( diagnostics );
+  }
+
+  private void setPlanGlyphOverride( BeddingAttitudePointState.PlanGlyphOverride override )
+  {
+    if ( mDraft == null || mDraft.mode != BeddingAttitudePointState.Mode.FIT ) return;
+    mDraft = mDraft.withPlanGlyphOverride( override );
+    showState( mDraft );
+  }
+
+  private void showGlyphControls( BeddingAttitudePointState state )
+  {
+    boolean fitted_plan = state != null && state.mode == BeddingAttitudePointState.Mode.FIT
+      && state.viewKind == BeddingAttitudePointState.ViewKind.PLAN;
+    boolean horizontal = fitted_plan && Double.isFinite( state.region95DipMinimum )
+      && state.region95DipMinimum <= 0.05;
+    boolean vertical = fitted_plan && Double.isFinite( state.region95DipMaximum )
+      && state.region95DipMaximum >= 89.95;
+    boolean visible = horizontal || vertical || ( fitted_plan
+      && state.planGlyphOverride != BeddingAttitudePointState.PlanGlyphOverride.AUTO );
+    mGlyphSuggestion.setVisibility( horizontal || vertical ? View.VISIBLE : View.GONE );
+    mGlyphChoices.setVisibility( visible ? View.VISIBLE : View.GONE );
+    mUseHorizontalGlyph.setVisibility( horizontal ? View.VISIBLE : View.GONE );
+    mUseVerticalGlyph.setVisibility( vertical ? View.VISIBLE : View.GONE );
+    mUseFittedGlyph.setVisibility( fitted_plan
+      && state.planGlyphOverride != BeddingAttitudePointState.PlanGlyphOverride.AUTO
+      ? View.VISIBLE : View.GONE );
+    if ( horizontal && vertical ) mGlyphSuggestion.setText( R.string.bedding_pole_suggestions );
+    else if ( horizontal ) mGlyphSuggestion.setText( R.string.bedding_horizontal_suggestion );
+    else if ( vertical ) mGlyphSuggestion.setText( R.string.bedding_vertical_suggestion );
+  }
+
+  private void updateCurrentPreview()
+  {
+    if ( mRoot == null || mPreview == null || ! mTypography.isBound() ) return;
+    if ( mFitMode != null && mFitMode.isChecked() && mDraft != null
+        && mDraft.mode == BeddingAttitudePointState.Mode.FIT && ! mFitDirty ) {
+      mPreview.setState( mDraft.withTypography( mTypography.fontId(), mTypography.bold(),
+        mTypography.italic(), mTypography.underline(), mTypography.textScalePercent() ) );
+    } else if ( mManualMode != null && mManualMode.isChecked() ) {
+      updateManualPreview();
+    }
+  }
+
+  private String profileFallDescription( String status, double trace_angle )
+  {
+    if ( "POSITIVE_X".equals( status ) ) return mParent.getString( R.string.bedding_falling_right );
+    if ( "NEGATIVE_X".equals( status ) ) return mParent.getString( R.string.bedding_falling_left );
+    if ( status != null && status.length() > 0 && ! "UNAVAILABLE".equals( status ) ) {
+      return mParent.getString( R.string.bedding_fall_unresolved );
+    }
+    return Math.sin( Math.toRadians( trace_angle ) ) >= 0.0
+      ? mParent.getString( R.string.bedding_falling_right )
+      : mParent.getString( R.string.bedding_falling_left );
   }
 
   private void annotateSplays( BeddingFitResult fit )

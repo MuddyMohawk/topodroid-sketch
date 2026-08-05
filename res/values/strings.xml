@@ -1141,6 +1141,15 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="bedding_fit_result">Magnetic strike %1$.0f° RHR, dip %2$.0f° toward magnetic %3$.0f°</string>
     <string name="bedding_horizontal_result">Horizontal bedding (dip 0°)</string>
     <string name="bedding_vertical_result">Vertical bedding, magnetic strike %1$.0f°</string>
+    <string name="bedding_preview_description">Preview of the bedding attitude symbol</string>
+    <string name="bedding_use_horizontal_glyph">Use horizontal glyph</string>
+    <string name="bedding_use_vertical_glyph">Use vertical glyph</string>
+    <string name="bedding_use_fitted_glyph">Use fitted glyph</string>
+    <string name="bedding_horizontal_suggestion">The estimated 95%% region reaches 0°. Confirm horizontal bedding only if that is your geological interpretation.</string>
+    <string name="bedding_vertical_suggestion">The estimated 95%% region reaches 90°. Confirm vertical bedding only if that is your geological interpretation.</string>
+    <string name="bedding_pole_suggestions">The estimated 95%% region reaches both 0° and 90°. Choose a special glyph only with independent geological evidence.</string>
+    <string name="bedding_profile_apparent_region"> · Apparent dip in this profile: %1$.1f–%2$.1f° (estimated 68%% region), %3$s</string>
+    <string name="bedding_fall_unresolved">fall direction unresolved</string>
     <string name="bedding_fit_diagnostics">%1$s · %2$d splays · estimated 68%% dip range %3$.1f–%4$.1f° under the saved measurement assumptions%5$s</string>
     <string name="bedding_measurement_model">\nModel %1$s: σ distance %2$.3f m, σ bearing %3$.2f°, σ inclination %4$.2f°, surface scatter %5$.3f m. This does not cover compass bias, magnetic interference, calibration error, or selecting the wrong surface.</string>
     <string name="bedding_direction_region">; estimated 68%% magnetic dip-direction range %1$.1f–%2$.1f°%3$s</string>

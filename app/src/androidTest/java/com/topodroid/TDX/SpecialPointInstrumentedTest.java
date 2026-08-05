@@ -120,13 +120,15 @@ public class SpecialPointInstrumentedTest
       attitude.unitNormal.east, attitude.unitNormal.north, attitude.unitNormal.up,
       "A1", new long[] { 11, 12, 13, 19 },
       new double[] { 1, 2, 3, 4 }, new double[] { 10, 20, 30, 40 },
-      new double[] { -5, 0, 5, 10 }, "SURVEY_MAGNETIC", 0.0,
+      new double[] { -5, 0, 5, 10 }, "SURVEY_MAGNETIC", -8.75,
       BeddingMeasurementModel.DISTOX_CONSERVATIVE_V1, 0.002, 0.5, 0.5, 0.015, 0.25,
       "CAUTION", new String[] { "NO_REDUNDANCY", "VERTICAL_AZIMUTH_WEAK" },
       27.5, 32.5, 80.0, 100.0, false, "BOUNDED",
       25.0, 35.0, 75.0, 105.0, false, "BOUNDED",
       BeddingAttitudePointState.ViewKind.PROJECTED_PROFILE, true, 22.25, 18.5,
       Double.NaN, Double.NaN, false,
+      BeddingAttitudePointState.PlanGlyphOverride.HORIZONTAL,
+      16.0, 21.0, "POSITIVE_X", 14.0, 24.0, "UNRESOLVED",
       SketchFontRegistry.FONT_SERIF, true, true, false, 135 );
     original.setPointText( "30" );
     original.setSpecialState( state, true );
@@ -149,9 +151,14 @@ public class SpecialPointInstrumentedTest
     assertEquals( 4.0, loaded.sourceLengthsMeters[3], 0.0 );
     assertEquals( BeddingMeasurementModel.DISTOX_CONSERVATIVE_V1, loaded.measurementModelId );
     assertEquals( 0.015, loaded.surfaceScatterMeters, 0.0 );
+    assertEquals( -8.75, loaded.declinationDegrees, 0.0 );
     assertEquals( BeddingAttitudePointState.ViewKind.PROJECTED_PROFILE, loaded.viewKind );
     assertEquals( 22.25, loaded.canvasTraceAngleDegrees, 1.0e-8 );
     assertEquals( 30.0, loaded.attitude().dipDegrees, 1.0e-8 );
+    assertEquals( BeddingAttitudePointState.PlanGlyphOverride.HORIZONTAL,
+      loaded.planGlyphOverride );
+    assertEquals( 16.0, loaded.region68ApparentDipMinimum, 0.0 );
+    assertEquals( "POSITIVE_X", loaded.region68FallStatus );
     assertEquals( SketchFontRegistry.FONT_SERIF, loaded.fontId() );
     assertEquals( 135, loaded.textScalePercent() );
     double east = loaded.normalEast;
@@ -163,6 +170,10 @@ public class SpecialPointInstrumentedTest
     loaded_path.draw( new Canvas( bitmap ), new Matrix(), 1.0f, new RectF( 0, 0, 220, 220 ) );
     assertTrue( countOpaque( bitmap ) > 30 );
     bitmap.recycle();
+
+    BeddingAttitudePointBehavior behavior = new BeddingAttitudePointBehavior();
+    JSONObject unknown_declination = behavior.encodeState( BeddingAttitudePointState.defaultState() );
+    assertFalse( unknown_declination.has( "declinationDegrees" ) );
   }
 
   @Test public void lrudCalculator_handlesDirectAndReverseSplaysWithPresence()
@@ -182,6 +193,46 @@ public class SpecialPointInstrumentedTest
     StationLrudResult incomplete = StationLrudCalculator.computeAtStation( leg, splays, "A" );
     assertTrue( incomplete.hasUp );
     assertFalse( incomplete.hasDown );
+  }
+
+  @Test public void beddingRenderer_distinguishesConfirmedGlyphsAndProfileFallDirections()
+  {
+    int type = BrushManager.getPointIndexByThName( BeddingAttitudePointBehavior.THERION_NAME );
+    DrawingSemanticPointPath point = (DrawingSemanticPointPath)DrawingPointFactory.createPlacement(
+      type, 200.0f, 200.0f, PointScale.SCALE_M, 0 );
+    BeddingAttitude attitude = BeddingAttitude.fromDipDirection( 90.0, 32.0 );
+    BeddingAttitudePointState plan = BeddingAttitudePointState.manual( true, attitude, "A1",
+      BeddingAttitudePointState.ViewKind.PLAN, false, Double.NaN, Double.NaN,
+      Double.NaN, Double.NaN, false, -8.75, SketchTextStyle.defaultStyle(),
+      BeddingAttitudePointState.MAX_TEXT_SCALE );
+    Bitmap inclined = renderBedding( point, plan );
+    Bitmap horizontal = renderBedding( point, plan.withPlanGlyphOverride(
+      BeddingAttitudePointState.PlanGlyphOverride.HORIZONTAL ) );
+    Bitmap vertical = renderBedding( point, plan.withPlanGlyphOverride(
+      BeddingAttitudePointState.PlanGlyphOverride.VERTICAL ) );
+    assertTrue( bitmapDifference( inclined, horizontal ) > 30 );
+    assertTrue( bitmapDifference( horizontal, vertical ) > 20 );
+    assertEquals( 32.0, plan.withPlanGlyphOverride(
+      BeddingAttitudePointState.PlanGlyphOverride.HORIZONTAL ).attitude().dipDegrees, 1.0e-8 );
+
+    BeddingAttitudePointState falling_right = BeddingAttitudePointState.manual( true, attitude, "A1",
+      BeddingAttitudePointState.ViewKind.PROJECTED_PROFILE, true, 28.0, 28.0,
+      Double.NaN, Double.NaN, false, -8.75, SketchTextStyle.defaultStyle(), 125 );
+    BeddingAttitudePointState falling_left = BeddingAttitudePointState.manual( true, attitude, "A1",
+      BeddingAttitudePointState.ViewKind.PROJECTED_PROFILE, true, -28.0, 28.0,
+      Double.NaN, Double.NaN, false, -8.75, SketchTextStyle.defaultStyle(), 125 );
+    Bitmap right = renderBedding( point, falling_right );
+    Bitmap left = renderBedding( point, falling_left );
+    assertTrue( bitmapDifference( right, left ) > 20 );
+
+    point.setSpecialState( plan, false );
+    RectF bounds = point.specialBehavior().renderer().sceneBounds( point );
+    assertOpaqueInside( inclined, bounds );
+    inclined.recycle();
+    horizontal.recycle();
+    vertical.recycle();
+    right.recycle();
+    left.recycle();
   }
 
   @Test public void ceilingState_roundTripsAndStaysPrivate() throws Exception
@@ -331,5 +382,36 @@ public class SpecialPointInstrumentedTest
     int count = 0;
     for ( int pixel : pixels ) if ( ( pixel >>> 24 ) != 0 ) ++count;
     return count;
+  }
+
+  private static Bitmap renderBedding( DrawingSemanticPointPath point,
+                                       BeddingAttitudePointState state )
+  {
+    point.setSpecialState( state, false );
+    Bitmap bitmap = Bitmap.createBitmap( 400, 400, Bitmap.Config.ARGB_8888 );
+    point.draw( new Canvas( bitmap ), new Matrix(), 1.0f, new RectF( 0, 0, 400, 400 ) );
+    assertTrue( countOpaque( bitmap ) > 20 );
+    return bitmap;
+  }
+
+  private static int bitmapDifference( Bitmap first, Bitmap second )
+  {
+    int count = 0;
+    for ( int y = 0; y < first.getHeight(); ++y ) for ( int x = 0; x < first.getWidth(); ++x ) {
+      if ( first.getPixel( x, y ) != second.getPixel( x, y ) ) ++count;
+    }
+    return count;
+  }
+
+  private static void assertOpaqueInside( Bitmap bitmap, RectF bounds )
+  {
+    for ( int y = 0; y < bitmap.getHeight(); ++y ) for ( int x = 0; x < bitmap.getWidth(); ++x ) {
+      if ( ( bitmap.getPixel( x, y ) >>> 24 ) != 0 ) {
+        assertTrue( "ink x=" + x + " bounds=" + bounds, x >= Math.floor( bounds.left )
+          && x <= Math.ceil( bounds.right ) );
+        assertTrue( "ink y=" + y + " bounds=" + bounds, y >= Math.floor( bounds.top )
+          && y <= Math.ceil( bounds.bottom ) );
+      }
+    }
   }
 }
