@@ -278,7 +278,7 @@ try {
   if ($SkipBuild) {
     Write-Host ("[{0}] SKIP Gradle build; using existing APKs" -f (Get-Date -Format "HH:mm:ss"))
   } else {
-    Invoke-NativeChecked -FilePath $Gradle -Arguments @("-g", $GradleUserHome, "--console=plain", ":app:assembleDebug", ":app:assembleDebugAndroidTest") -Description "Gradle build" -TimeoutSeconds 1200 -IdleTimeoutSeconds 300
+    Invoke-NativeChecked -FilePath $Gradle -Arguments @("-g", $GradleUserHome, "--console=plain", ":app:testDebugUnitTest", ":app:assembleDebug", ":app:assembleDebugAndroidTest") -Description "Gradle build and JVM tests" -TimeoutSeconds 1200 -IdleTimeoutSeconds 300
   }
 
   $AppApk = Resolve-GradleApkOutput -OutputDirectory $AppApkDir -Description "app debug"

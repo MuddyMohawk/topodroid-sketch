@@ -11,5 +11,10 @@ interface SpecialPointEditorController
 {
   void bind( LinearLayout container, EditText primary_text );
 
+  /** Validate and prepare a transactional edit before the generic dialog mutates the point. */
+  default boolean canApply() { return true; }
+
   void apply();
+
+  default void cancel() { }
 }

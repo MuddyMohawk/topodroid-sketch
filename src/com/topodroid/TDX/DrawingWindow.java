@@ -27,6 +27,8 @@ import com.topodroid.num.TDNum;
 import com.topodroid.num.NumStation;
 import com.topodroid.num.NumShot;
 import com.topodroid.num.NumSplay;
+import com.topodroid.geo.BeddingAttitude;
+import com.topodroid.geo.ProjectionBasis;
 // import com.topodroid.mag.Geodetic;
 import com.topodroid.math.TDVector;
 import com.topodroid.math.Point2D;
@@ -1929,16 +1931,10 @@ public class DrawingWindow extends ItemDrawer
         // return;
         // TDLog.v( "EXT offset at " + mOffset.x + " " + mOffset.y );
       } else { // if ( type == PlotType.PLOT_PROJECTED ) 
-        // double cosp = TDMath.cosDd( mPlot2.azimuth );
-        // double sinp = TDMath.sinDd( mPlot2.azimuth );
-        // OBLIQUE
-        float sina = TDMath.sind( mPlot2.azimuth );
-        float cosa = TDMath.cosd( mPlot2.azimuth ); // N~ = ( cosp, sinp )
-        float sinb = TDMath.sind( mPlot2.azimuth + mPlot2.clino ); // P  = ( sinb, cosb )
-        float cosb = TDMath.cosd( mPlot2.azimuth + mPlot2.clino ); 
-        float gamma = ( - sinb * cosa + cosb * sina ) / ( sinb * sina + cosb * cosa );
-        float cosp = cosa + gamma * sina;
-        float sinp = sina - gamma * cosa;
+        ProjectionBasis projected = ProjectionBasis.projectedProfile( mPlot2.azimuth, mPlot2.clino );
+        if ( projected == null ) return;
+        double cosp = projected.pageXEast();
+        double sinp = -projected.pageXNorth();
 
         if ( set_zoom ) mZoom = mPlot2.zoom;
 	double xx = st.e * cosp + st.s * sinp;
@@ -1997,16 +1993,10 @@ public class DrawingWindow extends ItemDrawer
     mDrawingSurface.addScaleRef( manager_type, type, decl );
 
     if ( type == PlotType.PLOT_PROJECTED ) {
-      // cosp = TDMath.cosd( mPlot2.azimuth );
-      // sinp = TDMath.sind( mPlot2.azimuth );
-      // OBLIQUE
-      float sina = TDMath.sind( mPlot2.azimuth );
-      float cosa = TDMath.cosd( mPlot2.azimuth ); // N~ = ( cosp, sinp )
-      float sinb = TDMath.sind( mPlot2.azimuth + mPlot2.clino ); // P  = ( sinb, cosb )
-      float cosb = TDMath.cosd( mPlot2.azimuth + mPlot2.clino ); 
-      float gamma = ( - sinb * cosa + cosb * sina ) / ( sinb * sina + cosb * cosa );
-      cosp = cosa + gamma * sina;
-      sinp = sina - gamma * cosa;
+      ProjectionBasis projected = ProjectionBasis.projectedProfile( mPlot2.azimuth, mPlot2.clino );
+      if ( projected == null ) return false;
+      cosp = (float)projected.pageXEast();
+      sinp = (float)-projected.pageXNorth();
     }
 
     List< NumStation > stations = num.getStations();
@@ -6620,6 +6610,82 @@ public class DrawingWindow extends ItemDrawer
     return StationLrudCalculator.computeAtStation( reference, splays, station.getName() );
   }
 
+  /** Find the nearest plotted station and expose its splays for a bedding fit. */
+  BeddingSurveyContext computeNearestBeddingSurvey( float scene_x, float scene_y )
+  {
+    DrawingStationName station = mDrawingSurface.getNearestStation( scene_x, scene_y );
+    if ( station == null ) return BeddingSurveyContext.empty();
+    return computeBeddingSurveyAtStation( station.getName() );
+  }
+
+  BeddingSurveyContext computeBeddingSurveyAtStation( String station_name )
+  {
+    if ( station_name == null || station_name.length() == 0 ) return BeddingSurveyContext.empty();
+    List< DBlock > splays = mApp_mData.selectShotsAt( TDInstance.sid, station_name, false );
+    return new BeddingSurveyContext( station_name, splays );
+  }
+
+  List< String > beddingStationNames() { return mDrawingSurface.getDrawingStationNames(); }
+
+  /** Convert a true 3-D bedding plane into the current plot's drawing convention. */
+  BeddingProjection computeBeddingProjection( BeddingAttitude attitude, String station_name )
+  {
+    if ( attitude == null ) return BeddingProjection.unsupported();
+    if ( mType == PlotType.PLOT_PLAN ) return BeddingProjection.plan();
+
+    ProjectionBasis basis;
+    BeddingAttitudePointState.ViewKind view_kind;
+    double reference_bearing = Double.NaN;
+    double extend_sign = Double.NaN;
+    boolean ambiguous = false;
+    if ( mType == PlotType.PLOT_PROJECTED && mPlot2 != null ) {
+      basis = ProjectionBasis.projectedProfile( mPlot2.azimuth, mPlot2.clino );
+      view_kind = BeddingAttitudePointState.ViewKind.PROJECTED_PROFILE;
+    } else if ( mType == PlotType.PLOT_EXTENDED && mNum != null
+        && station_name != null && station_name.length() > 0 ) {
+      NumStation station = mNum.getStation( station_name );
+      if ( station == null ) return BeddingProjection.unsupported();
+      double query_bearing = attitude.kind == BeddingAttitude.Kind.HORIZONTAL ? 0.0
+        : BeddingAttitude.wrap360( Math.toDegrees(
+            Math.atan2( attitude.unitNormal.east, attitude.unitNormal.north ) ) );
+      NumStation.ExtendReference reference = station.resolveExtendReference( (float)query_bearing );
+      if ( ! reference.valid ) return new BeddingProjection(
+        BeddingAttitudePointState.ViewKind.EXTENDED_PROFILE, false,
+        Double.NaN, Double.NaN, Double.NaN, Double.NaN, reference.ambiguous );
+      reference_bearing = reference.bearingDegrees;
+      extend_sign = reference.extendSign;
+      ambiguous = reference.ambiguous;
+      basis = ProjectionBasis.extendedProfile( reference_bearing, extend_sign );
+      view_kind = BeddingAttitudePointState.ViewKind.EXTENDED_PROFILE;
+    } else {
+      return BeddingProjection.unsupported();
+    }
+    if ( basis == null ) return BeddingProjection.unsupported();
+    ProjectionBasis.Trace trace = basis.trace( attitude.unitNormal );
+    return new BeddingProjection( view_kind, trace.valid, trace.canvasTraceAngleDegrees,
+      trace.geologicalApparentDipDegrees, reference_bearing, extend_sign, ambiguous );
+  }
+
+  double beddingDeclinationSnapshot() { return mDecl; }
+
+  boolean isBeddingViewSupported()
+  {
+    return mType == PlotType.PLOT_PLAN || mType == PlotType.PLOT_EXTENDED
+      || mType == PlotType.PLOT_PROJECTED;
+  }
+
+  void rejectUnsupportedBeddingPoint( DrawingSemanticPointPath point )
+  {
+    deletePoint( point );
+    Toast.makeText( this, R.string.bedding_unsupported_view, Toast.LENGTH_LONG ).show();
+  }
+
+  void cancelUnconfiguredBeddingPoint( DrawingSemanticPointPath point )
+  {
+    if ( point != null && point.specialState() instanceof BeddingAttitudePointState
+        && ! ((BeddingAttitudePointState)point.specialState()).configured ) deletePoint( point );
+  }
+
   /** Apply point-property changes through the cached drawing lifecycle. */
   void updatePointObject( DrawingPointPath point )
   {
@@ -9492,8 +9558,10 @@ public class DrawingWindow extends ItemDrawer
               }
               mDrawingSurface.appendDrawingStationName( mPlot2.type, st0, DrawingUtil.toSceneX(st0.h, st0.v), DrawingUtil.toSceneY(st0.h, st0.v), true );
             } else if ( PlotType.isProfile( mPlot2.type ) ) {
-              double cosp = TDMath.cosDd( mPlot2.azimuth );
-              double sinp = TDMath.sinDd( mPlot2.azimuth );
+              ProjectionBasis projected = ProjectionBasis.projectedProfile( mPlot2.azimuth, mPlot2.clino );
+              if ( projected == null ) return;
+              double cosp = projected.pageXEast();
+              double sinp = -projected.pageXNorth();
               double h1 = st1.e * cosp + st1.s * sinp;
               double h2 = st2.e * cosp + st2.s * sinp;
               double h0 = StationPolicy.isSurveyBackward() ? h1 : h2;
@@ -9520,11 +9588,15 @@ public class DrawingWindow extends ItemDrawer
                     appendFixedLine( mPlot2.type, blk2, st.h, st.v, sp.h, sp.v, sp.getCosine(), true, true );
                   }
                 } else if ( PlotType.isProfile( mPlot2.type ) ) {
-                  double cosp = TDMath.cosDd( mPlot2.azimuth );
-                  double sinp = TDMath.sinDd( mPlot2.azimuth );
+                  ProjectionBasis projected = ProjectionBasis.projectedProfile( mPlot2.azimuth, mPlot2.clino );
+                  if ( projected == null ) return;
+                  double cosp = projected.pageXEast();
+                  double sinp = -projected.pageXNorth();
                   double h1 = st.e * cosp + st.s * sinp;
                   double h2 = sp.e * cosp + sp.s * sinp;
-                  float cosine = (float)( TDMath.sind( blk2.mBearing ) * sinp + TDMath.cosd( blk2.mBearing ) * cosp ); // instead of sp.getCosine()
+                  // Dashing is relative to the projection/view direction, not
+                  // to the oblique page-x covector used for point placement.
+                  float cosine = TDMath.cosd( blk2.mBearing - mPlot2.azimuth );
                   appendFixedLine( mPlot2.type, blk2, h1, st.v, h2, sp.v, cosine, true, true );
                 }
               }

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:orientation="vertical">
+
+  <TextView
+    android:id="@+id/bedding_result"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/marginv"
+    android:textStyle="bold" />
+
+  <RadioGroup
+    android:id="@+id/bedding_mode"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal">
+    <RadioButton
+      android:id="@+id/bedding_mode_fit"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="@string/bedding_fit_from_splays" />
+    <RadioButton
+      android:id="@+id/bedding_mode_manual"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="@string/bedding_manual" />
+  </RadioGroup>
+
+  <LinearLayout
+    android:id="@+id/bedding_manual_fields"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="horizontal">
+      <EditText
+        android:id="@+id/bedding_dip_direction"
+        style="@style/edit_text_light"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:hint="@string/bedding_dip_direction"
+        android:importantForAutofill="no"
+        android:inputType="numberDecimal|numberSigned"
+        android:singleLine="true" />
+      <EditText
+        android:id="@+id/bedding_dip"
+        style="@style/edit_text_light"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:hint="@string/bedding_dip"
+        android:importantForAutofill="no"
+        android:inputType="numberDecimal"
+        android:singleLine="true" />
+    </LinearLayout>
+    <TextView
+      android:id="@+id/bedding_derived_strike"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:id="@+id/bedding_fit_fields"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/bedding_station_label" />
+    <Spinner
+      android:id="@+id/bedding_station"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content" />
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/bedding_select_splays" />
+    <LinearLayout
+      android:id="@+id/bedding_splay_list"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical" />
+    <Button
+      android:id="@+id/bedding_calculate"
+      style="@style/button_default"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="@string/bedding_calculate" />
+    <Button
+      android:id="@+id/bedding_use_manual"
+      style="@style/button_default"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="@string/bedding_use_manual" />
+    <TextView
+      android:id="@+id/bedding_diagnostics"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content" />
+  </LinearLayout>
+
+  <include layout="@layout/drawing_special_point_typography" />
+</LinearLayout>

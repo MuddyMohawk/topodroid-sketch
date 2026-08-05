@@ -1460,6 +1460,20 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     return ( commandManager == null ) ? null : commandManager.getNearestStation( x, y );
   }
 
+  List< String > getDrawingStationNames()
+  {
+    ArrayList< String > names = new ArrayList<>();
+    if ( commandManager == null ) return names;
+    List< DrawingStationName > stations = commandManager.getStations();
+    if ( stations != null ) synchronized ( stations ) {
+      for ( DrawingStationName station : stations ) {
+        if ( station != null && station.getName() != null ) names.add( station.getName() );
+      }
+    }
+    java.util.Collections.sort( names );
+    return names;
+  }
+
   // UNUSED
   // DrawingStationName getStation( String name ) { return commandManager.getStation( name ); }
 

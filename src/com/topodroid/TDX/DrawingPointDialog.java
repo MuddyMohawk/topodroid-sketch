@@ -225,6 +225,7 @@ class DrawingPointDialog extends MyDialog
   {
     Button b = (Button)v;
     if ( b == mBtnOk ) {
+      if ( mSpecialEditor != null && ! mSpecialEditor.canApply() ) return;
       if ( mDoOptions ) {
         mPoint.setOptions( SketchPrivateOptions.mergePublicOptions(
           mPoint.mOptions, TDUtil.getTextOrEmpty( mEToptions ) ) );
@@ -260,6 +261,8 @@ class DrawingPointDialog extends MyDialog
     //   mParent.openXSectionDraw( mXSectionName );
     // } else if ( b == mBtnCancel ) {
     //   // nothing
+    } else if ( b == mBtnCancel && mSpecialEditor != null ) {
+      mSpecialEditor.cancel();
     }
     dismiss();
   }

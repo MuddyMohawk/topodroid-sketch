@@ -131,7 +131,8 @@ class DrawingSemanticPointPath extends DrawingPointPath
     int save = canvas.save();
     try {
       canvas.concat( matrix );
-      if ( mLandscape && ! BrushManager.isPointOrientable( mPointType ) ) canvas.rotate( 90, cx, cy );
+      if ( mLandscape && ! BrushManager.isPointOrientable( mPointType )
+          && ! mBehavior.rendersAbsoluteSceneDirections() ) canvas.rotate( 90, cx, cy );
       mBehavior.renderer().draw( this, canvas, xor_color );
     } finally {
       canvas.restoreToCount( save );

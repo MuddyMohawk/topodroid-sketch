@@ -17,6 +17,8 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.topodroid.prefs.TDSetting;
 import com.topodroid.types.PointScale;
+import com.topodroid.geo.BeddingAttitude;
+import com.topodroid.geo.BeddingMeasurementModel;
 
 import org.json.JSONObject;
 import org.junit.After;
@@ -72,9 +74,11 @@ public class SpecialPointInstrumentedTest
   {
     int ceiling_type = BrushManager.getPointIndexByThName( CeilingHeightPointBehavior.THERION_NAME );
     int pit_type = BrushManager.getPointIndexByThName( PitDepthPointBehavior.THERION_NAME );
+    int bedding_type = BrushManager.getPointIndexByThName( BeddingAttitudePointBehavior.THERION_NAME );
     int sand_type = BrushManager.getPointIndexByThName( "sand" );
     assertTrue( ceiling_type >= 0 );
     assertTrue( pit_type >= 0 );
+    assertTrue( bedding_type >= 0 );
     assertTrue( sand_type >= 0 );
 
     DrawingPointPath ceiling = DrawingPointFactory.createPlacement(
@@ -83,11 +87,14 @@ public class SpecialPointInstrumentedTest
       sand_type, 10.0f, 20.0f, PointScale.SCALE_M, 0 );
     DrawingPointPath pit = DrawingPointFactory.createPlacement(
       pit_type, 10.0f, 20.0f, PointScale.SCALE_M, 0 );
+    DrawingPointPath bedding = DrawingPointFactory.createPlacement(
+      bedding_type, 10.0f, 20.0f, PointScale.SCALE_M, 0 );
     DrawingPointPath preview = DrawingPointFactory.createPreview(
       ceiling_type, 0.0f, 0.0f, PointScale.SCALE_M, 0 );
 
     assertTrue( ceiling instanceof DrawingSemanticPointPath );
     assertTrue( pit instanceof DrawingSemanticPointPath );
+    assertTrue( bedding instanceof DrawingSemanticPointPath );
     assertFalse( sand instanceof DrawingSemanticPointPath );
     assertEquals( CeilingHeightPointBehavior.BEHAVIOR_ID,
       ((DrawingSemanticPointPath)ceiling).specialBehavior().behaviorId() );
@@ -99,6 +106,63 @@ public class SpecialPointInstrumentedTest
     assertEquals( PitDepthPointBehavior.BEHAVIOR_ID,
       ((DrawingSemanticPointPath)pit).specialBehavior().behaviorId() );
     assertEquals( PitDepthPointBehavior.FULL_THERION_NAME, pit.getFullThName() );
+    assertEquals( BeddingAttitudePointBehavior.FULL_THERION_NAME, bedding.getFullThName() );
+  }
+
+  @Test public void beddingState_roundTripsProvenanceProjectionAndTypography() throws Exception
+  {
+    int type = BrushManager.getPointIndexByThName( BeddingAttitudePointBehavior.THERION_NAME );
+    DrawingSemanticPointPath original = (DrawingSemanticPointPath)DrawingPointFactory.createPlacement(
+      type, 100.0f, 100.0f, PointScale.SCALE_M, 1 );
+    BeddingAttitude attitude = BeddingAttitude.fromDipDirection( 90.0, 30.0 );
+    BeddingAttitudePointState state = new BeddingAttitudePointState(
+      true, BeddingAttitudePointState.Mode.FIT,
+      attitude.unitNormal.east, attitude.unitNormal.north, attitude.unitNormal.up,
+      "A1", new long[] { 11, 12, 13, 19 },
+      new double[] { 1, 2, 3, 4 }, new double[] { 10, 20, 30, 40 },
+      new double[] { -5, 0, 5, 10 }, "SURVEY_MAGNETIC", 0.0,
+      BeddingMeasurementModel.DISTOX_CONSERVATIVE_V1, 0.002, 0.5, 0.5, 0.015, 0.25,
+      "CAUTION", new String[] { "NO_REDUNDANCY", "VERTICAL_AZIMUTH_WEAK" },
+      27.5, 32.5, 80.0, 100.0, false, "BOUNDED",
+      25.0, 35.0, 75.0, 105.0, false, "BOUNDED",
+      BeddingAttitudePointState.ViewKind.PROJECTED_PROFILE, true, 22.25, 18.5,
+      Double.NaN, Double.NaN, false,
+      SketchFontRegistry.FONT_SERIF, true, true, false, 135 );
+    original.setPointText( "30" );
+    original.setSpecialState( state, true );
+
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    DataOutputStream output = new DataOutputStream( bytes );
+    original.toDataStream( output, 1 );
+    output.flush();
+    DataInputStream input = new DataInputStream( new ByteArrayInputStream( bytes.toByteArray() ) );
+    assertEquals( 'P', input.read() );
+    DrawingPointPath loaded_path = DrawingPointPath.loadDataStream( TDR_VERSION, input, 0.0f, 0.0f );
+    assertTrue( loaded_path instanceof DrawingSemanticPointPath );
+    BeddingAttitudePointState loaded = (BeddingAttitudePointState)
+      ((DrawingSemanticPointPath)loaded_path).specialState();
+    assertTrue( loaded.configured );
+    assertEquals( BeddingAttitudePointState.Mode.FIT, loaded.mode );
+    assertEquals( "A1", loaded.stationName );
+    assertEquals( 4, loaded.sourceShotIds.length );
+    assertEquals( 19, loaded.sourceShotIds[3] );
+    assertEquals( 4.0, loaded.sourceLengthsMeters[3], 0.0 );
+    assertEquals( BeddingMeasurementModel.DISTOX_CONSERVATIVE_V1, loaded.measurementModelId );
+    assertEquals( 0.015, loaded.surfaceScatterMeters, 0.0 );
+    assertEquals( BeddingAttitudePointState.ViewKind.PROJECTED_PROFILE, loaded.viewKind );
+    assertEquals( 22.25, loaded.canvasTraceAngleDegrees, 1.0e-8 );
+    assertEquals( 30.0, loaded.attitude().dipDegrees, 1.0e-8 );
+    assertEquals( SketchFontRegistry.FONT_SERIF, loaded.fontId() );
+    assertEquals( 135, loaded.textScalePercent() );
+    double east = loaded.normalEast;
+    assertFalse( loaded_path.rotateBy( 45.0f ) );
+    assertEquals( east, ((BeddingAttitudePointState)
+      ((DrawingSemanticPointPath)loaded_path).specialState()).normalEast, 0.0 );
+
+    Bitmap bitmap = Bitmap.createBitmap( 220, 220, Bitmap.Config.ARGB_8888 );
+    loaded_path.draw( new Canvas( bitmap ), new Matrix(), 1.0f, new RectF( 0, 0, 220, 220 ) );
+    assertTrue( countOpaque( bitmap ) > 30 );
+    bitmap.recycle();
   }
 
   @Test public void lrudCalculator_handlesDirectAndReverseSplaysWithPresence()

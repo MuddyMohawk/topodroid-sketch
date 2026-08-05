@@ -1,0 +1,16 @@
+encoding utf-8
+symbol point
+name bedding strike and dip
+th_name u:bedding-attitude
+group strata
+sketch_stroke_scale 1
+orientation no
+has_value yes
+color 0xcccccc
+path
+  moveTo -9 0
+  lineTo 9 0
+  moveTo 0 0
+  lineTo 0 -6
+endpath
+endsymbol

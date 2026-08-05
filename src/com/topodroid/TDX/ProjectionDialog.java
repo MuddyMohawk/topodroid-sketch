@@ -11,6 +11,8 @@
  */
 package com.topodroid.TDX;
 
+import com.topodroid.geo.ProjectionBasis;
+
 import com.topodroid.util.TDLog;
 import com.topodroid.util.TDMath;
 import com.topodroid.util.TDStatus;
@@ -260,16 +262,10 @@ class ProjectionDialog extends MyDialog
     // TDLog.v( "refs " + mOffset.x + " " + mOffset.y + " " + mZoom + " " + mAzimuth );
     // mProjectionSurface.newReferences( ... ); DoubleBuffer NOT NEEDED
 
-    float sina = TDMath.sind( mAzimuth );
-    float cosa = TDMath.cosd( mAzimuth ); // N~ = ( cosp, sinp )
-    float sinb = TDMath.sind( mAzimuth + mOblique ); // P  = ( sinb, cosb )
-    float cosb = TDMath.cosd( mAzimuth + mOblique ); 
-    float gamma = ( - sinb * cosa + cosb * sina ) / ( sinb * sina + cosb * cosa );
-
-    // TDLog.v("Gamma " + gamma );
-
-    float cx = cosa + gamma * sina;
-    float sx = sina - gamma * cosa;
+    ProjectionBasis projected = ProjectionBasis.projectedProfile( mAzimuth, mOblique );
+    if ( projected == null ) return;
+    float cx = (float)projected.pageXEast();
+    float sx = (float)-projected.pageXNorth();
 
     float e0 = 0;
     float s0 = 0;

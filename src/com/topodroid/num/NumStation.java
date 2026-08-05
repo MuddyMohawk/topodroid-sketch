@@ -21,6 +21,26 @@ import java.util.ArrayList;
 
 public class NumStation extends NumSurveyPoint
 {
+  /** The leg direction that gives a local extended-profile page its horizontal axis. */
+  public static final class ExtendReference
+  {
+    public final boolean valid;
+    public final float bearingDegrees;
+    public final float extendSign;
+    public final float cosine;
+    public final boolean ambiguous;
+
+    private ExtendReference( boolean is_valid, float bearing, float sign,
+                             float projection_cosine, boolean is_ambiguous )
+    {
+      valid = is_valid;
+      bearingDegrees = bearing;
+      extendSign = sign;
+      cosine = projection_cosine;
+      ambiguous = is_ambiguous;
+    }
+  }
+
   public String name;  // station name
   public boolean mDuplicate; // whether this is a duplicate station
 
@@ -297,6 +317,59 @@ public class NumStation extends NumSurveyPoint
     // at this point the splay azimuth is either less than azimuth(0) or larger-or-equal then azimuth(size-1)
     // which should not be, because azimuth(0) < 0 and azimuth(sz-1) > 360
     return e;
+  }
+
+  /** Resolve the same local leg used by extended-profile splay projection.
+   *  This makes the otherwise implicit, station-dependent page basis available
+   *  to geological symbols without changing the existing reduction result.
+   */
+  public ExtendReference resolveExtendReference( float bearing )
+  {
+    if ( mLegAzimuths.size() == 0 || Float.isNaN( bearing ) || Float.isInfinite( bearing ) ) {
+      return new ExtendReference( false, Float.NaN, Float.NaN, Float.NaN, false );
+    }
+    float b = bearing;
+    if ( b < mWrapAzimuth1 ) b += 360.0f;
+    else if ( b > mWrapAzimuth2 ) b -= 360.0f;
+
+    NumAzimuth selected = null;
+    NumAzimuth a1 = mLegAzimuths.get( 0 );
+    for ( int k = 1; k < mLegAzimuths.size(); ++k ) {
+      NumAzimuth a2 = mLegAzimuths.get( k );
+      if ( b >= a1.mAzimuth && b < a2.mAzimuth ) {
+        if ( ! Float.isNaN( a2.mExtend ) ) selected = a2;
+        else if ( ! Float.isNaN( a1.mExtend ) ) selected = a1;
+        break;
+      }
+      a1 = a2;
+    }
+    if ( selected == null || Math.abs( selected.mExtend ) < 1.0e-6f ) {
+      return new ExtendReference( false, Float.NaN, Float.NaN, Float.NaN, hasMultipleLegAxes() );
+    }
+    float reference = selected.mAzimuth % 360.0f;
+    if ( reference < 0.0f ) reference += 360.0f;
+    float sign = selected.mExtend < 0.0f ? -1.0f : 1.0f;
+    float cosine = TDMath.cosd( selected.mAzimuth - b ) * sign;
+    return new ExtendReference( true, reference, sign, cosine, hasMultipleLegAxes() );
+  }
+
+  private boolean hasMultipleLegAxes()
+  {
+    ArrayList< Float > axes = new ArrayList<>();
+    for ( NumAzimuth azimuth : mLegAzimuths ) {
+      if ( Float.isNaN( azimuth.mExtend ) || Math.abs( azimuth.mExtend ) < 1.0e-6f ) continue;
+      float axis = azimuth.mAzimuth % 180.0f;
+      if ( axis < 0.0f ) axis += 180.0f;
+      boolean known = false;
+      for ( Float prior : axes ) {
+        float difference = Math.abs( axis - prior );
+        difference = Math.min( difference, 180.0f - difference );
+        if ( difference < 1.0e-3f ) { known = true; break; }
+      }
+      if ( ! known ) axes.add( axis );
+      if ( axes.size() > 1 ) return true;
+    }
+    return false;
   }
 
   /** @return string presentation of the station (ie, the name)

@@ -28,6 +28,10 @@ interface SpecialPointBehavior
 
   SpecialPointRenderer renderer();
 
+  /** True when dynamic ink already expresses absolute scene directions and
+   *  must not receive the legacy landscape symbol-quarter-turn. */
+  default boolean rendersAbsoluteSceneDirections() { return false; }
+
   SpecialPointEditorController createEditorController( DrawingWindow parent,
                                                        DrawingSemanticPointPath point );
 
