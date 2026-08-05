@@ -1,0 +1,29 @@
+encoding utf-8
+symbol line
+name thrust_fault
+th_name thrust
+group fault
+color 0x7030a0 0xff
+width 2
+# units: line-widths (1 = ink thickness). Each filled tooth has a 4.0-wide
+# base and Pit's 3.4 projection depth. The 16.0 repeat leaves a clear 12.0
+# gap, exactly three times the triangle-base width.
+effect
+  moveTo 0 1
+  lineTo 16 1
+  lineTo 16 0
+  lineTo 10 0
+  lineTo 8 -3.4
+  lineTo 6 0
+  lineTo 0 0
+endeffect
+sketch_effect 1
+  carrier 0 1
+  stamp
+    moveTo 6 0
+    lineTo 8 -3.4
+    lineTo 10 0
+    lineTo 6 0
+  endstamp
+endsketch_effect
+endsymbol

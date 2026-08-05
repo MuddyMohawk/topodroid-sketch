@@ -88,6 +88,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     int gypsumCrystalsCount = 0;
     int jointLineCount = 0;
     int talusLineCount = 0;
+    int thrustLineCount = 0;
 
     ZipInputStream zip = new ZipInputStream(
       mContext.getResources().openRawResource( R.raw.symbols_topodroid_sketch ) );
@@ -102,6 +103,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
         if ( name.equals( "symbols_topodroid_sketch/point/gypsum-crystals" ) ) ++gypsumCrystalsCount;
         if ( name.equals( "symbols_topodroid_sketch/line/joint" ) ) ++jointLineCount;
         if ( name.equals( "symbols_topodroid_sketch/line/talus" ) ) ++talusLineCount;
+        if ( name.equals( "symbols_topodroid_sketch/line/thrust" ) ) ++thrustLineCount;
         assertTrue( "Default symbol pack entry should use symbols_topodroid_sketch root: " + name,
                     name.startsWith( "symbols_topodroid_sketch/" ) );
         assertTrue( "Default symbol pack should not use old symbols_nss root: " + name,
@@ -137,6 +139,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertEquals( "Gypsum Crystals should occur exactly once in the default raw pack", 1, gypsumCrystalsCount );
     assertEquals( "Joint should occur exactly once in the default raw pack", 1, jointLineCount );
     assertEquals( "Talus should occur exactly once in the default raw pack", 1, talusLineCount );
+    assertEquals( "Thrust Fault should occur exactly once in the default raw pack", 1, thrustLineCount );
     assertTrue( "Generic Spar remains deferred",
                 ! entries.contains( "symbols_topodroid_sketch/point/spar" ) );
     assertTrue( "Generic Crystals should not be restored as a duplicate",
@@ -370,6 +373,28 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertNotNull( "Joint line symbol must retain its repeat effect", jointSymbol.mLineEffect );
     assertEquals( "Joint parser must honor the 12.0 line-width repeat", 12.0f,
                   advanceField.getFloat( jointSymbol.mLineEffect ), 0.001f );
+
+    String thrust = readRawSymbolEntry( "symbols_topodroid_sketch/line/thrust" );
+    assertTrue( "Thrust Fault must use the requested purple", thrust.contains( "\ncolor 0x7030a0 0xff\n" ) );
+    assertTrue( "Thrust Fault must remain in the fault group", thrust.contains( "\ngroup fault\n" ) );
+    assertTrue( "Thrust Fault must use the same one-line-width carrier as Pit",
+                thrust.contains( "\n  carrier 0 1\n" ) );
+    String[] thrustTriangle = {
+      "moveTo 6 0", "lineTo 8 -3.4", "lineTo 10 0", "lineTo 6 0"
+    };
+    for ( String command : thrustTriangle ) {
+      assertTrue( "Thrust Fault filled triangle command is missing: " + command,
+                  thrust.contains( command ) );
+    }
+    assertTrue( "Thrust Fault must reserve a 16.0 repeat for a three-base-width clear gap",
+                thrust.contains( "lineTo 16 1" ) && thrust.contains( "lineTo 16 0" ) );
+    int thrustIndex = BrushManager.getLineIndexByThName( "thrust" );
+    assertTrue( "Thrust Fault must load into the line library", thrustIndex >= 0 );
+    SymbolLine thrustSymbol = BrushManager.getLineByIndex( thrustIndex );
+    assertNotNull( "Thrust Fault line symbol must be available", thrustSymbol );
+    assertNotNull( "Thrust Fault line symbol must retain its repeat effect", thrustSymbol.mLineEffect );
+    assertEquals( "Thrust Fault parser must honor the 16.0 line-width repeat", 16.0f,
+                  advanceField.getFloat( thrustSymbol.mLineEffect ), 0.001f );
   }
 
   @Test
@@ -379,6 +404,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     int ceilingLedgeDirection = hachureDirection( readRawSymbolEntry( "symbols_topodroid_sketch/line/chimney" ) );
     int poolFingersDirection = hachureDirection( readRawSymbolEntry( "symbols_topodroid_sketch/line/pool-fingers" ) );
     int gypsumWallCrustDirection = hachureDirection( readRawSymbolEntry( "symbols_topodroid_sketch/line/gypsum-wall-crust" ) );
+    int thrustDirection = hachureDirection( readRawSymbolEntry( "symbols_topodroid_sketch/line/thrust" ) );
 
     assertTrue( "Could not parse pit hachure direction", pitDirection != 0 );
     assertTrue( "Could not parse ceiling-ledge hachure direction", ceilingLedgeDirection != 0 );
@@ -388,6 +414,8 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                   pitDirection, poolFingersDirection );
     assertEquals( "Gypsum Wall Crust should point to the Pit side while drawing",
                   pitDirection, gypsumWallCrustDirection );
+    assertEquals( "Thrust Fault teeth should point to the Pit side while drawing",
+                  pitDirection, thrustDirection );
   }
 
   @Test
@@ -422,6 +450,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawLineRow( canvas, label, "Pit", "pit", y ); y += LINE_ROW;
     drawDirectionalLineRow( canvas, label, "Talus", "talus", y ); y += DIRECTIONAL_LINE_ROW;
     drawLineRow( canvas, label, "Joint", "joint", y ); y += LINE_ROW;
+    drawDirectionalLineRow( canvas, label, "Thrust fault", "thrust", y ); y += DIRECTIONAL_LINE_ROW;
     drawDirectionalLineRow( canvas, label, "Crossbar line", SymbolLibrary.CROSSBAR_LINE, y ); y += DIRECTIONAL_LINE_ROW;
     drawLineRow( canvas, label, "Floor channel", "floor-meander", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Water flow", "water-flow", y ); y += LINE_ROW + 32.0f;
