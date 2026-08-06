@@ -1605,6 +1605,12 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     return mCommandManager3;
   }
 
+  PlotSymbolUsageSnapshot plotSymbolUsageSnapshot( long type )
+  {
+    DrawingCommandManager manager = getManager( type );
+    return manager == null ? PlotSymbolUsageSnapshot.empty() : manager.plotSymbolUsageSnapshot();
+  }
+
   Bitmap renderExportBitmap( long type, SketchPngExportOptions options )
   {
     DrawingCommandManager manager = getManager( type );
@@ -1651,6 +1657,15 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     if ( mCommandManager1 != null && mCommandManager1 != commandManager ) mCommandManager1.refreshAreaPaints( indexMap );
     if ( mCommandManager2 != null && mCommandManager2 != commandManager ) mCommandManager2.refreshAreaPaints( indexMap );
     if ( mCommandManager3 != null && mCommandManager3 != commandManager ) mCommandManager3.refreshAreaPaints( indexMap );
+    requestSceneRender();
+  }
+
+  void refreshSpecialPointLayouts()
+  {
+    if ( commandManager != null ) commandManager.refreshSpecialPointLayouts();
+    if ( mCommandManager1 != null && mCommandManager1 != commandManager ) mCommandManager1.refreshSpecialPointLayouts();
+    if ( mCommandManager2 != null && mCommandManager2 != commandManager ) mCommandManager2.refreshSpecialPointLayouts();
+    if ( mCommandManager3 != null && mCommandManager3 != commandManager ) mCommandManager3.refreshSpecialPointLayouts();
     requestSceneRender();
   }
 

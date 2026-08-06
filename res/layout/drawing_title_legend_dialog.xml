@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#ff15171c"
+    android:padding="12dp">
+
+    <com.topodroid.ui.SegmentedToggleBar
+        android:id="@+id/title_legend_tabs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:id="@+id/title_sheet_placeholder"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="24dp"
+            android:visibility="gone">
+
+            <Switch
+                android:id="@+id/title_sheet_enabled"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/title_legend_enable_title_sheet"
+                android:textColor="#ffffffff"
+                android:checked="false"
+                android:enabled="false" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/title_legend_coming_later"
+                android:textColor="#ff9ea4ae"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/legend_editor_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <Switch
+                android:id="@+id/legend_enabled"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/title_legend_enable_legend"
+                android:textColor="#ffffffff"
+                android:checked="true"
+                android:enabled="false" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="@string/title_legend_switch_future_help"
+                android:textColor="#ff9ea4ae"
+                android:textSize="12sp" />
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:fillViewport="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/legend_rows"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp">
+
+                        <Button
+                            android:id="@+id/legend_add_custom"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/title_legend_add_custom"
+                            android:textAllCaps="false" />
+
+                        <Button
+                            android:id="@+id/legend_add_symbol"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="6dp"
+                            android:text="@string/title_legend_add_symbol"
+                            android:textAllCaps="false" />
+
+                        <Button
+                            android:id="@+id/legend_rescan"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="6dp"
+                            android:text="@string/title_legend_rescan"
+                            android:textAllCaps="false" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="12dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/title_legend_columns"
+                            android:textColor="#ffffffff" />
+                        <Button android:id="@+id/legend_columns_minus" android:layout_width="48dp" android:layout_height="48dp" android:text="&#x2212;" />
+                        <TextView android:id="@+id/legend_columns_value" android:layout_width="52dp" android:layout_height="wrap_content" android:gravity="center" android:textColor="#ffffffff" android:textSize="17sp" />
+                        <Button android:id="@+id/legend_columns_plus" android:layout_width="48dp" android:layout_height="48dp" android:text="+" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/title_legend_rows_per_column"
+                            android:textColor="#ffffffff" />
+                        <Button android:id="@+id/legend_rows_minus" android:layout_width="48dp" android:layout_height="48dp" android:text="&#x2212;" />
+                        <TextView android:id="@+id/legend_rows_value" android:layout_width="52dp" android:layout_height="wrap_content" android:gravity="center" android:textColor="#ffffffff" android:textSize="17sp" />
+                        <Button android:id="@+id/legend_rows_plus" android:layout_width="48dp" android:layout_height="48dp" android:text="+" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:labelFor="@id/legend_size"
+                            android:text="@string/title_legend_size"
+                            android:textColor="#ffffffff" />
+
+                        <SeekBar
+                            android:id="@+id/legend_size"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:layout_marginStart="10dp"
+                            android:max="150" />
+
+                        <TextView
+                            android:id="@+id/legend_size_value"
+                            android:layout_width="58dp"
+                            android:layout_height="wrap_content"
+                            android:gravity="end|center_vertical"
+                            android:textColor="#ffffffff"
+                            android:textSize="16sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/legend_capacity_warning"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:padding="10dp"
+                        android:textColor="#ffffca6a"
+                        android:background="#ff392f1f"
+                        android:visibility="gone" />
+
+                    <Button
+                        android:id="@+id/legend_label_format"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="@string/title_legend_label_format"
+                        android:textAllCaps="false" />
+                </LinearLayout>
+            </ScrollView>
+        </LinearLayout>
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp">
+
+        <Button
+            android:id="@+id/legend_cancel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/button_cancel" />
+        <Button
+            android:id="@+id/legend_save"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="@string/button_save" />
+    </LinearLayout>
+</LinearLayout>

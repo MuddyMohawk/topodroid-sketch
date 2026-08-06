@@ -2894,6 +2894,7 @@ public class DrawingWindow extends ItemDrawer
     }
 
     if ( mDrawingSurface != null ) {
+      mDrawingSurface.refreshSpecialPointLayouts();
       mDrawingSurface.refresh( mDrawingSurface.getHolder() );
       mDrawingSurface.invalidate();
     }
@@ -2921,7 +2922,16 @@ public class DrawingWindow extends ItemDrawer
     }
 
     if ( mDrawingSurface != null ) {
+      mDrawingSurface.refreshSpecialPointLayouts();
       mDrawingSurface.refresh( mDrawingSurface.getHolder() );
+      mDrawingSurface.invalidate();
+    }
+  }
+
+  public void refreshTitleLegendLayouts()
+  {
+    if ( mDrawingSurface != null ) {
+      mDrawingSurface.refreshSpecialPointLayouts();
       mDrawingSurface.invalidate();
     }
   }
@@ -6600,6 +6610,12 @@ public class DrawingWindow extends ItemDrawer
     SketchTextDefaults.save( mApp_mData, TDInstance.sid, style );
   }
 
+  PlotSymbolUsageSnapshot computePlotSymbolUsageSnapshot()
+  {
+    return mDrawingSurface == null ? PlotSymbolUsageSnapshot.empty()
+                                   : mDrawingSurface.plotSymbolUsageSnapshot( mType );
+  }
+
   /** Calculate LRUD at the nearest plotted station for a survey-aware point. */
   StationLrudResult computeNearestStationLrud( float scene_x, float scene_y )
   {
@@ -6733,6 +6749,11 @@ public class DrawingWindow extends ItemDrawer
         && ! ((BeddingAttitudePointState)point.specialState()).configured ) deletePoint( point );
   }
 
+  void cancelUnconfiguredTitleLegendPoint( DrawingSemanticPointPath point )
+  {
+    if ( point != null && TitleLegendPointBehavior.isTitleLegend( point ) ) deletePoint( point );
+  }
+
   /** Apply point-property changes through the cached drawing lifecycle. */
   void updatePointObject( DrawingPointPath point )
   {
@@ -6760,6 +6781,9 @@ public class DrawingWindow extends ItemDrawer
     SpecialPointPlacementAction action = semantic.initializePlacement( new SpecialPointPlacementContext( this ) );
     if ( action == SpecialPointPlacementAction.OPEN_EDITOR ) {
       new DrawingPointDialog( mActivity, this, point, true ).show();
+    } else if ( action == SpecialPointPlacementAction.OPEN_DEDICATED_EDITOR ) {
+      android.app.Dialog dialog = semantic.createDedicatedEditor( this, true );
+      if ( dialog != null ) dialog.show();
     } else if ( action == SpecialPointPlacementAction.LAUNCH_WORKFLOW ) {
       // Reserved for strike/dip and similar calculation workflows.
       TDLog.e( "Special point requested an unimplemented external workflow: "
@@ -8686,6 +8710,10 @@ public class DrawingWindow extends ItemDrawer
                 new DrawingPointSectionDialog( mActivity, this, point ).show();
               } else if ( point instanceof DrawingReferencePath ) {
                 new DrawingReferenceDialog( mActivity, this, (DrawingReferencePath)point ).show();
+              } else if ( point instanceof DrawingSemanticPointPath
+                  && TitleLegendPointBehavior.isTitleLegend( point ) ) {
+                android.app.Dialog dialog = ( (DrawingSemanticPointPath)point ).createDedicatedEditor( this, false );
+                if ( dialog != null ) dialog.show();
               } else {
                 new DrawingPointDialog( mActivity, this, point ).show();
               }

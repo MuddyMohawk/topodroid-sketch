@@ -60,18 +60,27 @@ final class SpecialPointEnvelope
       return SketchPrivateOptions.stripOption( options, SketchPrivateOptions.OPTION_SPECIAL );
     }
     try {
-      JSONObject json = new JSONObject();
-      json.put( "envelope", ENVELOPE_VERSION );
-      json.put( "behavior", behavior.behaviorId() );
-      json.put( "stateVersion", behavior.stateVersion() );
-      json.put( "data", behavior.encodeState( state ) );
-      String encoded = Base64.encodeToString(
-        json.toString().getBytes( StandardCharsets.UTF_8 ),
-        Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING );
-      return SketchPrivateOptions.storeOption( options, SketchPrivateOptions.OPTION_SPECIAL, encoded );
+      return encodeOptions( options, behavior, state );
     } catch ( JSONException | IllegalArgumentException e ) {
       TDLog.e( "Special point state encode failed: " + e.getMessage() );
       return options;
     }
+  }
+
+  static String encodeOptions( String options, SpecialPointBehavior behavior,
+                               SpecialPointState state ) throws JSONException
+  {
+    if ( behavior == null || state == null ) {
+      return SketchPrivateOptions.stripOption( options, SketchPrivateOptions.OPTION_SPECIAL );
+    }
+    JSONObject json = new JSONObject();
+    json.put( "envelope", ENVELOPE_VERSION );
+    json.put( "behavior", behavior.behaviorId() );
+    json.put( "stateVersion", behavior.stateVersion() );
+    json.put( "data", behavior.encodeState( state ) );
+    String encoded = Base64.encodeToString(
+      json.toString().getBytes( StandardCharsets.UTF_8 ),
+      Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING );
+    return SketchPrivateOptions.storeOption( options, SketchPrivateOptions.OPTION_SPECIAL, encoded );
   }
 }

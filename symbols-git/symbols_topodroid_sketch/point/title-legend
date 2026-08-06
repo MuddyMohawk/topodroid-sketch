@@ -1,0 +1,40 @@
+encoding utf-8
+symbol point
+name title_sheet_and_legend
+th_name u:title-legend
+sketch_stroke_scale 1
+orientation no
+color 0xffffff
+path
+  moveTo -7.5 -6
+  lineTo -0.5 -6
+  lineTo -0.5 -2.5
+  lineTo -7.5 -2.5
+  lineTo -7.5 -6
+  moveTo 0.5 -6
+  lineTo 7.5 -6
+  lineTo 7.5 -2.5
+  lineTo 0.5 -2.5
+  lineTo 0.5 -6
+  moveTo -7.5 -1.75
+  lineTo -0.5 -1.75
+  lineTo -0.5 1.75
+  lineTo -7.5 1.75
+  lineTo -7.5 -1.75
+  moveTo 0.5 -1.75
+  lineTo 7.5 -1.75
+  lineTo 7.5 1.75
+  lineTo 0.5 1.75
+  lineTo 0.5 -1.75
+  moveTo -7.5 2.5
+  lineTo -0.5 2.5
+  lineTo -0.5 6
+  lineTo -7.5 6
+  lineTo -7.5 2.5
+  moveTo 0.5 2.5
+  lineTo 7.5 2.5
+  lineTo 7.5 6
+  lineTo 0.5 6
+  lineTo 0.5 2.5
+endpath
+endsymbol

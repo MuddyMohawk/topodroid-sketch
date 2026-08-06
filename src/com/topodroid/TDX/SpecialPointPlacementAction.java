@@ -8,5 +8,6 @@ enum SpecialPointPlacementAction
 {
   NONE,
   OPEN_EDITOR,
+  OPEN_DEDICATED_EDITOR,
   LAUNCH_WORKFLOW
 }

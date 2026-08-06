@@ -52,6 +52,10 @@ public class BrushManager
   static public  SymbolPointLibrary mPointLib = null; // TH2EDIT private
   static public  SymbolLineLibrary  mLineLib  = null; // TH2EDIT private
   static public  SymbolAreaLibrary  mAreaLib  = null; // TH2EDIT private
+  private static int mSymbolLibraryGeneration = 1;
+
+  static synchronized int symbolLibraryGeneration() { return mSymbolLibraryGeneration; }
+  private static synchronized void advanceSymbolLibraryGeneration() { ++mSymbolLibraryGeneration; }
   static private SymbolPoint mStationSymbol   = null;
   static private int mAlpha = 0xff; // splay alpha
   static private boolean mHasSymbolLibraries = false;
@@ -451,6 +455,7 @@ public class BrushManager
   {
     // TDLog.v("BRUSH load point library" );
     mPointLib = new SymbolPointLibrary( ctx, res );
+    advanceSymbolLibraryGeneration();
     SymbolPreviewRenderer.invalidateCache();
     // mPointLib.loadUserPoints();
     TopoDroidApp.refreshDrawingAfterSymbolLibraryReload( SymbolType.POINT );
@@ -463,6 +468,7 @@ public class BrushManager
   {
     // TDLog.v("BRUSH load line library" );
     mLineLib = new SymbolLineLibrary( res );
+    advanceSymbolLibraryGeneration();
     SymbolPreviewRenderer.invalidateCache();
     TopoDroidApp.refreshDrawingAfterLineLibraryReload();
   }
@@ -474,6 +480,7 @@ public class BrushManager
   {
     // TDLog.v("BRUSH load area library" );
     mAreaLib = new SymbolAreaLibrary( res );
+    advanceSymbolLibraryGeneration();
     SymbolPreviewRenderer.invalidateCache();
     // mAreaLib.loadUserAreas();
     TopoDroidApp.refreshDrawingAfterSymbolLibraryReload( SymbolType.AREA );

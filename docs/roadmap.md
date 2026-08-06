@@ -20,6 +20,8 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - per-symbol defaults? locking?
 - Option for rearranging render order (eg, survey station designations on top)
 - Change the update check and versioning to track something besides `https://raw.githubusercontent.com/marcocorvi/speleoapks/main/tdversion.txt`
+- Update the edit dialog for all the symbols to have line weight, color, opacity, and other global style options
+  - The slider widget sucks and needs to be redone
 - symbol notes:
   - need the text/special object symbols
   - need the ceiling crack and floor crack lines
@@ -41,6 +43,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - different scaling factor for leaves? or maybe they're just small
   - are the bedrock area lines too thin?
   - gypsum crystals should probably be a single crystal
+  - make slope point symbol lines stretchable/configurable?
 
 ## Known bugs
 - Sometimes drawing a section line causes the splay lines it crosses to stop rendered. Fixed by re-opening the sketch

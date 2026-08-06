@@ -316,10 +316,18 @@ public class Scrap
    * @param station_splay   ?
    * @param selection_fixed ?
    */
+  SelectionSet getItemsAt( float x, float y, float radius, int mode,
+                           boolean legs, boolean splays, boolean stations, DrawingStationSplay station_splay,
+                           Selection selection_fixed, float scene_per_pixel )
+  {
+    return getItemsAt( x, y, radius, mode, legs, splays, stations, station_splay,
+                       selection_fixed, scene_per_pixel, false );
+  }
+
   SelectionSet getItemsAt( float x, float y, float radius, int mode, 
-		           boolean legs, boolean splays, boolean stations, DrawingStationSplay station_splay,
-			   Selection selection_fixed, float scene_per_pixel // FIXME-HIDE
-                         )
+		           boolean legs, boolean splays, boolean stations,
+                           DrawingStationSplay station_splay, Selection selection_fixed,
+                           float scene_per_pixel, boolean landscape ) // FIXME-HIDE
   {
     // TDLog.v("Scrap get items at " + x + " " + y );
     List< DrawingLabelPath > overlays =
@@ -327,6 +335,7 @@ public class Scrap
         ? textOverlaySnapshot()
         : Collections.emptyList();
     ArrayList< DrawingPointPath > affine_hits = new ArrayList<>();
+    ArrayList< DrawingSemanticPointPath > legend_hits = new ArrayList<>();
     if ( mode == Drawing.FILTER_ALL || mode == Drawing.FILTER_POINT ) {
       synchronized( TDPath.mCommandsLock ) {
         for ( int i = mCurrentStack.size() - 1; i >= 0; --i ) {
@@ -334,6 +343,12 @@ public class Scrap
           if ( command.commandType() != 0 || ! ( command instanceof DrawingPointPath )
               || command instanceof DrawingLabelPath ) continue;
           DrawingPointPath point = (DrawingPointPath)command;
+          if ( point instanceof DrawingSemanticPointPath
+              && TitleLegendPointBehavior.isTitleLegend( point )
+              && DrawingLevel.isLevelVisibleOrAnyLevelNoVisible( point )
+              && ((DrawingSemanticPointPath)point).hitSpecialBounds( x, y, radius, landscape ) ) {
+            legend_hits.add( (DrawingSemanticPointPath)point );
+          }
           if ( ! point.hasSketchAffineTransform() ) continue;
           if ( ! DrawingLevel.isLevelVisibleOrAnyLevelNoVisible( point ) ) continue;
           if ( point.hitSketchAffineSilhouette( x, y, radius ) ) affine_hits.add( point );
@@ -357,11 +372,17 @@ public class Scrap
         point.setDistance( 0.0f );
         mSelected.addPoint( point );
       }
+      for ( DrawingSemanticPointPath legend : legend_hits ) {
+        SelectionPoint point = new SelectionPoint( legend, null, null );
+        point.setDistance( 0.0f );
+        mSelected.addPoint( point );
+      }
       // FIXME_LATEST latest splays are not considered in the selection
       mSelection.selectAt( mSelected, x, y, radius, mode, legs, splays, stations, station_splay ); 
       selection_fixed.selectAt( mSelected, x, y, radius, mode, legs, splays, stations, station_splay ); // FIXME-HIDE
       mSelected.removeDuplicateTextItems();
       mSelected.removeDuplicateAffineItems();
+      mSelected.removeDuplicateTitleLegendItems();
       // FIXME-HIDE if ( mSelected.mPoints.size() > 0 ) {
         // TDLog.v( "selected " + mSelected.mPoints.size() + " points " );
         mSelected.nextHotItem();
@@ -377,10 +398,28 @@ public class Scrap
    */
   void addItemAt( float x, float y, float radius, float scene_per_pixel )
   {
+    addItemAt( x, y, radius, scene_per_pixel, false );
+  }
+
+  void addItemAt( float x, float y, float radius, float scene_per_pixel, boolean landscape )
+  {
     List< DrawingLabelPath > overlays =
       ( mMultiselectionType == DrawingPath.DRAWING_PATH_POINT )
         ? textOverlaySnapshot()
         : Collections.emptyList();
+    ArrayList< DrawingSemanticPointPath > legend_hits = new ArrayList<>();
+    if ( mMultiselectionType == DrawingPath.DRAWING_PATH_POINT ) {
+      synchronized( TDPath.mCommandsLock ) {
+        for ( int i = mCurrentStack.size() - 1; i >= 0; --i ) {
+          ICanvasCommand command = mCurrentStack.get( i );
+          if ( command.commandType() != 0 || ! ( command instanceof DrawingSemanticPointPath ) ) continue;
+          DrawingSemanticPointPath point = (DrawingSemanticPointPath)command;
+          if ( TitleLegendPointBehavior.isTitleLegend( point )
+              && DrawingLevel.isLevelVisibleOrAnyLevelNoVisible( point )
+              && point.hitSpecialBounds( x, y, radius, landscape ) ) legend_hits.add( point );
+        }
+      }
+    }
     synchronized ( TDPath.mSelectionLock ) {
       mSelected.clear();
       if ( mMultiselectionType == DrawingPath.DRAWING_PATH_POINT ) {
@@ -391,6 +430,7 @@ public class Scrap
             addMultiselection( label );
           }
         }
+        for ( DrawingSemanticPointPath point : legend_hits ) addMultiselection( point );
       }
       mSelection.selectAt( mSelected, x, y, radius, mMultiselectionType );
       for ( SelectionPoint sp : mSelected.mPoints ) {
@@ -1131,14 +1171,22 @@ public class Scrap
   /** compute the bitmap bounding box, union of the bounding boxes of the sketch items
    * @param bounds   output bounding box
    */
-  void getBitmapBounds( RectF bounds )
+  void getBitmapBounds( RectF bounds ) { getBitmapBounds( bounds, false ); }
+
+  void getBitmapBounds( RectF bounds, boolean landscape )
   {
     RectF b = new RectF();
     if( mCurrentStack != null ){
       synchronized( TDPath.mCommandsLock ) {
         for ( ICanvasCommand cmd : mCurrentStack ) {
           if ( cmd instanceof DrawingReferencePath && ! ((DrawingReferencePath)cmd).isReferenceVisible() ) continue;
-          cmd.computeBounds( b, true );
+          if ( cmd instanceof DrawingSemanticPointPath
+              && TitleLegendPointBehavior.isTitleLegend( (DrawingPointPath)cmd ) ) {
+            RectF exact = ((DrawingSemanticPointPath)cmd).exactSpecialBounds( landscape );
+            if ( exact != null ) b.set( exact ); else cmd.computeBounds( b, true );
+          } else {
+            cmd.computeBounds( b, true );
+          }
           // TDLog.v("command bounds X " + b.left + " " + b.right + " Y " + b.top + " " + b.bottom );
           // bounds.union( b );
           union( bounds, b );
@@ -2924,6 +2972,12 @@ public class Scrap
             if ( selection_fixed != null ) selection_fixed.shiftPathPointsBy( path, dx, dy );
             return;
           }
+          if ( path instanceof DrawingSemanticPointPath
+              && TitleLegendPointBehavior.isTitleLegend( pt ) ) {
+            mSelection.rebucketPath( path );
+            if ( selection_fixed != null ) selection_fixed.shiftPathPointsBy( path, dx, dy );
+            return;
+          }
           if ( BrushManager.isPointSection( pt.mPointType )  ) {
             String scrap_name = TDUtil.replacePrefix( TDInstance.survey, pt.getOption( TDString.OPTION_SCRAP ) );
             if ( scrap_name != null ) {
@@ -3938,6 +3992,10 @@ public class Scrap
         for ( DrawingPath item : mMultiselected ) {
           if ( item instanceof DrawingLabelPath ) {
             path.addPath( ((DrawingLabelPath)item).textBoundsPath( scale ) );
+          } else if ( item instanceof DrawingSemanticPointPath
+              && TitleLegendPointBehavior.isTitleLegend( (DrawingPointPath)item ) ) {
+            RectF exact = ((DrawingSemanticPointPath)item).exactSpecialBounds( item.mLandscape );
+            if ( exact != null ) path.addRect( exact, Path.Direction.CCW );
           } else {
             float x = item.cx;
             float y = item.cy;
@@ -3988,10 +4046,15 @@ public class Scrap
           x = item.cx;
           y = item.cy;
         }
-        path = ( item instanceof DrawingLabelPath )
-          ? ((DrawingLabelPath)item).textBoundsPath( scale )
-          : new Path();
-        if ( ! ( item instanceof DrawingLabelPath ) ) {
+        if ( item instanceof DrawingLabelPath ) {
+          path = ((DrawingLabelPath)item).textBoundsPath( scale );
+        } else if ( item instanceof DrawingSemanticPointPath
+            && TitleLegendPointBehavior.isTitleLegend( (DrawingPointPath)item ) ) {
+          path = new Path();
+          RectF exact = ((DrawingSemanticPointPath)item).exactSpecialBounds( item.mLandscape );
+          if ( exact != null ) path.addRect( exact, Path.Direction.CCW );
+        } else {
+          path = new Path();
           path.addCircle( x, y, radius, Path.Direction.CCW );
         }
         path.transform( matrix );
@@ -4197,7 +4260,9 @@ public class Scrap
   private void addMultiselection( DrawingPath path )
   {
     if ( path.mType == mMultiselectionType ) {
-      synchronized( TDPath.mSelectionLock ) { mMultiselected.add( path ); }
+      synchronized( TDPath.mSelectionLock ) {
+        if ( ! mMultiselected.contains( path ) ) mMultiselected.add( path );
+      }
     }
     // TDLog.v( "add Multi Selection " + mMultiselectionType + " " + mMultiselected.size() );
   }

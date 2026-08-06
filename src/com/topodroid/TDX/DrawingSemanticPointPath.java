@@ -10,6 +10,7 @@ import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.app.Dialog;
 
 import org.json.JSONException;
 
@@ -18,6 +19,7 @@ class DrawingSemanticPointPath extends DrawingPointPath
   private final String mCanonicalTherionName;
   private final SpecialPointBehavior mBehavior;
   private SpecialPointState mSpecialState;
+  private Object mPreparedSpecialState;
   private boolean mPlacementInitialized;
 
   DrawingSemanticPointPath( int type, String therion_name, SpecialPointBehavior behavior,
@@ -28,6 +30,9 @@ class DrawingSemanticPointPath extends DrawingPointPath
     mBehavior = behavior;
     mPlacementInitialized = false;
     loadSpecialState( options );
+    if ( mBehavior != null && mSpecialState != null ) {
+      mPreparedSpecialState = mBehavior.prepareState( this, mSpecialState );
+    }
     refreshSpecialBounds();
   }
 
@@ -37,12 +42,45 @@ class DrawingSemanticPointPath extends DrawingPointPath
 
   boolean hasUsableSpecialState() { return mSpecialState != null; }
 
+  Object preparedSpecialState() { return mPreparedSpecialState; }
+
   void setSpecialState( SpecialPointState state, boolean persist )
   {
     if ( state == null ) return;
-    mSpecialState = state;
-    if ( persist ) mOptions = SpecialPointEnvelope.store( mOptions, mBehavior, state );
-    refreshSpecialBounds();
+    Object prepared = mBehavior == null ? null : mBehavior.prepareState( this, state );
+    String options = persist ? SpecialPointEnvelope.store( mOptions, mBehavior, state ) : mOptions;
+    commitPreparedSpecialState( state, options, prepared );
+  }
+
+  String encodeSpecialOptions( SpecialPointState state ) throws JSONException
+  {
+    return SpecialPointEnvelope.encodeOptions( mOptions, mBehavior, state );
+  }
+
+  Object prepareSpecialState( SpecialPointState state )
+  {
+    return mBehavior == null || state == null ? null : mBehavior.prepareState( this, state );
+  }
+
+  void refreshPreparedSpecialState()
+  {
+    if ( mBehavior == null || mSpecialState == null ) return;
+    Object prepared = mBehavior.prepareState( this, mSpecialState );
+    synchronized ( TDPath.mCommandsLock ) {
+      mPreparedSpecialState = prepared;
+      refreshSpecialBounds();
+    }
+  }
+
+  void commitPreparedSpecialState( SpecialPointState state, String options, Object prepared )
+  {
+    if ( state == null || options == null ) return;
+    synchronized ( TDPath.mCommandsLock ) {
+      mSpecialState = state;
+      mOptions = options;
+      mPreparedSpecialState = prepared;
+      refreshSpecialBounds();
+    }
   }
 
   SpecialPointPlacementAction initializePlacement( SpecialPointPlacementContext context )
@@ -61,12 +99,48 @@ class DrawingSemanticPointPath extends DrawingPointPath
       : mBehavior.createEditorController( parent, this );
   }
 
+  Dialog createDedicatedEditor( DrawingWindow parent, boolean initial_placement )
+  {
+    return ( mBehavior == null || mSpecialState == null ) ? null
+      : mBehavior.createDedicatedEditor( parent, this, initial_placement );
+  }
+
   void preparePreview()
   {
     if ( mBehavior != null && mSpecialState != null ) {
       mBehavior.preparePreview( this );
+      mPreparedSpecialState = mBehavior.prepareState( this, mSpecialState );
       refreshSpecialBounds();
     }
+  }
+
+  boolean previewUsesAuthoredGlyph()
+  {
+    return mBehavior != null && mBehavior.previewUsesAuthoredGlyph();
+  }
+
+  RectF exactSpecialBounds( boolean landscape )
+  {
+    if ( mBehavior == null || mSpecialState == null || mBehavior.renderer() == null ) return null;
+    RectF bounds = mBehavior.renderer().sceneBounds( this );
+    if ( bounds == null ) return null;
+    if ( landscape && ! BrushManager.isPointOrientable( mPointType )
+        && ! mBehavior.rendersAbsoluteSceneDirections() ) {
+      float left = cx - ( bounds.bottom - cy );
+      float top = cy + ( bounds.left - cx );
+      float right = cx - ( bounds.top - cy );
+      float bottom = cy + ( bounds.right - cx );
+      bounds.set( Math.min( left, right ), Math.min( top, bottom ),
+                  Math.max( left, right ), Math.max( top, bottom ) );
+    }
+    return bounds;
+  }
+
+  boolean hitSpecialBounds( float x, float y, float slop, boolean landscape )
+  {
+    RectF bounds = exactSpecialBounds( landscape );
+    return bounds != null && x >= bounds.left - slop && x <= bounds.right + slop
+                          && y >= bounds.top - slop && y <= bounds.bottom + slop;
   }
 
   void refreshSpecialBounds()
@@ -128,6 +202,10 @@ class DrawingSemanticPointPath extends DrawingPointPath
   private void drawSpecial( Canvas canvas, Matrix matrix, RectF bbox, int xor_color )
   {
     if ( ! intersects( bbox ) ) return;
+    if ( TitleLegendPointBehavior.isTitleLegend( this ) ) {
+      RectF exact = exactSpecialBounds( mLandscape );
+      if ( exact != null && ! RectF.intersects( exact, bbox ) ) return;
+    }
     int save = canvas.save();
     try {
       canvas.concat( matrix );
@@ -148,20 +226,20 @@ class DrawingSemanticPointPath extends DrawingPointPath
   @Override void setScale( int scale )
   {
     super.setScale( scale );
-    refreshSpecialBounds();
+    refreshPreparedSpecialState();
   }
 
   @Override boolean setExactPointScale( float scale )
   {
     boolean changed = super.setExactPointScale( scale );
-    if ( changed ) refreshSpecialBounds();
+    if ( changed ) refreshPreparedSpecialState();
     return changed;
   }
 
   @Override void setSketchBrushStyle( SketchBrushStyle style )
   {
     super.setSketchBrushStyle( style );
-    refreshSpecialBounds();
+    refreshPreparedSpecialState();
   }
 
   @Override void setOrientation( double angle )
@@ -173,13 +251,13 @@ class DrawingSemanticPointPath extends DrawingPointPath
   @Override void scaleBy( float factor, Matrix matrix )
   {
     super.scaleBy( factor, matrix );
-    refreshSpecialBounds();
+    refreshPreparedSpecialState();
   }
 
   @Override void affineTransformBy( float[] values, Matrix matrix )
   {
     super.affineTransformBy( values, matrix );
-    refreshSpecialBounds();
+    refreshPreparedSpecialState();
   }
 
   Paint specialPointPaint() { return resolvedSketchLinePaint(); }

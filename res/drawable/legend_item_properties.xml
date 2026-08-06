@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp"
+    android:height="28dp"
+    android:viewportWidth="32"
+    android:viewportHeight="32">
+
+    <!-- Transparent version of the sketch-item-properties note-and-pencil glyph. -->
+    <path
+        android:fillColor="#ff61a9df"
+        android:pathData="M3,4h17v23H3z" />
+    <path
+        android:fillColor="#ff39434d"
+        android:pathData="M7,9h10v2H7zM7,14h10v2H7zM7,19h7v2H7z" />
+    <path
+        android:fillColor="#ffe5e8ed"
+        android:pathData="M12,23l1.1,-4.7L24.7,6.7l3.6,3.6L16.7,21.9z" />
+    <path
+        android:fillColor="#ffe5e8ed"
+        android:pathData="M25.6,5.8l0.8,-0.8c0.7,-0.7 1.8,-0.7 2.5,0l1.1,1.1c0.7,0.7 0.7,1.8 0,2.5l-0.8,0.8z" />
+</vector>

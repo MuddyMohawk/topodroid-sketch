@@ -32,6 +32,7 @@ import com.topodroid.TDX.DrawingUtil;
 import com.topodroid.TDX.DrawingIO;
 import com.topodroid.TDX.DrawingPath;
 import com.topodroid.TDX.DrawingPointPath;
+import com.topodroid.TDX.TitleLegendPointBehavior;
 import com.topodroid.TDX.DrawingLinePath;
 import com.topodroid.TDX.DrawingAreaPath;
 import com.topodroid.TDX.DrawingPointLinePath;
@@ -815,6 +816,7 @@ public class DrawingDxf
           else if ( path.mType == DrawingPath.DRAWING_PATH_POINT )
           {
             DrawingPointPath point = (DrawingPointPath) path;
+            if ( TitleLegendPointBehavior.isTitleLegend( point ) ) continue;
             if ( BrushManager.isPointReference( point.mPointType ) ) continue;
 	        String name = point.getThName();
 	        String th_name = replaceColon( point.getThName() );
@@ -978,6 +980,7 @@ public class DrawingDxf
                             float xoff, float yoff, float z, int scrap )
   { // FIXME point scale factor is 0.3
     if ( point == null ) return handle;
+    if ( TitleLegendPointBehavior.isTitleLegend( point ) ) return handle;
     //String th_name = replaceColon( point.getThName() );
     // HBX_DXF
     //String layer2;

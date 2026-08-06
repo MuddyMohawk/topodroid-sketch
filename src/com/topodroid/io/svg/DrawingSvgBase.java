@@ -26,6 +26,7 @@ import com.topodroid.TDX.TDPath;
 import com.topodroid.TDX.DrawingStationUser;
 import com.topodroid.TDX.DrawingStationName;
 import com.topodroid.TDX.DrawingPointPath;
+import com.topodroid.TDX.TitleLegendPointBehavior;
 import com.topodroid.TDX.DrawingPointLinePath;
 import com.topodroid.TDX.DrawingLinePath;
 import com.topodroid.TDX.DrawingAreaPath;
@@ -475,6 +476,7 @@ public class DrawingSvgBase
 
   static protected void toSvg( PrintWriter pw, DrawingPointPath point, String color, float xoff, float yoff )
   {
+    if ( TitleLegendPointBehavior.isTitleLegend( point ) ) return;
     int idx = point.mPointType;
     float scale = point.getScaleValue();
     String name = point.getFullThNameEscapedColon( );

@@ -11,6 +11,9 @@
  */
 package com.topodroid.TDX;
 
+import android.text.InputFilter;
+import android.text.Spanned;
+
 final class SketchTextInput
 {
   private static final int MAX_MODIFIED_UTF_BYTES = 65535;
@@ -49,5 +52,26 @@ final class SketchTextInput
   static boolean fitsModifiedUtf( String text )
   {
     return modifiedUtfLength( text ) <= MAX_MODIFIED_UTF_BYTES;
+  }
+
+  /** Input filter whose limit is Unicode code points rather than UTF-16 code units. */
+  static InputFilter codePointLengthFilter( final int maximum )
+  {
+    return new InputFilter() {
+      @Override public CharSequence filter( CharSequence source, int start, int end,
+                                            Spanned destination, int dstart, int dend )
+      {
+        String current = destination.toString();
+        int replaced = current.substring( dstart, dend ).codePointCount( 0, dend - dstart );
+        int existing = current.codePointCount( 0, current.length() ) - replaced;
+        int keep = Math.max( 0, maximum ) - existing;
+        if ( keep <= 0 ) return "";
+        String incoming = source.subSequence( start, end ).toString();
+        int incoming_count = incoming.codePointCount( 0, incoming.length() );
+        if ( incoming_count <= keep ) return null;
+        int cut = incoming.offsetByCodePoints( 0, keep );
+        return incoming.substring( 0, cut );
+      }
+    };
   }
 }

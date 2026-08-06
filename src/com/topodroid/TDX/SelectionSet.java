@@ -130,6 +130,23 @@ class SelectionSet
     }
   }
 
+  void removeDuplicateTitleLegendItems()
+  {
+    IdentityHashMap< DrawingPath, Boolean > seen = new IdentityHashMap<>();
+    for ( int i = 0; i < mPoints.size(); ) {
+      SelectionPoint point = mPoints.get( i );
+      if ( point.mItem instanceof DrawingPointPath
+          && TitleLegendPointBehavior.isTitleLegend( (DrawingPointPath)point.mItem ) ) {
+        if ( seen.containsKey( point.mItem ) ) {
+          mPoints.remove( i );
+          continue;
+        }
+        seen.put( point.mItem, Boolean.TRUE );
+      }
+      ++i;
+    }
+  }
+
   int size() { return mPoints.size(); }
 
   void clear() 

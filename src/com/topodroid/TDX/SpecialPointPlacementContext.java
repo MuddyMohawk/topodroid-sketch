@@ -24,6 +24,11 @@ final class SpecialPointPlacementContext
     return ( mParent == null ) ? SketchTextStyle.defaultStyle() : mParent.loadTextObjectDefault();
   }
 
+  PlotSymbolUsageSnapshot plotSymbolUsageSnapshot()
+  {
+    return mParent == null ? PlotSymbolUsageSnapshot.empty() : mParent.computePlotSymbolUsageSnapshot();
+  }
+
   BeddingSurveyContext nearestBeddingSurvey( float scene_x, float scene_y )
   {
     return mParent == null ? BeddingSurveyContext.empty()

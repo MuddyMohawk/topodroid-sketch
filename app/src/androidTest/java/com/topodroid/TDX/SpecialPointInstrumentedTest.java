@@ -30,6 +30,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
@@ -75,10 +78,12 @@ public class SpecialPointInstrumentedTest
     int ceiling_type = BrushManager.getPointIndexByThName( CeilingHeightPointBehavior.THERION_NAME );
     int pit_type = BrushManager.getPointIndexByThName( PitDepthPointBehavior.THERION_NAME );
     int bedding_type = BrushManager.getPointIndexByThName( BeddingAttitudePointBehavior.THERION_NAME );
+    int title_legend_type = BrushManager.getPointIndexByThName( TitleLegendPointBehavior.THERION_NAME );
     int sand_type = BrushManager.getPointIndexByThName( "sand" );
     assertTrue( ceiling_type >= 0 );
     assertTrue( pit_type >= 0 );
     assertTrue( bedding_type >= 0 );
+    assertTrue( title_legend_type >= 0 );
     assertTrue( sand_type >= 0 );
 
     DrawingPointPath ceiling = DrawingPointFactory.createPlacement(
@@ -91,10 +96,13 @@ public class SpecialPointInstrumentedTest
       bedding_type, 10.0f, 20.0f, PointScale.SCALE_M, 0 );
     DrawingPointPath preview = DrawingPointFactory.createPreview(
       ceiling_type, 0.0f, 0.0f, PointScale.SCALE_M, 0 );
+    DrawingPointPath title_legend = DrawingPointFactory.createPlacement(
+      title_legend_type, 10.0f, 20.0f, PointScale.SCALE_M, 0 );
 
     assertTrue( ceiling instanceof DrawingSemanticPointPath );
     assertTrue( pit instanceof DrawingSemanticPointPath );
     assertTrue( bedding instanceof DrawingSemanticPointPath );
+    assertTrue( title_legend instanceof DrawingSemanticPointPath );
     assertFalse( sand instanceof DrawingSemanticPointPath );
     assertEquals( CeilingHeightPointBehavior.BEHAVIOR_ID,
       ((DrawingSemanticPointPath)ceiling).specialBehavior().behaviorId() );
@@ -107,6 +115,114 @@ public class SpecialPointInstrumentedTest
       ((DrawingSemanticPointPath)pit).specialBehavior().behaviorId() );
     assertEquals( PitDepthPointBehavior.FULL_THERION_NAME, pit.getFullThName() );
     assertEquals( BeddingAttitudePointBehavior.FULL_THERION_NAME, bedding.getFullThName() );
+    assertTrue( ((DrawingSemanticPointPath)title_legend).previewUsesAuthoredGlyph() );
+  }
+
+  @Test public void titleLegend_roundTripsRequestedShapeAndPreparedExpansion() throws Exception
+  {
+    int type = BrushManager.getPointIndexByThName( TitleLegendPointBehavior.THERION_NAME );
+    assertTrue( type >= 0 );
+    DrawingSemanticPointPath original = (DrawingSemanticPointPath)DrawingPointFactory.createPlacement(
+      type, 20.0f, 20.0f, PointScale.SCALE_M, 0 );
+    ArrayList< TitleLegendPointState.Row > rows = new ArrayList<>();
+    for ( int i = 0; i < 7; ++i ) {
+      rows.add( TitleLegendPointState.Row.custom().withLabel( "Custom " + ( i + 1 ) ) );
+    }
+    TitleLegendPointState state = new TitleLegendPointState( "legend-test", false, true, 2, 3,
+      0.72f, SketchTextStyle.defaultStyle(), rows, java.util.Collections.< String >emptySet() );
+    original.setSpecialState( state, true );
+    TitleLegendLayout layout = (TitleLegendLayout)original.preparedSpecialState();
+    TitleLegendLayout full_size_layout = TitleLegendLayout.prepare( original, state.withLegendScale( 1.0f ) );
+    assertNotNull( layout );
+    assertEquals( 2, state.requestedColumns );
+    assertEquals( 3, layout.capacity.renderedColumns );
+    assertTrue( layout.capacity.expanded );
+    assertEquals( full_size_layout.localBounds.width() * 0.72f,
+      layout.localBounds.width(), 0.1f );
+    assertEquals( full_size_layout.localBounds.height() * 0.72f,
+      layout.localBounds.height(), 0.1f );
+    assertTrue( layout.localBounds.width() > layout.localBounds.height() );
+
+    Bitmap bitmap = Bitmap.createBitmap( 900, 500, Bitmap.Config.ARGB_8888 );
+    Matrix matrix = new Matrix();
+    matrix.setScale( 0.45f, 0.45f );
+    original.draw( new Canvas( bitmap ), matrix, 1.0f, new RectF( 0, 0, 2000, 1200 ) );
+    assertTrue( countOpaque( bitmap ) > 100 );
+    bitmap.recycle();
+
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    DataOutputStream output = new DataOutputStream( bytes );
+    original.toDataStream( output, 1 );
+    output.flush();
+    DataInputStream input = new DataInputStream( new ByteArrayInputStream( bytes.toByteArray() ) );
+    assertEquals( 'P', input.read() );
+    DrawingPointPath loaded_path = DrawingPointPath.loadDataStream( TDR_VERSION, input, 0.0f, 0.0f );
+    assertTrue( loaded_path instanceof DrawingSemanticPointPath );
+    TitleLegendPointState loaded = (TitleLegendPointState)((DrawingSemanticPointPath)loaded_path).specialState();
+    assertEquals( 2, loaded.requestedColumns );
+    assertEquals( 3, loaded.rowsPerColumn );
+    assertEquals( 0.72f, loaded.legendScale, 0.001f );
+    assertEquals( 7, loaded.rows.size() );
+    TitleLegendLayout loaded_layout = (TitleLegendLayout)
+      ((DrawingSemanticPointPath)loaded_path).preparedSpecialState();
+    assertEquals( 3, loaded_layout.capacity.renderedColumns );
+    RectF portrait = ((DrawingSemanticPointPath)loaded_path).exactSpecialBounds( false );
+    RectF landscape = ((DrawingSemanticPointPath)loaded_path).exactSpecialBounds( true );
+    assertEquals( portrait.width(), landscape.height(), 0.01f );
+    assertEquals( portrait.height(), landscape.width(), 0.01f );
+    assertTrue( ((DrawingSemanticPointPath)loaded_path).hitSpecialBounds(
+      portrait.centerX(), portrait.centerY(), 0.0f, false ) );
+    assertFalse( ((DrawingSemanticPointPath)loaded_path).hitSpecialBounds(
+      portrait.left - 2.0f, portrait.centerY(), 0.0f, false ) );
+  }
+
+  @Test public void titleLegend_newerStateRemainsVisibleAndBytePreserved()
+  {
+    JSONObject json = new JSONObject();
+    try {
+      json.put( "envelope", SpecialPointEnvelope.ENVELOPE_VERSION );
+      json.put( "behavior", TitleLegendPointBehavior.BEHAVIOR_ID );
+      json.put( "stateVersion", 99 );
+      json.put( "data", new JSONObject().put( "futureLegendField", "preserved" ) );
+    } catch ( Exception e ) {
+      throw new AssertionError( e );
+    }
+    String encoded = Base64.encodeToString( json.toString().getBytes( StandardCharsets.UTF_8 ),
+      Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING );
+    String options = SketchPrivateOptions.storeOption( "-id newer-legend",
+      SketchPrivateOptions.OPTION_SPECIAL, encoded );
+    int type = BrushManager.getPointIndexByThName( TitleLegendPointBehavior.THERION_NAME );
+    DrawingSemanticPointPath point = (DrawingSemanticPointPath)DrawingPointFactory.createLoaded(
+      type, TitleLegendPointBehavior.THERION_NAME, 20.0f, 20.0f,
+      PointScale.SCALE_M, null, options, 0 );
+    assertTrue( point.specialState() instanceof TitleLegendPointBehavior.NewerState );
+    assertEquals( encoded,
+      SketchPrivateOptions.getOptionValue( point.mOptions, SketchPrivateOptions.OPTION_SPECIAL ) );
+    RectF bounds = point.exactSpecialBounds( false );
+    assertTrue( bounds.width() > 20.0f && bounds.height() > 20.0f );
+    Bitmap bitmap = Bitmap.createBitmap( 180, 100, Bitmap.Config.ARGB_8888 );
+    point.draw( new Canvas( bitmap ), new Matrix(), 1.0f, new RectF( 0, 0, 180, 100 ) );
+    assertTrue( countOpaque( bitmap ) > 40 );
+    bitmap.recycle();
+  }
+
+  @Test public void titleLegend_targetedInstallIsMissingOnlyAndNonOverwriting() throws Exception
+  {
+    File target = com.topodroid.util.TDFile.getPrivateFile( "point", TitleLegendPointBehavior.THERION_NAME );
+    assertTrue( target.exists() );
+    assertTrue( target.delete() );
+    assertTrue( TopoDroidApp.installSinglePackagedSymbol( R.raw.symbols_topodroid_sketch,
+      "point", TitleLegendPointBehavior.THERION_NAME ) );
+    assertTrue( target.exists() );
+    String installed = readUtf8( target );
+    assertTrue( installed.contains( "th_name u:title-legend" ) );
+
+    FileOutputStream output = new FileOutputStream( target, false );
+    output.write( "user-owned".getBytes( StandardCharsets.UTF_8 ) );
+    output.close();
+    assertTrue( TopoDroidApp.installSinglePackagedSymbol( R.raw.symbols_topodroid_sketch,
+      "point", TitleLegendPointBehavior.THERION_NAME ) );
+    assertEquals( "user-owned", readUtf8( target ) );
   }
 
   @Test public void beddingState_roundTripsProvenanceProjectionAndTypography() throws Exception
@@ -401,6 +517,17 @@ public class SpecialPointInstrumentedTest
       if ( first.getPixel( x, y ) != second.getPixel( x, y ) ) ++count;
     }
     return count;
+  }
+
+  private static String readUtf8( File file ) throws Exception
+  {
+    FileInputStream input = new FileInputStream( file );
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    byte[] buffer = new byte[1024];
+    int count;
+    while ( ( count = input.read( buffer ) ) != -1 ) output.write( buffer, 0, count );
+    input.close();
+    return new String( output.toByteArray(), StandardCharsets.UTF_8 );
   }
 
   private static void assertOpaqueInside( Bitmap bitmap, RectF bounds )

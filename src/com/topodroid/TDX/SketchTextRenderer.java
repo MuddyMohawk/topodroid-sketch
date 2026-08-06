@@ -22,17 +22,25 @@ final class SketchTextRenderer
 
   static Paint newPaint( SketchTextStyle style )
   {
+    Paint paint = new Paint();
+    configurePaint( paint, style );
+    return paint;
+  }
+
+  static void configurePaint( Paint paint, SketchTextStyle style )
+  {
+    if ( paint == null ) return;
     SketchTextStyle resolved_style = ( style == null ) ? SketchTextStyle.defaultStyle() : style;
     SketchFontRegistry.ResolvedFont font =
       SketchFontRegistry.resolve( resolved_style.fontId(), resolved_style.bold(), resolved_style.italic() );
-    Paint paint = new Paint( Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG | Paint.SUBPIXEL_TEXT_FLAG );
+    paint.reset();
+    paint.setFlags( Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG | Paint.SUBPIXEL_TEXT_FLAG );
     paint.setStyle( Paint.Style.FILL );
     paint.setTypeface( font.typeface );
     paint.setFakeBoldText( font.fakeBold );
     paint.setTextSkewX( font.skewX );
     paint.setUnderlineText( resolved_style.underline() );
     paint.setColor( resolved_style.color() );
-    return paint;
   }
 
   static void drawScene( Canvas canvas, Matrix matrix, float cx, float cy, float orientation,
@@ -56,8 +64,17 @@ final class SketchTextRenderer
   {
     if ( canvas == null || layout == null || line_height_pixels <= 0.0f ) return;
     Paint paint = newPaint( style );
+    drawAt( canvas, anchor_x, anchor_y, angle, style, layout, line_height_pixels, xor_color, paint );
+  }
+
+  static void drawAt( Canvas canvas, float anchor_x, float anchor_y, float angle,
+                      SketchTextStyle style, SketchTextLayoutSnapshot layout,
+                      float line_height_pixels, int xor_color, Paint paint )
+  {
+    if ( canvas == null || layout == null || paint == null || line_height_pixels <= 0.0f ) return;
     paint.setTextSize( layout.paintSizePerLineHeight * line_height_pixels );
-    if ( xor_color > 0 ) paint.setColor( BrushManager.xorColor( paint.getColor() ) );
+    int color = style == null ? SketchTextStyle.DEFAULT_COLOR : style.color();
+    paint.setColor( xor_color > 0 ? BrushManager.xorColor( color ) : color );
 
     int save = canvas.save();
     try {

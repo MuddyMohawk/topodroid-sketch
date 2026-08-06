@@ -3406,6 +3406,7 @@ public class TDSetting
       TDLog.e("missing STYLE key: " + k );
     }
     persistSketchStyleState( hlp.getSharedPrefs() );
+    if ( style == SKETCH_STYLE_STANDARD ) TopoDroidApp.refreshTitleLegendLayouts();
     if ( refreshStyleButtons ) TopoDroidApp.resetRecentTools();
     if ( ret != null ) TDPrefHelper.update( k, ret );
     return ret;

@@ -537,6 +537,53 @@ public class DrawingCommandManager
     return ret;
   }
 
+  /**
+   * @return an immutable inventory of canonical symbols in every scrap of this plot.
+   * Drawing objects are copied under the normal scrap/command lock order; symbol
+   * names are resolved only after those locks have been released.
+   */
+  PlotSymbolUsageSnapshot plotSymbolUsageSnapshot()
+  {
+    for ( int attempt = 0; attempt < 3; ++attempt ) {
+      int generation = BrushManager.symbolLibraryGeneration();
+      List< DrawingPath > commands = getCommands();
+      ArrayList< PlotSymbolUsageSnapshot.RawOccurrence > raw = new ArrayList<>();
+      for ( DrawingPath path : commands ) {
+        if ( path instanceof DrawingPointPath ) {
+          if ( path instanceof DrawingLabelPath ) continue;
+          DrawingPointPath point = (DrawingPointPath)path;
+          int type = point.mPointType;
+          if ( BrushManager.isPointMedia( type ) || BrushManager.isPointSection( type )
+            || BrushManager.isPointReference( type ) || BrushManager.isPointPicture( type ) ) continue;
+          raw.add( new PlotSymbolUsageSnapshot.RawOccurrence(
+            PlotSymbolUsageSnapshot.Kind.POINT, type, point.cx, point.cy, point.mScrap ) );
+        } else if ( path instanceof DrawingLinePath ) {
+          DrawingLinePath line = (DrawingLinePath)path;
+          raw.add( new PlotSymbolUsageSnapshot.RawOccurrence(
+            PlotSymbolUsageSnapshot.Kind.LINE, line.mLineType,
+            ( line.left + line.right ) * 0.5f, ( line.top + line.bottom ) * 0.5f, line.mScrap ) );
+        } else if ( path instanceof DrawingAreaPath ) {
+          DrawingAreaPath area = (DrawingAreaPath)path;
+          raw.add( new PlotSymbolUsageSnapshot.RawOccurrence(
+            PlotSymbolUsageSnapshot.Kind.AREA, area.mAreaType,
+            ( area.left + area.right ) * 0.5f, ( area.top + area.bottom ) * 0.5f, area.mScrap ) );
+        }
+      }
+      PlotSymbolUsageSnapshot resolved = PlotSymbolUsageSnapshot.resolve( raw );
+      if ( generation == BrushManager.symbolLibraryGeneration() ) return resolved;
+    }
+    return PlotSymbolUsageSnapshot.empty();
+  }
+
+  void refreshSpecialPointLayouts()
+  {
+    for ( DrawingPath path : getCommands() ) {
+      if ( path instanceof DrawingSemanticPointPath ) {
+        ((DrawingSemanticPointPath)path).refreshPreparedSpecialState();
+      }
+    }
+  }
+
   // accessors used by DrawingDxf and DrawingSvg
   /** @return the list of legs
    */
@@ -1585,7 +1632,7 @@ public class DrawingCommandManager
     }
     // TDLog.v( "Before scraps bounds " + bounds.left + " " + bounds.top + " " + bounds.right + " " + bounds.bottom );
     synchronized( mSyncScrap ) {
-      for ( Scrap scrap : mScraps ) scrap.getBitmapBounds( bounds );
+      for ( Scrap scrap : mScraps ) scrap.getBitmapBounds( bounds, mLandscape );
     }
     bounds.left   *= scale;
     bounds.top    *= scale;
@@ -1787,7 +1834,7 @@ public class DrawingCommandManager
     }
 
     synchronized( mSyncScrap ) {
-      for ( Scrap scrap : mScraps ) scrap.getBitmapBounds( bounds );
+      for ( Scrap scrap : mScraps ) scrap.getBitmapBounds( bounds, mLandscape );
       if ( stations && ! TDSetting.mAutoStations && mCurrentScrap != null ) {
         ArrayList< DrawingStationUser > user_stations = new ArrayList<>();
         mCurrentScrap.addUserStationsToList( user_stations );
@@ -2528,13 +2575,13 @@ public class DrawingCommandManager
     // TDLog.v( "DCM get items at " + x + " " + y + " mode " + mode );
     float scene_per_pixel = ( zoom > 0.0f ) ? 1.0f / zoom : 1.0f;
     return mCurrentScrap.getItemsAt( x, y, radius, mode, legs, splays, stations,
-                                     station_splay, mSelectionFixed, scene_per_pixel ); // FIXME-HIDE
+                                     station_splay, mSelectionFixed, scene_per_pixel, mLandscape ); // FIXME-HIDE
   }
     
   void addItemAt( float x, float y, float zoom, float size ) { 
     float radius = TDSetting.mCloseCutoff + size/zoom; // TDSetting.mSelectness / zoom;
     float scene_per_pixel = ( zoom > 0.0f ) ? 1.0f / zoom : 1.0f;
-    mCurrentScrap.addItemAt( x, y, radius, scene_per_pixel );
+    mCurrentScrap.addItemAt( x, y, radius, scene_per_pixel, mLandscape );
   }
 
   void splitPointHotItem() { mCurrentScrap.splitPointHotItem(); }

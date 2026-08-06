@@ -363,6 +363,16 @@ public class TopoDroidApp extends Application
     }
   }
 
+  public static void refreshTitleLegendLayouts()
+  {
+    final DrawingWindow window = mDrawingWindow;
+    if ( window != null ) {
+      window.runOnUiThread( new Runnable() {
+        @Override public void run() { window.refreshTitleLegendLayouts(); }
+      } );
+    }
+  }
+
   // -------------------------------------------------------------------------------------
   // static SIZE methods
 
@@ -1284,6 +1294,7 @@ public class TopoDroidApp extends Application
     if ( symbol_version == null || ! TDVersion.SYMBOL_VERSION.equals( symbol_version ) || ! hasInstalledSymbolFiles() ) {
       installSymbols( true );
     }
+    installTitleLegendSymbolOnce();
 
     TDPrefHelper prefHlp = new TDPrefHelper( thisApp );
 
@@ -2213,6 +2224,77 @@ public class TopoDroidApp extends Application
     if ( dir == null || ! dir.exists() ) return false;
     String[] files = dir.list();
     return files != null && files.length > 0;
+  }
+
+  private static final String TITLE_LEGEND_DELIVERY_KEY = "title_legend_symbol_delivery_v1";
+
+  /**
+   * Deliver this one new default symbol to existing alpha installs without a
+   * symbol-version bump or overwriting a same-name user file. The completion
+   * flag deliberately respects a user's later deletion.
+   */
+  static void installTitleLegendSymbolOnce()
+  {
+    if ( mDData == null ) return;
+    if ( "done".equals( mDData.getValue( TITLE_LEGEND_DELIVERY_KEY ) ) ) return;
+    if ( TDFile.existPrivateFile( "point", TitleLegendPointBehavior.THERION_NAME )
+        || installSinglePackagedSymbol( R.raw.symbols_topodroid_sketch, "point",
+                                       TitleLegendPointBehavior.THERION_NAME ) ) {
+      mDData.setValue( TITLE_LEGEND_DELIVERY_KEY, "done" );
+    }
+  }
+
+  static boolean installSinglePackagedSymbol( int resource, String wanted_type, String wanted_name )
+  {
+    if ( wanted_type == null || wanted_name == null ) return false;
+    File target = TDFile.getPrivateFile( wanted_type, wanted_name );
+    if ( target.exists() ) return true;
+    File temporary = TDFile.getPrivateFile( wanted_type, wanted_name + ".installing" );
+    InputStream source = null;
+    ZipInputStream zip = null;
+    try {
+      source = TDInstance.getResources().openRawResource( resource );
+      zip = new ZipInputStream( source );
+      ZipEntry entry;
+      byte[] buffer = new byte[4096];
+      while ( ( entry = zip.getNextEntry() ) != null ) {
+        if ( entry.isDirectory() ) { zip.closeEntry(); continue; }
+        String path = entry.getName().replace( '\\', '/' );
+        int first = path.indexOf( '/' );
+        if ( first >= 0 && path.startsWith( "symbol" ) ) path = path.substring( first + 1 );
+        int separator = path.indexOf( '/' );
+        if ( separator <= 0 ) { zip.closeEntry(); continue; }
+        String type = path.substring( 0, separator );
+        String name = path.substring( separator + 1 );
+        if ( ! wanted_type.equals( type ) || ! wanted_name.equals( name ) ) {
+          zip.closeEntry();
+          continue;
+        }
+        FileOutputStream output = new FileOutputStream( temporary, false );
+        try {
+          int count;
+          while ( ( count = zip.read( buffer ) ) != -1 ) output.write( buffer, 0, count );
+          output.getFD().sync();
+        } finally {
+          output.close();
+        }
+        zip.closeEntry();
+        if ( target.exists() ) {
+          temporary.delete();
+          return true;
+        }
+        if ( temporary.renameTo( target ) ) return true;
+        temporary.delete();
+        return target.exists();
+      }
+    } catch ( IOException | RuntimeException e ) {
+      TDLog.e( "Title/legend symbol install failed: " + e.getMessage() );
+    } finally {
+      if ( zip != null ) try { zip.close(); } catch ( IOException e ) { /* no-op */ }
+      else if ( source != null ) try { source.close(); } catch ( IOException e ) { /* no-op */ }
+      if ( temporary.exists() ) temporary.delete();
+    }
+    return false;
   }
 
   /** install default TopoDroid Sketch symbols

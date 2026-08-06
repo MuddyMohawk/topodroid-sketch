@@ -60,12 +60,24 @@ class SymbolPreviewRenderer
 
   static SymbolPreviewRenderer create( int symbol_type, int library_index, SymbolInterface symbol, float density )
   {
+    return create( symbol_type, library_index, symbol, density, STANDARD_STYLE,
+                   symbol == null ? 0.0f : symbol.getAngle(), null );
+  }
+
+  static SymbolPreviewRenderer create( int symbol_type, int library_index, SymbolInterface symbol,
+                                       float density, SketchBrushStyle style,
+                                       float orientation, String text_value )
+  {
     if ( symbol == null || library_index < 0 ) return null;
-    Scene scene = makeScene( symbol_type, library_index, symbol );
+    SketchBrushStyle resolved_style = style == null ? STANDARD_STYLE : style;
+    Scene scene = makeScene( symbol_type, library_index, symbol, resolved_style, orientation, text_value );
     if ( scene == null ) return null;
-    BoundsKey key = new BoundsKey( symbol_type, library_index, symbol.getAngle(),
+    BoundsKey key = new BoundsKey( symbol_type, library_index, Float.floatToIntBits( orientation ),
                                    Float.floatToIntBits( TDSetting.inkUnit() ),
-                                   Float.floatToIntBits( TDSetting.pointInkUnit() ) );
+                                   Float.floatToIntBits( TDSetting.pointInkUnit() ),
+                                   Float.floatToIntBits( resolved_style.weightOr( SketchBrushStyle.DEFAULT_WEIGHT_STANDARD ) ),
+                                   Float.floatToIntBits( resolved_style.pointScaleOr( SketchBrushStyle.DEFAULT_POINT_SCALE ) ),
+                                   text_value == null ? 0 : text_value.hashCode() );
     RectF bounds = cachedBounds( symbol, key );
     if ( bounds == null ) {
       bounds = measureInkBounds( scene, symbol_type == SymbolType.POINT );
@@ -104,32 +116,38 @@ class SymbolPreviewRenderer
 
   RectF getSceneFrameForTest() { return new RectF( mScene.mProbeFrame ); }
 
-  private static Scene makeScene( int symbol_type, int index, SymbolInterface symbol )
+  private static Scene makeScene( int symbol_type, int index, SymbolInterface symbol,
+                                  SketchBrushStyle style, float orientation, String text_value )
   {
     switch ( symbol_type ) {
-      case SymbolType.POINT: return makePointScene( index, symbol );
-      case SymbolType.LINE:  return makeLineScene( index );
-      case SymbolType.AREA:  return makeAreaScene( index );
+      case SymbolType.POINT: return makePointScene( index, symbol, style, orientation, text_value );
+      case SymbolType.LINE:  return makeLineScene( index, style );
+      case SymbolType.AREA:  return makeAreaScene( index, style );
       default: return null;
     }
   }
 
-  private static Scene makePointScene( int index, SymbolInterface symbol )
+  private static Scene makePointScene( int index, SymbolInterface symbol, SketchBrushStyle style,
+                                       float orientation, String text_value )
   {
     DrawingPointPath point = DrawingPointFactory.createPreview( index, 0.0f, 0.0f, PointScale.SCALE_M, 0 );
-    point.setSketchBrushStyle( STANDARD_STYLE );
-    if ( BrushManager.isPointOrientable( index ) ) point.setOrientation( symbol.getAngle() );
+    point.setSketchBrushStyle( style );
+    if ( text_value != null ) point.setPointText( text_value );
+    if ( BrushManager.isPointOrientable( index ) ) point.setOrientation( orientation );
+
+    boolean authored_glyph = point instanceof DrawingSemanticPointPath
+      && ( (DrawingSemanticPointPath)point ).previewUsesAuthoredGlyph();
 
     if ( point instanceof DrawingSemanticPointPath
-        && ((DrawingSemanticPointPath)point).hasUsableSpecialState() ) {
+        && ! authored_glyph && ((DrawingSemanticPointPath)point).hasUsableSpecialState() ) {
       RectF frame = new RectF( point );
       return new PointScene( point, null, null, frame );
     }
 
-    Paint paint = SketchBrushRenderer.pointPaint( BrushManager.getPointPaint( index ), STANDARD_STYLE,
+    Paint paint = SketchBrushRenderer.pointPaint( BrushManager.getPointPaint( index ), style,
                                                   BrushManager.getPointSketchStrokeScale( index ) );
     Path path = point.mPath;
-    boolean direct = path == null || path.isEmpty();
+    boolean direct = authored_glyph || path == null || path.isEmpty();
     if ( direct ) path = symbol.getPath();
     if ( path == null || path.isEmpty() ) return null;
     RectF frame = new RectF();
@@ -139,24 +157,27 @@ class SymbolPreviewRenderer
     return new PointScene( point, direct ? new Path( path ) : null, paint, frame );
   }
 
-  private static Scene makeLineScene( int index )
+  private static Scene makeLineScene( int index, SketchBrushStyle style )
   {
-    Paint paint = SketchBrushRenderer.linePaint( BrushManager.getLinePaint( index, false ), STANDARD_STYLE );
+    Paint paint = SketchBrushRenderer.linePaint( BrushManager.getLinePaint( index, false ), style );
     if ( paint == null ) return null;
     float stroke = Math.max( 0.001f, paint.getStrokeWidth() );
+    float baseline_stroke = Math.max( 0.001f, TDSetting.inkUnit() );
     LineSymbolEffect effect = BrushManager.getLineEffect( index );
     float repeat = 0.0f;
     RectF pattern_bounds = null;
     if ( effect != null ) {
-      repeat = effect.sampleRepeatLength( stroke, false );
+      repeat = effect.sampleRepeatLength( baseline_stroke, false );
       pattern_bounds = effect.samplePatternBounds( stroke, false );
     } else {
       float[] dash = BrushManager.getLineDashBase( index );
-      if ( dash != null ) for ( float value : dash ) repeat += Math.max( 0.0f, value * stroke );
+      if ( dash != null ) for ( float value : dash ) repeat += Math.max( 0.0f, value * baseline_stroke );
     }
-    float length = Math.max( 24.0f * stroke, 3.0f * repeat );
+    // Keep the representative segment length independent of the selected
+    // weight so a custom legend weight remains visibly thicker/thinner after fit.
+    float length = Math.max( 24.0f * baseline_stroke, 3.0f * repeat );
     DrawingLinePath line = new DrawingLinePath( index, 0 );
-    line.setSketchBrushStyle( STANDARD_STYLE );
+    line.setSketchBrushStyle( style );
     line.addStartPoint( -0.5f * length, 0.0f );
     line.addPoint( 0.5f * length, 0.0f );
     line.computeUnitNormal();
@@ -174,7 +195,7 @@ class SymbolPreviewRenderer
     return new LineScene( line, new RectF( left, top, right, bottom ) );
   }
 
-  private static Scene makeAreaScene( int index )
+  private static Scene makeAreaScene( int index, SketchBrushStyle style )
   {
     AreaLinePattern pattern = BrushManager.getAreaLinePattern( index );
     float ink = Math.max( 0.001f, TDSetting.inkUnit() );
@@ -201,7 +222,7 @@ class SymbolPreviewRenderer
       }
     }
     DrawingAreaPath area = new DrawingAreaPath( index, 1, "preview", false, 0 );
-    area.setSketchBrushStyle( STANDARD_STYLE );
+    area.setSketchBrushStyle( style );
     area.addStartPoint( -0.5f * width, -0.5f * height );
     area.addPoint( 0.5f * width, -0.5f * height );
     area.addPoint( 0.5f * width, 0.5f * height );
@@ -357,13 +378,20 @@ class SymbolPreviewRenderer
     final int mAngle;
     final int mInk;
     final int mPointInk;
-    BoundsKey( int type, int index, int angle, int ink, int point_ink )
+    final int mWeight;
+    final int mScale;
+    final int mText;
+    BoundsKey( int type, int index, int angle, int ink, int point_ink,
+               int weight, int scale, int text )
     {
       mType = type;
       mIndex = index;
       mAngle = angle;
       mInk = ink;
       mPointInk = point_ink;
+      mWeight = weight;
+      mScale = scale;
+      mText = text;
     }
     @Override public int hashCode()
     {
@@ -371,7 +399,10 @@ class SymbolPreviewRenderer
       value = 31 * value + mIndex;
       value = 31 * value + mAngle;
       value = 31 * value + mInk;
-      return 31 * value + mPointInk;
+      value = 31 * value + mPointInk;
+      value = 31 * value + mWeight;
+      value = 31 * value + mScale;
+      return 31 * value + mText;
     }
     @Override public boolean equals( Object other )
     {
@@ -379,7 +410,8 @@ class SymbolPreviewRenderer
       if ( ! ( other instanceof BoundsKey ) ) return false;
       BoundsKey key = (BoundsKey)other;
       return mType == key.mType && mIndex == key.mIndex && mAngle == key.mAngle
-          && mInk == key.mInk && mPointInk == key.mPointInk;
+          && mInk == key.mInk && mPointInk == key.mPointInk
+          && mWeight == key.mWeight && mScale == key.mScale && mText == key.mText;
     }
   }
 }
