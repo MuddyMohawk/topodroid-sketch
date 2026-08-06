@@ -181,6 +181,19 @@ public class SymbolLine extends Symbol
     final Path path_rev = new Path();
     final ArrayList< LineSymbolEffect.Carrier > carriers = new ArrayList<>();
     boolean strokeStamp = false;
+    boolean cosineEnvelope = false;
+    float envelopeDefault = 1.0f;
+    float envelopeMin = 1.0f;
+    float envelopeMax = 1.0f;
+  }
+
+  private static void applySketchEffect( LineSymbolEffect effect, SketchEffectData data )
+  {
+    if ( effect == null || data == null ) return;
+    effect.setSketchEffect( data.path_dir, data.path_rev, data.carriers, data.strokeStamp );
+    if ( data.cosineEnvelope ) {
+      effect.setCosineEnvelope( data.envelopeDefault, data.envelopeMin, data.envelopeMax );
+    }
   }
 
   private SketchEffectData readSketchEffect( BufferedReader br, String filename ) throws IOException
@@ -212,6 +225,19 @@ public class SymbolLine extends Symbol
           data.carriers.add( new LineSymbolEffect.Carrier( y0, y1 ) );
         } catch ( NumberFormatException e ) {
           TDLog.e( filename + " parse sketch carrier error: " + line );
+        }
+      } else if ( vals[k].equals("envelope") ) {
+        try {
+          ++k;
+          while ( k < s && vals[k].length() == 0 ) ++k;
+          if ( k >= s || ! vals[k].equals("cosine") ) throw new NumberFormatException();
+          k_val = k;
+          data.envelopeDefault = nextFloat( vals, s, 1.0f );
+          data.envelopeMin = nextFloat( vals, s, 1.0f );
+          data.envelopeMax = nextFloat( vals, s, 1.0f );
+          data.cosineEnvelope = true;
+        } catch ( NumberFormatException e ) {
+          TDLog.e( filename + " parse sketch envelope error: " + line );
         }
       } else if ( in_stamp ) {
         readSketchEffectPathCommand( filename, line, vals, s, k, data.path_dir, data.path_rev );
@@ -272,6 +298,7 @@ public class SymbolLine extends Symbol
    *      sketch_effect 1             [line-width units]
    *        stroke
    *        carrier Y0 Y1
+   *        envelope cosine DEFAULT MIN MAX
    *        stamp
    *          command: moveTo lineTo cubicTo addCircle
    *        endstamp
@@ -503,10 +530,7 @@ public class SymbolLine extends Symbol
                     }
                   } else if ( vals[k].equals("endeffect") ) {
                     mLineEffect = new LineSymbolEffect( path_dir, path_rev, xmax - xmin, dash_values );
-                    if ( sketch_effect != null ) {
-                      mLineEffect.setSketchEffect( sketch_effect.path_dir, sketch_effect.path_rev,
-                                                   sketch_effect.carriers, sketch_effect.strokeStamp );
-                    }
+                    applySketchEffect( mLineEffect, sketch_effect );
                     break;
                   }
                 }
@@ -514,8 +538,7 @@ public class SymbolLine extends Symbol
   	    } else if ( vals[k].equals("sketch_effect") ) {
               sketch_effect = readSketchEffect( br, filename );
               if ( mLineEffect != null ) {
-                mLineEffect.setSketchEffect( sketch_effect.path_dir, sketch_effect.path_rev,
-                                             sketch_effect.carriers, sketch_effect.strokeStamp );
+                applySketchEffect( mLineEffect, sketch_effect );
               }
   	    } else if ( vals[k].equals("endsymbol") ) {
   	      if ( name != null && th_name != null ) {

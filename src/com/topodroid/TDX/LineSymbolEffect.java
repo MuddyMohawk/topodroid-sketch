@@ -34,6 +34,8 @@ class LineSymbolEffect
   private static final float MIN_UNIT = 1.0e-3f;    // [scene units]
   private static final int   MAX_CACHE = 16;
   private static final int   MAX_CARRIER_SAMPLES = 4096;
+  private static final int   ENVELOPE_NONE = 0;
+  private static final int   ENVELOPE_COSINE = 1;
 
   static class Carrier
   {
@@ -64,6 +66,10 @@ class LineSymbolEffect
   private Path mSketchRevPath;
   private Carrier[] mCarriers;
   private Carrier[] mRevCarriers;
+  private int mEnvelopeType;
+  private float mEnvelopeDefault;
+  private float mEnvelopeMin;
+  private float mEnvelopeMax;
 
   /** pattern data pre-scaled to a given scene unit (= ink thickness) */
   private static class ScaledPattern
@@ -102,6 +108,10 @@ class LineSymbolEffect
     mHasSketchEffect = false;
     mHasSketchStamp = false;
     mSketchStroke = false;
+    mEnvelopeType = ENVELOPE_NONE;
+    mEnvelopeDefault = 1.0f;
+    mEnvelopeMin = 1.0f;
+    mEnvelopeMax = 1.0f;
   }
 
   void setSketchEffect( Path path, Path rev_path, ArrayList< Carrier > carriers )
@@ -121,6 +131,39 @@ class LineSymbolEffect
     mScaledCache.clear();
   }
 
+  /** Configure a smooth symmetric length envelope for repeated sketch stamps. */
+  void setCosineEnvelope( float default_peak, float min_peak, float max_peak )
+  {
+    if ( ! isFinitePositive( min_peak ) ) min_peak = 1.0f;
+    if ( ! isFinitePositive( max_peak ) ) max_peak = min_peak;
+    if ( max_peak < min_peak ) {
+      float swap = min_peak;
+      min_peak = max_peak;
+      max_peak = swap;
+    }
+    mEnvelopeType = ENVELOPE_COSINE;
+    mEnvelopeMin = min_peak;
+    mEnvelopeMax = max_peak;
+    mEnvelopeDefault = clampFinite( default_peak, min_peak, max_peak, min_peak );
+  }
+
+  boolean hasEnvelope() { return mEnvelopeType != ENVELOPE_NONE; }
+
+  boolean hasSketchEffect() { return mHasSketchEffect; }
+
+  float envelopeDefault() { return mEnvelopeDefault; }
+
+  float envelopeMin() { return mEnvelopeMin; }
+
+  float envelopeMax() { return mEnvelopeMax; }
+
+  /** Clamp a placement override to the limits declared by the symbol. */
+  float resolveEnvelopePeak( float peak )
+  {
+    if ( ! hasEnvelope() ) return 1.0f;
+    return clampFinite( peak, mEnvelopeMin, mEnvelopeMax, mEnvelopeDefault );
+  }
+
   /** draw the pattern along a scene-space line
    * @param canvas     canvas, already carrying the scene->screen transform
    * @param line_path  line path in scene coordinates
@@ -130,12 +173,19 @@ class LineSymbolEffect
    */
   boolean draw( Canvas canvas, Path line_path, Paint paint, boolean reversed )
   {
-    return draw( canvas, line_path, paint, reversed, 1.0f );
+    return draw( canvas, line_path, paint, reversed, 1.0f, mEnvelopeDefault );
   }
 
   /** @param pixel_size  scene units per screen pixel (sampling quality hint only)
    */
   boolean draw( Canvas canvas, Path line_path, Paint paint, boolean reversed, float pixel_size )
+  {
+    return draw( canvas, line_path, paint, reversed, pixel_size, mEnvelopeDefault );
+  }
+
+  /** @param envelope_peak placement-specific peak multiplier for an optional stamp envelope
+   */
+  boolean draw( Canvas canvas, Path line_path, Paint paint, boolean reversed, float pixel_size, float envelope_peak )
   {
     if ( canvas == null || line_path == null || paint == null ) return false;
 
@@ -143,6 +193,7 @@ class LineSymbolEffect
     if ( ! ( unit > MIN_UNIT ) || Float.isNaN( unit ) || Float.isInfinite( unit ) ) unit = 1.0f;
     ScaledPattern sp = scaled( unit, reversed );
     if ( sp.advance <= 0 ) return false;
+    float peak = resolveEnvelopePeak( envelope_peak );
     if ( ! ( pixel_size > 0 ) || Float.isNaN( pixel_size ) || Float.isInfinite( pixel_size ) ) pixel_size = 1.0f;
 
     Paint carrier_paint = new Paint( paint );
@@ -195,10 +246,12 @@ class LineSymbolEffect
       if ( mHasSketchEffect && ! mHasSketchStamp ) continue;
       if ( dash_cycle > 0 ) {
         drew |= drawDashedContour( canvas, measure, length, sp.dash, dash_cycle, sp.path, sp.bounds,
-                                   stamp_paint, matrix, stamp, stamp_bounds, pos, tan, has_clip, clip_bounds, pad, sp.advance, sp.anchor );
+                                   stamp_paint, matrix, stamp, stamp_bounds, pos, tan, has_clip, clip_bounds, pad,
+                                   sp.advance, sp.anchor, mEnvelopeType, peak );
       } else {
         drew |= drawStampSegment( canvas, measure, 0, length, sp.advance, sp.path, sp.bounds,
-                                  stamp_paint, matrix, stamp, stamp_bounds, pos, tan, has_clip, clip_bounds, pad, sp.anchor );
+                                  stamp_paint, matrix, stamp, stamp_bounds, pos, tan, has_clip, clip_bounds, pad,
+                                  sp.anchor, length, mEnvelopeType, peak );
       }
     } while ( measure.nextContour() );
 
@@ -216,9 +269,25 @@ class LineSymbolEffect
   /** @return bounds of one scaled stamp/carrier unit, for sizing a render probe. */
   RectF samplePatternBounds( float unit, boolean reversed )
   {
+    return samplePatternBounds( unit, reversed, mEnvelopeDefault );
+  }
+
+  /** @return bounds of one scaled stamp/carrier unit at a placement peak. */
+  RectF samplePatternBounds( float unit, boolean reversed, float envelope_peak )
+  {
     if ( ! ( unit > MIN_UNIT ) || Float.isNaN( unit ) || Float.isInfinite( unit ) ) unit = 1.0f;
     ScaledPattern sp = scaled( unit, reversed );
     RectF bounds = new RectF( sp.bounds );
+    if ( hasEnvelope() && ! bounds.isEmpty() ) {
+      float peak = resolveEnvelopePeak( envelope_peak );
+      bounds.top *= peak;
+      bounds.bottom *= peak;
+      if ( bounds.top > bounds.bottom ) {
+        float swap = bounds.top;
+        bounds.top = bounds.bottom;
+        bounds.bottom = swap;
+      }
+    }
     if ( sp.carriers != null ) {
       for ( Carrier carrier : sp.carriers ) {
         RectF carrier_bounds = new RectF( 0.0f, carrier.y0, Math.max( unit, sp.advance ), carrier.y1 );
@@ -228,6 +297,17 @@ class LineSymbolEffect
     if ( bounds.isEmpty() ) bounds.set( 0.0f, -0.5f * unit, Math.max( unit, sp.advance ), 0.5f * unit );
     if ( mSketchStroke ) bounds.inset( -0.5f * unit, -0.5f * unit );
     return bounds;
+  }
+
+  /** @return conservative radial padding around a line path for effect-aware culling. */
+  float samplePatternRadius( float unit, boolean reversed, float envelope_peak )
+  {
+    if ( ! ( unit > MIN_UNIT ) || Float.isNaN( unit ) || Float.isInfinite( unit ) ) unit = 1.0f;
+    ScaledPattern sp = scaled( unit, reversed );
+    RectF bounds = samplePatternBounds( unit, reversed, envelope_peak );
+    float dx = Math.max( Math.abs( bounds.left - sp.anchor ), Math.abs( bounds.right - sp.anchor ) );
+    float dy = Math.max( Math.abs( bounds.top ), Math.abs( bounds.bottom ) );
+    return (float)Math.sqrt( dx * dx + dy * dy );
   }
 
   private ScaledPattern scaled( float unit, boolean reversed )
@@ -332,7 +412,7 @@ class LineSymbolEffect
   private static boolean drawDashedContour( Canvas canvas, PathMeasure measure, float length, float[] dash, float dash_cycle,
                                             Path pattern, RectF pattern_bounds, Paint draw_paint, Matrix matrix, Path stamp,
                                             RectF stamp_bounds, float[] pos, float[] tan, boolean has_clip, RectF clip_bounds,
-                                            float pad, float advance, float anchor )
+                                            float pad, float advance, float anchor, int envelope_type, float envelope_peak )
   {
     boolean drew = false;
 
@@ -343,7 +423,8 @@ class LineSymbolEffect
         float next = offset + interval;
         if ( interval > 0 && ( k % 2 ) == 0 ) {
           drew |= drawStampSegment( canvas, measure, offset, Math.min( next, length ), advance, pattern, pattern_bounds,
-                                    draw_paint, matrix, stamp, stamp_bounds, pos, tan, has_clip, clip_bounds, pad, anchor, true );
+                                    draw_paint, matrix, stamp, stamp_bounds, pos, tan, has_clip, clip_bounds, pad,
+                                    anchor, length, envelope_type, envelope_peak, true );
         }
         offset = next;
       }
@@ -355,27 +436,32 @@ class LineSymbolEffect
   private static boolean drawStampSegment( Canvas canvas, PathMeasure measure, float start, float end, float advance,
                                            Path pattern, RectF pattern_bounds, Paint draw_paint, Matrix matrix, Path stamp,
                                            RectF stamp_bounds, float[] pos, float[] tan, boolean has_clip, RectF clip_bounds,
-                                           float pad, float anchor )
+                                           float pad, float anchor, float contour_length, int envelope_type, float envelope_peak )
   {
     return drawStampSegment( canvas, measure, start, end, advance, pattern, pattern_bounds, draw_paint, matrix, stamp,
-                             stamp_bounds, pos, tan, has_clip, clip_bounds, pad, anchor, false );
+                             stamp_bounds, pos, tan, has_clip, clip_bounds, pad, anchor, contour_length,
+                             envelope_type, envelope_peak, false );
   }
 
   private static boolean drawStampSegment( Canvas canvas, PathMeasure measure, float start, float end, float advance,
                                            Path pattern, RectF pattern_bounds, Paint draw_paint, Matrix matrix, Path stamp,
                                            RectF stamp_bounds, float[] pos, float[] tan, boolean has_clip, RectF clip_bounds,
-                                           float pad, float anchor, boolean fit_repeats )
+                                           float pad, float anchor, float contour_length, int envelope_type, float envelope_peak,
+                                           boolean fit_repeats )
   {
     boolean drew = false;
     boolean first = true;
+    boolean single_short_stamp = end > start && end - start < advance;
     for ( float distance = start; distance < end; distance += advance ) {
       if ( fit_repeats && ! first && distance + advance > end + FIT_EPS ) break;
-      float target = distance + anchor;
+      float target = single_short_stamp ? 0.5f * ( start + end ) : distance + anchor;
       if ( target < start ) target = start;
       if ( target > end ) break;
+      float normal_scale = envelopeScale( envelope_type, envelope_peak, target, contour_length );
       if ( drawStamp( canvas, measure, target, anchor, pattern, pattern_bounds, draw_paint, matrix, stamp, stamp_bounds,
-                      pos, tan, has_clip, clip_bounds, pad ) ) drew = true;
+                      pos, tan, has_clip, clip_bounds, pad, normal_scale ) ) drew = true;
       first = false;
+      if ( single_short_stamp ) break;
     }
     return drew;
   }
@@ -454,13 +540,14 @@ class LineSymbolEffect
   private static boolean drawStamp( Canvas canvas, PathMeasure measure, float distance, float anchor,
                                     Path pattern, RectF pattern_bounds,
                                     Paint draw_paint, Matrix matrix, Path stamp, RectF stamp_bounds, float[] pos, float[] tan,
-                                    boolean has_clip, RectF clip_bounds, float pad )
+                                    boolean has_clip, RectF clip_bounds, float pad, float normal_scale )
   {
     if ( ! measure.getPosTan( distance, pos, tan ) ) return false;
     if ( Math.abs( tan[0] ) < TANGENT_EPS && Math.abs( tan[1] ) < TANGENT_EPS ) return false;
 
     matrix.reset();
     matrix.setTranslate( -anchor, 0 );
+    matrix.postScale( 1.0f, normal_scale );
     matrix.postRotate( (float)Math.toDegrees( Math.atan2( tan[1], tan[0] ) ) );
     matrix.postTranslate( pos[0], pos[1] );
 
@@ -473,6 +560,25 @@ class LineSymbolEffect
     stamp.addPath( pattern, matrix );
     canvas.drawPath( stamp, draw_paint );
     return true;
+  }
+
+  private static float envelopeScale( int envelope_type, float peak, float distance, float contour_length )
+  {
+    if ( envelope_type != ENVELOPE_COSINE || peak <= 1.0f || contour_length <= 0.0f ) return 1.0f;
+    float t = Math.max( 0.0f, Math.min( 1.0f, distance / contour_length ) );
+    return 1.0f + ( peak - 1.0f ) * 0.5f
+        * ( 1.0f - (float)Math.cos( 2.0 * Math.PI * t ) );
+  }
+
+  private static boolean isFinitePositive( float value )
+  {
+    return value > 0.0f && ! Float.isNaN( value ) && ! Float.isInfinite( value );
+  }
+
+  private static float clampFinite( float value, float min, float max, float fallback )
+  {
+    if ( Float.isNaN( value ) || Float.isInfinite( value ) ) value = fallback;
+    return Math.max( min, Math.min( max, value ) );
   }
 
   private static float dashCycle( float[] dash )

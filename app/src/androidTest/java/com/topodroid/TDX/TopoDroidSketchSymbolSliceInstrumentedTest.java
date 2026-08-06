@@ -90,6 +90,8 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     int reverseFaultLineCount = 0;
     int talusLineCount = 0;
     int thrustLineCount = 0;
+    int slopeLineCount = 0;
+    int slopeFanLineCount = 0;
 
     ZipInputStream zip = new ZipInputStream(
       mContext.getResources().openRawResource( R.raw.symbols_topodroid_sketch ) );
@@ -106,6 +108,8 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
         if ( name.equals( "symbols_topodroid_sketch/line/reverse-fault" ) ) ++reverseFaultLineCount;
         if ( name.equals( "symbols_topodroid_sketch/line/talus" ) ) ++talusLineCount;
         if ( name.equals( "symbols_topodroid_sketch/line/thrust" ) ) ++thrustLineCount;
+        if ( name.equals( "symbols_topodroid_sketch/line/slope" ) ) ++slopeLineCount;
+        if ( name.equals( "symbols_topodroid_sketch/line/slope-fan" ) ) ++slopeFanLineCount;
         assertTrue( "Default symbol pack entry should use symbols_topodroid_sketch root: " + name,
                     name.startsWith( "symbols_topodroid_sketch/" ) );
         assertTrue( "Default symbol pack should not use old symbols_nss root: " + name,
@@ -143,6 +147,8 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertEquals( "Reverse Fault should occur exactly once in the default raw pack", 1, reverseFaultLineCount );
     assertEquals( "Talus should occur exactly once in the default raw pack", 1, talusLineCount );
     assertEquals( "Thrust Fault should occur exactly once in the default raw pack", 1, thrustLineCount );
+    assertEquals( "Slope should occur exactly once in the default raw pack", 1, slopeLineCount );
+    assertEquals( "Slope fan should occur exactly once in the default raw pack", 1, slopeFanLineCount );
     assertTrue( "Generic Spar remains deferred",
                 ! entries.contains( "symbols_topodroid_sketch/point/spar" ) );
     assertTrue( "Generic Crystals should not be restored as a duplicate",
@@ -328,6 +334,40 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertEquals( "Dashed Crossbar Line must be symmetric around its carrier", 0,
                   hachureDirection( dashedCrossbarLine ) );
 
+    String slope = readRawSymbolEntry( "symbols_topodroid_sketch/line/slope" );
+    String slopeFan = readRawSymbolEntry( "symbols_topodroid_sketch/line/slope-fan" );
+    for ( String symbol : new String[] { slope, slopeFan } ) {
+      assertTrue( "Slope variants must retain Pit's width", symbol.contains( "\nwidth 2\n" ) );
+      assertTrue( "Slope variants must use the slope group", symbol.contains( "\ngroup slope\n" ) );
+      assertTrue( "Slope variants must remain carrier-free", ! symbol.contains( "\n  carrier " ) );
+      assertTrue( "Slope variants must reserve Pit's 4.2 repeat",
+                  symbol.contains( "moveTo 0 0" ) && symbol.contains( "moveTo 4.2 0" ) );
+      assertTrue( "Slope variants must retain Pit's one-unit hachure width and placement",
+                  symbol.contains( "moveTo 1.7 0" ) && symbol.contains( "lineTo 2.7 0" ) );
+      assertEquals( "Slope variants must duplicate the 5.1-deep base hachure in fallback and Sketch geometry",
+                    2, countOccurrences( symbol, "lineTo 2.7 -5.1" ) );
+    }
+    assertTrue( "Slope must take the standard identity", slope.contains( "\nth_name slope\n" ) );
+    assertTrue( "Slope fan must use its custom full identity", slopeFan.contains( "\nth_name u:slope-fan\n" ) );
+    assertTrue( "Slope fan must declare its approved cosine envelope",
+                slopeFan.contains( "\n  envelope cosine 3 1 10\n" ) );
+    assertEquals( "Slope must face the Pit side", hachureDirection( readRawSymbolEntry(
+        "symbols_topodroid_sketch/line/pit" ) ), hachureDirection( slope ) );
+    assertEquals( "Slope fan must face the Pit side", hachureDirection( slope ), hachureDirection( slopeFan ) );
+
+    int slopeIndex = BrushManager.getLineIndexByThName( SymbolLibrary.SLOPE );
+    int slopeFanIndex = BrushManager.getLineIndexByThName( SymbolLibrary.SLOPE_FAN );
+    assertTrue( "Slope must load into the line library", slopeIndex >= 0 );
+    assertTrue( "Slope fan must load into the line library", slopeFanIndex >= 0 );
+    assertEquals( "Slope palette label", "slope", BrushManager.getLineName( slopeIndex ) );
+    assertEquals( "Slope fan palette label", "slope fan", BrushManager.getLineName( slopeFanIndex ) );
+    LineSymbolEffect slopeFanEffect = BrushManager.getLineEffect( slopeFanIndex );
+    assertNotNull( "Slope fan must retain its line effect", slopeFanEffect );
+    assertTrue( "Slope fan parser must retain the envelope", slopeFanEffect.hasEnvelope() );
+    assertEquals( 3.0f, slopeFanEffect.envelopeDefault(), 0.001f );
+    assertEquals( 1.0f, slopeFanEffect.envelopeMin(), 0.001f );
+    assertEquals( 10.0f, slopeFanEffect.envelopeMax(), 0.001f );
+
     String talus = readRawSymbolEntry( "symbols_topodroid_sketch/line/talus" );
     assertTrue( "Talus must retain the Pit width", talus.contains( "\nwidth 2\n" ) );
     assertTrue( "Talus must remain in the floor group", talus.contains( "\ngroup floor\n" ) );
@@ -479,6 +519,8 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawDirectionalLineRow( canvas, label, "Dashed crossbar", SymbolLibrary.CROSSBAR_LINE_DASHED, y ); y += DIRECTIONAL_LINE_ROW;
     drawLineRow( canvas, label, "Ceiling channel", "ceiling-meander", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Pit", "pit", y ); y += LINE_ROW;
+    drawDirectionalLineRow( canvas, label, "Slope", SymbolLibrary.SLOPE, y ); y += DIRECTIONAL_LINE_ROW;
+    drawDirectionalLineRow( canvas, label, "Slope fan", SymbolLibrary.SLOPE_FAN, y ); y += DIRECTIONAL_LINE_ROW;
     drawDirectionalLineRow( canvas, label, "Talus", "talus", y ); y += DIRECTIONAL_LINE_ROW;
     drawLineRow( canvas, label, "Joint", "joint", y ); y += LINE_ROW;
     drawDirectionalLineRow( canvas, label, "Thrust fault", "thrust", y ); y += DIRECTIONAL_LINE_ROW;
@@ -489,7 +531,6 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertLineMissing( "arrow" );
     assertLineMissing( "border" );
     assertLineMissing( "rock-border" );
-    assertLineMissing( "slope" );
     assertLineMissing( "wall:clay" );
     assertLineMissing( "wall:ice" );
     assertLineMissing( "wall:presumed" );
@@ -707,8 +748,9 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
       }
     }
 
-    if ( carrierCount == 0 || stampMinY == Float.POSITIVE_INFINITY || stampMaxY == Float.NEGATIVE_INFINITY ) return 0;
-    float carrierCenter = carrierCenterSum / carrierCount;
+    if ( stampMinY == Float.POSITIVE_INFINITY || stampMaxY == Float.NEGATIVE_INFINITY ) return 0;
+    // Carrier-free hachure symbols are authored around the line path at y=0.
+    float carrierCenter = ( carrierCount == 0 ) ? 0.0f : carrierCenterSum / carrierCount;
     float stampCenter = 0.5f * ( stampMinY + stampMaxY );
     if ( Math.abs( stampCenter - carrierCenter ) < 0.001f ) return 0;
     return ( stampCenter < carrierCenter ) ? -1 : 1;

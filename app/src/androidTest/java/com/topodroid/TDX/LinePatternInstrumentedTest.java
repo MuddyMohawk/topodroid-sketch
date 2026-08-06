@@ -33,7 +33,7 @@ public class LinePatternInstrumentedTest
   private static final int WIDTH = 1600;
   private static final int HEIGHT = 260;
   private static final float LINE_LENGTH = 180.0f;
-  private static final float LINE_Y = 32.0f;
+  private static final float LINE_Y = 32.5f;
   private static final float ORIGIN_X = 40.0f;
   private static final float ORIGIN_Y = 60.0f;
 
@@ -46,12 +46,10 @@ public class LinePatternInstrumentedTest
   @Test
   public void dashRepeatCountIsStableAcrossZoom() throws Exception
   {
-    // At 1x the built-in section dash is sub-pixel and antialiasing collapses
-    // the scanline into a mostly continuous stroke. Use drawable zoom levels.
-    int zoom3Runs = renderSectionLineAndCountRuns( 3.0f );
-    int zoom4Runs = renderSectionLineAndCountRuns( 4.0f );
+    int zoom1Runs = renderRepeatedPatternAndCountRuns( 1.0f );
+    int zoom4Runs = renderRepeatedPatternAndCountRuns( 4.0f );
 
-    assertEquals( "Dashed line repeat count changed across zoom", zoom3Runs, zoom4Runs, 1 );
+    assertEquals( "Repeated line stamp count changed across zoom", zoom1Runs, zoom4Runs, 1 );
   }
 
   @Test
@@ -182,16 +180,98 @@ public class LinePatternInstrumentedTest
                 hasForegroundNear( bitmap, x, y, 2 ) );
   }
 
-  private int renderSectionLineAndCountRuns( float zoom )
+  @Test
+  public void slopeEffects_keepUniformBaseAndApplySymmetricCosinePeak()
   {
-    int lineType = BrushManager.getLineIndexByThName( SymbolLibrary.SECTION );
-    assertTrue( "Section line symbol is missing", lineType >= 0 );
-    assertTrue( "Section line should have a pattern effect", BrushManager.hasLinePathEffect( lineType ) );
+    Bitmap uniform = renderSlopeEffect( false, 1.0f, false, 168.0f );
+    Bitmap fan = renderSlopeEffect( true, 3.0f, false, 168.0f );
+    int baseline = 140;
 
+    int uniformEnd = foregroundExtent( uniform, 22, baseline, true );
+    int uniformMiddle = foregroundExtent( uniform, 102, baseline, true );
+    assertTrue( "Uniform Slope must render its base hachure", uniformEnd >= 5 );
+    assertEquals( "Uniform Slope hachures must keep a constant length", uniformEnd, uniformMiddle, 1 );
+
+    int fanStart = foregroundExtent( fan, 22, baseline, true );
+    int fanMiddle = foregroundExtent( fan, 102, baseline, true );
+    int fanEnd = foregroundExtent( fan, 186, baseline, true );
+    assertEquals( "Slope fan ends must remain symmetric", fanStart, fanEnd, 1 );
+    assertTrue( "Slope fan midpoint must be approximately three times the base: "
+        + fanStart + " -> " + fanMiddle,
+        fanMiddle >= fanStart * 2.5f && fanMiddle <= fanStart * 3.5f );
+
+    uniform.recycle();
+    fan.recycle();
+  }
+
+  @Test
+  public void slopeFan_supportsOneAndTenTimesAndReversal()
+  {
+    Bitmap one = renderSlopeEffect( true, 1.0f, false, 168.0f );
+    Bitmap ten = renderSlopeEffect( true, 10.0f, false, 168.0f );
+    Bitmap reversed = renderSlopeEffect( true, 3.0f, true, 168.0f );
+    int baseline = 140;
+
+    int oneMiddle = foregroundExtent( one, 102, baseline, true );
+    int tenMiddle = foregroundExtent( ten, 102, baseline, true );
+    assertTrue( "A 10x peak must strongly exceed a 1x peak: " + oneMiddle + " -> " + tenMiddle,
+                tenMiddle >= oneMiddle * 8.5f );
+    assertEquals( "Forward fan should not draw on the reverse side", 0,
+                  foregroundExtent( one, 102, baseline, false ) );
+    assertTrue( "Reversing Slope fan must mirror its hachures below the path",
+                foregroundExtent( reversed, 102, baseline, false ) >= 14 );
+    assertEquals( "Reversed fan should not remain above the path", 0,
+                  foregroundExtent( reversed, 102, baseline, true ) );
+
+    one.recycle();
+    ten.recycle();
+    reversed.recycle();
+  }
+
+  @Test
+  public void slopeFan_shortLine_stampsOnceAtPeak()
+  {
+    Bitmap shortFan = renderSlopeEffect( true, 3.0f, false, 2.0f );
+    int extent = foregroundExtent( shortFan, 21, 140, true );
+    assertTrue( "A sub-repeat Slope fan line must retain one midpoint hachure", extent >= 14 );
+    shortFan.recycle();
+  }
+
+  @Test
+  public void slopeFanEffect_expandsLineCullingForLargePeaks()
+  {
+    int lineType = BrushManager.getLineIndexByThName( SymbolLibrary.SLOPE_FAN );
+    assertTrue( "Slope fan line symbol is missing", lineType >= 0 );
     DrawingLinePath line = new DrawingLinePath( lineType, 0 );
-    line.addStartPoint( 0.0f, LINE_Y );
-    line.addPoint( LINE_LENGTH, LINE_Y );
+    line.addStartPoint( 20.0f, 80.0f );
+    line.addPoint( 188.0f, 80.0f );
     line.computeUnitNormal();
+    line.setSlopeFanPeak( 10.0f );
+
+    Paint paint = BrushManager.getLinePaint( lineType, false );
+    LineSymbolEffect effect = BrushManager.getLineEffect( lineType );
+    float radius = effect.samplePatternRadius( paint.getStrokeWidth(), false, 10.0f );
+    RectF hachureOnlyBox = new RectF( 0.0f, 80.0f - radius, 220.0f, 80.0f - radius + 2.0f );
+
+    Bitmap bitmap = Bitmap.createBitmap( 220, 120, Bitmap.Config.ARGB_8888 );
+    bitmap.eraseColor( Color.BLACK );
+    line.draw( new Canvas( bitmap ), new Matrix(), 1.0f, hachureOnlyBox );
+    assertTrue( "Effect-aware culling must draw when only a long hachure intersects the viewport",
+                countForegroundPixels( bitmap ) > 0 );
+    bitmap.recycle();
+  }
+
+  private int renderRepeatedPatternAndCountRuns( float zoom )
+  {
+    Path stamp = new Path();
+    stamp.moveTo( 0.0f, -4.0f );
+    stamp.lineTo( 0.0f, 4.0f );
+    LineSymbolEffect effect = new LineSymbolEffect( stamp, stamp, 10.0f, null );
+    effect.setSketchEffect( stamp, stamp, new ArrayList< LineSymbolEffect.Carrier >() );
+
+    Path line = new Path();
+    line.moveTo( 0.0f, LINE_Y );
+    line.lineTo( LINE_LENGTH, LINE_Y );
 
     Matrix matrix = new Matrix();
     matrix.setScale( zoom, zoom );
@@ -200,7 +280,10 @@ public class LinePatternInstrumentedTest
     Bitmap bitmap = Bitmap.createBitmap( WIDTH, HEIGHT, Bitmap.Config.ARGB_8888 );
     bitmap.eraseColor( Color.BLACK );
     Canvas canvas = new Canvas( bitmap );
-    line.draw( canvas, matrix, 1.0f / zoom, new RectF( -10.0f, -10.0f, LINE_LENGTH + 10.0f, LINE_Y + 10.0f ) );
+    int save = canvas.save();
+    canvas.concat( matrix );
+    effect.draw( canvas, line, whitePaint(), false, 1.0f / zoom );
+    canvas.restoreToCount( save );
 
     float[] points = new float[] { 0.0f, LINE_Y };
     matrix.mapPoints( points );
@@ -264,6 +347,52 @@ public class LinePatternInstrumentedTest
     paint.setStyle( Paint.Style.STROKE );
     paint.setStrokeWidth( 1.0f ); // pattern unit: test geometry is authored 1:1
     return paint;
+  }
+
+  private Bitmap renderSlopeEffect( boolean envelope, float peak, boolean reversed, float length )
+  {
+    Path fallback = rectanglePath( 1.6f, 0.0f, 2.6f, -5.1f, false );
+    Path fallbackRev = rectanglePath( 1.6f, 0.0f, 2.6f, -5.1f, true );
+    LineSymbolEffect effect = new LineSymbolEffect( fallback, fallbackRev, 4.2f, null );
+    effect.setSketchEffect( fallback, fallbackRev, new ArrayList< LineSymbolEffect.Carrier >() );
+    if ( envelope ) effect.setCosineEnvelope( 3.0f, 1.0f, 10.0f );
+
+    Path line = new Path();
+    line.moveTo( 20.0f, 140.0f );
+    line.lineTo( 20.0f + length, 140.0f );
+    Bitmap bitmap = Bitmap.createBitmap( 220, 220, Bitmap.Config.ARGB_8888 );
+    bitmap.eraseColor( Color.BLACK );
+    assertTrue( "Slope effect did not draw", effect.draw( new Canvas( bitmap ), line, whitePaint(), reversed, 1.0f, peak ) );
+    return bitmap;
+  }
+
+  private int foregroundExtent( Bitmap bitmap, int x, int baseline, boolean above )
+  {
+    int extent = 0;
+    int y0 = above ? 0 : baseline + 1;
+    int y1 = above ? baseline - 1 : bitmap.getHeight() - 1;
+    for ( int y = y0; y <= y1; ++y ) {
+      boolean foreground = false;
+      for ( int xx = Math.max( 0, x - 1 ); xx <= Math.min( bitmap.getWidth() - 1, x + 1 ); ++xx ) {
+        if ( bitmap.getPixel( xx, y ) != Color.BLACK ) {
+          foreground = true;
+          break;
+        }
+      }
+      if ( foreground ) extent = Math.max( extent, Math.abs( baseline - y ) );
+    }
+    return extent;
+  }
+
+  private int countForegroundPixels( Bitmap bitmap )
+  {
+    int count = 0;
+    for ( int y = 0; y < bitmap.getHeight(); ++y ) {
+      for ( int x = 0; x < bitmap.getWidth(); ++x ) {
+        if ( bitmap.getPixel( x, y ) != Color.BLACK ) ++count;
+      }
+    }
+    return count;
   }
 
   private static Path rectanglePath( float x0, float y0, float x1, float y1, boolean reversed )

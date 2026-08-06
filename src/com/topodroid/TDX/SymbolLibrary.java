@@ -35,6 +35,7 @@ public class SymbolLibrary
   public final static String WALL    = "wall";
   public final static String SECTION = "section";
   public final static String SLOPE   = "slope";
+  public final static String SLOPE_FAN = "slope-fan";
   public final static String WATER   = "water";
   public final static String AUDIO   = "audio";
   public final static String PHOTO   = "photo";

@@ -1,0 +1,29 @@
+encoding utf-8
+symbol line
+name slope
+th_name slope
+group slope
+color 0xffffff 0xff
+width 2
+# units: line-widths (1 = ink thickness). Pit hachures are 3.4 deep;
+# these carrier-free hachures are exactly 1.5 times that length (5.1).
+# Retain Pit's 4.2 repeat and one-line-width hachure thickness.
+effect
+  moveTo 0 0
+  moveTo 1.7 0
+  lineTo 2.7 0
+  lineTo 2.7 -5.1
+  lineTo 1.7 -5.1
+  lineTo 1.7 0
+  moveTo 4.2 0
+endeffect
+sketch_effect 1
+  stamp
+    moveTo 1.7 0
+    lineTo 2.7 0
+    lineTo 2.7 -5.1
+    lineTo 1.7 -5.1
+    lineTo 1.7 0
+  endstamp
+endsketch_effect
+endsymbol

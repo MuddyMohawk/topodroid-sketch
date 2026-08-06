@@ -29,6 +29,9 @@ import android.widget.Spinner;
 import android.widget.LinearLayout;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.TextView;
+
+import android.text.InputType;
 
 import android.view.View;
 
@@ -45,7 +48,6 @@ class DrawingLineDialog extends MyDialog
 
   private int mType;              // line type - initialized from line item's type
   private int mTypeSection;
-  private int mTypeSlope;
 
   // GUI widgets
   private Spinner  mETtype;
@@ -74,6 +76,7 @@ class DrawingLineDialog extends MyDialog
   // private CheckBox mCBtext  = null;
 
   private LinearLayout mLLlside;
+  private TextView mTVlside;
   private EditText mETlside;
 
 
@@ -85,7 +88,6 @@ class DrawingLineDialog extends MyDialog
     mPoint = lp;
     mType  = mLine.mLineType;
     mTypeSection = BrushManager.getLineSectionIndex();
-    mTypeSlope   = BrushManager.getLineSlopeIndex();
     mDoOptions = TDLevel.overAdvanced;
   }
 
@@ -111,12 +113,13 @@ class DrawingLineDialog extends MyDialog
     }
 
     mLLlside = (LinearLayout) findViewById( R.id.layout_lside );
+    mTVlside = (TextView) findViewById( R.id.line_lside_label );
     mETlside = (EditText) findViewById( R.id.line_lside );
     setEditTextLSide();
 
     mEToptions = (EditText) findViewById( R.id.line_options );
     if ( mDoOptions ) {
-      String options = mLine.getOptionString();
+      String options = SketchPrivateOptions.stripAll( mLine.getOptionString() );
       if ( options != null ) mEToptions.setText( options );
     } else {
       mEToptions.setVisibility( View.GONE );
@@ -186,12 +189,32 @@ class DrawingLineDialog extends MyDialog
 
   private void setEditTextLSide()
   {
-    if ( mType == mTypeSlope ) {
+    LineSymbolEffect effect = BrushManager.getLineEffect( mType );
+    if ( effect != null && effect.hasEnvelope() ) {
+      mTVlside.setText( R.string.slope_fan_peak );
+      mETlside.setInputType( InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL );
+      float peak = ( mType == mLine.mLineType && mLine.hasSlopeFanEnvelope() )
+          ? mLine.getSlopeFanPeak() : effect.envelopeDefault();
+      mETlside.setText( formatMultiplier( peak ) );
+      mETlside.setError( null );
+      mLLlside.setVisibility( View.VISIBLE );
+    } else if ( BrushManager.isLineLegacySlope( mType ) ) {
+      mTVlside.setText( R.string.slope_lside );
+      mETlside.setInputType( InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_SIGNED );
       mETlside.setText( Integer.toString( mLine.getLSide() ) );
+      mETlside.setError( null );
       mLLlside.setVisibility( View.VISIBLE );
     } else {
       mLLlside.setVisibility( View.GONE );
     }
+  }
+
+  private static String formatMultiplier( float value )
+  {
+    if ( Math.abs( value - Math.round( value ) ) < 0.0001f ) {
+      return Integer.toString( Math.round( value ) );
+    }
+    return String.format( Locale.US, "%.2f", value ).replaceAll( "0+$", "" ).replaceAll( "\\.$", "" );
   }
 
   private void setCBlayers()
@@ -234,7 +257,7 @@ class DrawingLineDialog extends MyDialog
   { 
     int type = mType;
     mType = ( pos >= mTypeSection )? pos+1 : pos;
-    if ( type == mTypeSlope || mType == mTypeSlope ) setEditTextLSide();
+    if ( type != mType ) setEditTextLSide();
     // av.setSelection( pos );
   }
 
@@ -275,8 +298,27 @@ class DrawingLineDialog extends MyDialog
       return;
     
     } else if ( b == mBtnOk ) {
+      LineSymbolEffect selectedEffect = BrushManager.getLineEffect( mType );
+      float slopeFanPeak = Float.NaN;
+      if ( selectedEffect != null && selectedEffect.hasEnvelope() ) {
+        String value = TDUtil.getTextOrEmpty( mETlside ).trim();
+        try {
+          slopeFanPeak = ( value.length() == 0 ) ? selectedEffect.envelopeDefault() : Float.parseFloat( value );
+          if ( Float.isNaN( slopeFanPeak ) || Float.isInfinite( slopeFanPeak )
+              || slopeFanPeak < selectedEffect.envelopeMin() || slopeFanPeak > selectedEffect.envelopeMax() ) {
+            throw new NumberFormatException();
+          }
+        } catch ( NumberFormatException e ) {
+          mETlside.setError( resString( R.string.slope_fan_peak_error ) );
+          mETlside.requestFocus();
+          return;
+        }
+      }
+
       if ( mType != mLine.mLineType && mType != mTypeSection ) mLine.setLineType( mType );
-      if ( mType == mTypeSlope ) {
+      if ( selectedEffect != null && selectedEffect.hasEnvelope() ) {
+        mLine.setSlopeFanPeak( slopeFanPeak );
+      } else if ( BrushManager.isLineLegacySlope( mType ) ) {
         try { 
           mLine.setLSide( Integer.parseInt( mETlside.getText().toString() ) );
         } catch ( NumberFormatException e ) { 
@@ -285,7 +327,8 @@ class DrawingLineDialog extends MyDialog
       }
 
       if ( mDoOptions ) {
-        mLine.setOptions( TDUtil.getTextOrEmpty( mEToptions ) );
+        mLine.setOptions( SketchPrivateOptions.mergePublicOptions(
+            mLine.getOptions(), TDUtil.getTextOrEmpty( mEToptions ) ) );
       }
       if ( mBtnOutlineOut.isChecked() ) mLine.mOutline = DrawingLinePath.OUTLINE_OUT;
       else if ( mBtnOutlineIn.isChecked() ) mLine.mOutline = DrawingLinePath.OUTLINE_IN;
@@ -314,4 +357,3 @@ class DrawingLineDialog extends MyDialog
   }
 
 }
-

@@ -295,6 +295,13 @@ public class BrushManager
   static boolean isLineWall( int idx )      { return mLineLib != null && idx == mLineLib.mLineWallIndex; }
   static boolean isLineWallGroup( int idx ) { return mLineLib != null && mLineLib.isWall( idx ); }
   static boolean isLineSlope( int idx )     { return mLineLib != null && idx == mLineLib.mLineSlopeIndex; }
+  /** Legacy Speleo slope lines add a separate l-side tick; Sketch-authored slope stamps do not. */
+  static boolean isLineLegacySlope( int idx )
+  {
+    if ( ! isLineSlope( idx ) ) return false;
+    LineSymbolEffect effect = getLineEffect( idx );
+    return effect == null || ! effect.hasSketchEffect();
+  }
 
   /** check if the line type is joinable
    * @param idx  line type index

@@ -18,6 +18,7 @@ final class SketchPrivateOptions
   static final String OPTION_AFFINE = "-tdx-affine";
   static final String OPTION_OCCLUDE = "-tdx-occlude";
   static final String OPTION_SPECIAL = "-tdx-special";
+  static final String OPTION_SLOPE_FAN = "-tdx-slope-fan";
 
   private SketchPrivateOptions() { }
 
@@ -51,16 +52,18 @@ final class SketchPrivateOptions
 
   static String stripAll( String options )
   {
-    return stripOption(
+    return stripOption( stripOption(
       stripOption( stripOption( stripOption( stripOption( options, OPTION_BRUSH ), OPTION_TEXT ), OPTION_AFFINE ), OPTION_OCCLUDE ),
-      OPTION_SPECIAL );
+      OPTION_SPECIAL ), OPTION_SLOPE_FAN );
   }
 
   /** Replace public Therion options while retaining every private Sketch option. */
   static String mergePublicOptions( String existing_options, String public_options )
   {
     String merged = normalize( public_options );
-    String[] private_keys = { OPTION_BRUSH, OPTION_TEXT, OPTION_AFFINE, OPTION_OCCLUDE, OPTION_SPECIAL };
+    String[] private_keys = {
+      OPTION_BRUSH, OPTION_TEXT, OPTION_AFFINE, OPTION_OCCLUDE, OPTION_SPECIAL, OPTION_SLOPE_FAN
+    };
     for ( String key : private_keys ) {
       String value = getOptionValue( existing_options, key );
       if ( value != null && value.length() > 0 ) merged = storeOption( merged, key, value );

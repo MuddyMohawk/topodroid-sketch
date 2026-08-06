@@ -118,6 +118,52 @@ public class SketchBrushCompatibilityInstrumentedTest
   }
 
   @Test
+  public void slopeFanPeak_survivesNativeRoundTripSplitUndoAndRedo() throws Exception
+  {
+    DrawingLinePath fan = slopeFanLine( 6.5f );
+    DrawingLinePath loaded = roundTripLine( fan );
+    assertEquals( 6.5f, loaded.getSlopeFanPeak(), 0.0001f );
+    assertTrue( "Native Slope fan option was lost", loaded.getOptions().contains( "-tdx-slope-fan" ) );
+
+    DrawingLinePath first = new DrawingLinePath( fan.lineType(), 0 );
+    DrawingLinePath second = new DrawingLinePath( fan.lineType(), 0 );
+    assertTrue( fan.splitAt( fan.first().mNext, first, second, false ) );
+    assertEquals( 6.5f, first.getSlopeFanPeak(), 0.0001f );
+    assertEquals( 6.5f, second.getSlopeFanPeak(), 0.0001f );
+
+    Scrap scrap = new Scrap( 0, "slope-fan-compat" );
+    scrap.addCommand( first );
+    scrap.undo();
+    assertFalse( scrap.mCurrentStack.contains( first ) );
+    scrap.redo();
+    assertTrue( scrap.mCurrentStack.contains( first ) );
+    assertEquals( 6.5f, first.getSlopeFanPeak(), 0.0001f );
+  }
+
+  @Test
+  public void slopeFanPeak_defaultAndStructuredExportsStayPrivate()
+  {
+    DrawingLinePath defaultFan = slopeFanLine( 3.0f );
+    assertFalse( "Default Slope fan peak should not be serialized",
+                 defaultFan.getOptions() != null && defaultFan.getOptions().contains( "-tdx-slope-fan" ) );
+
+    DrawingLinePath customFan = slopeFanLine( 10.0f );
+    String therion = customFan.toTherion();
+    assertFalse( "Therion export leaked private Slope fan state", therion.contains( "tdx-slope-fan" ) );
+
+    StringWriter writer = new StringWriter();
+    PrintWriter printer = new PrintWriter( writer );
+    customFan.toTCsurvey( printer, "survey", "cave", "branch", null );
+    printer.flush();
+    assertFalse( "cSurvey export leaked private Slope fan state",
+                 writer.toString().contains( "tdx-slope-fan" ) );
+
+    customFan.setLineType( BrushManager.getLineIndexByThName( SymbolLibrary.USER ) );
+    assertFalse( "Changing away from Slope fan must clear private peak state",
+                 customFan.getOptions() != null && customFan.getOptions().contains( "tdx-slope-fan" ) );
+  }
+
+  @Test
   public void splitUndoAndRedo_keepCapturedBrushStyle()
   {
     SketchBrushStyle style = SketchBrushStyle.of( 5.0f, 1.0f, 1.0f );
@@ -246,6 +292,21 @@ public class SketchBrushCompatibilityInstrumentedTest
     line.addPoint( 30.0f, 5.0f );
     line.computeUnitNormal();
     line.setSketchBrushStyle( style );
+    return line;
+  }
+
+  private DrawingLinePath slopeFanLine( float peak )
+  {
+    int lineType = BrushManager.getLineIndexByThName( SymbolLibrary.SLOPE_FAN );
+    assertTrue( "Missing Slope fan line", lineType >= 0 );
+    DrawingLinePath line = new DrawingLinePath( lineType, 0 );
+    line.addStartPoint( 0.0f, 0.0f );
+    line.addPoint( 10.0f, 0.0f );
+    line.addPoint( 20.0f, 2.0f );
+    line.addPoint( 30.0f, 2.0f );
+    line.computeUnitNormal();
+    line.setOptions( "-id slope-fan-probe" );
+    line.setSlopeFanPeak( peak );
     return line;
   }
 

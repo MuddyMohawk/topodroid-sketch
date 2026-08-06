@@ -1,0 +1,30 @@
+encoding utf-8
+symbol line
+name slope_fan
+th_name u:slope-fan
+group slope
+color 0xffffff 0xff
+width 2
+# Same carrier-free base hachure and repeat as Slope. Sketch smoothly scales
+# hachure length from 1x at the ends to a per-placement peak at the midpoint.
+# Older renderers fall back to the uniform base hachure below.
+effect
+  moveTo 0 0
+  moveTo 1.7 0
+  lineTo 2.7 0
+  lineTo 2.7 -5.1
+  lineTo 1.7 -5.1
+  lineTo 1.7 0
+  moveTo 4.2 0
+endeffect
+sketch_effect 1
+  envelope cosine 3 1 10
+  stamp
+    moveTo 1.7 0
+    lineTo 2.7 0
+    lineTo 2.7 -5.1
+    lineTo 1.7 -5.1
+    lineTo 1.7 0
+  endstamp
+endsketch_effect
+endsymbol

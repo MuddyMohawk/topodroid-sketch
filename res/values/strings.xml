@@ -869,6 +869,8 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="hide_scan">Scan sets</string>
 
     <string name="slope_lside">Slope l-side</string>
+    <string name="slope_fan_peak">Peak hachure length (× base)</string>
+    <string name="slope_fan_peak_error">Enter a value from 1 to 10</string>
 
     <!-- THESE MUST AGREE WITH THE FMT STRINGS -->
     <!-- UNUSED string name="plan" copyable="fr">PLAN</string -->

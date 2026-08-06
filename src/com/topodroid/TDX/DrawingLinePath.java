@@ -53,6 +53,7 @@ public class DrawingLinePath extends DrawingPointLinePath
   private boolean mReversed;
   private int mLSide = -1;
   private SketchBrushStyle mSketchBrushStyle;
+  private float mSlopeFanPeak = Float.NaN;
 
   // FIXME-COPYPATH
   // @Override 
@@ -89,6 +90,7 @@ public class DrawingLinePath extends DrawingPointLinePath
     setPathPaint( BrushManager.getLinePaint( mLineType, mReversed ) );
     mLevel     = BrushManager.getLineLevel( mLineType );
     mSketchBrushStyle = null;
+    mSlopeFanPeak = Float.NaN;
   }
 
   /** factory: deserialize a line from a data stream
@@ -258,10 +260,12 @@ public class DrawingLinePath extends DrawingPointLinePath
     line1.mOutline  = mOutline;
     line1.mOptions  = mOptions;
     line1.mSketchBrushStyle = mSketchBrushStyle;
+    line1.mSlopeFanPeak = mSlopeFanPeak;
     line1.mReversed = mReversed;
     line2.mOutline  = mOutline;
     line2.mOptions  = mOptions;
     line2.mSketchBrushStyle = mSketchBrushStyle;
+    line2.mSlopeFanPeak = mSlopeFanPeak;
     line2.mReversed = mReversed;
 
     // int k0 = mPoints.indexOf( lp0 );
@@ -403,6 +407,10 @@ public class DrawingLinePath extends DrawingPointLinePath
    */
   void setLineType( int type )
   {
+    if ( type != mLineType ) {
+      mOptions = SlopeFanStyleCodec.stripOptions( mOptions );
+      mSlopeFanPeak = Float.NaN;
+    }
     mLineType = type;
     setPathPaint( BrushManager.getLinePaint( mLineType, mReversed ) );
     resetScenePaint();
@@ -436,6 +444,44 @@ public class DrawingLinePath extends DrawingPointLinePath
    */
   SketchBrushStyle getSketchBrushStyle() { return mSketchBrushStyle; }
 
+  /** @return whether this line symbol declares a per-placement stamp envelope. */
+  boolean hasSlopeFanEnvelope()
+  {
+    LineSymbolEffect effect = BrushManager.getLineEffect( mLineType );
+    return effect != null && effect.hasEnvelope();
+  }
+
+  float getSlopeFanPeak()
+  {
+    LineSymbolEffect effect = BrushManager.getLineEffect( mLineType );
+    if ( effect == null || ! effect.hasEnvelope() ) return Float.NaN;
+    return effect.resolveEnvelopePeak( mSlopeFanPeak );
+  }
+
+  float getSlopeFanMin()
+  {
+    LineSymbolEffect effect = BrushManager.getLineEffect( mLineType );
+    return ( effect == null || ! effect.hasEnvelope() ) ? Float.NaN : effect.envelopeMin();
+  }
+
+  float getSlopeFanMax()
+  {
+    LineSymbolEffect effect = BrushManager.getLineEffect( mLineType );
+    return ( effect == null || ! effect.hasEnvelope() ) ? Float.NaN : effect.envelopeMax();
+  }
+
+  void setSlopeFanPeak( float peak )
+  {
+    LineSymbolEffect effect = BrushManager.getLineEffect( mLineType );
+    if ( effect == null || ! effect.hasEnvelope() ) {
+      mSlopeFanPeak = Float.NaN;
+      mOptions = SlopeFanStyleCodec.stripOptions( mOptions );
+      return;
+    }
+    mSlopeFanPeak = effect.resolveEnvelopePeak( peak );
+    mOptions = SlopeFanStyleCodec.storeInOptions( mOptions, mSlopeFanPeak, effect.envelopeDefault() );
+  }
+
   /** set the options string and refresh Sketch brush metadata
    * @param options   new options string
    */
@@ -444,6 +490,7 @@ public class DrawingLinePath extends DrawingPointLinePath
   {
     super.setOptions( options );
     mSketchBrushStyle = SketchBrushStyleCodec.fromOptions( mOptions );
+    mSlopeFanPeak = SlopeFanStyleCodec.fromOptions( mOptions );
     resetScenePaint();
   }
 
@@ -493,17 +540,23 @@ public class DrawingLinePath extends DrawingPointLinePath
    */
   private void drawScene( Canvas canvas, Matrix matrix, float pixel_size, RectF bbox, int xor_color, boolean with_xor )
   {
-    if ( ! intersects( bbox ) ) return;
     Paint paint = sceneLinePaint();
     if ( paint == null ) return;
     LineSymbolEffect effect = drawPathUsesPaintOverride( with_xor ) ? null : BrushManager.getLineEffect( mLineType );
+    float envelope_peak = ( effect == null ) ? 1.0f : effect.resolveEnvelopePeak( mSlopeFanPeak );
+    if ( effect == null ) {
+      if ( ! intersects( bbox ) ) return;
+    } else {
+      float radius = effect.samplePatternRadius( paint.getStrokeWidth(), mReversed, envelope_peak );
+      if ( ! intersectsExpanded( bbox, radius ) ) return;
+    }
 
     int save = canvas.save();
     try {
       canvas.concat( matrix );
       if ( effect != null ) {
         Paint ink = with_xor ? DrawingPath.xorPaint( paint, xor_color ) : paint;
-        effect.draw( canvas, mPath, ink, mReversed, pixel_size );
+        effect.draw( canvas, mPath, ink, mReversed, pixel_size, envelope_peak );
       } else {
         Paint keep = mPaint;
         mPaint = paint;
@@ -520,6 +573,14 @@ public class DrawingLinePath extends DrawingPointLinePath
     } finally {
       canvas.restoreToCount( save );
     }
+  }
+
+  private boolean intersectsExpanded( RectF bbox, float padding )
+  {
+    if ( bbox == null ) return true;
+    float pad = Math.max( 0.0f, padding );
+    return bbox.right >= left - pad && bbox.left <= right + pad
+        && bbox.top <= bottom + pad && bbox.bottom >= top - pad;
   }
 
   /** draw the line path on a canvas
@@ -679,7 +740,7 @@ public class DrawingLinePath extends DrawingPointLinePath
     // // }
     toTherionPoints( pw, isClosed() );
 
-    if ( BrushManager.isLineSlope( mLineType ) ) {
+    if ( BrushManager.isLineLegacySlope( mLineType ) ) {
       pw.format("  l-size %d\n", ( ( mLSide < 0 )? TDSetting.mSlopeLSide : mLSide ) );
     }
     pw.format("endline\n");

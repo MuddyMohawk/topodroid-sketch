@@ -59,6 +59,8 @@ public class SymbolPreviewRendererInstrumentedTest
     assertPreviewFits( SymbolType.LINE, BrushManager.getLineIndexByThName( "dotted" ), 96, 48 );
     assertPreviewFits( SymbolType.LINE, BrushManager.getLineIndexByThName( SymbolLibrary.FLOWSTONE ), 96, 48 );
     assertPreviewFits( SymbolType.LINE, BrushManager.getLineIndexByThName( SymbolLibrary.PIT ), 96, 48 );
+    assertPreviewFits( SymbolType.LINE, BrushManager.getLineIndexByThName( SymbolLibrary.SLOPE ), 96, 48 );
+    assertPreviewFits( SymbolType.LINE, BrushManager.getLineIndexByThName( SymbolLibrary.SLOPE_FAN ), 96, 48 );
     assertPreviewFits( SymbolType.LINE, BrushManager.getLineIndexByThName( SymbolLibrary.CEILING_MEANDER ), 96, 48 );
     assertPreviewFits( SymbolType.LINE, BrushManager.getLineIndexByThName( SymbolLibrary.SECTION ), 96, 48 );
     assertPreviewFits( SymbolType.AREA, BrushManager.getAreaIndexByThName( SymbolLibrary.WATER ), 48, 48 );
