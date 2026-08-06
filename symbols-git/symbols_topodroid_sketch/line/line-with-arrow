@@ -1,0 +1,21 @@
+encoding utf-8
+symbol line
+name line_with_arrow
+th_name u:line-with-arrow
+group user
+color 0x6699ff 0xff
+width 2
+# The carrier and filled terminal arrow are authored in line-width units.
+# Renderers without Sketch terminal support fall back to the plain blue line.
+sketch_effect 1
+  carrier -0.5 0.5
+  terminal end inset 6
+  terminal_stamp
+    moveTo -8 -4
+    lineTo 0 0
+    lineTo -8 4
+    lineTo -6 0
+    lineTo -8 -4
+  endterminal_stamp
+endsketch_effect
+endsymbol

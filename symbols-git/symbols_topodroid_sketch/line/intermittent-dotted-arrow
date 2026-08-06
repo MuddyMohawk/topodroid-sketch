@@ -1,0 +1,28 @@
+encoding utf-8
+symbol line
+name Intermittent_Dotted_Arrow
+th_name u:intermittent-dotted-arrow
+group user
+color 0x6699ff 0xff
+width 2
+# A solid 18-unit carrier run alternates with a 12-unit break containing
+# four one-line-width dots. All metrics scale with the active line weight.
+dash 18 12
+sketch_effect 1
+  carrier -0.5 0.5
+  gap_stamp
+    addCircle 1.5 0 0.5
+    addCircle 4.5 0 0.5
+    addCircle 7.5 0 0.5
+    addCircle 10.5 0 0.5
+  endgap_stamp
+  terminal end inset 6
+  terminal_stamp
+    moveTo -8 -4
+    lineTo 0 0
+    lineTo -8 4
+    lineTo -6 0
+    lineTo -8 -4
+  endterminal_stamp
+endsketch_effect
+endsymbol

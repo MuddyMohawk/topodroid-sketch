@@ -41,7 +41,7 @@ import java.util.zip.ZipInputStream;
 public class TopoDroidSketchSymbolSliceInstrumentedTest
 {
   private static final int WIDTH = 1440;
-  private static final int HEIGHT = 7900;
+  private static final int HEIGHT = 8300;
   private static final float LEFT = 260.0f;
   private static final float COL = 370.0f;
   private static final float LINE_ROW = 70.0f;
@@ -92,6 +92,9 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     int thrustLineCount = 0;
     int slopeLineCount = 0;
     int slopeFanLineCount = 0;
+    int lineWithArrowCount = 0;
+    int dashedLineWithArrowCount = 0;
+    int intermittentDottedArrowCount = 0;
 
     ZipInputStream zip = new ZipInputStream(
       mContext.getResources().openRawResource( R.raw.symbols_topodroid_sketch ) );
@@ -110,6 +113,9 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
         if ( name.equals( "symbols_topodroid_sketch/line/thrust" ) ) ++thrustLineCount;
         if ( name.equals( "symbols_topodroid_sketch/line/slope" ) ) ++slopeLineCount;
         if ( name.equals( "symbols_topodroid_sketch/line/slope-fan" ) ) ++slopeFanLineCount;
+        if ( name.equals( "symbols_topodroid_sketch/line/line-with-arrow" ) ) ++lineWithArrowCount;
+        if ( name.equals( "symbols_topodroid_sketch/line/dashed-line-with-arrow" ) ) ++dashedLineWithArrowCount;
+        if ( name.equals( "symbols_topodroid_sketch/line/intermittent-dotted-arrow" ) ) ++intermittentDottedArrowCount;
         assertTrue( "Default symbol pack entry should use symbols_topodroid_sketch root: " + name,
                     name.startsWith( "symbols_topodroid_sketch/" ) );
         assertTrue( "Default symbol pack should not use old symbols_nss root: " + name,
@@ -149,6 +155,9 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertEquals( "Thrust Fault should occur exactly once in the default raw pack", 1, thrustLineCount );
     assertEquals( "Slope should occur exactly once in the default raw pack", 1, slopeLineCount );
     assertEquals( "Slope fan should occur exactly once in the default raw pack", 1, slopeFanLineCount );
+    assertEquals( "Line with arrow should occur exactly once in the default raw pack", 1, lineWithArrowCount );
+    assertEquals( "Dashed line with arrow should occur exactly once in the default raw pack", 1, dashedLineWithArrowCount );
+    assertEquals( "Intermittent Dotted Arrow should occur exactly once in the default raw pack", 1, intermittentDottedArrowCount );
     assertTrue( "Generic Spar remains deferred",
                 ! entries.contains( "symbols_topodroid_sketch/point/spar" ) );
     assertTrue( "Generic Crystals should not be restored as a duplicate",
@@ -368,6 +377,81 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertEquals( 1.0f, slopeFanEffect.envelopeMin(), 0.001f );
     assertEquals( 10.0f, slopeFanEffect.envelopeMax(), 0.001f );
 
+    String lineWithArrow = readRawSymbolEntry( "symbols_topodroid_sketch/line/line-with-arrow" );
+    String dashedLineWithArrow = readRawSymbolEntry( "symbols_topodroid_sketch/line/dashed-line-with-arrow" );
+    for ( String symbol : new String[] { lineWithArrow, dashedLineWithArrow } ) {
+      assertTrue( "Arrow lines must use the custom user identity", symbol.contains( "\nth_name u:" ) );
+      assertTrue( "Arrow lines must use the user group", symbol.contains( "\ngroup user\n" ) );
+      assertTrue( "Arrow lines must use water blue", symbol.contains( "\ncolor 0x6699ff 0xff\n" ) );
+      assertTrue( "Arrow lines must match the standard width", symbol.contains( "\nwidth 2\n" ) );
+      assertTrue( "Arrow lines must remain plain fallbacks for older renderers", ! symbol.contains( "\neffect\n" ) );
+      assertTrue( "Arrow lines must stop the carrier at the arrow notch",
+                  symbol.contains( "\n  terminal end inset 6\n" ) );
+      assertTrue( "Arrow lines must declare one terminating stamp",
+                  symbol.contains( "\n  terminal_stamp\n" ) && symbol.contains( "\n  endterminal_stamp\n" ) );
+      assertTrue( "Arrow lines must carry one full-width line", symbol.contains( "\n  carrier -0.5 0.5\n" ) );
+      assertTrue( "Arrow lines must retain the filled reference dart",
+                  symbol.contains( "moveTo -8 -4" ) && symbol.contains( "lineTo 0 0" )
+                  && symbol.contains( "lineTo -8 4" ) && symbol.contains( "lineTo -6 0" ) );
+    }
+    assertTrue( "Solid arrow line must use its approved identity",
+                lineWithArrow.contains( "\nth_name u:line-with-arrow\n" ) );
+    assertTrue( "Dashed arrow line must use its approved identity",
+                dashedLineWithArrow.contains( "\nth_name u:dashed-line-with-arrow\n" ) );
+    assertTrue( "Solid arrow line must not declare a dash rhythm", ! lineWithArrow.contains( "\ndash " ) );
+    assertTrue( "Dashed arrow line must borrow the standard Dashed rhythm",
+                dashedLineWithArrow.contains( "\ndash 6 4\n" ) );
+
+    int lineWithArrowIndex = BrushManager.getLineIndexByThName( SymbolLibrary.LINE_WITH_ARROW );
+    int dashedLineWithArrowIndex = BrushManager.getLineIndexByThName( SymbolLibrary.DASHED_LINE_WITH_ARROW );
+    assertTrue( "Line with arrow must load into the line library", lineWithArrowIndex >= 0 );
+    assertTrue( "Dashed line with arrow must load into the line library", dashedLineWithArrowIndex >= 0 );
+    assertEquals( "line with arrow", BrushManager.getLineName( lineWithArrowIndex ) );
+    assertEquals( "dashed line with arrow", BrushManager.getLineName( dashedLineWithArrowIndex ) );
+    assertEquals( 0xff6699ff, BrushManager.getLineColor( lineWithArrowIndex ) );
+    assertEquals( 0xff6699ff, BrushManager.getLineColor( dashedLineWithArrowIndex ) );
+    assertTrue( "Solid arrow parser must retain the terminal effect",
+                BrushManager.getLineEffect( lineWithArrowIndex ).hasTerminalEnd() );
+    assertTrue( "Dashed arrow parser must retain the terminal effect",
+                BrushManager.getLineEffect( dashedLineWithArrowIndex ).hasTerminalEnd() );
+    assertEquals( 6.0f, BrushManager.getLineEffect( lineWithArrowIndex ).terminalInset(), 0.001f );
+    assertEquals( 6.0f, BrushManager.getLineEffect( dashedLineWithArrowIndex ).terminalInset(), 0.001f );
+    float[] dashedArrowRhythm = BrushManager.getLineDashBase( dashedLineWithArrowIndex );
+    assertNotNull( "Dashed arrow parser must retain its dash rhythm", dashedArrowRhythm );
+    assertEquals( 6.0f, dashedArrowRhythm[0], 0.001f );
+    assertEquals( 4.0f, dashedArrowRhythm[1], 0.001f );
+
+    String intermittentDottedArrow = readRawSymbolEntry(
+        "symbols_topodroid_sketch/line/intermittent-dotted-arrow" );
+    assertTrue( intermittentDottedArrow.contains( "\nname Intermittent_Dotted_Arrow\n" ) );
+    assertTrue( intermittentDottedArrow.contains( "\nth_name u:intermittent-dotted-arrow\n" ) );
+    assertTrue( intermittentDottedArrow.contains( "\ngroup user\n" ) );
+    assertTrue( intermittentDottedArrow.contains( "\ncolor 0x6699ff 0xff\n" ) );
+    assertTrue( intermittentDottedArrow.contains( "\nwidth 2\n" ) );
+    assertTrue( intermittentDottedArrow.contains( "\ndash 18 12\n" ) );
+    assertTrue( intermittentDottedArrow.contains( "\n  gap_stamp\n" )
+                && intermittentDottedArrow.contains( "\n  endgap_stamp\n" ) );
+    assertEquals( "Intermittent Dotted Arrow must have four equal gap dots", 4,
+                  countOccurrences( intermittentDottedArrow, "addCircle " ) );
+    assertTrue( intermittentDottedArrow.contains( "\n  terminal end inset 6\n" ) );
+    assertTrue( "Intermittent Dotted Arrow must remain a plain dashed fallback",
+                ! intermittentDottedArrow.contains( "\neffect\n" ) );
+
+    int intermittentDottedArrowIndex = BrushManager.getLineIndexByThName(
+        SymbolLibrary.INTERMITTENT_DOTTED_ARROW );
+    assertTrue( "Intermittent Dotted Arrow must load into the line library",
+                intermittentDottedArrowIndex >= 0 );
+    assertEquals( "Intermittent Dotted Arrow", BrushManager.getLineName( intermittentDottedArrowIndex ) );
+    assertEquals( 0xff6699ff, BrushManager.getLineColor( intermittentDottedArrowIndex ) );
+    LineSymbolEffect intermittentEffect = BrushManager.getLineEffect( intermittentDottedArrowIndex );
+    assertNotNull( intermittentEffect );
+    assertTrue( intermittentEffect.hasTerminalEnd() );
+    assertEquals( 6.0f, intermittentEffect.terminalInset(), 0.001f );
+    float[] intermittentRhythm = BrushManager.getLineDashBase( intermittentDottedArrowIndex );
+    assertNotNull( intermittentRhythm );
+    assertEquals( 18.0f, intermittentRhythm[0], 0.001f );
+    assertEquals( 12.0f, intermittentRhythm[1], 0.001f );
+
     String talus = readRawSymbolEntry( "symbols_topodroid_sketch/line/talus" );
     assertTrue( "Talus must retain the Pit width", talus.contains( "\nwidth 2\n" ) );
     assertTrue( "Talus must remain in the floor group", talus.contains( "\ngroup floor\n" ) );
@@ -505,6 +589,9 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
 
     float y = 90.0f;
     drawLineRow( canvas, label, "Dashed", "dashed", y ); y += LINE_ROW;
+    drawDirectionalLineRow( canvas, label, "Line with arrow", SymbolLibrary.LINE_WITH_ARROW, y ); y += DIRECTIONAL_LINE_ROW;
+    drawDirectionalLineRow( canvas, label, "Dashed line + arrow", SymbolLibrary.DASHED_LINE_WITH_ARROW, y ); y += DIRECTIONAL_LINE_ROW;
+    drawDirectionalLineRow( canvas, label, "Intermittent dotted arrow", SymbolLibrary.INTERMITTENT_DOTTED_ARROW, y ); y += DIRECTIONAL_LINE_ROW;
     drawLineRow( canvas, label, "Dotted", "dotted", y ); y += LINE_ROW;
     drawLineRow( canvas, label, "User", SymbolLibrary.USER, y ); y += LINE_ROW;
     drawLineRow( canvas, label, "Section", SymbolLibrary.SECTION, y ); y += LINE_ROW;

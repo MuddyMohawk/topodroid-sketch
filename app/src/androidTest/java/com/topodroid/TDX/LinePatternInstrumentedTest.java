@@ -181,6 +181,124 @@ public class LinePatternInstrumentedTest
   }
 
   @Test
+  public void terminalArrow_drawsOnceAtEndingTangentAndReversesEndpoint()
+  {
+    LineSymbolEffect effect = terminalArrowEffect( null );
+    Path line = new Path();
+    line.moveTo( 20.0f, 60.0f );
+    line.lineTo( 180.0f, 60.0f );
+
+    Bitmap forward = Bitmap.createBitmap( 220, 120, Bitmap.Config.ARGB_8888 );
+    forward.eraseColor( Color.BLACK );
+    assertTrue( "Terminal arrow effect did not draw",
+                effect.draw( new Canvas( forward ), line, whitePaint(), false ) );
+    assertTrue( "Forward arrowhead must terminate at the final point",
+                hasForegroundNear( forward, 179, 60, 1 ) );
+    assertTrue( "Forward arrowhead wing is missing",
+                hasForegroundNear( forward, 172, 56, 1 ) );
+    assertTrue( "Terminal arrowhead must not repeat through the middle",
+                ! hasForegroundNear( forward, 100, 56, 1 ) );
+    assertTrue( "Terminal arrowhead must not appear at the starting point",
+                ! hasForegroundNear( forward, 28, 56, 1 ) );
+
+    Bitmap reversed = Bitmap.createBitmap( 220, 120, Bitmap.Config.ARGB_8888 );
+    reversed.eraseColor( Color.BLACK );
+    assertTrue( "Reversed terminal arrow effect did not draw",
+                effect.draw( new Canvas( reversed ), line, whitePaint(), true ) );
+    assertTrue( "Reversing must move and turn the arrowhead to the starting point",
+                hasForegroundNear( reversed, 28, 56, 1 ) );
+    assertTrue( "Reversed terminal arrowhead must leave the original end",
+                ! hasForegroundNear( reversed, 172, 56, 1 ) );
+
+    forward.recycle();
+    reversed.recycle();
+  }
+
+  @Test
+  public void terminalArrow_dashedCarrierRetainsRhythmAndScalesWithWeight()
+  {
+    LineSymbolEffect effect = terminalArrowEffect( new float[] { 6.0f, 4.0f } );
+    Path line = new Path();
+    line.moveTo( 20.0f, 60.0f );
+    line.lineTo( 180.0f, 60.0f );
+
+    Bitmap standard = Bitmap.createBitmap( 220, 120, Bitmap.Config.ARGB_8888 );
+    standard.eraseColor( Color.BLACK );
+    assertTrue( effect.draw( new Canvas( standard ), line, whitePaint(), false ) );
+    assertTrue( "Dashed arrow carrier must retain a dash-on interval",
+                hasForegroundNear( standard, 23, 60, 0 ) );
+    assertEquals( "Dashed arrow carrier must retain a dash-off interval",
+                  Color.BLACK, standard.getPixel( 28, 60 ) );
+    assertTrue( "Dashed carrier must still receive one terminal arrowhead",
+                hasForegroundNear( standard, 172, 56, 1 ) );
+
+    Paint thickPaint = whitePaint();
+    thickPaint.setStrokeWidth( 2.0f );
+    Bitmap thick = Bitmap.createBitmap( 240, 140, Bitmap.Config.ARGB_8888 );
+    thick.eraseColor( Color.BLACK );
+    assertTrue( effect.draw( new Canvas( thick ), line, thickPaint, false ) );
+    assertTrue( "Arrowhead length and width must scale with line weight",
+                hasForegroundNear( thick, 164, 52, 1 ) );
+
+    standard.recycle();
+    thick.recycle();
+  }
+
+  @Test
+  public void terminalArrow_insetStopsCarrierBeforeTheTip()
+  {
+    LineSymbolEffect effect = terminalArrowEffect( null );
+    assertEquals( "Terminal carrier join must use the arrow notch", 6.0f, effect.terminalInset(), 0.001f );
+
+    Path line = new Path();
+    line.moveTo( 20.0f, 80.0f );
+    line.lineTo( 180.0f, 80.0f );
+    Paint paint = whitePaint();
+    paint.setStrokeWidth( 8.0f );
+    Bitmap bitmap = Bitmap.createBitmap( 220, 160, Bitmap.Config.ARGB_8888 );
+    bitmap.eraseColor( Color.BLACK );
+    assertTrue( effect.draw( new Canvas( bitmap ), line, paint, false ) );
+
+    assertEquals( "A full-width carrier cap must not protrude around the arrow tip",
+                  Color.BLACK, bitmap.getPixel( 179, 83 ) );
+    assertTrue( "The filled arrow tip itself must remain visible",
+                hasForegroundNear( bitmap, 179, 80, 1 ) );
+    bitmap.recycle();
+  }
+
+  @Test
+  public void gapStamp_drawsFourDotsInsideEverySolidCarrierBreak()
+  {
+    Path dots = new Path();
+    dots.addCircle( 1.5f, 0.0f, 0.5f, Path.Direction.CCW );
+    dots.addCircle( 4.5f, 0.0f, 0.5f, Path.Direction.CCW );
+    dots.addCircle( 7.5f, 0.0f, 0.5f, Path.Direction.CCW );
+    dots.addCircle( 10.5f, 0.0f, 0.5f, Path.Direction.CCW );
+    Path arrow = terminalArrowPath();
+    ArrayList< LineSymbolEffect.Carrier > carriers = new ArrayList<>();
+    carriers.add( new LineSymbolEffect.Carrier( -0.5f, 0.5f ) );
+    LineSymbolEffect effect = new LineSymbolEffect( new Path(), new Path(), 0.0f,
+                                                    new float[] { 18.0f, 12.0f } );
+    effect.setSketchEffect( new Path(), new Path(), dots, dots, arrow, arrow,
+                            carriers, false, true, 6.0f );
+
+    Path line = new Path();
+    line.moveTo( 20.0f, 60.0f );
+    line.lineTo( 180.0f, 60.0f );
+    Bitmap bitmap = Bitmap.createBitmap( 220, 120, Bitmap.Config.ARGB_8888 );
+    bitmap.eraseColor( Color.BLACK );
+    assertTrue( effect.draw( new Canvas( bitmap ), line, whitePaint(), false ) );
+
+    assertEquals( "Every 12-unit carrier break must contain exactly four solid dots",
+                  4, countForegroundRuns( bitmap, 60, 38, 50 ) );
+    assertEquals( "The four-dot interruption must repeat with the declared cycle",
+                  4, countForegroundRuns( bitmap, 60, 68, 80 ) );
+    assertTrue( "The intermittent dotted line must retain its terminal arrow",
+                hasForegroundNear( bitmap, 172, 56, 1 ) );
+    bitmap.recycle();
+  }
+
+  @Test
   public void slopeEffects_keepUniformBaseAndApplySymmetricCosinePeak()
   {
     Bitmap uniform = renderSlopeEffect( false, 1.0f, false, 168.0f );
@@ -340,6 +458,18 @@ public class LinePatternInstrumentedTest
     return runs;
   }
 
+  private int countForegroundRuns( Bitmap bitmap, int y, int xmin, int xmax )
+  {
+    int runs = 0;
+    boolean inRun = false;
+    for ( int x = Math.max( 0, xmin ); x < Math.min( bitmap.getWidth(), xmax ); ++x ) {
+      boolean foreground = bitmap.getPixel( x, y ) != Color.BLACK;
+      if ( foreground && ! inRun ) ++runs;
+      inRun = foreground;
+    }
+    return runs;
+  }
+
   private static Paint whitePaint()
   {
     Paint paint = new Paint();
@@ -347,6 +477,27 @@ public class LinePatternInstrumentedTest
     paint.setStyle( Paint.Style.STROKE );
     paint.setStrokeWidth( 1.0f ); // pattern unit: test geometry is authored 1:1
     return paint;
+  }
+
+  private static LineSymbolEffect terminalArrowEffect( float[] dash )
+  {
+    Path arrow = terminalArrowPath();
+    ArrayList< LineSymbolEffect.Carrier > carriers = new ArrayList<>();
+    carriers.add( new LineSymbolEffect.Carrier( -0.5f, 0.5f ) );
+    LineSymbolEffect effect = new LineSymbolEffect( new Path(), new Path(), 0.0f, dash );
+    effect.setSketchEffect( arrow, arrow, carriers, false, true, 6.0f );
+    return effect;
+  }
+
+  private static Path terminalArrowPath()
+  {
+    Path arrow = new Path();
+    arrow.moveTo( -8.0f, -4.0f );
+    arrow.lineTo( 0.0f, 0.0f );
+    arrow.lineTo( -8.0f, 4.0f );
+    arrow.lineTo( -6.0f, 0.0f );
+    arrow.close();
+    return arrow;
   }
 
   private Bitmap renderSlopeEffect( boolean envelope, float peak, boolean reversed, float length )

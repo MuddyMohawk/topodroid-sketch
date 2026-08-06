@@ -179,8 +179,14 @@ public class SymbolLine extends Symbol
   {
     final Path path_dir = new Path();
     final Path path_rev = new Path();
+    final Path gap_path_dir = new Path();
+    final Path gap_path_rev = new Path();
+    final Path terminal_path_dir = new Path();
+    final Path terminal_path_rev = new Path();
     final ArrayList< LineSymbolEffect.Carrier > carriers = new ArrayList<>();
     boolean strokeStamp = false;
+    boolean terminalEnd = false;
+    float terminalInset = 0.0f;
     boolean cosineEnvelope = false;
     float envelopeDefault = 1.0f;
     float envelopeMin = 1.0f;
@@ -190,7 +196,9 @@ public class SymbolLine extends Symbol
   private static void applySketchEffect( LineSymbolEffect effect, SketchEffectData data )
   {
     if ( effect == null || data == null ) return;
-    effect.setSketchEffect( data.path_dir, data.path_rev, data.carriers, data.strokeStamp );
+    effect.setSketchEffect( data.path_dir, data.path_rev, data.gap_path_dir, data.gap_path_rev,
+                            data.terminal_path_dir, data.terminal_path_rev, data.carriers,
+                            data.strokeStamp, data.terminalEnd, data.terminalInset );
     if ( data.cosineEnvelope ) {
       effect.setCosineEnvelope( data.envelopeDefault, data.envelopeMin, data.envelopeMax );
     }
@@ -199,7 +207,7 @@ public class SymbolLine extends Symbol
   private SketchEffectData readSketchEffect( BufferedReader br, String filename ) throws IOException
   {
     SketchEffectData data = new SketchEffectData();
-    boolean in_stamp = false;
+    int stamp_mode = 0; // 1=repeat stamp, 2=dash-gap stamp, 3=terminal stamp
     String line;
     while ( (line = br.readLine()) != null ) {
       line = line.trim();
@@ -210,11 +218,16 @@ public class SymbolLine extends Symbol
       if ( k >= s || vals[k].startsWith( "#" ) ) continue;
 
       if ( vals[k].equals("stamp") ) {
-        in_stamp = true;
+        stamp_mode = 1;
+      } else if ( vals[k].equals("gap_stamp") ) {
+        stamp_mode = 2;
+      } else if ( vals[k].equals("terminal_stamp") ) {
+        stamp_mode = 3;
       } else if ( vals[k].equals("stroke") ) {
         data.strokeStamp = true;
-      } else if ( vals[k].equals("endstamp") ) {
-        in_stamp = false;
+      } else if ( vals[k].equals("endstamp") || vals[k].equals("endgap_stamp")
+                  || vals[k].equals("endterminal_stamp") ) {
+        stamp_mode = 0;
       } else if ( vals[k].equals("endsketch_effect") ) {
         break;
       } else if ( vals[k].equals("carrier") ) {
@@ -225,6 +238,22 @@ public class SymbolLine extends Symbol
           data.carriers.add( new LineSymbolEffect.Carrier( y0, y1 ) );
         } catch ( NumberFormatException e ) {
           TDLog.e( filename + " parse sketch carrier error: " + line );
+        }
+      } else if ( vals[k].equals("terminal") ) {
+        try {
+          ++k;
+          while ( k < s && vals[k].length() == 0 ) ++k;
+          if ( k >= s || ! vals[k].equals("end") ) throw new NumberFormatException();
+          data.terminalEnd = true;
+          ++k;
+          while ( k < s && vals[k].length() == 0 ) ++k;
+          if ( k < s ) {
+            if ( ! vals[k].equals("inset") ) throw new NumberFormatException();
+            k_val = k;
+            data.terminalInset = Math.max( 0.0f, nextFloat( vals, s, 1.0f ) );
+          }
+        } catch ( NumberFormatException e ) {
+          TDLog.e( filename + " parse sketch terminal error: " + line );
         }
       } else if ( vals[k].equals("envelope") ) {
         try {
@@ -239,8 +268,12 @@ public class SymbolLine extends Symbol
         } catch ( NumberFormatException e ) {
           TDLog.e( filename + " parse sketch envelope error: " + line );
         }
-      } else if ( in_stamp ) {
-        readSketchEffectPathCommand( filename, line, vals, s, k, data.path_dir, data.path_rev );
+      } else if ( stamp_mode > 0 ) {
+        Path path_dir = ( stamp_mode == 1 ) ? data.path_dir
+                      : ( stamp_mode == 2 ) ? data.gap_path_dir : data.terminal_path_dir;
+        Path path_rev = ( stamp_mode == 1 ) ? data.path_rev
+                      : ( stamp_mode == 2 ) ? data.gap_path_rev : data.terminal_path_rev;
+        readSketchEffectPathCommand( filename, line, vals, s, k, path_dir, path_rev );
       }
     }
     return data;
@@ -298,10 +331,17 @@ public class SymbolLine extends Symbol
    *      sketch_effect 1             [line-width units]
    *        stroke
    *        carrier Y0 Y1
+   *        terminal end [inset LENGTH]
    *        envelope cosine DEFAULT MIN MAX
    *        stamp
    *          command: moveTo lineTo cubicTo addCircle
    *        endstamp
+   *        gap_stamp
+   *          command: moveTo lineTo cubicTo addCircle
+   *        endgap_stamp
+   *        terminal_stamp
+   *          command: moveTo lineTo cubicTo addCircle
+   *        endterminal_stamp
    *      endsketch_effect
    *      endsymbol
    */
@@ -540,8 +580,15 @@ public class SymbolLine extends Symbol
               if ( mLineEffect != null ) {
                 applySketchEffect( mLineEffect, sketch_effect );
               }
-  	    } else if ( vals[k].equals("endsymbol") ) {
-  	      if ( name != null && th_name != null ) {
+	    } else if ( vals[k].equals("endsymbol") ) {
+	      if ( name != null && th_name != null ) {
+                // A Sketch-only effect has no repeating legacy geometry. Renderers
+                // that do not understand sketch_effect naturally retain the base
+                // solid/dashed line, while Sketch can add carriers or terminal stamps.
+                if ( mLineEffect == null && sketch_effect != null ) {
+                  mLineEffect = new LineSymbolEffect( new Path(), new Path(), 0.0f, dash_values );
+                  applySketchEffect( mLineEffect, sketch_effect );
+                }
                 mName   = name;
                 setThName( th_name );
                 mGroup  = group;

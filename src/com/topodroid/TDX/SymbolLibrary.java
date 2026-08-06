@@ -36,6 +36,9 @@ public class SymbolLibrary
   public final static String SECTION = "section";
   public final static String SLOPE   = "slope";
   public final static String SLOPE_FAN = "slope-fan";
+  public final static String LINE_WITH_ARROW = "line-with-arrow";
+  public final static String DASHED_LINE_WITH_ARROW = "dashed-line-with-arrow";
+  public final static String INTERMITTENT_DOTTED_ARROW = "intermittent-dotted-arrow";
   public final static String WATER   = "water";
   public final static String AUDIO   = "audio";
   public final static String PHOTO   = "photo";

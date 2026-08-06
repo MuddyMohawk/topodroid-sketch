@@ -36,6 +36,8 @@ class LineSymbolEffect
   private static final int   MAX_CARRIER_SAMPLES = 4096;
   private static final int   ENVELOPE_NONE = 0;
   private static final int   ENVELOPE_COSINE = 1;
+  private static final int   TERMINAL_NONE = 0;
+  private static final int   TERMINAL_END = 1;
 
   static class Carrier
   {
@@ -61,15 +63,23 @@ class LineSymbolEffect
   private final float[] mDash;
   private boolean mHasSketchEffect;
   private boolean mHasSketchStamp;
+  private boolean mHasGapStamp;
+  private boolean mHasTerminalStamp;
   private boolean mSketchStroke;
   private Path mSketchPath;
   private Path mSketchRevPath;
+  private Path mGapPath;
+  private Path mGapRevPath;
+  private Path mTerminalPath;
+  private Path mTerminalRevPath;
   private Carrier[] mCarriers;
   private Carrier[] mRevCarriers;
   private int mEnvelopeType;
   private float mEnvelopeDefault;
   private float mEnvelopeMin;
   private float mEnvelopeMax;
+  private int mTerminalPlacement;
+  private float mTerminalInset;
 
   /** pattern data pre-scaled to a given scene unit (= ink thickness) */
   private static class ScaledPattern
@@ -77,18 +87,31 @@ class LineSymbolEffect
     final Path path;
     final RectF bounds;
     final float anchor;
+    final Path gapPath;
+    final RectF gapBounds;
+    final float gapAnchor;
+    final Path terminalPath;
+    final RectF terminalBounds;
     final Carrier[] carriers;
     final float advance;
     final float[] dash;
+    final float terminalInset;
 
-    ScaledPattern( Path path, Carrier[] carriers, float advance, float[] dash, boolean stamp_anchor )
+    ScaledPattern( Path path, Path gap_path, Path terminal_path, Carrier[] carriers,
+                   float advance, float[] dash, boolean stamp_anchor, float terminal_inset )
     {
       this.path = path;
       this.bounds = boundsOf( path );
       this.anchor = stamp_anchor ? stampAnchor( this.bounds ) : 0;
+      this.gapPath = gap_path;
+      this.gapBounds = boundsOf( gap_path );
+      this.gapAnchor = stampAnchor( this.gapBounds );
+      this.terminalPath = terminal_path;
+      this.terminalBounds = boundsOf( terminal_path );
       this.carriers = carriers;
       this.advance = advance;
       this.dash = dash;
+      this.terminalInset = terminal_inset;
     }
   }
 
@@ -107,27 +130,68 @@ class LineSymbolEffect
     mDash = cloneDash( dash );
     mHasSketchEffect = false;
     mHasSketchStamp = false;
+    mHasGapStamp = false;
+    mHasTerminalStamp = false;
     mSketchStroke = false;
     mEnvelopeType = ENVELOPE_NONE;
     mEnvelopeDefault = 1.0f;
     mEnvelopeMin = 1.0f;
     mEnvelopeMax = 1.0f;
+    mTerminalPlacement = TERMINAL_NONE;
+    mTerminalInset = 0.0f;
   }
 
   void setSketchEffect( Path path, Path rev_path, ArrayList< Carrier > carriers )
   {
-    setSketchEffect( path, rev_path, carriers, false );
+    setSketchEffect( path, rev_path, carriers, false, false );
   }
 
   void setSketchEffect( Path path, Path rev_path, ArrayList< Carrier > carriers, boolean stroke_stamp )
   {
+    setSketchEffect( path, rev_path, carriers, stroke_stamp, false );
+  }
+
+  void setSketchEffect( Path path, Path rev_path, ArrayList< Carrier > carriers,
+                        boolean stroke_stamp, boolean terminal_end )
+  {
+    setSketchEffect( path, rev_path, carriers, stroke_stamp, terminal_end, 0.0f );
+  }
+
+  void setSketchEffect( Path path, Path rev_path, ArrayList< Carrier > carriers,
+                        boolean stroke_stamp, boolean terminal_end, float terminal_inset )
+  {
+    setSketchEffect( path, rev_path, new Path(), new Path(), new Path(), new Path(),
+                     carriers, stroke_stamp, terminal_end, terminal_inset );
+  }
+
+  void setSketchEffect( Path path, Path rev_path, Path gap_path, Path gap_rev_path,
+                        Path terminal_path, Path terminal_rev_path,
+                        ArrayList< Carrier > carriers, boolean stroke_stamp,
+                        boolean terminal_end, float terminal_inset )
+  {
     mHasSketchEffect = true;
     mSketchStroke = stroke_stamp;
-    mSketchPath = copyPath( path );
-    mSketchRevPath = copyPath( rev_path );
+    boolean explicit_terminal = ! boundsOf( terminal_path ).isEmpty() || ! boundsOf( terminal_rev_path ).isEmpty();
+    if ( terminal_end && ! explicit_terminal ) {
+      mSketchPath = new Path();
+      mSketchRevPath = new Path();
+      mTerminalPath = copyPath( path );
+      mTerminalRevPath = copyPath( rev_path );
+    } else {
+      mSketchPath = copyPath( path );
+      mSketchRevPath = copyPath( rev_path );
+      mTerminalPath = terminal_end ? copyPath( terminal_path ) : new Path();
+      mTerminalRevPath = terminal_end ? copyPath( terminal_rev_path ) : new Path();
+    }
+    mGapPath = copyPath( gap_path );
+    mGapRevPath = copyPath( gap_rev_path );
     mHasSketchStamp = ! boundsOf( mSketchPath ).isEmpty() || ! boundsOf( mSketchRevPath ).isEmpty();
+    mHasGapStamp = ! boundsOf( mGapPath ).isEmpty() || ! boundsOf( mGapRevPath ).isEmpty();
+    mHasTerminalStamp = ! boundsOf( mTerminalPath ).isEmpty() || ! boundsOf( mTerminalRevPath ).isEmpty();
     mCarriers = makeCarriers( carriers, false );
     mRevCarriers = makeCarriers( carriers, true );
+    mTerminalPlacement = terminal_end ? TERMINAL_END : TERMINAL_NONE;
+    mTerminalInset = terminal_end ? Math.max( 0.0f, terminal_inset ) : 0.0f;
     mScaledCache.clear();
   }
 
@@ -150,6 +214,10 @@ class LineSymbolEffect
   boolean hasEnvelope() { return mEnvelopeType != ENVELOPE_NONE; }
 
   boolean hasSketchEffect() { return mHasSketchEffect; }
+
+  boolean hasTerminalEnd() { return mTerminalPlacement == TERMINAL_END; }
+
+  float terminalInset() { return mTerminalInset; }
 
   float envelopeDefault() { return mEnvelopeDefault; }
 
@@ -233,25 +301,43 @@ class LineSymbolEffect
       float length = measure.getLength();
       if ( length <= 0 ) continue;
       float dash_cycle = dashCycle( sp.dash );
+      float carrier_start = 0.0f;
+      float carrier_end = length;
+      if ( mTerminalPlacement == TERMINAL_END && sp.terminalInset > 0.0f ) {
+        float inset = Math.min( length, sp.terminalInset );
+        if ( reversed ) carrier_start = inset; else carrier_end = length - inset;
+      }
       if ( sp.carriers != null && sp.carriers.length > 0 ) {
         if ( dash_cycle > 0 ) {
           drew |= drawDashedCarriers( canvas, measure, length, sp.dash, dash_cycle, sp.carriers,
-                                      carrier_paint, has_clip, clip_bounds, sample_step );
+                                      carrier_paint, has_clip, clip_bounds, sample_step,
+                                      carrier_start, carrier_end );
         } else {
           for ( int c = 0; c < sp.carriers.length; ++c ) {
-            drew |= drawCarrierSegment( canvas, measure, 0, length, sp.carriers[c], carrier_paint, has_clip, clip_bounds, sample_step );
+            drew |= drawCarrierSegment( canvas, measure, carrier_start, carrier_end, sp.carriers[c],
+                                        carrier_paint, has_clip, clip_bounds, sample_step );
           }
         }
       }
-      if ( mHasSketchEffect && ! mHasSketchStamp ) continue;
-      if ( dash_cycle > 0 ) {
+      boolean repeat_stamp = mHasSketchEffect ? mHasSketchStamp : ! sp.bounds.isEmpty();
+      if ( repeat_stamp && dash_cycle > 0 ) {
         drew |= drawDashedContour( canvas, measure, length, sp.dash, dash_cycle, sp.path, sp.bounds,
                                    stamp_paint, matrix, stamp, stamp_bounds, pos, tan, has_clip, clip_bounds, pad,
                                    sp.advance, sp.anchor, mEnvelopeType, peak );
-      } else {
+      } else if ( repeat_stamp ) {
         drew |= drawStampSegment( canvas, measure, 0, length, sp.advance, sp.path, sp.bounds,
                                   stamp_paint, matrix, stamp, stamp_bounds, pos, tan, has_clip, clip_bounds, pad,
                                   sp.anchor, length, mEnvelopeType, peak );
+      }
+      if ( mHasGapStamp && dash_cycle > 0 ) {
+        drew |= drawGapContour( canvas, measure, length, sp.dash, dash_cycle, sp.gapPath, sp.gapBounds,
+                                stamp_paint, matrix, stamp, stamp_bounds, pos, tan, has_clip, clip_bounds,
+                                pad, sp.gapAnchor, carrier_start, carrier_end );
+      }
+      if ( mHasTerminalStamp ) {
+        drew |= drawTerminalStamp( canvas, measure, length, sp.terminalPath, sp.terminalBounds, stamp_paint,
+                                   matrix, stamp, stamp_bounds, pos, tan, has_clip, clip_bounds,
+                                   pad, reversed );
       }
     } while ( measure.nextContour() );
 
@@ -288,6 +374,8 @@ class LineSymbolEffect
         bounds.bottom = swap;
       }
     }
+    unionBounds( bounds, sp.gapBounds );
+    unionBounds( bounds, sp.terminalBounds );
     if ( sp.carriers != null ) {
       for ( Carrier carrier : sp.carriers ) {
         RectF carrier_bounds = new RectF( 0.0f, carrier.y0, Math.max( unit, sp.advance ), carrier.y1 );
@@ -305,7 +393,7 @@ class LineSymbolEffect
     if ( ! ( unit > MIN_UNIT ) || Float.isNaN( unit ) || Float.isInfinite( unit ) ) unit = 1.0f;
     ScaledPattern sp = scaled( unit, reversed );
     RectF bounds = samplePatternBounds( unit, reversed, envelope_peak );
-    float dx = Math.max( Math.abs( bounds.left - sp.anchor ), Math.abs( bounds.right - sp.anchor ) );
+    float dx = Math.max( Math.abs( bounds.left ), Math.abs( bounds.right ) );
     float dy = Math.max( Math.abs( bounds.top ), Math.abs( bounds.bottom ) );
     return (float)Math.sqrt( dx * dx + dy * dy );
   }
@@ -317,9 +405,13 @@ class LineSymbolEffect
     if ( sp != null ) return sp;
 
     Path raw_path;
+    Path raw_gap_path = new Path();
+    Path raw_terminal_path = new Path();
     boolean stamp_anchor;
     if ( mHasSketchEffect ) {
       raw_path = reversed ? mSketchRevPath : mSketchPath;
+      raw_gap_path = reversed ? mGapRevPath : mGapPath;
+      raw_terminal_path = reversed ? mTerminalRevPath : mTerminalPath;
       stamp_anchor = true;
     } else {
       raw_path = reversed ? mRevPath : mPath;
@@ -328,10 +420,13 @@ class LineSymbolEffect
     Carrier[] raw_carriers = mHasSketchEffect ? ( reversed ? mRevCarriers : mCarriers ) : null;
 
     sp = new ScaledPattern( scaledPath( raw_path, unit ),
+                            scaledPath( raw_gap_path, unit ),
+                            scaledPath( raw_terminal_path, unit ),
                             scaledCarriers( raw_carriers, unit ),
                             mAdvance * unit,
                             scaledDash( mDash, unit ),
-                            stamp_anchor );
+                            stamp_anchor,
+                            mTerminalInset * unit );
     if ( mScaledCache.size() >= MAX_CACHE ) mScaledCache.clear();
     mScaledCache.put( key, sp );
     return sp;
@@ -356,6 +451,12 @@ class LineSymbolEffect
     RectF bounds = new RectF();
     if ( path != null ) path.computeBounds( bounds, true );
     return bounds;
+  }
+
+  private static void unionBounds( RectF into, RectF extra )
+  {
+    if ( extra == null || extra.isEmpty() ) return;
+    if ( into.isEmpty() ) into.set( extra ); else into.union( extra );
   }
 
   private static float stampAnchor( RectF bounds )
@@ -433,6 +534,32 @@ class LineSymbolEffect
     return drew;
   }
 
+  /** Draw one rigid stamp centered in every complete dash-off interval. */
+  private static boolean drawGapContour( Canvas canvas, PathMeasure measure, float length, float[] dash, float dash_cycle,
+                                         Path pattern, RectF pattern_bounds, Paint draw_paint, Matrix matrix, Path stamp,
+                                         RectF stamp_bounds, float[] pos, float[] tan, boolean has_clip, RectF clip_bounds,
+                                         float pad, float anchor, float usable_start, float usable_end )
+  {
+    boolean drew = false;
+    for ( float cycle_start = 0; cycle_start < length; cycle_start += dash_cycle ) {
+      float offset = cycle_start;
+      for ( int k = 0; k < dash.length && offset < length; ++k ) {
+        float interval = Math.max( 0, dash[k] );
+        float next = Math.min( length, offset + interval );
+        if ( interval > 0 && ( k % 2 ) == 1
+            && offset >= usable_start - FIT_EPS && next <= usable_end + FIT_EPS
+            && next - offset >= interval - FIT_EPS ) {
+          float target = 0.5f * ( offset + next );
+          drew |= drawStamp( canvas, measure, target, anchor, pattern, pattern_bounds,
+                             draw_paint, matrix, stamp, stamp_bounds, pos, tan,
+                             has_clip, clip_bounds, pad, 1.0f );
+        }
+        offset += interval;
+      }
+    }
+    return drew;
+  }
+
   private static boolean drawStampSegment( Canvas canvas, PathMeasure measure, float start, float end, float advance,
                                            Path pattern, RectF pattern_bounds, Paint draw_paint, Matrix matrix, Path stamp,
                                            RectF stamp_bounds, float[] pos, float[] tan, boolean has_clip, RectF clip_bounds,
@@ -468,7 +595,7 @@ class LineSymbolEffect
 
   private static boolean drawDashedCarriers( Canvas canvas, PathMeasure measure, float length, float[] dash, float dash_cycle,
                                              Carrier[] carriers, Paint draw_paint, boolean has_clip, RectF clip_bounds,
-                                             float sample_step )
+                                             float sample_step, float usable_start, float usable_end )
   {
     boolean drew = false;
 
@@ -478,8 +605,10 @@ class LineSymbolEffect
         float interval = Math.max( 0, dash[k] );
         float next = offset + interval;
         if ( interval > 0 && ( k % 2 ) == 0 ) {
+          float segment_start = Math.max( offset, usable_start );
+          float segment_end = Math.min( Math.min( next, length ), usable_end );
           for ( int c = 0; c < carriers.length; ++c ) {
-            drew |= drawCarrierSegment( canvas, measure, offset, Math.min( next, length ), carriers[c],
+            drew |= drawCarrierSegment( canvas, measure, segment_start, segment_end, carriers[c],
                                         draw_paint, has_clip, clip_bounds, sample_step );
           }
         }
@@ -542,8 +671,37 @@ class LineSymbolEffect
                                     Paint draw_paint, Matrix matrix, Path stamp, RectF stamp_bounds, float[] pos, float[] tan,
                                     boolean has_clip, RectF clip_bounds, float pad, float normal_scale )
   {
+    return drawOrientedStamp( canvas, measure, distance, anchor, pattern, pattern_bounds,
+                              draw_paint, matrix, stamp, stamp_bounds, pos, tan,
+                              has_clip, clip_bounds, pad, normal_scale, false );
+  }
+
+  /** Draw one stamp with its local origin at the terminating point of the contour.
+   *  Reversing a placement changes both the endpoint and the direction of its tangent.
+   */
+  private static boolean drawTerminalStamp( Canvas canvas, PathMeasure measure, float length,
+                                            Path pattern, RectF pattern_bounds, Paint draw_paint,
+                                            Matrix matrix, Path stamp, RectF stamp_bounds, float[] pos, float[] tan,
+                                            boolean has_clip, RectF clip_bounds, float pad, boolean reversed )
+  {
+    float distance = reversed ? 0.0f : length;
+    return drawOrientedStamp( canvas, measure, distance, 0.0f, pattern, pattern_bounds,
+                              draw_paint, matrix, stamp, stamp_bounds, pos, tan,
+                              has_clip, clip_bounds, pad, 1.0f, reversed );
+  }
+
+  private static boolean drawOrientedStamp( Canvas canvas, PathMeasure measure, float distance, float anchor,
+                                            Path pattern, RectF pattern_bounds,
+                                            Paint draw_paint, Matrix matrix, Path stamp, RectF stamp_bounds,
+                                            float[] pos, float[] tan, boolean has_clip, RectF clip_bounds,
+                                            float pad, float normal_scale, boolean reverse_tangent )
+  {
     if ( ! measure.getPosTan( distance, pos, tan ) ) return false;
     if ( Math.abs( tan[0] ) < TANGENT_EPS && Math.abs( tan[1] ) < TANGENT_EPS ) return false;
+    if ( reverse_tangent ) {
+      tan[0] = -tan[0];
+      tan[1] = -tan[1];
+    }
 
     matrix.reset();
     matrix.setTranslate( -anchor, 0 );
