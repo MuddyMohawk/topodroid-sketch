@@ -159,7 +159,7 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
     showMode( fit_mode );
     if ( fit_mode && mOriginal.mode == BeddingAttitudePointState.Mode.FIT ) {
       showState( mOriginal );
-    } else if ( fit_mode && has_three ) {
+    } else if ( fit_mode && selectedCount() >= 3 ) {
       mRoot.post( this::calculateFit );
     } else {
       updateManualPreview();
@@ -241,9 +241,13 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
       check.setText( splay.displayLabel()
         + ( splay.eligible ? "" : " (excluded: " + splay.exclusionReason + ")" ) );
       check.setEnabled( splay.eligible );
-      boolean selected = splay.eligible && ( mOriginal.mode != BeddingAttitudePointState.Mode.FIT
-        || ! mSurvey.stationName.equals( mOriginal.stationName )
-        || contains( mOriginal.sourceShotIds, splay.id ) );
+      // Start a new fit (and every newly chosen station) with an empty
+      // selection. When an existing fitted point is reopened at its saved
+      // station, restore exactly the source splays that produced that fit.
+      boolean selected = splay.eligible
+        && mOriginal.mode == BeddingAttitudePointState.Mode.FIT
+        && mSurvey.stationName.equals( mOriginal.stationName )
+        && contains( mOriginal.sourceShotIds, splay.id );
       check.setChecked( selected );
       check.setOnClickListener( view -> {
         ++mCalculationGeneration;
@@ -598,6 +602,15 @@ final class BeddingAttitudePointEditorController implements SpecialPointEditorCo
   {
     int count = 0;
     for ( BeddingSurveyContext.Splay splay : mSurvey.splays ) if ( splay.eligible ) ++count;
+    return count;
+  }
+
+  private int selectedCount()
+  {
+    int count = 0;
+    for ( CheckBox check : mSplayChecks ) {
+      if ( check.isEnabled() && check.isChecked() ) ++count;
+    }
     return count;
   }
 

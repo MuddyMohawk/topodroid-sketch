@@ -1470,7 +1470,7 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
         if ( station != null && station.getName() != null ) names.add( station.getName() );
       }
     }
-    java.util.Collections.sort( names );
+    java.util.Collections.sort( names, StationNameOrder::compare );
     return names;
   }
 
