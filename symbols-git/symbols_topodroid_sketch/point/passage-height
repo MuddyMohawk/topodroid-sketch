@@ -1,6 +1,6 @@
 encoding utf-8
 symbol point
-name ceiling height
+name passage height
 th_name passage-height
 sketch_stroke_scale 1
 orientation no

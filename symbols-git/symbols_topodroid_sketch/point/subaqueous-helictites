@@ -1,10 +1,10 @@
 encoding utf-8
 symbol point
-name subaqueous_helictites
+name helictite,_subaqueous
 th_name subaqueous-helictites
 group speleothem
 orientation no
-color 0xffffff
+color 0x6699ff
 path
   moveTo -5.003 -9.215
   cubicTo -8.416 -0.039 -0.462 -2.169 2.654 -1.026
