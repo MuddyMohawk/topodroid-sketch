@@ -144,7 +144,7 @@ public class SymbolLineLibrary extends SymbolLibrary
           addSymbol( symbol );
           String thname = symbol.getThName();
           String name = mPrefix + thname;
-          boolean enable = true;
+          boolean enable = SymbolDefaultPolicy.isLineEnabled( thname );
           if ( TopoDroidApp.mData != null ) {
             if ( ! TopoDroidApp.mData.hasSymbolName( name ) ) {
               TopoDroidApp.mData.setSymbolEnabled( name, enable ); // CONFIG_ENABLE

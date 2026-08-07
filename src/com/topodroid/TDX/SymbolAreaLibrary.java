@@ -29,14 +29,10 @@ import android.content.res.Resources;
 
 public class SymbolAreaLibrary extends SymbolLibrary
 {
-  static final private String[] DefaultAreas = { BEDROCK, BLOCKS, CLAY, DEBRIS, SAND, SUMP, WATER };
-
   /** @return whether a newly discovered area is enabled on a fresh configuration */
   static boolean isDefaultArea( String th_name )
   {
-    if ( th_name == null ) return false;
-    for ( String area : DefaultAreas ) if ( area.equals( th_name ) ) return true;
-    return false;
+    return SymbolDefaultPolicy.isAreaEnabled( th_name );
   }
 
   /* private */ int mAreaUserIndex;

@@ -29,16 +29,6 @@ import android.content.res.Resources;
 
 public class SymbolPointLibrary extends SymbolLibrary
 {
-  static final private String[] DefaultPoints = {
-    AIR_DRAUGHT, "anchor", "anastomosis", "anthodites", "aragonite", "archeo-excavation", BEDROCK, BLOCKS, "bones",
-    "boxwork", "broken-formation", "calcite-crust", "calcite-spar", "cave-pearl", "chert", CLAY, "column", "conulite",
-    CONTINUATION, "corrosion-residue", "curtain", "frostwork", "gypsum-chandelier", "gypsum-crystals", "gypsum-flower",
-    "gypsum-hair", "gypsum-needles", "gypsum-rim-vent", DANGER, DEBRIS, "debris:small", DIG, ENTRANCE, GUANO,
-    HELICTITE, ICE, "invertebrate-fossils", "mammalaries-cave-clouds", "moonmilk", PEBBLES, PILLAR, "pool-spar",
-    "pit-depth", POPCORN, "raft-cone", ROOT, SAND, SECTION, SLOPE, SNOW, SODA_STRAW, STALACTITE,
-    "stalactite:alternate", STALAGMITE, "stalagmite:alternate", "title-legend", WATER_FLOW
-  };
-
   // ArrayList< SymbolPoint > mPoint;    // enabled points
   int mPointUserIndex; 
   int mPointLabelIndex;
@@ -268,10 +258,7 @@ public class SymbolPointLibrary extends SymbolLibrary
             enable = true;
 	  } else if ( TopoDroidApp.mData != null ) {
             if ( ! TopoDroidApp.mData.hasSymbolName( name ) ) {
-              enable = false;
-              for ( int k=0; k<DefaultPoints.length; ++k ) { 
-                if ( DefaultPoints[k].equals( thname ) ) { enable = true; break; }
-              }
+              enable = SymbolDefaultPolicy.isPointEnabled( thname );
               TopoDroidApp.mData.setSymbolEnabled( name, enable ); // CONFIG_ENABLE
             } else {
               enable = TopoDroidApp.mData.getSymbolEnabled( name );
