@@ -215,7 +215,8 @@ class SymbolPreviewRenderer
       // Dashes and bedrock need enough horizontal context to show their stagger, but
       // four full periods made tall 4:3 swatches contain dozens of tiny rows. One and
       // a half periods preserves the production rhythm at a legible semantic zoom.
-      if ( pattern.mType != AreaLinePattern.TYPE_PARALLEL ) {
+      if ( pattern.mType == AreaLinePattern.TYPE_DASHES
+          || pattern.mType == AreaLinePattern.TYPE_BEDROCK ) {
         float period = Math.max( ink, pattern.mPeriodScale * ink );
         width = Math.max( width, 1.5f * period );
         height = width * 3.0f / 4.0f;

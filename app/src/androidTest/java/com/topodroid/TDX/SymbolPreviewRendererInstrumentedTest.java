@@ -67,6 +67,7 @@ public class SymbolPreviewRendererInstrumentedTest
     assertPreviewFits( SymbolType.LINE, BrushManager.getLineIndexByThName( SymbolLibrary.CEILING_MEANDER ), 96, 48 );
     assertPreviewFits( SymbolType.LINE, BrushManager.getLineIndexByThName( SymbolLibrary.SECTION ), 96, 48 );
     assertPreviewFits( SymbolType.AREA, BrushManager.getAreaIndexByThName( SymbolLibrary.WATER ), 48, 48 );
+    assertPreviewFits( SymbolType.AREA, BrushManager.getAreaIndexByThName( SymbolLibrary.SUMP ), 48, 48 );
     assertPreviewFits( SymbolType.AREA, BrushManager.getAreaIndexByThName( SymbolLibrary.CLAY ), 48, 48 );
     assertPreviewFits( SymbolType.AREA, BrushManager.getAreaIndexByThName( SymbolLibrary.BEDROCK ), 48, 48 );
   }
@@ -165,8 +166,14 @@ public class SymbolPreviewRendererInstrumentedTest
     assertTrue( "Water preview should retain at least three fully legible stripe rows",
         readableCore >= 3.0f * water.mSpacingScale * ink - 0.01f );
 
+    int sumpIndex = BrushManager.getAreaIndexByThName( SymbolLibrary.SUMP );
+    AreaLinePattern sump = BrushManager.getAreaLinePattern( sumpIndex );
+    assertNotNull( "Missing sump pattern", sump );
+    assertEquals( AreaLinePattern.TYPE_CROSSHATCH, sump.mType );
+
     assertPreviewFits( SymbolType.AREA, bedrockIndex, 48, 48 );
     assertPreviewFits( SymbolType.AREA, waterIndex, 48, 48 );
+    assertPreviewFits( SymbolType.AREA, sumpIndex, 48, 48 );
   }
 
   private void assertPreviewFits( int type, int index, int widthDp, int heightDp )

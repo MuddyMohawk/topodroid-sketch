@@ -40,6 +40,7 @@ public class SymbolLibrary
   public final static String DASHED_LINE_WITH_ARROW = "dashed-line-with-arrow";
   public final static String INTERMITTENT_DOTTED_ARROW = "intermittent-dotted-arrow";
   public final static String WATER   = "water";
+  public final static String SUMP    = "sump";
   public final static String AUDIO   = "audio";
   public final static String PHOTO   = "photo";
   public final static String PICTURE = "picture";

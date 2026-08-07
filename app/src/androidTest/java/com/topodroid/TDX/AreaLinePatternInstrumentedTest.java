@@ -40,6 +40,30 @@ public class AreaLinePatternInstrumentedTest
   }
 
   @Test
+  public void parsesSumpCrosshatchGrammar()
+  {
+    AreaLinePattern p = parse( "crosshatch angle -35 color 0x3366ff 0x66 width 5.0 spacing 10.0 fade 25.0 replaces water" );
+    assertNotNull( p );
+    assertEquals( AreaLinePattern.TYPE_CROSSHATCH, p.mType );
+    assertEquals( -35.0f, p.mAngle, 0.001f );
+    assertEquals( 0x663366ff, p.mColor );
+    assertEquals(  5.0f, p.mWidthScale,   0.001f );
+    assertEquals( 10.0f, p.mSpacingScale, 0.001f );
+    assertEquals( 25.0f, p.mFadeScale,    0.001f );
+    assertEquals( SymbolLibrary.WATER, p.mReplacesThName );
+  }
+
+  @Test
+  public void minimalCrosshatchGetsMirroredStripeDefaults()
+  {
+    AreaLinePattern p = parse( "crosshatch" );
+    assertNotNull( p );
+    assertEquals( AreaLinePattern.TYPE_CROSSHATCH, p.mType );
+    assertEquals( AreaLinePattern.DEFAULT_ANGLE, p.mAngle, 0.001f );
+    assertNull( p.mReplacesThName );
+  }
+
+  @Test
   public void parsesClayDashesGrammar()
   {
     AreaLinePattern p = parse( "dashes angle 0 color 0xe0d5c0 0xcc width 0.75 dash 5.0 spacing 5.5 period 13.0 fade 5.0" );
@@ -132,9 +156,10 @@ public class AreaLinePatternInstrumentedTest
   @Test
   public void rejectsUnsupportedTypeAndMalformedNumbers()
   {
-    assertNull( parse( "crosshatch angle -35" ) );
+    assertNull( parse( "checkerboard angle -35" ) );
     assertNull( parse( "parallel width abc" ) );
     assertNull( parse( "parallel color 0x3366ff" ) ); // color needs rgb + alpha
+    assertNull( parse( "crosshatch replaces" ) );
     assertNull( AreaLinePattern.parse( new String[0], 0 ) );
     assertNull( AreaLinePattern.parse( null, 0 ) );
   }

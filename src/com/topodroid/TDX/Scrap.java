@@ -3435,6 +3435,7 @@ public class Scrap
     // Same-symbol areas share a union only when their weight and resolved style color
     // also match; otherwise one area's toolbar override would color the entire group.
     LinkedHashMap< PatternedAreaGroupKey, ArrayList< DrawingAreaPath > > groups = null;
+    LinkedHashMap< String, ArrayList< DrawingAreaPath > > replacements = null;
     RectF pad = ( bbox == null )? null : new RectF();
     for ( Object cmd : commands ) {
       if ( ! ( cmd instanceof DrawingAreaPath ) ) continue;
@@ -3442,6 +3443,15 @@ public class Scrap
       AreaLinePattern pattern = BrushManager.getAreaLinePattern( area.mAreaType );
       if ( pattern == null ) continue;
       if ( with_levels && ! DrawingLevel.isLevelVisible( area ) ) continue;
+      if ( pattern.mReplacesThName != null ) {
+        if ( replacements == null ) replacements = new LinkedHashMap<>();
+        ArrayList< DrawingAreaPath > masks = replacements.get( pattern.mReplacesThName );
+        if ( masks == null ) {
+          masks = new ArrayList<>();
+          replacements.put( pattern.mReplacesThName, masks );
+        }
+        masks.add( area );
+      }
       float weight_scale = area.getPatternWeightScale();
       if ( pad != null ) {
         // padded cull: members just outside the viewport still shape the visible union boundary/fade
@@ -3465,8 +3475,11 @@ public class Scrap
     for ( Map.Entry< PatternedAreaGroupKey, ArrayList< DrawingAreaPath > > entry : groups.entrySet() ) {
       PatternedAreaGroupKey key = entry.getKey();
       ArrayList< DrawingAreaPath > members = entry.getValue();
+      ArrayList< DrawingAreaPath > exclusions = ( replacements == null )? null
+          : replacements.get( BrushManager.getAreaThName( key.mAreaType ) );
       AreaPatternRenderer.drawGroup( canvas, matrix, bbox, BrushManager.getAreaLinePattern( key.mAreaType ),
-                                     members, with_xor, members.get( 0 ).getPatternWeightScale(), key.mColor );
+                                     members, exclusions, with_xor,
+                                     members.get( 0 ).getPatternWeightScale(), key.mColor );
     }
   }
 

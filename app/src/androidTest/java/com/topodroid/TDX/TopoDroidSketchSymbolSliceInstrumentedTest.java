@@ -243,6 +243,17 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                 ! entries.contains( "symbols_topodroid_sketch/point/gypsum-wall-crust" ) );
     assertTrue( "Missing sketch bedrock area in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/area/bedrock" ) );
+    assertTrue( "Missing sketch sump area in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/area/sump" ) );
+
+    String sump = readRawSymbolEntry( "symbols_topodroid_sketch/area/sump" );
+    assertTrue( "Sump should use the standard Therion identity", sump.contains( "\nth_name sump\n" ) );
+    assertTrue( "Sump should use the water group", sump.contains( "\ngroup water\n" ) );
+    assertTrue( "Sump should declare mirrored crosshatching that replaces water",
+                sump.contains( "\nline_pattern crosshatch angle -35" )
+                    && sump.contains( " replaces water\n" ) );
+    assertTrue( "Sump should remain hard-clipped with no boundary fade",
+                sump.contains( " spacing 10.0 fade 0.0 replaces water\n" ) );
 
     String flowstone = readRawSymbolEntry( "symbols_topodroid_sketch/line/flowstone" );
     String shelfstone = readRawSymbolEntry( "symbols_topodroid_sketch/line/shelfstone" );

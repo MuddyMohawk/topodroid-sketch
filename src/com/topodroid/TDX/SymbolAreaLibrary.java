@@ -29,7 +29,15 @@ import android.content.res.Resources;
 
 public class SymbolAreaLibrary extends SymbolLibrary
 {
-  static final private String[] DefaultAreas = { BEDROCK, BLOCKS, CLAY, DEBRIS, SAND, WATER };
+  static final private String[] DefaultAreas = { BEDROCK, BLOCKS, CLAY, DEBRIS, SAND, SUMP, WATER };
+
+  /** @return whether a newly discovered area is enabled on a fresh configuration */
+  static boolean isDefaultArea( String th_name )
+  {
+    if ( th_name == null ) return false;
+    for ( String area : DefaultAreas ) if ( area.equals( th_name ) ) return true;
+    return false;
+  }
 
   /* private */ int mAreaUserIndex;
 
@@ -179,9 +187,7 @@ public class SymbolAreaLibrary extends SymbolLibrary
           boolean enable = symbol.isConfigEnabled();
           if ( TopoDroidApp.mData != null ) {
             if ( ! TopoDroidApp.mData.hasSymbolName( name ) ) {
-              for ( int k=0; k<DefaultAreas.length; ++k ) { 
-                if ( DefaultAreas[k].equals( thname ) ) { enable = true; break; }
-              }
+              enable = isDefaultArea( thname );
               TopoDroidApp.mData.setSymbolEnabled( name, enable ); // CONFIG_ENABLE
             } else {
               enable = TopoDroidApp.mData.getSymbolEnabled( name );

@@ -82,6 +82,7 @@ public class ToolbarRowsInstrumentedTest
     int clay = BrushManager.getPointIndexByThName( SymbolLibrary.CLAY );
     int bedrock = BrushManager.getPointIndexByThName( SymbolLibrary.BEDROCK );
     int bedrockArea = BrushManager.getAreaIndexByThName( SymbolLibrary.BEDROCK );
+    int sumpArea = BrushManager.getAreaIndexByThName( SymbolLibrary.SUMP );
     int boulder = BrushManager.getPointIndexByThName( "boulder" );
     int waterFlow = BrushManager.getLineIndexByThName( SymbolLibrary.WATER_FLOW );
 
@@ -91,11 +92,18 @@ public class ToolbarRowsInstrumentedTest
     assertTrue( "Missing sketch clay point", clay >= 0 );
     assertTrue( "Missing sketch bedrock point", bedrock >= 0 );
     assertTrue( "Missing sketch bedrock area", bedrockArea >= 0 );
+    assertTrue( "Missing sketch sump area", sumpArea >= 0 );
     AreaLinePattern bedrockPattern = BrushManager.getAreaLinePattern( bedrockArea );
     assertTrue( "Sketch bedrock area should declare a line pattern", bedrockPattern != null );
     assertEquals( AreaLinePattern.TYPE_BEDROCK, bedrockPattern.mType );
     assertEquals( "Bedrock should truncate, not fade, at its boundary",
                   0.0f, bedrockPattern.mFadeScale, 0.001f );
+    AreaLinePattern sumpPattern = BrushManager.getAreaLinePattern( sumpArea );
+    assertTrue( "Sketch sump area should declare a line pattern", sumpPattern != null );
+    assertEquals( AreaLinePattern.TYPE_CROSSHATCH, sumpPattern.mType );
+    assertEquals( SymbolLibrary.WATER, sumpPattern.mReplacesThName );
+    assertTrue( "Sump should be registered for fresh-install default enablement",
+                SymbolAreaLibrary.isDefaultArea( SymbolLibrary.SUMP ) );
     assertTrue( "Missing sketch boulder point", boulder >= 0 );
     assertTrue( "Missing sketch water-flow line", waterFlow >= 0 );
     for ( int k = 0; k < BrushManager.getLineLibSize(); ++k ) {

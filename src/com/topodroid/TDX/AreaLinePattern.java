@@ -3,7 +3,7 @@
  * @author MuddyMohawk
  * @date jul 2026
  *
- * @brief TopoDroid Sketch area line-fill metadata (stripes / dashes / bedrock courses)
+ * @brief TopoDroid Sketch area line-fill metadata (stripes / crosshatch / dashes / bedrock courses)
  * --------------------------------------------------------
  *  Copyright This software is distributed under GPL-3.0 or later
  *  See the file COPYING.
@@ -17,12 +17,15 @@ import com.topodroid.util.TDLog;
  *
  * Grammar (one line in the area symbol file):
  *   line_pattern parallel [angle A] [color 0xRRGGBB 0xAA] [width W] [spacing S] [fade F]
+ *   line_pattern crosshatch [angle A] [color 0xRRGGBB 0xAA] [width W] [spacing S]
+ *                           [fade F] [replaces AREA]
  *   line_pattern dashes   [angle A] [color 0xRRGGBB 0xAA] [width W] [spacing S]
  *                         [dash D] [period P] [fade F]
  *   line_pattern bedrock  [angle A] [color 0xRRGGBB 0xAA] [width W] [spacing S]
  *                         [period P] [fade F]
  *
- * "parallel" fills the area with continuous stripes (water). "dashes" fills it with
+ * "parallel" fills the area with continuous stripes (water). "crosshatch" draws the
+ * configured stripe angle and its mirror as one composite pattern (sump). "dashes" fills it with
  * short broken segments in horizontal rows (clay/mud): spacing is the perpendicular
  * row spacing, period the along-row slot spacing, dash the nominal segment length;
  * the renderer varies slot offsets and lengths with a small repeating stamp (see
@@ -34,17 +37,20 @@ import com.topodroid.util.TDLog;
  * standard weight. angle is degrees in the y-down scene sense. All fills anchor to
  * absolute scene coordinates. Unknown tokens are logged and skipped so future keys
  * degrade gracefully; an unsupported type or a malformed number voids the whole
- * pattern and the symbol falls back to its plain fill.
+ * pattern and the symbol falls back to its plain fill. The optional "replaces" target
+ * clips that named patterned-area ink wherever this pattern is visible.
  */
 class AreaLinePattern
 {
   static final int TYPE_PARALLEL = 0;
   static final int TYPE_DASHES   = 1;
   static final int TYPE_BEDROCK  = 2;
+  static final int TYPE_CROSSHATCH = 3;
 
   private static final String NAME_PARALLEL = "parallel";
   private static final String NAME_DASHES   = "dashes";
   private static final String NAME_BEDROCK  = "bedrock";
+  private static final String NAME_CROSSHATCH = "crosshatch";
 
   static final float DEFAULT_ANGLE   = -35.0f;
   static final int   DEFAULT_COLOR   = 0x663366ff;
@@ -55,7 +61,7 @@ class AreaLinePattern
   static final float DEFAULT_DASH    = 14.0f;
   static final float DEFAULT_PERIOD  = 24.0f;
 
-  final int   mType;         // TYPE_PARALLEL, TYPE_DASHES, or TYPE_BEDROCK
+  final int   mType;         // TYPE_PARALLEL, TYPE_CROSSHATCH, TYPE_DASHES, or TYPE_BEDROCK
   final float mAngle;        // line direction [degrees, y-down scene sense]
   final int   mColor;        // ink ARGB color
   final float mWidthScale;   // stroke width [ink units]
@@ -63,9 +69,10 @@ class AreaLinePattern
   final float mFadeScale;    // boundary fade depth [ink units], 0 = no fade
   final float mDashScale;    // dashes: nominal segment length [ink units]
   final float mPeriodScale;  // dashes/bedrock: along-row slot or joint spacing [ink units]
+  final String mReplacesThName; // optional patterned-area Therion name hidden beneath this pattern
 
   private AreaLinePattern( int type, float angle, int color, float width_scale, float spacing_scale,
-                           float dash_scale, float period_scale, float fade_scale )
+                           float dash_scale, float period_scale, float fade_scale, String replaces_th_name )
   {
     mType         = type;
     mAngle        = angle;
@@ -75,17 +82,36 @@ class AreaLinePattern
     mDashScale    = dash_scale;
     mPeriodScale  = period_scale;
     mFadeScale    = fade_scale;
+    mReplacesThName = replaces_th_name;
   }
 
   /** @return a parallel-stripe pattern, with non-positive/invalid metrics replaced by defaults
    */
   static AreaLinePattern parallel( float angle, int color, float width_scale, float spacing_scale, float fade_scale )
   {
+    return parallel( angle, color, width_scale, spacing_scale, fade_scale, null );
+  }
+
+  private static AreaLinePattern parallel( float angle, int color, float width_scale, float spacing_scale,
+                                           float fade_scale, String replaces_th_name )
+  {
     return new AreaLinePattern( TYPE_PARALLEL, angle, color,
         positiveOrDefault( width_scale,   DEFAULT_WIDTH ),
         positiveOrDefault( spacing_scale, DEFAULT_SPACING ),
         DEFAULT_DASH, DEFAULT_PERIOD,
-        nonNegativeOrDefault( fade_scale, DEFAULT_FADE ) );
+        nonNegativeOrDefault( fade_scale, DEFAULT_FADE ), replaces_th_name );
+  }
+
+  /** @return mirrored continuous stripes, composited as one non-intensifying pattern
+   */
+  static AreaLinePattern crosshatch( float angle, int color, float width_scale, float spacing_scale,
+                                     float fade_scale, String replaces_th_name )
+  {
+    return new AreaLinePattern( TYPE_CROSSHATCH, angle, color,
+        positiveOrDefault( width_scale,   DEFAULT_WIDTH ),
+        positiveOrDefault( spacing_scale, DEFAULT_SPACING ),
+        DEFAULT_DASH, DEFAULT_PERIOD,
+        nonNegativeOrDefault( fade_scale, DEFAULT_FADE ), replaces_th_name );
   }
 
   /** @return a broken-dash pattern, with non-positive/invalid metrics replaced by defaults
@@ -93,12 +119,19 @@ class AreaLinePattern
   static AreaLinePattern dashes( float angle, int color, float width_scale, float spacing_scale,
                                  float dash_scale, float period_scale, float fade_scale )
   {
+    return dashes( angle, color, width_scale, spacing_scale, dash_scale, period_scale, fade_scale, null );
+  }
+
+  private static AreaLinePattern dashes( float angle, int color, float width_scale, float spacing_scale,
+                                         float dash_scale, float period_scale, float fade_scale,
+                                         String replaces_th_name )
+  {
     return new AreaLinePattern( TYPE_DASHES, angle, color,
         positiveOrDefault( width_scale,   DEFAULT_WIDTH ),
         positiveOrDefault( spacing_scale, DEFAULT_SPACING ),
         positiveOrDefault( dash_scale,    DEFAULT_DASH ),
         positiveOrDefault( period_scale,  DEFAULT_PERIOD ),
-        nonNegativeOrDefault( fade_scale, DEFAULT_FADE ) );
+        nonNegativeOrDefault( fade_scale, DEFAULT_FADE ), replaces_th_name );
   }
 
   /** @return an irregular bedrock-course pattern, with invalid metrics replaced by defaults
@@ -106,12 +139,18 @@ class AreaLinePattern
   static AreaLinePattern bedrock( float angle, int color, float width_scale, float spacing_scale,
                                   float period_scale, float fade_scale )
   {
+    return bedrock( angle, color, width_scale, spacing_scale, period_scale, fade_scale, null );
+  }
+
+  private static AreaLinePattern bedrock( float angle, int color, float width_scale, float spacing_scale,
+                                          float period_scale, float fade_scale, String replaces_th_name )
+  {
     return new AreaLinePattern( TYPE_BEDROCK, angle, color,
         positiveOrDefault( width_scale,   DEFAULT_WIDTH ),
         positiveOrDefault( spacing_scale, DEFAULT_SPACING ),
         DEFAULT_DASH,
         positiveOrDefault( period_scale,  DEFAULT_PERIOD ),
-        nonNegativeOrDefault( fade_scale, DEFAULT_FADE ) );
+        nonNegativeOrDefault( fade_scale, DEFAULT_FADE ), replaces_th_name );
   }
 
   /** parse the tokens that follow the "line_pattern" key
@@ -131,6 +170,8 @@ class AreaLinePattern
       type = TYPE_DASHES;
     } else if ( NAME_BEDROCK.equals( vals[start] ) ) {
       type = TYPE_BEDROCK;
+    } else if ( NAME_CROSSHATCH.equals( vals[start] ) ) {
+      type = TYPE_CROSSHATCH;
     } else {
       TDLog.e( "Unsupported area line_pattern type: " + vals[start] );
       return null;
@@ -142,6 +183,7 @@ class AreaLinePattern
     float dash    = DEFAULT_DASH;
     float period  = DEFAULT_PERIOD;
     float fade    = DEFAULT_FADE;
+    String replaces_th_name = null;
     for ( int k = nextToken( vals, start+1 ); k < vals.length; k = nextToken( vals, k+1 ) ) {
       String key = vals[k];
       try {
@@ -171,6 +213,10 @@ class AreaLinePattern
         } else if ( "fade".equals( key ) ) {
           k = nextToken( vals, k+1 );
           if ( k < vals.length ) fade = Float.parseFloat( vals[k] );
+        } else if ( "replaces".equals( key ) ) {
+          k = nextToken( vals, k+1 );
+          if ( k >= vals.length || vals[k].startsWith( "#" ) ) return null;
+          replaces_th_name = vals[k];
         } else {
           TDLog.e( "Unknown area line_pattern token: " + key );
         }
@@ -180,11 +226,13 @@ class AreaLinePattern
       }
     }
     if ( type == TYPE_DASHES ) {
-      return dashes( angle, color, width, spacing, dash, period, fade );
+      return dashes( angle, color, width, spacing, dash, period, fade, replaces_th_name );
     } else if ( type == TYPE_BEDROCK ) {
-      return bedrock( angle, color, width, spacing, period, fade );
+      return bedrock( angle, color, width, spacing, period, fade, replaces_th_name );
+    } else if ( type == TYPE_CROSSHATCH ) {
+      return crosshatch( angle, color, width, spacing, fade, replaces_th_name );
     }
-    return parallel( angle, color, width, spacing, fade );
+    return parallel( angle, color, width, spacing, fade, replaces_th_name );
   }
 
   private static float positiveOrDefault( float value, float fallback )

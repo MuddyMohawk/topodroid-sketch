@@ -1,6 +1,7 @@
 package com.topodroid.TDX;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -13,6 +14,10 @@ import android.graphics.RectF;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import com.topodroid.prefs.TDSetting;
+
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -29,6 +34,33 @@ public class AreaPatternRendererInstrumentedTest
   private static final float SCALE = 4.0f;
   private static final AreaLinePattern BEDROCK = AreaLinePattern.bedrock(
       0.0f, 0xcc888888, 0.85f, 17.0f, 48.0f, 0.0f );
+  private static final AreaLinePattern SUMP = AreaLinePattern.crosshatch(
+      -35.0f, 0x663366ff, 5.0f, 10.0f, 0.0f, SymbolLibrary.WATER );
+
+  private Context mContext;
+  private Context mPreviousContext;
+  private int mPreviousWithLevels;
+  private int mPreviousDisplayLevel;
+
+  @Before
+  public void setUp()
+  {
+    mPreviousContext = TDInstance.context;
+    mPreviousWithLevels = TDSetting.mWithLevels;
+    mPreviousDisplayLevel = DrawingLevel.getDisplayLevel();
+    mContext = InstrumentationRegistry.getInstrumentation().getTargetContext().getApplicationContext();
+    TDInstance.setContext( mContext );
+    TopoDroidApp.installSymbols( true );
+    BrushManager.reloadAreaLibrary( mContext.getResources() );
+  }
+
+  @After
+  public void tearDown()
+  {
+    TDSetting.mWithLevels = mPreviousWithLevels;
+    DrawingLevel.setDisplayLevel( mPreviousDisplayLevel );
+    TDInstance.context = mPreviousContext;
+  }
 
   @Test
   public void bedrockPattern_isWorldAnchoredIrregularAndHardClipped() throws Exception
@@ -102,12 +134,212 @@ public class AreaPatternRendererInstrumentedTest
     b.recycle();
   }
 
+  @Test
+  public void crosshatch_drawsMirroredFamiliesAsOneOpacityLayer()
+  {
+    DrawingAreaPath area = rectangle( 18.0f, 16.0f, 142.0f, 104.0f );
+    Bitmap crosshatch = renderPattern( SUMP, area );
+    Bitmap negative = renderPattern( AreaLinePattern.parallel(
+        -35.0f, SUMP.mColor, SUMP.mWidthScale, SUMP.mSpacingScale, 0.0f ), area );
+    Bitmap positive = renderPattern( AreaLinePattern.parallel(
+         35.0f, SUMP.mColor, SUMP.mWidthScale, SUMP.mSpacingScale, 0.0f ), area );
+
+    int crossOnly = 0;
+    int expectedAlpha = Color.alpha( SUMP.mColor );
+    for ( int y = 0; y < HEIGHT; ++y ) {
+      for ( int x = 0; x < WIDTH; ++x ) {
+        int crossAlpha = Color.alpha( crosshatch.getPixel( x, y ) );
+        boolean expectedSolidInk = Color.alpha( negative.getPixel( x, y ) ) > 32
+                                || Color.alpha( positive.getPixel( x, y ) ) > 32;
+        boolean crossSolidInk = crossAlpha > 32;
+        if ( expectedSolidInk ) {
+          assertTrue( "Crosshatch omitted solid mirrored-stripe ink at " + x + "," + y,
+                      crossAlpha > 8 );
+        }
+        if ( crossSolidInk ) {
+          assertTrue( "Crosshatch introduced ink outside both mirrored families at " + x + "," + y,
+                      Color.alpha( negative.getPixel( x, y ) ) > 8
+                          || Color.alpha( positive.getPixel( x, y ) ) > 8 );
+        }
+        assertTrue( "Crosshatch intersections accumulated opacity at " + x + "," + y,
+                    crossAlpha <= expectedAlpha );
+        if ( crossAlpha > 8 && Color.alpha( negative.getPixel( x, y ) ) <= 8 ) ++crossOnly;
+      }
+    }
+    assertTrue( "Mirrored positive-angle stripes were not visible", crossOnly > 100 );
+    crosshatch.recycle();
+    negative.recycle();
+    positive.recycle();
+  }
+
+  @Test
+  public void overlappingSumpMembers_unionWithoutDarkening()
+  {
+    DrawingAreaPath area = rectangle( 20.0f, 18.0f, 140.0f, 102.0f );
+    Bitmap single = renderPattern( SUMP, area );
+    ArrayList< DrawingAreaPath > duplicates = new ArrayList<>();
+    duplicates.add( area );
+    duplicates.add( rectangle( 20.0f, 18.0f, 140.0f, 102.0f ) );
+    Bitmap doubled = renderPattern( SUMP, duplicates );
+    assertBitmapsEqual( "Duplicate sump members changed the union render", single, doubled );
+    single.recycle();
+    doubled.recycle();
+  }
+
+  @Test
+  public void sumpReplacesWater_independentOfDrawOrderAndStyle()
+  {
+    int waterType = BrushManager.getAreaIndexByThName( SymbolLibrary.WATER );
+    int sumpType = BrushManager.getAreaIndexByThName( SymbolLibrary.SUMP );
+    assertTrue( "Missing packaged water area", waterType >= 0 );
+    assertTrue( "Missing packaged sump area", sumpType >= 0 );
+
+    DrawingAreaPath water = rectangle( waterType, 8.0f, 8.0f, 152.0f, 112.0f );
+    DrawingAreaPath sump = rectangle( sumpType, 48.0f, 28.0f, 122.0f, 92.0f );
+    ArrayList< DrawingAreaPath > waterThenSump = commands( water, sump );
+    ArrayList< DrawingAreaPath > sumpThenWater = commands( sump, water );
+    Bitmap forward = renderCommands( waterThenSump );
+    Bitmap reverse = renderCommands( sumpThenWater );
+    Bitmap sumpOnly = renderCommands( commands( sump ) );
+    Bitmap waterOnly = renderCommands( commands( water ) );
+
+    assertBitmapsEqual( "Sump replacement depends on command order", forward, reverse );
+    int inset = 3;
+    int left = Math.round( 48.0f * SCALE ) + inset;
+    int top = Math.round( 28.0f * SCALE ) + inset;
+    int right = Math.round( 122.0f * SCALE ) - inset;
+    int bottom = Math.round( 92.0f * SCALE ) - inset;
+    for ( int y = 0; y < HEIGHT; ++y ) {
+      for ( int x = 0; x < WIDTH; ++x ) {
+        if ( x >= left && x < right && y >= top && y < bottom ) {
+          assertEquals( "Water remained beneath sump at " + x + "," + y,
+                        sumpOnly.getPixel( x, y ), forward.getPixel( x, y ) );
+        } else if ( x < left - inset || x >= right + inset || y < top - inset || y >= bottom + inset ) {
+          assertEquals( "Water changed outside sump at " + x + "," + y,
+                        waterOnly.getPixel( x, y ), forward.getPixel( x, y ) );
+        }
+      }
+    }
+
+    forward.recycle();
+    reverse.recycle();
+    sumpOnly.recycle();
+    waterOnly.recycle();
+  }
+
+  @Test
+  public void hiddenSump_doesNotMaskVisibleWater()
+  {
+    int waterType = BrushManager.getAreaIndexByThName( SymbolLibrary.WATER );
+    int sumpType = BrushManager.getAreaIndexByThName( SymbolLibrary.SUMP );
+    DrawingAreaPath water = rectangle( waterType, 8.0f, 8.0f, 152.0f, 112.0f );
+    DrawingAreaPath sump = rectangle( sumpType, 48.0f, 28.0f, 122.0f, 92.0f );
+    sump.mLevel = DrawingLevel.LEVEL_CEIL;
+    TDSetting.mWithLevels = 2;
+    DrawingLevel.setDisplayLevel( DrawingLevel.LEVEL_WATER );
+
+    Bitmap combined = renderCommands( commands( water, sump ) );
+    Bitmap expected = renderCommands( commands( water ) );
+    assertBitmapsEqual( "A level-hidden sump masked visible water", expected, combined );
+    combined.recycle();
+    expected.recycle();
+  }
+
+  @Test
+  public void sumpReplacement_doesNotMaskClayOrBedrock()
+  {
+    assertUnrelatedPatternSurvives( SymbolLibrary.CLAY );
+    assertUnrelatedPatternSurvives( SymbolLibrary.BEDROCK );
+  }
+
   private static Bitmap renderTransparent( DrawingAreaPath area )
   {
     Bitmap bitmap = Bitmap.createBitmap( WIDTH, HEIGHT, Bitmap.Config.ARGB_8888 );
     bitmap.eraseColor( Color.TRANSPARENT );
     draw( new Canvas( bitmap ), area, new RectF( 0.0f, 0.0f, WIDTH / SCALE, HEIGHT / SCALE ) );
     return bitmap;
+  }
+
+  private static Bitmap renderPattern( AreaLinePattern pattern, DrawingAreaPath area )
+  {
+    ArrayList< DrawingAreaPath > members = new ArrayList<>();
+    members.add( area );
+    return renderPattern( pattern, members );
+  }
+
+  private static Bitmap renderPattern( AreaLinePattern pattern, ArrayList< DrawingAreaPath > members )
+  {
+    Bitmap bitmap = Bitmap.createBitmap( WIDTH, HEIGHT, Bitmap.Config.ARGB_8888 );
+    bitmap.eraseColor( Color.TRANSPARENT );
+    Matrix matrix = new Matrix();
+    matrix.setScale( SCALE, SCALE );
+    AreaPatternRenderer.drawGroup( new Canvas( bitmap ), matrix,
+        new RectF( 0.0f, 0.0f, WIDTH / SCALE, HEIGHT / SCALE ),
+        pattern, members, false, 1.0f, pattern.mColor );
+    return bitmap;
+  }
+
+  private static Bitmap renderCommands( ArrayList< DrawingAreaPath > commands )
+  {
+    Bitmap bitmap = Bitmap.createBitmap( WIDTH, HEIGHT, Bitmap.Config.ARGB_8888 );
+    bitmap.eraseColor( Color.TRANSPARENT );
+    Matrix matrix = new Matrix();
+    matrix.setScale( SCALE, SCALE );
+    Scrap.drawPatternedAreaGroups( new Canvas( bitmap ), matrix,
+        new RectF( 0.0f, 0.0f, WIDTH / SCALE, HEIGHT / SCALE ), false, commands );
+    return bitmap;
+  }
+
+  private static ArrayList< DrawingAreaPath > commands( DrawingAreaPath... areas )
+  {
+    ArrayList< DrawingAreaPath > result = new ArrayList<>();
+    for ( DrawingAreaPath area : areas ) result.add( area );
+    return result;
+  }
+
+  private static void assertBitmapsEqual( String message, Bitmap expected, Bitmap actual )
+  {
+    assertEquals( message + " width", expected.getWidth(), actual.getWidth() );
+    assertEquals( message + " height", expected.getHeight(), actual.getHeight() );
+    for ( int y = 0; y < expected.getHeight(); ++y ) {
+      for ( int x = 0; x < expected.getWidth(); ++x ) {
+        assertEquals( message + " at " + x + "," + y,
+                      expected.getPixel( x, y ), actual.getPixel( x, y ) );
+      }
+    }
+  }
+
+  private static void assertUnrelatedPatternSurvives( String thName )
+  {
+    int sumpType = BrushManager.getAreaIndexByThName( SymbolLibrary.SUMP );
+    int otherType = BrushManager.getAreaIndexByThName( thName );
+    assertTrue( "Missing sump area", sumpType >= 0 );
+    assertTrue( "Missing unrelated area " + thName, otherType >= 0 );
+    DrawingAreaPath sump = rectangle( sumpType, 42.0f, 24.0f, 126.0f, 96.0f );
+    DrawingAreaPath other = rectangle( otherType, 8.0f, 8.0f, 152.0f, 112.0f );
+    Bitmap sumpOnly = renderCommands( commands( sump ) );
+    Bitmap otherOnly = renderCommands( commands( other ) );
+    Bitmap combined = renderCommands( commands( sump, other ) );
+
+    int preserved = 0;
+    int left = Math.round( 42.0f * SCALE ) + 8;
+    int top = Math.round( 24.0f * SCALE ) + 8;
+    int right = Math.round( 126.0f * SCALE ) - 8;
+    int bottom = Math.round( 96.0f * SCALE ) - 8;
+    for ( int y = top; y < bottom; ++y ) {
+      for ( int x = left; x < right; ++x ) {
+        if ( Color.alpha( sumpOnly.getPixel( x, y ) ) == 0
+            && Color.alpha( otherOnly.getPixel( x, y ) ) > 64 ) {
+          assertEquals( thName + " was masked by sump at " + x + "," + y,
+                        otherOnly.getPixel( x, y ), combined.getPixel( x, y ) );
+          ++preserved;
+        }
+      }
+    }
+    assertTrue( "No preserved " + thName + " samples were found inside sump", preserved > 20 );
+    sumpOnly.recycle();
+    otherOnly.recycle();
+    combined.recycle();
   }
 
   private static void draw( Canvas canvas, DrawingAreaPath area, RectF bbox )
@@ -121,7 +353,12 @@ public class AreaPatternRendererInstrumentedTest
 
   private static DrawingAreaPath rectangle( float left, float top, float right, float bottom )
   {
-    DrawingAreaPath area = new DrawingAreaPath( 0, 1, "bedrock-test", true, 0 );
+    return rectangle( 0, left, top, right, bottom );
+  }
+
+  private static DrawingAreaPath rectangle( int type, float left, float top, float right, float bottom )
+  {
+    DrawingAreaPath area = new DrawingAreaPath( type, 1, "area-pattern-test", true, 0 );
     area.addStartPoint( left, top );
     area.addPoint( right, top );
     area.addPoint( right, bottom );
