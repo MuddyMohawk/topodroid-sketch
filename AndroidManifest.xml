@@ -157,15 +157,27 @@
 	  <!-- android:extractNativeLibs="false" --> <!-- whether to extract native libs to file system or not -->
           <!-- android:debuggable="false" -->
 
-        <activity android:name=".MainWindow"
-	  android:theme="@style/Theme.NoFullScreen"
-          android:configChanges="orientation|screenSize"
+        <activity android:name=".LauncherActivity"
+          android:theme="@android:style/Theme.NoDisplay"
+          android:taskAffinity="${applicationId}.launcher"
+          android:excludeFromRecents="true"
+          android:noHistory="true"
           android:exported="true"
           >
           <intent-filter>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
           </intent-filter>
+          <meta-data android:name="android.app.shortcuts"
+                     android:resource="@xml/shortcuts"
+          />
+        </activity>
+
+        <activity android:name=".MainWindow"
+	  android:theme="@style/Theme.NoFullScreen"
+          android:configChanges="orientation|screenSize"
+          android:exported="true"
+          >
           <!-- intent-filter>
             <action android:name="android.intent.action.VIEW" />
             <category android:name="android.intent.category.DEFAULT" />
@@ -176,9 +188,6 @@
             <category android:name="android.intent.category.DEFAULT" />
             <data android:mimeType="application/zip" />
           </intent-filter>
-          <meta-data android:name="android.app.shortcuts"
-                     android:resource="@xml/shortcuts"
-          />
         </activity>
 
         <activity android:name=".FixedActivity"
