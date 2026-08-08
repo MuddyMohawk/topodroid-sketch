@@ -103,7 +103,8 @@
     / -->
   </LinearLayout>
 
-  <LinearLayout 
+  <LinearLayout
+    android:id="@+id/point_orientation_layout"
     style="@style/base_padding"
     android:layout_width="match_parent" 
     android:layout_height="wrap_content"

@@ -140,6 +140,8 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                 entries.contains( "symbols_topodroid_sketch/point/pit-depth" ) );
     assertTrue( "Missing smart bedding-attitude point in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/point/bedding-attitude" ) );
+    assertTrue( "Missing true-scale caver point in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/point/caver" ) );
     assertTrue( "Missing paired-rail ceiling-channel line in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/line/ceiling-meander" ) );
     assertTrue( "Missing paired-rail floor-channel line in default raw pack",
@@ -206,6 +208,10 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                 entries.contains( "symbols_topodroid_sketch/point/angular-block" ) );
     assertTrue( "Missing traced bedding-slab point in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/point/bedding-slab" ) );
+    String caver = readRawSymbolEntry( "symbols_topodroid_sketch/point/caver" );
+    assertTrue( "Caver should use a custom Therion identity", caver.contains( "\nth_name u:caver\n" ) );
+    assertTrue( "Caver should not be manually orientable", caver.contains( "\norientation no\n" ) );
+    assertTrue( "Caver should not use generic point scaling", caver.contains( "\nscalable no\n" ) );
     String[] breakdownEntries = {
       "symbols_topodroid_sketch/point/boulder",
       "symbols_topodroid_sketch/point/angular-block",

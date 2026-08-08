@@ -20,6 +20,7 @@ final class SpecialPointRegistry
     register( therion, ids, new PitDepthPointBehavior() );
     register( therion, ids, new BeddingAttitudePointBehavior() );
     register( therion, ids, new TitleLegendPointBehavior() );
+    register( therion, ids, new CaverPointBehavior() );
     BY_THERION = Collections.unmodifiableMap( therion );
     BY_ID = Collections.unmodifiableMap( ids );
   }

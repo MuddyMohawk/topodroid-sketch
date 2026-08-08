@@ -128,6 +128,10 @@ class DrawingPointDialog extends MyDialog
     }
 
     mOrientationWidget = new MyOrientationWidget( this, mOrientable, mPoint.mOrientation );
+    if ( ! mOrientable ) {
+      View orientation_layout = findViewById( R.id.point_orientation_layout );
+      if ( orientation_layout != null ) orientation_layout.setVisibility( View.GONE );
+    }
 
     // if ( BrushManager.isPointSection( mPoint.mPointType ) ) {
     //   // FIXME SECTION_RENAME
@@ -156,6 +160,10 @@ class DrawingPointDialog extends MyDialog
     mBtnScaleM  = (RadioButton) findViewById( R.id.point_scale_m  );
     mBtnScaleL  = (RadioButton) findViewById( R.id.point_scale_l  );
     mBtnScaleXL = (RadioButton) findViewById( R.id.point_scale_xl );
+    if ( ! BrushManager.isPointScalable( mPointType ) ) {
+      View scale_layout = findViewById( R.id.line_outline );
+      if ( scale_layout != null ) scale_layout.setVisibility( View.GONE );
+    }
     switch ( mPoint.getScale() ) {
       case PointScale.SCALE_XS: mBtnScaleXS.setChecked( true ); break;
       case PointScale.SCALE_S:  mBtnScaleS.setChecked( true ); break;

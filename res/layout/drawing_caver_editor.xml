@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:orientation="vertical">
+
+  <TextView
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/margintiny"
+    android:text="@string/caver_silhouette" />
+
+  <com.topodroid.ui.SegmentedToggleBar
+    android:id="@+id/caver_variant"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/marginv" />
+
+  <TextView
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/margintiny"
+    android:text="@string/caver_height" />
+
+  <LinearLayout
+    android:id="@+id/caver_metric_fields"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <EditText
+      android:id="@+id/caver_height_meters"
+      style="@style/edit_text_light"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:hint="@string/caver_height"
+      android:importantForAutofill="no"
+      android:inputType="numberDecimal"
+      android:singleLine="true" />
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="@dimen/marginh"
+      android:labelFor="@id/caver_height_meters"
+      android:text="@string/caver_meters" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:id="@+id/caver_imperial_fields"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <EditText
+      android:id="@+id/caver_height_feet"
+      style="@style/edit_text_light"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:hint="@string/caver_feet"
+      android:importantForAutofill="no"
+      android:inputType="number"
+      android:singleLine="true" />
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="@dimen/margintiny"
+      android:layout_marginEnd="@dimen/marginh"
+      android:labelFor="@id/caver_height_feet"
+      android:text="@string/caver_feet_short" />
+
+    <EditText
+      android:id="@+id/caver_height_inches"
+      style="@style/edit_text_light"
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_weight="1"
+      android:hint="@string/caver_inches"
+      android:importantForAutofill="no"
+      android:inputType="numberDecimal"
+      android:singleLine="true" />
+
+    <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="@dimen/margintiny"
+      android:labelFor="@id/caver_height_inches"
+      android:text="@string/caver_inches_short" />
+  </LinearLayout>
+</LinearLayout>

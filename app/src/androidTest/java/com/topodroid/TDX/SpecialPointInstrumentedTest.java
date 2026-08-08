@@ -9,13 +9,19 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.util.Base64;
+import android.view.View;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import com.topodroid.prefs.TDPrefHelper;
 import com.topodroid.prefs.TDSetting;
+import com.topodroid.ui.SegmentedToggleBar;
 import com.topodroid.types.PointScale;
 import com.topodroid.geo.BeddingAttitude;
 import com.topodroid.geo.BeddingMeasurementModel;
@@ -51,6 +57,7 @@ public class SpecialPointInstrumentedTest
     mPreviousContext = TDInstance.context;
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext().getApplicationContext();
     TDInstance.setContext( context );
+    TDSetting.loadSecondaryPreferences( new TDPrefHelper( context ) );
     TDPath.clearSymbols();
     TopoDroidApp.installSymbols( true );
     BrushManager.reloadPointLibrary( context, context.getResources() );
@@ -79,11 +86,13 @@ public class SpecialPointInstrumentedTest
     int pit_type = BrushManager.getPointIndexByThName( PitDepthPointBehavior.THERION_NAME );
     int bedding_type = BrushManager.getPointIndexByThName( BeddingAttitudePointBehavior.THERION_NAME );
     int title_legend_type = BrushManager.getPointIndexByThName( TitleLegendPointBehavior.THERION_NAME );
+    int caver_type = BrushManager.getPointIndexByThName( CaverPointBehavior.THERION_NAME );
     int sand_type = BrushManager.getPointIndexByThName( "sand" );
     assertTrue( ceiling_type >= 0 );
     assertTrue( pit_type >= 0 );
     assertTrue( bedding_type >= 0 );
     assertTrue( title_legend_type >= 0 );
+    assertTrue( caver_type >= 0 );
     assertTrue( sand_type >= 0 );
 
     DrawingPointPath ceiling = DrawingPointFactory.createPlacement(
@@ -98,11 +107,14 @@ public class SpecialPointInstrumentedTest
       ceiling_type, 0.0f, 0.0f, PointScale.SCALE_M, 0 );
     DrawingPointPath title_legend = DrawingPointFactory.createPlacement(
       title_legend_type, 10.0f, 20.0f, PointScale.SCALE_M, 0 );
+    DrawingPointPath caver = DrawingPointFactory.createPlacement(
+      caver_type, 10.0f, 20.0f, PointScale.SCALE_M, 0 );
 
     assertTrue( ceiling instanceof DrawingSemanticPointPath );
     assertTrue( pit instanceof DrawingSemanticPointPath );
     assertTrue( bedding instanceof DrawingSemanticPointPath );
     assertTrue( title_legend instanceof DrawingSemanticPointPath );
+    assertTrue( caver instanceof DrawingSemanticPointPath );
     assertFalse( sand instanceof DrawingSemanticPointPath );
     assertEquals( CeilingHeightPointBehavior.BEHAVIOR_ID,
       ((DrawingSemanticPointPath)ceiling).specialBehavior().behaviorId() );
@@ -116,6 +128,216 @@ public class SpecialPointInstrumentedTest
     assertEquals( PitDepthPointBehavior.FULL_THERION_NAME, pit.getFullThName() );
     assertEquals( BeddingAttitudePointBehavior.FULL_THERION_NAME, bedding.getFullThName() );
     assertTrue( ((DrawingSemanticPointPath)title_legend).previewUsesAuthoredGlyph() );
+    assertEquals( CaverPointBehavior.BEHAVIOR_ID,
+      ((DrawingSemanticPointPath)caver).specialBehavior().behaviorId() );
+    assertFalse( BrushManager.isPointOrientable( caver_type ) );
+    assertFalse( BrushManager.isPointScalable( caver_type ) );
+  }
+
+  @Test public void caverState_roundTripsAndStaysTrueScaleAtFeet() throws Exception
+  {
+    int type = BrushManager.getPointIndexByThName( CaverPointBehavior.THERION_NAME );
+    assertTrue( type >= 0 );
+    DrawingSemanticPointPath point = (DrawingSemanticPointPath)DrawingPointFactory.createPlacement(
+      type, 100.0f, 150.0f, PointScale.SCALE_XS, 2 );
+    CaverPointState defaults = (CaverPointState)point.specialState();
+    assertEquals( CaverPointState.Variant.MAN, defaults.variant );
+    assertEquals( 1.778, defaults.heightMeters, 0.0 );
+    assertEquals( SpecialPointPlacementAction.NONE,
+      point.initializePlacement( new SpecialPointPlacementContext( null ) ) );
+    assertNotNull( SketchPrivateOptions.getOptionValue(
+      point.mOptions, SketchPrivateOptions.OPTION_SPECIAL ) );
+
+    RectF man = point.exactSpecialBounds( false );
+    float expected_height = (float)( CaverPointState.DEFAULT_HEIGHT_METERS * DrawingUtil.SCALE_FIX );
+    assertEquals( expected_height, man.height(), 0.001f );
+    assertEquals( 150.0f, man.bottom, 0.001f );
+    assertEquals( 100.0f, man.centerX(), 0.001f );
+    assertEquals( expected_height * CaverPointRenderer.MAN_ASPECT, man.width(), 0.001f );
+
+    Bitmap rendered_man = Bitmap.createBitmap( 220, 180, Bitmap.Config.ARGB_8888 );
+    point.draw( new Canvas( rendered_man ), new Matrix(), 1.0f, new RectF( 0, 0, 220, 180 ) );
+    assertTrue( countOpaque( rendered_man ) > 100 );
+    assertOpaqueInside( rendered_man, man );
+    rendered_man.recycle();
+
+    point.setScale( PointScale.SCALE_XL );
+    assertFalse( point.setExactPointScale( 3.0f ) );
+    point.setSketchBrushStyle( SketchBrushStyle.of( 3.0f, 2.5f, 0.7f, 0xff00ff00 ) );
+    RectF styled = point.exactSpecialBounds( false );
+    assertEquals( man, styled );
+
+    DrawingSemanticPointPath transformed = (DrawingSemanticPointPath)DrawingPointFactory.createPlacement(
+      type, 100.0f, 150.0f, PointScale.SCALE_M, 0 );
+    Matrix doubled = new Matrix();
+    doubled.setScale( 2.0f, 2.0f );
+    transformed.scaleBy( 2.0f, doubled );
+    RectF scaled = transformed.exactSpecialBounds( false );
+    assertEquals( expected_height, scaled.height(), 0.001f );
+    assertEquals( 200.0f, scaled.centerX(), 0.001f );
+    assertEquals( 300.0f, scaled.bottom, 0.001f );
+    float[] affine_values = { 2.0f, 0.0f, 5.0f, 0.0f, 0.5f, 7.0f };
+    Matrix affine = new Matrix();
+    affine.setValues( new float[] { 2.0f, 0.0f, 5.0f, 0.0f, 0.5f, 7.0f, 0.0f, 0.0f, 1.0f } );
+    transformed.affineTransformBy( affine_values, affine );
+    RectF affine_bounds = transformed.exactSpecialBounds( false );
+    assertEquals( expected_height, affine_bounds.height(), 0.001f );
+    assertEquals( 405.0f, affine_bounds.centerX(), 0.001f );
+    assertEquals( 157.0f, affine_bounds.bottom, 0.001f );
+
+    point.setSpecialState( new CaverPointState( CaverPointState.Variant.WOMAN, 1.65 ), true );
+    RectF woman = point.exactSpecialBounds( false );
+    assertEquals( 1.65f * DrawingUtil.SCALE_FIX, woman.height(), 0.001f );
+    assertEquals( 150.0f, woman.bottom, 0.001f );
+    assertEquals( 100.0f, woman.centerX(), 0.001f );
+    assertEquals( woman.height() * CaverPointRenderer.WOMAN_ASPECT, woman.width(), 0.001f );
+    assertTrue( woman.width() < man.width() );
+
+    Bitmap rendered = Bitmap.createBitmap( 220, 180, Bitmap.Config.ARGB_8888 );
+    point.draw( new Canvas( rendered ), new Matrix(), 1.0f, new RectF( 0, 0, 220, 180 ) );
+    assertTrue( countOpaque( rendered ) > 100 );
+    assertOpaqueInside( rendered, woman );
+    rendered.recycle();
+
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    DataOutputStream output = new DataOutputStream( bytes );
+    point.toDataStream( output, 2 );
+    output.flush();
+    DataInputStream input = new DataInputStream( new ByteArrayInputStream( bytes.toByteArray() ) );
+    assertEquals( 'P', input.read() );
+    DrawingPointPath loaded_path = DrawingPointPath.loadDataStream( TDR_VERSION, input, 0.0f, 0.0f );
+    assertTrue( loaded_path instanceof DrawingSemanticPointPath );
+    CaverPointState loaded = (CaverPointState)((DrawingSemanticPointPath)loaded_path).specialState();
+    assertEquals( CaverPointState.Variant.WOMAN, loaded.variant );
+    assertEquals( 1.65, loaded.heightMeters, 0.0 );
+    assertTrue( loaded_path.toTherion().contains( CaverPointBehavior.FULL_THERION_NAME ) );
+    assertFalse( loaded_path.toTherion().contains( "-tdx-special" ) );
+  }
+
+  @Test public void caverHeightUnits_andCenteredPreviewsAreStable()
+  {
+    CaverHeightUnits.FeetInches default_height =
+      CaverHeightUnits.fromMeters( CaverPointState.DEFAULT_HEIGHT_METERS );
+    assertEquals( 5, default_height.feet );
+    assertEquals( 10.0, default_height.inches, 1.0e-8 );
+    assertEquals( CaverPointState.DEFAULT_HEIGHT_METERS,
+      CaverHeightUnits.toMeters( 5, 10.0 ), 1.0e-12 );
+    assertEquals( 1.7907, CaverHeightUnits.toMeters( 5, 10.5 ), 1.0e-12 );
+    String formatted = CaverPointEditorController.formatDecimal( 1.778 );
+    assertEquals( 1.778, CaverPointEditorController.parseDecimal( formatted ), 1.0e-12 );
+
+    String previous_unit = TDSetting.mUnitLengthStr;
+    try {
+      TDSetting.mUnitLengthStr = "ft";
+      assertTrue( CaverPointEditorController.usesFeet() );
+      TDSetting.mUnitLengthStr = "m";
+      assertFalse( CaverPointEditorController.usesFeet() );
+    } finally {
+      TDSetting.mUnitLengthStr = previous_unit;
+    }
+
+    int type = BrushManager.getPointIndexByThName( CaverPointBehavior.THERION_NAME );
+    SymbolInterface symbol = BrushManager.getPointByIndex( type );
+    SymbolPreviewRenderer preview = SymbolPreviewRenderer.create(
+      com.topodroid.types.SymbolType.POINT, type, symbol, 1.0f );
+    assertNotNull( preview );
+    Bitmap palette = Bitmap.createBitmap( 160, 100, Bitmap.Config.ARGB_8888 );
+    preview.draw( new Canvas( palette ), new RectF( 0, 0, 160, 100 ) );
+    assertCenteredInk( palette, 2.0f );
+    palette.recycle();
+
+    TitleLegendPointState.Row row = new TitleLegendPointState.Row(
+      "caver-preview", TitleLegendPointState.Kind.POINT, CaverPointBehavior.THERION_NAME,
+      "Caver", null, TitleLegendPointState.Preview.standard() );
+    SymbolSwatchSnapshot swatch = SymbolSwatchSnapshot.create(
+      row, new TitleLegendLayout.InstalledSymbolResolver() );
+    assertNotNull( swatch );
+    Bitmap legend = Bitmap.createBitmap( 160, 100, Bitmap.Config.ARGB_8888 );
+    swatch.draw( new Canvas( legend ), new RectF( 0, 0, 160, 100 ), 0 );
+    assertCenteredInk( legend, 2.0f );
+    legend.recycle();
+  }
+
+  @Test public void caverEditor_validatesSaveCancelAndUnitChanges()
+  {
+    final Context context = InstrumentationRegistry.getInstrumentation()
+      .getTargetContext().getApplicationContext();
+    final String previous_unit = TDSetting.mUnitLengthStr;
+    try {
+      InstrumentationRegistry.getInstrumentation().runOnMainSync( new Runnable() {
+        @Override public void run()
+        {
+          int type = BrushManager.getPointIndexByThName( CaverPointBehavior.THERION_NAME );
+          DrawingSemanticPointPath point = (DrawingSemanticPointPath)DrawingPointFactory.createPlacement(
+            type, 10.0f, 20.0f, PointScale.SCALE_M, 0 );
+
+          TDSetting.mUnitLengthStr = "m";
+          LinearLayout metric_container = new LinearLayout( context );
+          EditText primary_text = new EditText( context );
+          CaverPointEditorController metric = new CaverPointEditorController( context, point );
+          metric.bind( metric_container, primary_text );
+          EditText meters = (EditText)metric_container.findViewById( R.id.caver_height_meters );
+          SegmentedToggleBar variant =
+            (SegmentedToggleBar)metric_container.findViewById( R.id.caver_variant );
+          assertEquals( View.GONE, primary_text.getVisibility() );
+          assertEquals( View.VISIBLE,
+            metric_container.findViewById( R.id.caver_metric_fields ).getVisibility() );
+          assertEquals( View.GONE,
+            metric_container.findViewById( R.id.caver_imperial_fields ).getVisibility() );
+
+          meters.setText( "0" );
+          assertFalse( metric.canApply() );
+          assertNotNull( meters.getError() );
+          assertEquals( CaverPointState.DEFAULT_HEIGHT_METERS,
+            ((CaverPointState)point.specialState()).heightMeters, 0.0 );
+
+          meters.setText( "1.65" );
+          variant.setSelectedIndex( 1 );
+          assertTrue( metric.canApply() );
+          metric.cancel();
+          CaverPointState cancelled = (CaverPointState)point.specialState();
+          assertEquals( CaverPointState.Variant.MAN, cancelled.variant );
+          assertEquals( CaverPointState.DEFAULT_HEIGHT_METERS, cancelled.heightMeters, 0.0 );
+          assertTrue( metric.canApply() );
+          metric.apply();
+          CaverPointState saved_metric = (CaverPointState)point.specialState();
+          assertEquals( CaverPointState.Variant.WOMAN, saved_metric.variant );
+          assertEquals( 1.65, saved_metric.heightMeters, 0.0 );
+
+          TDSetting.mUnitLengthStr = "ft";
+          LinearLayout imperial_container = new LinearLayout( context );
+          CaverPointEditorController imperial = new CaverPointEditorController( context, point );
+          imperial.bind( imperial_container, new EditText( context ) );
+          EditText feet = (EditText)imperial_container.findViewById( R.id.caver_height_feet );
+          EditText inches = (EditText)imperial_container.findViewById( R.id.caver_height_inches );
+          assertEquals( View.VISIBLE,
+            imperial_container.findViewById( R.id.caver_imperial_fields ).getVisibility() );
+          assertTrue( imperial.canApply() );
+          imperial.apply();
+          assertEquals( 1.65, ((CaverPointState)point.specialState()).heightMeters, 0.0 );
+
+          inches.setText( "12" );
+          assertFalse( imperial.canApply() );
+          assertNotNull( inches.getError() );
+          assertEquals( 1.65, ((CaverPointState)point.specialState()).heightMeters, 0.0 );
+          feet.setText( "5" );
+          inches.setText( "10.5" );
+          assertTrue( imperial.canApply() );
+          imperial.apply();
+          assertEquals( 1.7907, ((CaverPointState)point.specialState()).heightMeters, 1.0e-12 );
+
+          TDSetting.mUnitLengthStr = "m";
+          LinearLayout reopened_container = new LinearLayout( context );
+          CaverPointEditorController reopened = new CaverPointEditorController( context, point );
+          reopened.bind( reopened_container, new EditText( context ) );
+          assertTrue( reopened.canApply() );
+          reopened.apply();
+          assertEquals( 1.7907, ((CaverPointState)point.specialState()).heightMeters, 1.0e-12 );
+        }
+      } );
+    } finally {
+      TDSetting.mUnitLengthStr = previous_unit;
+    }
   }
 
   @Test public void titleLegend_roundTripsRequestedShapeAndPreparedExpansion() throws Exception
@@ -498,6 +720,31 @@ public class SpecialPointInstrumentedTest
     int count = 0;
     for ( int pixel : pixels ) if ( ( pixel >>> 24 ) != 0 ) ++count;
     return count;
+  }
+
+  private static Rect opaqueBounds( Bitmap bitmap )
+  {
+    int left = bitmap.getWidth();
+    int top = bitmap.getHeight();
+    int right = -1;
+    int bottom = -1;
+    for ( int y = 0; y < bitmap.getHeight(); ++y ) for ( int x = 0; x < bitmap.getWidth(); ++x ) {
+      if ( ( bitmap.getPixel( x, y ) >>> 24 ) != 0 ) {
+        left = Math.min( left, x );
+        top = Math.min( top, y );
+        right = Math.max( right, x );
+        bottom = Math.max( bottom, y );
+      }
+    }
+    return right < left ? new Rect() : new Rect( left, top, right + 1, bottom + 1 );
+  }
+
+  private static void assertCenteredInk( Bitmap bitmap, float tolerance )
+  {
+    Rect bounds = opaqueBounds( bitmap );
+    assertFalse( bounds.isEmpty() );
+    assertEquals( 0.5f * bitmap.getWidth(), bounds.exactCenterX(), tolerance );
+    assertEquals( 0.5f * bitmap.getHeight(), bounds.exactCenterY(), tolerance );
   }
 
   private static Bitmap renderBedding( DrawingSemanticPointPath point,
