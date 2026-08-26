@@ -174,6 +174,8 @@ class DrawingAreaDialog extends MyDialog
       }
 
       if ( TDSetting.mWithLevels > 1 ) setLevel();
+
+      mParent.updateAreaObject( mArea );
      
     } else if ( b == mBtnReduce ) {
       int reduce = ( mBtnReduce.getState() + 1 ) % 3;
@@ -186,4 +188,3 @@ class DrawingAreaDialog extends MyDialog
   }
 
 }
-

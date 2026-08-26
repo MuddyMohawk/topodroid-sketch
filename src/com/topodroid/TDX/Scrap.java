@@ -2937,6 +2937,16 @@ public class Scrap
 
   SelectionPoint hotItem() { return mSelected.mHotItem; }
 
+  SelectionPoint selectPathPoint( DrawingPointLinePath path, LinePoint point )
+  {
+    if ( path == null || point == null ) return null;
+    synchronized( TDPath.mSelectionLock ) {
+      SelectionPoint selected = mSelection.getSelectionPoint( point );
+      mSelected.setOnlyHotItem( selected );
+      return selected;
+    }
+  }
+
   /** @return true if there are selected points
    */
   boolean hasSelected() { return mSelected.mPoints.size() > 0; }
@@ -3086,6 +3096,20 @@ public class Scrap
       len = plotname.length() + 1;
     }
     synchronized( TDPath.mCommandsLock ) {
+      for ( ICanvasCommand command : mCurrentStack ) {
+        if ( command.commandType() != 0 || ! ( command instanceof DrawingLinePath ) ) continue;
+        DrawingLinePath guide = (DrawingLinePath)command;
+        if ( ! StationSectionGuide.isGuide( guide ) ) continue;
+        PlotInfo info = ( TopoDroidApp.mData == null ) ? null
+                        : TopoDroidApp.mData.getPlotInfo( TDInstance.sid, guide.getOption( "-id" ) );
+        if ( info == null || info.start == null || ! com.topodroid.types.PlotType.isStationSection( info.type ) ) continue;
+        for ( DrawingStationName station : stations ) {
+          if ( info.start.equals( station.getName() ) ) {
+            station.setHasSectionGuide( true );
+            break;
+          }
+        }
+      }
       for ( ICanvasCommand cmd : mCurrentStack ) {
         if ( cmd.commandType() != 0 ) continue; 
         DrawingPath p = (DrawingPath)cmd;
@@ -3096,6 +3120,20 @@ public class Scrap
           String scrap = TDUtil.replacePrefix( TDInstance.survey, p.getOption( TDString.OPTION_SCRAP ) );
           if ( scrap != null ) {
             TDLog.v( "link xsection: point scrap " + scrap );
+            // New at-station sections have an ordinary section line whose ID is
+            // the station-section plot name. Prefer that editable guide over the
+            // station label, while keeping the legacy station fallback below.
+            for ( ICanvasCommand cmd2 : mCurrentStack ) {
+              if ( cmd2.commandType() != 0 || ! ( cmd2 instanceof DrawingLinePath ) ) continue;
+              DrawingLinePath guide = (DrawingLinePath)cmd2;
+              if ( ! StationSectionGuide.isGuide( guide ) ) continue;
+              String guide_id = guide.getOption( "-id" );
+              if ( guide_id != null && ( scrap.equals( guide_id ) || scrap.endsWith( "-" + guide_id ) ) ) {
+                pt.setLink( guide );
+                break;
+              }
+            }
+            if ( pt.getLink() != null ) continue;
             int pos = scrap.lastIndexOf( "-xx" );
             if ( pos > 0 ) {
               String id = scrap.substring(pos+1); // line id
@@ -3393,12 +3431,16 @@ public class Scrap
     final int mAreaType;
     final int mWeightKey;
     final int mColor;
+    final float mPatternAngle;
+    final int mPatternAngleKey;
 
-    PatternedAreaGroupKey( int area_type, float weight_scale, int color )
+    PatternedAreaGroupKey( int area_type, float weight_scale, int color, float pattern_angle )
     {
       mAreaType = area_type;
       mWeightKey = Math.round( weight_scale * 1000f );
       mColor = color;
+      mPatternAngle = pattern_angle;
+      mPatternAngleKey = Float.floatToIntBits( pattern_angle );
     }
 
     @Override public boolean equals( Object object )
@@ -3406,14 +3448,16 @@ public class Scrap
       if ( this == object ) return true;
       if ( ! ( object instanceof PatternedAreaGroupKey ) ) return false;
       PatternedAreaGroupKey other = (PatternedAreaGroupKey)object;
-      return mAreaType == other.mAreaType && mWeightKey == other.mWeightKey && mColor == other.mColor;
+      return mAreaType == other.mAreaType && mWeightKey == other.mWeightKey
+          && mColor == other.mColor && mPatternAngleKey == other.mPatternAngleKey;
     }
 
     @Override public int hashCode()
     {
       int result = mAreaType;
       result = 31 * result + mWeightKey;
-      return 31 * result + mColor;
+      result = 31 * result + mColor;
+      return 31 * result + mPatternAngleKey;
     }
   }
 
@@ -3463,7 +3507,7 @@ public class Scrap
       }
       if ( groups == null ) groups = new LinkedHashMap<>();
       PatternedAreaGroupKey key = new PatternedAreaGroupKey(
-          area.mAreaType, weight_scale, area.getPatternColor( pattern ) );
+          area.mAreaType, weight_scale, area.getPatternColor( pattern ), area.getPatternAngle( pattern ) );
       ArrayList< DrawingAreaPath > members = groups.get( key );
       if ( members == null ) {
         members = new ArrayList<>();
@@ -3478,7 +3522,7 @@ public class Scrap
       ArrayList< DrawingAreaPath > exclusions = ( replacements == null )? null
           : replacements.get( BrushManager.getAreaThName( key.mAreaType ) );
       AreaPatternRenderer.drawGroup( canvas, matrix, bbox, BrushManager.getAreaLinePattern( key.mAreaType ),
-                                     members, exclusions, with_xor,
+                                     key.mPatternAngle, members, exclusions, with_xor,
                                      members.get( 0 ).getPatternWeightScale(), key.mColor );
     }
   }
@@ -3783,7 +3827,7 @@ public class Scrap
 
   private void drawTick( Canvas canvas, Matrix matrix, DrawingLinePath line, float dx, float dy, float len, Paint paint, Path scratch )
   {
-    LinePoint lp = line.mFirst;
+    LinePoint lp = StationSectionGuide.isGuide( line ) ? StationSectionGuide.anchor( line ) : line.mFirst;
     scratch.rewind();
     scratch.moveTo( lp.x, lp.y );
     scratch.lineTo( lp.x+dx*len, lp.y+dy*len );
@@ -4041,6 +4085,11 @@ public class Scrap
           drawReferenceSelection( canvas, matrix, zoom, (DrawingReferencePath)sp.mItem, sp );
           return;
         }
+        if ( sp.mItem instanceof DrawingLinePath
+            && StationSectionGuide.isGuide( (DrawingLinePath)sp.mItem ) ) {
+          StationSectionGizmo.draw( canvas, matrix, zoom, (DrawingLinePath)sp.mItem );
+          return;
+        }
         if ( sp.mItem instanceof DrawingPointPath
             && ((DrawingPointPath)sp.mItem).hasSketchAffineTransform() ) {
           SketchAffineGizmo.draw( canvas, matrix, zoom, (DrawingPointPath)sp.mItem );
@@ -4228,6 +4277,27 @@ public class Scrap
     synchronized( TDPath.mSelectionLock ) {
       mSelection.updateReferencePath( path );
     }
+  }
+
+  void refreshDrawingPath( DrawingPath path )
+  {
+    if ( path == null ) return;
+    synchronized( TDPath.mSelectionLock ) {
+      mSelection.rebucketPath( path );
+    }
+  }
+
+  DrawingLinePath findSectionLine( String id )
+  {
+    if ( id == null ) return null;
+    synchronized( TDPath.mCommandsLock ) {
+      for ( ICanvasCommand command : mCurrentStack ) {
+        if ( command.commandType() != 0 || ! ( command instanceof DrawingLinePath ) ) continue;
+        DrawingLinePath line = (DrawingLinePath)command;
+        if ( BrushManager.isLineSection( line.mLineType ) && id.equals( line.getOption( "-id" ) ) ) return line;
+      }
+    }
+    return null;
   }
 
   // PATH MULTISELECT -----------------------------------------------

@@ -1298,6 +1298,30 @@ public class DrawingCommandManager
     }
   }
 
+  void refreshDrawingPath( DrawingPath path )
+  {
+    if ( path == null ) return;
+    synchronized( mSyncScrap ) {
+      for ( Scrap scrap : mScraps ) {
+        if ( scrap.mScrapIdx == path.mScrap ) {
+          scrap.refreshDrawingPath( path );
+          break;
+        }
+      }
+    }
+  }
+
+  DrawingLinePath findSectionLine( String id )
+  {
+    synchronized( mSyncScrap ) {
+      for ( Scrap scrap : mScraps ) {
+        DrawingLinePath line = scrap.findSectionLine( id );
+        if ( line != null ) return line;
+      }
+    }
+    return null;
+  }
+
   /** split a line at a point
    * @param line   line
    * @param lp     line point where to split
@@ -2630,6 +2654,11 @@ public class DrawingCommandManager
   /** @return the hot item of the selection
    */
   SelectionPoint hotItem() { return mCurrentScrap.hotItem(); }
+
+  SelectionPoint selectPathPoint( DrawingPointLinePath path, LinePoint point )
+  {
+    return mCurrentScrap.selectPathPoint( path, point );
+  }
 
   /** @return true if there are selected points in the current scrap
    */

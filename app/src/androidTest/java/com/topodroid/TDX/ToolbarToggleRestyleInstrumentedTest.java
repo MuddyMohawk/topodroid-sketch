@@ -44,4 +44,23 @@ public class ToolbarToggleRestyleInstrumentedTest
     mSupport.tapStyleButton( 3 );
     mSupport.assertSketchToggleBarColors( 2, 3 );
   }
+
+  @Test
+  public void drawingWindow_toolbarSettingsButtonsOpenMatchingPreferencePages() throws Exception
+  {
+    mSupport.prepareForCase( VisualTestSupport.allSurveyNames( SURVEY_TOOLBAR_TOGGLE ) );
+    mSupport.launchMainWindow();
+    mSupport.createSurveyAndOpenShots( SURVEY_TOOLBAR_TOGGLE, "Toolbar Test Team", "1", "toolbar settings shortcuts" );
+    mSupport.addManualShot( "1", "2", "10.0", "90.0", "0.0", true );
+    mSupport.openNewPlotFromShotWindow( PLOT_NAME, "1" );
+    mSupport.enterDrawMode();
+
+    mSupport.assertDefaultSketchToolbarVisible();
+    mSupport.tapPresetSettingsButton();
+    mSupport.assertPreferencePageVisible( R.string.title_settings_presets );
+
+    mSupport.pressBackToDrawingWindow();
+    mSupport.tapStyleSettingsButton();
+    mSupport.assertPreferencePageVisible( R.string.title_settings_styles );
+  }
 }

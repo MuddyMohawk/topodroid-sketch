@@ -49,6 +49,7 @@ public class DrawingStationName extends DrawingPointPath
   long  mXSectionType; // whether this station has a X-section
   private float mAzimuth, mClino;
   private float mDX, mDY;     // X-section direction
+  private boolean mHasSectionGuide = false;
 
   // get coords for a "section" point
   float getXSectionX( float r ) { return cx - ((mXSectionType == PlotType.PLOT_NULL)? 0 : r * mDY); }
@@ -155,7 +156,9 @@ public class DrawingStationName extends DrawingPointPath
 
   /** clear the XSection
    */
-  void resetXSection( ) { mXSectionType = PlotType.PLOT_NULL; }
+  void resetXSection( ) { mXSectionType = PlotType.PLOT_NULL; mHasSectionGuide = false; }
+
+  void setHasSectionGuide( boolean has_guide ) { mHasSectionGuide = has_guide; }
 
   // defined in DrawingPointPath
   // float distance( float x, float y )
@@ -180,7 +183,7 @@ public class DrawingStationName extends DrawingPointPath
         paint.setColor( 0xffffffff );
       }
       canvas.drawTextOnPath( mName, mPath, 0f, 0f, paint );
-      if ( mXSectionType != PlotType.PLOT_NULL ) {
+      if ( mXSectionType != PlotType.PLOT_NULL && ! mHasSectionGuide ) {
         Path path = new Path();
         path.moveTo( cx, cy );
         path.lineTo( cx+mDX*TDSetting.mArrowLength, cy+mDY*TDSetting.mArrowLength );
@@ -209,7 +212,7 @@ public class DrawingStationName extends DrawingPointPath
       }
       paint.setTextSize( PDF_SCALE * mPaint.getTextSize() );
       canvas.drawTextOnPath( mName, mPath, 0f, 0f, paint );
-      if ( mXSectionType != PlotType.PLOT_NULL ) {
+      if ( mXSectionType != PlotType.PLOT_NULL && ! mHasSectionGuide ) {
         Path path = new Path();
         path.moveTo( cx, cy );
         path.lineTo( cx+mDX*TDSetting.mArrowLength, cy+mDY*TDSetting.mArrowLength );
@@ -238,7 +241,7 @@ public class DrawingStationName extends DrawingPointPath
         mTransformedPath.transform( matrix );
         canvas.drawTextOnPath( mName, mTransformedPath, 0f, 0f, paint );
       }
-      if ( mXSectionType != PlotType.PLOT_NULL ) {
+      if ( mXSectionType != PlotType.PLOT_NULL && ! mHasSectionGuide ) {
         Path path = new Path();
         path.moveTo( cx, cy );
         path.lineTo( cx+mDX*TDSetting.mArrowLength, cy+mDY*TDSetting.mArrowLength );
@@ -280,7 +283,7 @@ public class DrawingStationName extends DrawingPointPath
         mPath.transform( matrix, scratch );
         canvas.drawTextOnPath( mName, scratch, 0f, 0f, paint );
       }
-      if ( mXSectionType != PlotType.PLOT_NULL ) {
+      if ( mXSectionType != PlotType.PLOT_NULL && ! mHasSectionGuide ) {
         scratch.rewind();
         scratch.moveTo( cx, cy );
         scratch.lineTo( cx+mDX*TDSetting.mArrowLength, cy+mDY*TDSetting.mArrowLength );
@@ -311,7 +314,7 @@ public class DrawingStationName extends DrawingPointPath
         mTransformedPath.transform( matrix );
         canvas.drawTextOnPath( mName, mTransformedPath, 0f, 0f, paint );
       }
-      if ( mXSectionType != PlotType.PLOT_NULL ) {
+      if ( mXSectionType != PlotType.PLOT_NULL && ! mHasSectionGuide ) {
         Path path = new Path();
         path.moveTo( cx, cy );
         path.lineTo( cx+mDX*TDSetting.mArrowLength, cy+mDY*TDSetting.mArrowLength );

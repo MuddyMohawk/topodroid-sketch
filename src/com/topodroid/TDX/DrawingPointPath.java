@@ -412,6 +412,15 @@ public class DrawingPointPath extends DrawingPath
    */
   IDrawingLink getLink() { return mLink; }
 
+  /** Station guides already show their station association and do not need the
+   * potentially very long orange connector from the automatic section point. */
+  boolean shouldDrawLink()
+  {
+    return mLink != null && ! ( BrushManager.isPointSection( mPointType )
+        && mLink instanceof DrawingLinePath
+        && StationSectionGuide.isGuide( (DrawingLinePath)mLink ) );
+  }
+
   /** @return the point color
    */
   int pointColor( ) { return BrushManager.getPointColor( mPointType ); }
@@ -455,7 +464,7 @@ public class DrawingPointPath extends DrawingPath
         }
         drawSketchStyledPath( mPath, canvas );
         drawSketchDetailPath( canvas );
-        if ( mLink != null ) {
+        if ( shouldDrawLink() ) {
           Path link = new Path();
           link.moveTo( cx, cy );
           link.lineTo( mLink.getLinkX(), mLink.getLinkY() );
@@ -491,7 +500,7 @@ public class DrawingPointPath extends DrawingPath
         }
         drawSketchStyledPath( mPath, canvas, xor_color );
         drawSketchDetailPath( canvas, xor_color );
-        if ( mLink != null ) {
+        if ( shouldDrawLink() ) {
           Path link = new Path();
           link.moveTo( cx, cy );
           link.lineTo( mLink.getLinkX(), mLink.getLinkY() );
@@ -860,7 +869,7 @@ public class DrawingPointPath extends DrawingPath
         detail.setStyle( Paint.Style.FILL );
         canvas.drawPath( detail_ink, detail );
       }
-      if ( mLink != null ) {
+      if ( shouldDrawLink() ) {
         Path link = new Path();
         link.moveTo( cx, cy );
         link.lineTo( mLink.getLinkX(), mLink.getLinkY() );

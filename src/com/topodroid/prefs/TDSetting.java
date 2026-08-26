@@ -489,6 +489,7 @@ public class TDSetting
   public static boolean mSecondDistoX  = false;
   public static boolean mHeadTail      = false; // whether to use readA3HeadTail to download the data (A3 only)
   public static boolean mAutoPair      = false; // FIXME DROP_PAIRING
+  public static boolean mCavwayBacksight = false; // map Cavway backsight labels to TopoDroid backshots
   public static int mConnectSocketDelay = 0; // wait time if not paired [0.1 sec]
 
   public static boolean mFirmwareSanity = true; // enforce firmware sanity checks
@@ -1315,6 +1316,7 @@ public class TDSetting
     // mZ6Workaround   = prefs.getBoolean( key[ 4].key,  bool(key[ 4].dflt)  ); // DISTOX_Z6_WORKAROUND
     mConnectFeedback = tryInt( prefs,      key[ 4].key,       key[ 4].dflt );   // DISTOX_CONNECT_FEEDBACK
     mAutoPair        = prefs.getBoolean(   key[ 5].key,  bool(key[ 5].dflt) );  // DISTOX_AUTO_PAIR // FIXME DROP_PAIRING
+    mCavwayBacksight = prefs.getBoolean(   key[ 6].key,  bool(key[ 6].dflt) );  // DISTOX_CAVWAY_BACKSIGHT
     // TDLog.v("SETTING load device done");
 
     key = TDPrefKey.mSPen;
@@ -2131,6 +2133,8 @@ public class TDSetting
     } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_AUTO_PAIR (bool) // FIXME DROP_PAIRING
       mAutoPair = tryBooleanValue( hlp, k, v, bool(key[5].dflt) );
       TopoDroidApp.checkAutoPairing();
+    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_CAVWAY_BACKSIGHT (bool)
+      mCavwayBacksight = tryBooleanValue( hlp, k, v, bool(key[6].dflt) );
     } else {
       TDLog.e("missing DEVICE key: " + k );
     }
@@ -4785,6 +4789,7 @@ B DISTOX_SAP5_BIT16_BUG true
       k="DISTOX_SECOND_DISTOX";         if ( TDPrefKey.checkKeyGroup(k,flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mSecondDistoX) );
       k="DISTOX_COMM_RETRY";            if ( TDPrefKey.checkKeyGroup(k,flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mCommRetry );
       k="DISTOX_HEAD_TAIL";             if ( TDPrefKey.checkKeyGroup(k,flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mHeadTail) );
+      k="DISTOX_CAVWAY_BACKSIGHT";       if ( TDPrefKey.checkKeyGroup(k,flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mCavwayBacksight) );
       k="DISTOX_PACKET_LOGGER";         if ( TDPrefKey.checkKeyGroup(k,flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mPacketLog) );
       k="DISTOX_TH2_EDIT";              if ( TDPrefKey.checkKeyGroup(k,flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mTh2Edit) );
       // k="DISTOX_WITH_DEBUG";         if ( TDPrefKey.checkKeyGroup(k,flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mWithDebug) );
@@ -5367,6 +5372,9 @@ B DISTOX_SAP5_BIT16_BUG true
               break;
             case "DISTOX_HEAD_TAIL":
               mHeadTail = Boolean.parseBoolean( value ); setPreference( editor, kay,  mHeadTail );
+              break;
+            case "DISTOX_CAVWAY_BACKSIGHT":
+              mCavwayBacksight = Boolean.parseBoolean( value ); setPreference( editor, kay, mCavwayBacksight );
               break;
             case "DISTOX_PACKET_LOGGER":
               mPacketLog = Boolean.parseBoolean( value ); setPreference( editor, kay, mPacketLog );

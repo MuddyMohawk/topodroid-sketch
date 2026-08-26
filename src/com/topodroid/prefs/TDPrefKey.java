@@ -246,6 +246,7 @@ class TDPrefKey
    * socket type
    * whether to auto-pair the discovered DistoX
    * connection fedback
+   * whether to map Cavway backsight labels to TopoDroid backsight shots
    */
   static TDPrefKey[] mDevice = {
     new TDPrefKey( N,       BT,  "DISTOX_BLUETOOTH",        R.string.pref_checkBT_title,          R.string.pref_checkBT_summary,         TDString.ONE, R.array.deviceBT, R.array.deviceBTValue ),
@@ -255,6 +256,7 @@ class TDPrefKey
     // FIXME DROP_PAIRING
     new TDPrefKey( E,       UI,  "DISTOX_CONNECT_FEEDBACK", R.string.pref_connect_feedback_title, R.string.pref_connect_feedback_summary,TDString.ZERO, R.array.feedbackMode, R.array.feedbackModeValue ),
     new TDPrefKey( A, BOOL, BT,  "DISTOX_AUTO_PAIR",        R.string.pref_auto_pair_title,        R.string.pref_auto_pair_summary,       FALSE ), // FIXME DROP_PAIRING
+    new TDPrefKey( B, BOOL, BT,  "DISTOX_CAVWAY_BACKSIGHT", R.string.pref_cavway_backsight_title, R.string.pref_cavway_backsight_summary, FALSE ),
     new TDPrefKey( B,       NON, "DISTOX_SPEN_PREF",        R.string.pref_action_key_bindings_title ),
     new TDPrefKey( B,       NON, "DISTOX_CALIB_PREF",       R.string.pref_cat_calib )
   };

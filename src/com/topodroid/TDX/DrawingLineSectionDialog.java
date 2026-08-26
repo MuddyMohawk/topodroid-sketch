@@ -65,6 +65,7 @@ class DrawingLineSectionDialog extends MyDialog
   private EditText mETnick;
   private ImageView mIVimage;   // photo image
   private boolean mHSection;
+  private long mSectionType;
   private boolean mExists;
   private boolean canTakePhoto; // whether the xsection can have a photo
   private float mTT;            // intersection abscissa - or 2 for multileg xsections
@@ -96,6 +97,7 @@ class DrawingLineSectionDialog extends MyDialog
     // mApp  = app;
     mExists = exists;      // whether the section exists or it is being created
     mHSection = h_section; // if the line has "-id" the h_section is taken from the PlotInfo
+    mSectionType = h_section ? PlotType.PLOT_H_SECTION : PlotType.PLOT_SECTION;
     mLine    = line;
     mFrom    = from;
     mTo      = to;
@@ -122,13 +124,14 @@ class DrawingLineSectionDialog extends MyDialog
         mAzimuth  = mPlotInfo.azimuth;
         mClino    = mPlotInfo.clino;
         mHSection = (mPlotInfo.type == PlotType.PLOT_H_SECTION);
+        mSectionType = mPlotInfo.type;
         mTT       = mPlotInfo.intercept;
         if ( mTT > 1.0 ) mCenter = mPlotInfo.center;
         // TDLog.v("Section Line: start <" + mFrom + "> view <" + mTo + "> azimuth " + mAzimuth + " clino " + mClino ); 
       }
     }
     TDLog.v( "Drawing Line Section Dialog: intercept " + mTT + " (" + tt0 + ")" ); 
-    canTakePhoto = ( mTT <= 1.0 ) && TDandroid.checkCamera( context );
+    canTakePhoto = PlotType.isLegSection( mSectionType ) && ( mTT <= 1.0 ) && TDandroid.checkCamera( context );
     // TDLog.v( "line id " + mId );
   }
 
@@ -242,21 +245,27 @@ class DrawingLineSectionDialog extends MyDialog
       onBackPressed();
       return;
     } else if ( v.getId() == R.id.button_place ) {
-      long type = mHSection ? PlotType.PLOT_H_SECTION : PlotType.PLOT_SECTION;
       mNick = ( mETnick.getText() != null )? mETnick.getText().toString() : "";
-      mParent.placePlotXSection( mLine, mId, type, mFrom, mTo, mNick, mAzimuth, mClino, mTT, mCenter );
+      if ( mPlotInfo != null ) {
+        mParent.placeExistingXSection( mLine, mId, mNick );
+      } else {
+        mParent.placePlotXSection( mLine, mId, mSectionType, mFrom, mTo, mNick, mAzimuth, mClino, mTT, mCenter );
+      }
       recycleImage();
       dismiss();
       return;
     } else {
-      long type = mHSection ? PlotType.PLOT_H_SECTION : PlotType.PLOT_SECTION;
       mNick = ( mETnick.getText() != null )? mETnick.getText().toString() : ""; // FIXME NOSPACES ?
       MyCheckBox cb = (MyCheckBox)v;
       if ( canTakePhoto && cb == mBtnFoto ) {
         // TODO mCenter for multileg xsection
-        mParent.makePhotoXSection( mLine, mId, type, mFrom, mTo, mNick, mAzimuth, mClino, mTT );
+        mParent.makePhotoXSection( mLine, mId, mSectionType, mFrom, mTo, mNick, mAzimuth, mClino, mTT );
       } else if ( cb == mBtnDraw ) {
-        mParent.makePlotXSection( mLine, mId, type, mFrom, mTo, mNick, mAzimuth, mClino, mTT, mCenter );
+        if ( mPlotInfo != null ) {
+          mParent.openExistingXSection( mLine, mId, mNick );
+        } else {
+          mParent.makePlotXSection( mLine, mId, mSectionType, mFrom, mTo, mNick, mAzimuth, mClino, mTT, mCenter );
+        }
       } else if ( cb == mBtnErase ) {
         mParent.deleteLine( mLine );
       } else if ( cb == mBtnSave ) {

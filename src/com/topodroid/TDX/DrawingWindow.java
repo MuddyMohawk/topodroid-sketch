@@ -582,6 +582,11 @@ public class DrawingWindow extends ItemDrawer
   private int mHotItemType     = -1;
   private DrawingPath mHotPath = null;
   private SketchAffineGizmo.Drag mAffineGizmoDrag = null;
+  private StationSectionGizmo.Drag mStationSectionGizmoDrag = null;
+  private PlotInfo mStationSectionDragPlot = null;
+  private float mStationSectionBaseAzimuth = 0.0f;
+  private float mStationSectionStartAzimuth = 0.0f;
+  private float mStationSectionStartClino = 0.0f;
   private boolean mHasSelected = false;
   private boolean hasPointActions  = false;
 
@@ -2215,7 +2220,7 @@ public class DrawingWindow extends ItemDrawer
           break;
         case DrawingPath.DRAWING_PATH_LINE:
           mActivity.setTitle( title + " " + BrushManager.getLineName( ((DrawingLinePath)mHotPath).mLineType ) );
-          hasPointActions = true;
+          hasPointActions = ! StationSectionGuide.isGuide( (DrawingLinePath)mHotPath );
           // bm = mBMsnap;
 	  deletable = true;
           break;
@@ -2738,12 +2743,41 @@ public class DrawingWindow extends ItemDrawer
     return lp;
   }
 
-  private LinearLayout.LayoutParams makePresetButtonParams( int index )
+  private LinearLayout.LayoutParams makePresetButtonParams( int index, int buttons )
   {
     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams( 0, LinearLayout.LayoutParams.MATCH_PARENT );
-    lp.weight = 1;
+    lp.weight = 16.0f * getToolbarSlotCount() / Math.max( 1, buttons );
     if ( index > 0 ) lp.setMarginStart( Math.max( 1, Math.round( getResources().getDisplayMetrics().density ) ) );
     return lp;
+  }
+
+  private Path makeToolbarForwardPath()
+  {
+    Path path = new Path(); // double-arrow ">>"
+    path.moveTo( 0, 8 ); path.lineTo(  8, 0 ); path.lineTo( 0, -8 );
+    path.moveTo( 8, 8 ); path.lineTo( 16, 0 ); path.lineTo( 8, -8 );
+    return path;
+  }
+
+  private ItemButton makeToolbarSettingsButton( final int category, int description )
+  {
+    ItemButton button = new ItemButton( this );
+    button.resetPaintPath( BrushManager.labelPaint, makeToolbarForwardPath(), 2, 2 );
+    button.setContentDescription( getString( description ) );
+    button.setOnClickListener(
+      new View.OnClickListener() {
+        @Override public void onClick( View v ) { openPreferenceCategory( category ); }
+      }
+    );
+    button.invalidate();
+    return button;
+  }
+
+  private void openPreferenceCategory( int category )
+  {
+    Intent intent = new Intent( mActivity, com.topodroid.prefs.TDPrefActivity.class );
+    intent.putExtra( TDPrefCat.PREF_CATEGORY, category );
+    mActivity.startActivity( intent );
   }
 
   private void rebuildManualToolbarRows( int rowHeight )
@@ -3245,9 +3279,7 @@ public class DrawingWindow extends ItemDrawer
     // mBtnRecentL[NR_RECENT].setText( ">>" );
     // mBtnRecentA[NR_RECENT].setText( ">>" );
 
-    Path path = new Path(); // double-arrow ">>"
-    path.moveTo( 0, 8 ); path.lineTo(  8, 0 ); path.lineTo( 0, -8 );
-    path.moveTo( 8, 8 ); path.lineTo( 16, 0 ); path.lineTo( 8, -8 );
+    Path path = makeToolbarForwardPath();
 
     mBtnRecentP[NR_RECENT].resetPaintPath( BrushManager.labelPaint, path, 2, 2 ); 
     mBtnRecentP[NR_RECENT].invalidate();
@@ -3316,8 +3348,12 @@ public class DrawingWindow extends ItemDrawer
         @Override public void onClick( View v ) { requestSketchPresetSelection( preset ); }
       } );
       mBtnPreset[index] = button;
-      mLayoutToolsPreset.addView( button, makePresetButtonParams( index ) );
+      mLayoutToolsPreset.addView( button, makePresetButtonParams( index, slots ) );
     }
+    mLayoutToolsPreset.addView(
+      makeToolbarSettingsButton( TDPrefCat.PREF_TOOL_PRESET, R.string.desc_preset_settings ),
+      makeToolbarButtonParams()
+    );
     updateSketchPresetButtons();
   }
 
@@ -3401,8 +3437,12 @@ public class DrawingWindow extends ItemDrawer
         @Override public void onClick( View v ) { requestSketchStyleSelection( style ); }
       } );
       mBtnStyle[index] = button;
-      mLayoutToolsStyle.addView( button, makePresetButtonParams( index ) );
+      mLayoutToolsStyle.addView( button, makePresetButtonParams( index, slots ) );
     }
+    mLayoutToolsStyle.addView(
+      makeToolbarSettingsButton( TDPrefCat.PREF_TOOL_STYLE, R.string.desc_style_settings ),
+      makeToolbarButtonParams()
+    );
     updateSketchStyleButtons();
   }
 
@@ -4837,6 +4877,7 @@ public class DrawingWindow extends ItemDrawer
    */
   private void splitLine( DrawingLinePath line, LinePoint point )
   {
+    if ( StationSectionGuide.isGuide( line ) ) return;
     mDrawingSurface.splitLine( line, point );
     // assert( mLastLinePath == null );
     modified();
@@ -4849,6 +4890,7 @@ public class DrawingWindow extends ItemDrawer
    */
   private void removeLinePoint( DrawingPointLinePath line, LinePoint point, SelectionPoint sp ) 
   {
+    if ( line instanceof DrawingLinePath && StationSectionGuide.isGuide( (DrawingLinePath)line ) ) return;
     if (  mDrawingSurface.removeLinePoint(line, point, sp) ) {
       modified();
     }
@@ -4861,6 +4903,7 @@ public class DrawingWindow extends ItemDrawer
    */
   void removeLinePointFromSelection( DrawingLinePath line, LinePoint point )
   {
+    if ( StationSectionGuide.isGuide( line ) ) return;
     if (  mDrawingSurface.removeLinePointFromSelection(line, point ) ) {
       modified();
     }
@@ -4886,6 +4929,7 @@ public class DrawingWindow extends ItemDrawer
   private void deleteSectionLine( DrawingLinePath line )
   {
     String xs_id = line.getOption( "-id" );
+    PlotInfo plot = mApp_mData.getPlotInfo( TDInstance.sid, xs_id );
     String scrap_name = TDInstance.survey + "-" + xs_id;
     mDrawingSurface.deleteSectionLine( line, scrap_name );
     // TDPath.deletePlotFileWithBackups( TDPath.getTh2File( scrap_name + ".th2" ) );
@@ -4903,9 +4947,15 @@ public class DrawingWindow extends ItemDrawer
     // section point is deleted automatically
     // deleteSectionPoint( xs_id ); // delete section point and possibly clear section outline
     mDrawingSurface.clearXSectionOutline( scrap_name ); // clear outline if any
-    PlotInfo plot = mApp_mData.getPlotInfo( TDInstance.sid, xs_id );
     if ( plot != null ) {
       mApp_mData.dropPlot( plot.id, TDInstance.sid );
+      if ( PlotType.isStationSection( plot.type ) ) {
+        DrawingStationName station = mDrawingSurface.getStation( plot.start );
+        if ( station != null ) {
+          station.resetXSection();
+          station.setHasSectionGuide( false );
+        }
+      }
     } else {
       TDLog.e("Delete section line. No plot NAME " + xs_id + " SID " + TDInstance.sid );
     }
@@ -5395,6 +5445,7 @@ public class DrawingWindow extends ItemDrawer
         finishErasing();
       }
       clearPendingSketchStroke();
+      finishStationSectionGizmoDrag( false );
       mAffineGizmoDrag = null;
       mDrawingSurface.resetPreviewPath();
       updateSketchPresetButtons();
@@ -5812,7 +5863,9 @@ public class DrawingWindow extends ItemDrawer
           placePendingSectionAt( xs, ys );
         }
       } else if ( mMode == MODE_EDIT ) {
-        if ( mAffineGizmoDrag != null ) {
+        if ( mStationSectionGizmoDrag != null ) {
+          finishStationSectionGizmoDrag( true );
+        } else if ( mAffineGizmoDrag != null ) {
           mAffineGizmoDrag = null;
         } else {
           if ( Math.abs(mStartX - xc) < TDSetting.mPointingRadius
@@ -5822,7 +5875,10 @@ public class DrawingWindow extends ItemDrawer
         }
         mEditMove = false;
       } else if ( mMode == MODE_SHIFT ) {
-        if ( mAffineGizmoDrag != null ) {
+        if ( mStationSectionGizmoDrag != null ) {
+          finishStationSectionGizmoDrag( true );
+          mShiftMove = false;
+        } else if ( mAffineGizmoDrag != null ) {
           mAffineGizmoDrag = null;
           mShiftMove = false;
         } else if ( TDLevel.overExpert && mType == PlotType.PLOT_EXTENDED ) {
@@ -5915,6 +5971,83 @@ public class DrawingWindow extends ItemDrawer
     return mAffineGizmoDrag != null;
   }
 
+  private boolean beginStationSectionGizmoDrag( SelectionPoint selected, float scene_x, float scene_y )
+  {
+    if ( selected == null || ! ( selected.mItem instanceof DrawingLinePath ) ) return false;
+    DrawingLinePath line = (DrawingLinePath)selected.mItem;
+    if ( ! StationSectionGuide.isGuide( line ) ) return false;
+    String id = line.getOption( "-id" );
+    PlotInfo plot = mApp_mData.getPlotInfo( TDInstance.sid, id );
+    if ( plot == null || ! PlotType.isStationSection( plot.type ) ) return false;
+    float edit_x = mLandscape ? -scene_y : scene_x;
+    float edit_y = mLandscape ? scene_x : scene_y;
+    int handle = StationSectionGizmo.hitHandle( line, edit_x, edit_y, mZoom );
+    mStationSectionGizmoDrag = StationSectionGizmo.beginDrag( line, handle, edit_x, edit_y, mZoom );
+    if ( mStationSectionGizmoDrag == null ) return false;
+    mStationSectionDragPlot = plot;
+    mStationSectionStartAzimuth = plot.azimuth;
+    mStationSectionStartClino = plot.clino;
+    float tick_angle = sectionAzimuthFromTick( line );
+    mStationSectionBaseAzimuth = ( tick_angle < 180.0f ) ? plot.azimuth : TDMath.add180( plot.azimuth );
+    return true;
+  }
+
+  private void updateStationSectionOrientation( DrawingLinePath line )
+  {
+    if ( line == null || mStationSectionDragPlot == null ) return;
+    float azimuth;
+    float clino;
+    float tick_angle = sectionAzimuthFromTick( line );
+    if ( mType == PlotType.PLOT_PLAN ) {
+      azimuth = tick_angle;
+      clino = 0.0f;
+    } else {
+      clino = ( tick_angle < 180.0f ) ? getXSectionClino( 90.0f - tick_angle )
+                                      : getXSectionClino( tick_angle - 270.0f );
+      if ( clino > 91.0f ) return;
+      if ( PlotType.isProjected( mType ) && mPlot2 != null ) {
+        azimuth = ( tick_angle < 180.0f ) ? TDMath.add90( mPlot2.azimuth ) : TDMath.sub90( mPlot2.azimuth );
+      } else {
+        azimuth = ( tick_angle < 180.0f ) ? mStationSectionBaseAzimuth
+                                          : TDMath.add180( mStationSectionBaseAzimuth );
+      }
+    }
+    mStationSectionDragPlot.azimuth = TDMath.in360( azimuth );
+    mStationSectionDragPlot.clino = clino;
+    DrawingStationName station = mDrawingSurface.getStation( mStationSectionDragPlot.start );
+    if ( station != null ) station.setXSection( mStationSectionDragPlot.azimuth, clino, mType );
+    DrawingPointPath point = findSectionPoint( TDInstance.survey + "-" + mStationSectionDragPlot.name );
+    if ( point != null && SectionPointHelper.isPlaced( point ) ) refreshSectionOverlay( point );
+  }
+
+  private void finishStationSectionGizmoDrag( boolean commit )
+  {
+    if ( mStationSectionGizmoDrag == null ) return;
+    DrawingLinePath line = ( mDrawingSurface.hotItem() != null
+        && mDrawingSurface.hotItem().mItem instanceof DrawingLinePath )
+        ? (DrawingLinePath)mDrawingSurface.hotItem().mItem : null;
+    if ( ! commit ) {
+      mStationSectionGizmoDrag.cancel();
+      if ( mStationSectionDragPlot != null ) {
+        mStationSectionDragPlot.azimuth = mStationSectionStartAzimuth;
+        mStationSectionDragPlot.clino = mStationSectionStartClino;
+        DrawingStationName station = mDrawingSurface.getStation( mStationSectionDragPlot.start );
+        if ( station != null ) station.setXSection( mStationSectionStartAzimuth, mStationSectionStartClino, mType );
+      }
+    } else if ( mStationSectionDragPlot != null ) {
+      mApp_mData.updatePlotAzimuthClino( mSid, mStationSectionDragPlot.id,
+                                         mStationSectionDragPlot.azimuth, mStationSectionDragPlot.clino );
+      modified();
+    }
+    if ( line != null ) mDrawingSurface.refreshDrawingPath( line );
+    if ( mStationSectionDragPlot != null ) {
+      DrawingPointPath point = findSectionPoint( TDInstance.survey + "-" + mStationSectionDragPlot.name );
+      if ( point != null && SectionPointHelper.isPlaced( point ) ) refreshSectionOverlay( point );
+    }
+    mStationSectionGizmoDrag = null;
+    mStationSectionDragPlot = null;
+  }
+
   /** react to a touch-down event
    * @param xc   canvas X coord 
    * @param yc   canvas Y coord
@@ -5995,12 +6128,13 @@ public class DrawingWindow extends ItemDrawer
       mStartY = yc;
       mEditMove = true;
       mAffineGizmoDrag = null;
+      mStationSectionGizmoDrag = null;
       SelectionPoint pt = mDrawingSurface.hotItem();
       if ( pt != null ) {
         float edit_x = mLandscape ? -ys : xs;
         float edit_y = mLandscape ? xs : ys;
-        if ( beginAffineGizmoDrag( pt, xs, ys ) ) mEditMove = false;
-        if ( mAffineGizmoDrag == null ) mEditMove = ( pt.distance( edit_x, edit_y ) < d0 );
+        if ( beginStationSectionGizmoDrag( pt, xs, ys ) || beginAffineGizmoDrag( pt, xs, ys ) ) mEditMove = false;
+        if ( mAffineGizmoDrag == null && mStationSectionGizmoDrag == null ) mEditMove = ( pt.distance( edit_x, edit_y ) < d0 );
       } 
       // doSelectAt( xs, ys, mSelectSize );
       mSaveX = xc;
@@ -6011,6 +6145,7 @@ public class DrawingWindow extends ItemDrawer
       mShiftMove = true; // whether to move canvas in point-shift mode
                          // false if moving the hot point
       mAffineGizmoDrag = null;
+      mStationSectionGizmoDrag = null;
       mStartX = xc;
       mStartY = yc;
       // PATH_MULTISELECTION
@@ -6020,7 +6155,7 @@ public class DrawingWindow extends ItemDrawer
       } else {
         SelectionPoint pt = mDrawingSurface.hotItem();
         if ( pt != null ) {
-          if ( beginAffineGizmoDrag( pt, xs, ys ) ) {
+          if ( beginStationSectionGizmoDrag( pt, xs, ys ) || beginAffineGizmoDrag( pt, xs, ys ) ) {
             mShiftMove = false;
           } else if ( mLandscape ) {
             if ( pt.distance( -ys, xs ) < d0*4 ) {
@@ -6167,6 +6302,16 @@ public class DrawingWindow extends ItemDrawer
         TDAzimuth.mRefAzimuth = TDMath.in360( TDAzimuth.mRefAzimuth + x_shift/2 );
         setButtonAzimuth();
         // TDLog.v("rotated azimuth by " + x_shift + ": " + TDAzimuth.mRefAzimuth );
+      } else if ( ( mMode == MODE_EDIT || mMode == MODE_SHIFT ) && mStationSectionGizmoDrag != null ) {
+        float edit_x = mLandscape ? -ys : xs;
+        float edit_y = mLandscape ? xs : ys;
+        SelectionPoint hot = mDrawingSurface.hotItem();
+        if ( hot != null && hot.mItem instanceof DrawingLinePath
+            && mStationSectionGizmoDrag.update( edit_x, edit_y, PlotType.isProfile( mType ), TDSetting.mSlantXSection ) ) {
+          DrawingLinePath line = (DrawingLinePath)hot.mItem;
+          mDrawingSurface.refreshDrawingPath( line );
+          if ( mStationSectionGizmoDrag.isRotation() ) updateStationSectionOrientation( line );
+        }
       } else if ( ( mMode == MODE_EDIT || mMode == MODE_SHIFT ) && mAffineGizmoDrag != null ) {
         float edit_x = mLandscape ? -ys : xs;
         float edit_y = mLandscape ? xs : ys;
@@ -6764,6 +6909,13 @@ public class DrawingWindow extends ItemDrawer
     modified();
   }
 
+  /** Apply area-property changes through the cached drawing lifecycle. */
+  void updateAreaObject( DrawingAreaPath area )
+  {
+    mDrawingSurface.refreshDrawingPath( area );
+    modified();
+  }
+
   /** Run a committed live point through the same lifecycle as a tapped point. */
   private boolean commitLivePointPlacement()
   {
@@ -7017,16 +7169,18 @@ public class DrawingWindow extends ItemDrawer
   void deleteXSection( DrawingStationName st, String name, long type ) 
   {
     // assert( mLastLinePath == null );
-    long xtype = -1;
-    String xs_id = null; // xsection_id eg, xs-2 (xsection at station 2)
-    if ( type == PlotType.PLOT_PLAN ) {
-      xs_id = "xs-" + name;
-      xtype = PlotType.PLOT_X_SECTION;
-    } else if ( PlotType.isProfile( type ) ) {
-      xs_id = "xh-" + name;
-      xtype = PlotType.PLOT_XH_SECTION;
-    } else {
+    String xs_id = PlotType.getXSectionName( name, type );
+    if ( xs_id == null ) {
       TDLog.e("No at-station section to delete. Plot type " + type + " Name " + name + " SID "  + TDInstance.sid );
+      return;
+    }
+    if ( ! TDInstance.xsections ) xs_id = xs_id + "-" + mName;
+
+    DrawingLinePath guide = mDrawingSurface.findSectionLine( xs_id );
+    if ( guide != null && StationSectionGuide.isGuide( guide ) ) {
+      deleteSectionLine( guide );
+      st.resetXSection();
+      modified();
       return;
     }
 
@@ -7114,26 +7268,38 @@ public class DrawingWindow extends ItemDrawer
       }
       // TDLog.v( "new at-station X-section " + xs_id + " station name " + st_name + " nick <" + nick + ">" );
 
-      long pid = mApp.insert2dSection( TDInstance.sid, xs_id, xtype, st_name, "", azimuth, clino, (TDInstance.xsections? null : mName), nick );
+      mApp.insert2dSection( TDInstance.sid, xs_id, xtype, st_name, "", azimuth, clino, (TDInstance.xsections? null : mName), nick );
       // plot = mApp_mData.getPlotInfo( TDInstance.sid, pid );
       plot = mApp_mData.getPlotInfo( TDInstance.sid, xs_id );
 
       // add x-section to station-name
 
+      if ( plot == null ) return;
+
       st.setXSection( azimuth, clino, type );
+      List< DBlock > station_splays = mApp_mData.selectShotsAt( TDInstance.sid, st_name, false );
+      StationLrudResult lrud = StationLrudCalculator.computeAtStation( azimuth, 0.0f, station_splays, st_name );
+      boolean vertical_profile = PlotType.isProfile( type ) && ! horiz;
+      StationSectionGuide.HalfLengths lengths = StationSectionGuide.initialLengths( lrud, vertical_profile );
+      DrawingLinePath guide = StationSectionGuide.create( mDrawingSurface.scrapIndex(), xs_id, st.cx, st.cy,
+          StationSectionGuide.tickX( azimuth, clino, type ), StationSectionGuide.tickY( azimuth, clino, type ),
+          lengths.firstMetres, lengths.lastMetres );
+      mDrawingSurface.addDrawingPath( guide );
+      st.setHasSectionGuide( true );
       if ( TDSetting.mAutoSectionPt ) { // insert xsection point in the plot
-        int offset = TDSetting.mXSectionOffset;
-        float x5 = st.getXSectionX( offset ); 
-        float y5 = st.getXSectionY( offset );
-        if ( mLandscape ) { float t=x5; x5=-y5; y5=t; }
+        float x5 = st.cx + guide.sectionDirectionX() * TDSetting.mXSectionOffset;
+        float y5 = st.cy + guide.sectionDirectionY() * TDSetting.mXSectionOffset;
         // FIXME String scrap_option = "-scrap " /* + TDInstance.survey + "-" */ + xs_id;
         String scrap_option = TDString.OPTION_SCRAP + " " + TDInstance.survey + "-" + xs_id;
         mSectionPt = new DrawingPointPath( BrushManager.getPointSectionIndex(),
       						    x5, y5, PointScale.SCALE_M, 
       						    null, scrap_option, mDrawingSurface.scrapIndex() ); // no text
-        mSectionPt.setLink( st );
+        mSectionPt.setLink( guide );
         mDrawingSurface.addDrawingPath( mSectionPt );
       }
+      modified();
+      selectStationSectionGuide( guide );
+      return;
     } else {
       updatePlotNick( plot, nick );
     }
@@ -7141,6 +7307,17 @@ public class DrawingWindow extends ItemDrawer
       pushInfo( plot.type, plot.name, plot.start, "", plot.azimuth, plot.clino, -1, null );
       // zoomFit( mDrawingSurface.getBitmapBounds( 1.0f ) );
     }
+  }
+
+  private void selectStationSectionGuide( DrawingLinePath guide )
+  {
+    if ( ! StationSectionGuide.isGuide( guide ) ) return;
+    setMode( MODE_EDIT );
+    SelectionPoint selected = mDrawingSurface.selectPathPoint( guide, guide.mFirst );
+    mHasSelected = selected != null;
+    setButton3PrevNext();
+    setButton3Item( selected );
+    if ( selected != null ) mMode = MODE_SHIFT;
   }
 
   /** update section-line x-section comment - also at-station
@@ -7174,8 +7351,9 @@ public class DrawingWindow extends ItemDrawer
       return point;
     }
 
-    float x5 = line.mLast.x + line.sectionDirectionX() * 20;
-    float y5 = line.mLast.y + line.sectionDirectionY() * 20;
+    LinePoint origin = StationSectionGuide.isGuide( line ) ? StationSectionGuide.anchor( line ) : line.mLast;
+    float x5 = origin.x + line.sectionDirectionX() * 20;
+    float y5 = origin.y + line.sectionDirectionY() * 20;
     String scrap_option = TDString.OPTION_SCRAP + " " + scrap_name;
     point = new DrawingPointPath( BrushManager.getPointSectionIndex(),
                                   x5, y5, PointScale.SCALE_M,
@@ -7217,7 +7395,7 @@ public class DrawingWindow extends ItemDrawer
 
   void placeExistingSectionOnPlan( DrawingPointPath point )
   {
-    if ( point == null || ! SectionPointHelper.isLegSection( point ) ) return;
+    if ( point == null || ! SectionPointHelper.isPlaceableSection( point ) ) return;
     startSectionPlacement( point );
   }
 
@@ -9023,6 +9201,24 @@ public class DrawingWindow extends ItemDrawer
       mApp_mData.updatePlotCenter( pid, TDInstance.sid, center );
     }
 
+    DrawingPointPath point = ensureSectionPoint( line, id );
+    if ( point != null ) startSectionPlacement( point );
+  }
+
+  void openExistingXSection( DrawingLinePath line, String id, String nick )
+  {
+    PlotInfo plot = mApp_mData.getPlotInfo( TDInstance.sid, id );
+    if ( plot == null ) return;
+    updatePlotNick( plot, nick );
+    pushInfo( plot.type, plot.name, plot.start, plot.view, plot.azimuth, plot.clino,
+              plot.intercept, plot.intercept > 1.0f ? plot.center : null );
+  }
+
+  void placeExistingXSection( DrawingLinePath line, String id, String nick )
+  {
+    PlotInfo plot = mApp_mData.getPlotInfo( TDInstance.sid, id );
+    if ( plot == null ) return;
+    updatePlotNick( plot, nick );
     DrawingPointPath point = ensureSectionPoint( line, id );
     if ( point != null ) startSectionPlacement( point );
   }
@@ -11234,7 +11430,7 @@ public class DrawingWindow extends ItemDrawer
     mDrawingSurface.setXSectionOutline( name, scrap_id, tdr, x-DrawingUtil.CENTER_X, y-DrawingUtil.CENTER_Y );
   }
 
-  /** build a placed leg-section overlay
+  /** build a placed cross-section overlay
    * @param point section point carrying the placement metadata
    * @return placed overlay or null
    */
@@ -11247,7 +11443,7 @@ public class DrawingWindow extends ItemDrawer
     if ( full_name == null || short_name == null ) return null;
 
     PlotInfo plot = mApp_mData.getPlotInfo( TDInstance.sid, short_name );
-    if ( plot == null || ! PlotType.isLegSection( plot.type ) ) return null;
+    if ( plot == null || ! PlotType.isAnySection( plot.type ) ) return null;
 
     float dx = point.cx - DrawingUtil.CENTER_X;
     float dy = point.cy - DrawingUtil.CENTER_Y;
@@ -11270,7 +11466,7 @@ public class DrawingWindow extends ItemDrawer
     return new DrawingOutlinePath( full_name, point, box, underlays, sketch, refs, point.mScrap );
   }
 
-  /** build the detached reference layer for a placed leg x-section
+  /** build the detached reference layer for a placed x-section
    * @param point section point
    * @param plot  x-section plot info
    * @param list  section shots
@@ -11279,7 +11475,11 @@ public class DrawingWindow extends ItemDrawer
   private ArrayList< DrawingPath > makePlacedSectionReferences( DrawingPointPath point, PlotInfo plot, List< DBlock > list )
   {
     ArrayList< DrawingPath > refs = new ArrayList<>();
-    if ( point == null || plot == null || ! PlotType.isLegSection( plot.type ) ) return refs;
+    if ( point == null || plot == null || ! PlotType.isAnySection( plot.type ) ) return refs;
+
+    if ( PlotType.isStationSection( plot.type ) ) {
+      return makePlacedStationSectionReferences( point, plot, list );
+    }
 
     String from_station = ( plot.start == null ) ? "" : plot.start;
     String to_station   = ( plot.view  == null ) ? "" : plot.view;
@@ -11412,6 +11612,44 @@ public class DrawingWindow extends ItemDrawer
       }
     }
 
+    return refs;
+  }
+
+  private ArrayList< DrawingPath > makePlacedStationSectionReferences( DrawingPointPath point, PlotInfo plot, List< DBlock > list )
+  {
+    ArrayList< DrawingPath > refs = new ArrayList<>();
+    if ( point == null || plot == null || ! PlotType.isStationSection( plot.type ) ) return refs;
+
+    String station = ( plot.start == null ) ? "" : plot.start;
+    float dx = point.cx - DrawingUtil.CENTER_X;
+    float dy = point.cy - DrawingUtil.CENTER_Y;
+    float mc = plot.clino * TDMath.DEG2RAD;
+    float ma = plot.azimuth * TDMath.DEG2RAD;
+    TDVector normal = new TDVector( (float)(Math.cos( ma ) * Math.cos( mc )),
+                                    (float)(Math.sin( ma ) * Math.cos( mc )),
+                                    (float)Math.sin( mc ) );
+    TDVector horizontal = new TDVector( -(float)Math.sin( ma ), (float)Math.cos( ma ), 0.0f );
+    TDVector up = normal.cross( horizontal );
+
+    refs.add( makePlacedSectionStation( station, 0.0f, 0.0f, point.mScrap, dx, dy ) );
+    if ( TDUtil.isEmpty( list ) ) return refs;
+
+    for ( DBlock block : list ) {
+      if ( block == null || ! block.isSplay() ) continue;
+      boolean direct = station.equals( block.mFrom ) && TDString.isNullOrEmpty( block.mTo );
+      boolean reverse = station.equals( block.mTo ) && TDString.isNullOrEmpty( block.mFrom );
+      if ( ! direct && ! reverse ) continue;
+
+      float sign = reverse ? -1.0f : 1.0f;
+      float distance = sign * block.mLength;
+      TDVector vector = block.getUnitVector();
+      float x = distance * vector.dot( horizontal );
+      float y = -distance * vector.dot( up );
+      float z = distance * vector.dot( normal );
+      float length = TDMath.sqrt( x * x + y * y + z * z );
+      float angle = ( length > 0.0f ) ? 90.0f - TDMath.acosd( z / length ) : 90.0f;
+      refs.add( makePlacedSectionSplay( block, 0.0f, 0.0f, x, y, angle, false, point.mScrap, dx, dy ) );
+    }
     return refs;
   }
 

@@ -3,6 +3,7 @@ package com.topodroid.TDX;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -51,6 +52,7 @@ public class SpecialPointInstrumentedTest
   private boolean mPreviousOrthogonal;
   private float mPreviousVertical;
   private float mPreviousHorizontal;
+  private String mPreviousLengthUnit;
 
   @Before public void setUp()
   {
@@ -61,10 +63,12 @@ public class SpecialPointInstrumentedTest
     TDPath.clearSymbols();
     TopoDroidApp.installSymbols( true );
     BrushManager.reloadPointLibrary( context, context.getResources() );
+    BrushManager.reloadLineLibrary( context.getResources() );
     mPreviousCount = TDSetting.mLRUDcount;
     mPreviousOrthogonal = TDSetting.mOrthogonalLRUD;
     mPreviousVertical = TDSetting.mLRUDvertical;
     mPreviousHorizontal = TDSetting.mLRUDhorizontal;
+    mPreviousLengthUnit = TDSetting.mUnitLengthStr;
     TDSetting.mLRUDcount = false;
     TDSetting.mOrthogonalLRUD = false;
     TDSetting.mLRUDvertical = 45.0f;
@@ -77,6 +81,7 @@ public class SpecialPointInstrumentedTest
     TDSetting.mOrthogonalLRUD = mPreviousOrthogonal;
     TDSetting.mLRUDvertical = mPreviousVertical;
     TDSetting.mLRUDhorizontal = mPreviousHorizontal;
+    TDSetting.mUnitLengthStr = mPreviousLengthUnit;
     TDInstance.context = mPreviousContext;
   }
 
@@ -531,6 +536,113 @@ public class SpecialPointInstrumentedTest
     StationLrudResult incomplete = StationLrudCalculator.computeAtStation( leg, splays, "A" );
     assertTrue( incomplete.hasUp );
     assertFalse( incomplete.hasDown );
+  }
+
+  @Test public void stationSectionGuide_usesFacingLrudMarginsAndIndependentHalves()
+  {
+    ArrayList< DBlock > splays = new ArrayList<>();
+    splays.add( block( "A", "", 4.0f, 270.0f, 0.0f ) );
+    StationLrudResult lrud = StationLrudCalculator.computeAtStation( 0.0f, 0.0f, splays, "A" );
+    assertTrue( lrud.hasLeft );
+    assertFalse( lrud.hasRight );
+
+    TDSetting.mUnitLengthStr = "m";
+    StationSectionGuide.HalfLengths metric = StationSectionGuide.initialLengths( lrud, false );
+    assertEquals( 5.0f, metric.firstMetres, 0.001f );
+    assertEquals( 5.0f, metric.lastMetres, 0.001f );
+
+    TDSetting.mUnitLengthStr = "ft";
+    StationSectionGuide.HalfLengths imperial = StationSectionGuide.initialLengths( lrud, false );
+    assertEquals( 4.9144f, imperial.firstMetres, 0.001f );
+    assertEquals( 4.9144f, imperial.lastMetres, 0.001f );
+
+    DrawingLinePath guide = StationSectionGuide.create( 0, "xs-A", 100.0f, 120.0f,
+      0.0f, -1.0f, 2.0f, 5.0f );
+    assertTrue( StationSectionGuide.isGuide( guide ) );
+    assertEquals( "1", SketchPrivateOptions.getOptionValue( guide.mOptions,
+      SketchPrivateOptions.OPTION_STATION_GUIDE ) );
+    assertNull( SketchPrivateOptions.getOptionValue( SketchPrivateOptions.stripAll( guide.mOptions ),
+      SketchPrivateOptions.OPTION_STATION_GUIDE ) );
+
+    DrawingLinePath legacy = new DrawingLinePath( BrushManager.getLineSectionIndex(), 0 );
+    legacy.addOption( "-id xs-legacy" );
+    legacy.addStartPoint( 0.0f, 0.0f );
+    legacy.addPoint( 1.0f, 0.0f );
+    legacy.addPoint( 2.0f, 0.0f );
+    assertFalse( StationSectionGuide.isGuide( legacy ) );
+
+    DrawingPointPath sectionPoint = new DrawingPointPath( BrushManager.getPointSectionIndex(),
+      20.0f, 20.0f, PointScale.SCALE_M, null, "-scrap test-xs-A", 0 );
+    sectionPoint.setLink( guide );
+    assertFalse( sectionPoint.shouldDrawLink() );
+    sectionPoint.setLink( legacy );
+    assertTrue( sectionPoint.shouldDrawLink() );
+
+    assertEquals( 3, guide.size() );
+    assertEquals( 100.0f, StationSectionGuide.anchor( guide ).x, 0.001f );
+    assertEquals( 120.0f, StationSectionGuide.anchor( guide ).y, 0.001f );
+    assertEquals( 40.0f, guide.mFirst.distance( StationSectionGuide.anchor( guide ) ), 0.001f );
+    assertEquals( 100.0f, guide.mLast.distance( StationSectionGuide.anchor( guide ) ), 0.001f );
+
+    StationSectionGizmo.Drag resize = StationSectionGizmo.beginDrag(
+      guide, StationSectionGizmo.FIRST, guide.mFirst.x, guide.mFirst.y, 1.0f );
+    assertNotNull( resize );
+    resize.update( 20.0f, 120.0f, false, true );
+    assertEquals( 80.0f, guide.mFirst.distance( StationSectionGuide.anchor( guide ) ), 0.001f );
+    assertEquals( 100.0f, guide.mLast.distance( StationSectionGuide.anchor( guide ) ), 0.001f );
+
+    StationSectionGizmo.Drag rotate = StationSectionGizmo.beginDrag(
+      guide, StationSectionGizmo.ROTATE, 100.0f, 80.0f, 1.0f );
+    assertNotNull( rotate );
+    rotate.update( 140.0f, 120.0f, false, true );
+    assertEquals( 100.0f, StationSectionGuide.anchor( guide ).x, 0.001f );
+    assertEquals( 120.0f, StationSectionGuide.anchor( guide ).y, 0.001f );
+    assertEquals( 80.0f, guide.mFirst.distance( StationSectionGuide.anchor( guide ) ), 0.001f );
+    assertEquals( 100.0f, guide.mLast.distance( StationSectionGuide.anchor( guide ) ), 0.001f );
+  }
+
+  @Test public void stationSectionGuide_usesUpDownForVerticalProfilesAndMarginFallback()
+  {
+    StationLrudResult lrud = new StationLrudResult();
+    lrud.up = 3.0f;
+    lrud.hasUp = true;
+    TDSetting.mUnitLengthStr = "m";
+    StationSectionGuide.HalfLengths lengths = StationSectionGuide.initialLengths( lrud, true );
+    assertEquals( 4.0f, lengths.firstMetres, 0.001f );
+    assertEquals( 4.0f, lengths.lastMetres, 0.001f );
+
+    StationSectionGuide.HalfLengths empty = StationSectionGuide.initialLengths( new StationLrudResult(), true );
+    assertEquals( 1.0f, empty.firstMetres, 0.001f );
+    assertEquals( 1.0f, empty.lastMetres, 0.001f );
+  }
+
+  @Test public void stationSectionGuide_preservesAsymmetryAndRoundTripsAsOrdinaryLine() throws Exception
+  {
+    ArrayList< DBlock > splays = new ArrayList<>();
+    splays.add( block( "A", "", 4.0f, 270.0f, 0.0f ) );
+    splays.add( block( "A", "", 1.0f, 90.0f, 0.0f ) );
+    StationLrudResult lrud = StationLrudCalculator.computeAtStation( 0.0f, 0.0f, splays, "A" );
+    TDSetting.mUnitLengthStr = "m";
+    StationSectionGuide.HalfLengths lengths = StationSectionGuide.initialLengths( lrud, false );
+    assertEquals( 5.0f, lengths.firstMetres, 0.001f );
+    assertEquals( 2.0f, lengths.lastMetres, 0.001f );
+
+    DrawingLinePath guide = StationSectionGuide.create( 2, "xs-A", 10.0f, 20.0f,
+      0.0f, -1.0f, lengths.firstMetres, lengths.lastMetres );
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    DataOutputStream output = new DataOutputStream( bytes );
+    guide.toDataStream( output, 2 );
+    output.flush();
+    DataInputStream input = new DataInputStream( new ByteArrayInputStream( bytes.toByteArray() ) );
+    assertEquals( 'L', input.read() );
+    DrawingLinePath loaded = DrawingLinePath.loadDataStream( TDR_VERSION, input, 0.0f, 0.0f );
+    assertNotNull( loaded );
+    assertTrue( StationSectionGuide.isGuide( loaded ) );
+    assertEquals( "xs-A", loaded.getOption( "-id" ) );
+    assertEquals( 10.0f, StationSectionGuide.anchor( loaded ).x, 0.001f );
+    assertEquals( 20.0f, StationSectionGuide.anchor( loaded ).y, 0.001f );
+    assertEquals( 100.0f, loaded.mFirst.distance( StationSectionGuide.anchor( loaded ) ), 0.001f );
+    assertEquals( 40.0f, loaded.mLast.distance( StationSectionGuide.anchor( loaded ) ), 0.001f );
   }
 
   @Test public void beddingRenderer_distinguishesConfirmedGlyphsAndProfileFallDirections()

@@ -13,6 +13,7 @@ package com.topodroid.TDX;
 
 import com.topodroid.util.TDString;
 import com.topodroid.util.TDUtil;
+import com.topodroid.types.PlotType;
 
 import android.graphics.RectF;
 
@@ -105,10 +106,20 @@ class SectionPointHelper
     return ( point == null ) ? null : point.getOption( TDString.OPTION_SCRAP );
   }
 
-  static boolean isLegSection( DrawingPointPath point )
+  static PlotInfo getSectionPlot( DrawingPointPath point )
   {
     String name = getSectionName( point );
-    return name != null && name.lastIndexOf( "-xx" ) >= 0;
+    if ( name == null || TopoDroidApp.mData == null ) return null;
+    int prefix = TDInstance.survey.length() + 1;
+    String short_name = name.startsWith( TDInstance.survey + "-" ) && name.length() > prefix
+                      ? name.substring( prefix ) : name;
+    return TopoDroidApp.mData.getPlotInfo( TDInstance.sid, short_name );
+  }
+
+  static boolean isPlaceableSection( DrawingPointPath point )
+  {
+    PlotInfo plot = getSectionPlot( point );
+    return plot != null && PlotType.isAnySection( plot.type );
   }
 
   static String stripPlacementOptions( String options )

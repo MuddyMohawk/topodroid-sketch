@@ -37,6 +37,8 @@
     <string name="desc_preset_1">Sketch preset 1</string>
     <string name="desc_preset_2">Sketch preset 2</string>
     <string name="desc_style">Sketch style %1$d: %2$s</string>
+    <string name="desc_preset_settings">Open preset settings</string>
+    <string name="desc_style_settings">Open style settings</string>
 
   <string name="r_title">Android-13+ WARNING</string>
   <!-- UNUSED string name="r_dialog_1">
@@ -1857,6 +1859,8 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_second_distox_summary">Surveying with two devices</string>
   <string name="pref_auto_pair_title">Auto pairing</string>
   <string name="pref_auto_pair_summary">Pair with device after scan</string>
+  <string name="pref_cavway_backsight_title">Honor Cavway backsight labels</string>
+  <string name="pref_cavway_backsight_summary">Also mark downloaded Cavway backsight measurements as TopoDroid backsight shots</string>
   <string name="pref_head_tail_title">Number of new data</string>
   <string name="pref_head_tail_summary">Get the number of new data before downloading them</string>
   <string name="pref_socket_delay_title">Connection delay</string>

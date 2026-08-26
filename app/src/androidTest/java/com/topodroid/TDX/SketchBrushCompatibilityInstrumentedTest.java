@@ -80,6 +80,29 @@ public class SketchBrushCompatibilityInstrumentedTest
   }
 
   @Test
+  public void dataStreamRoundTrip_preservesBedrockOrientationAndStructuredExports() throws Exception
+  {
+    int areaType = BrushManager.getAreaIndexByThName( SymbolLibrary.BEDROCK );
+    assertTrue( "Missing bedrock area", areaType >= 0 );
+    assertTrue( "Bedrock area should support per-placement orientation",
+                BrushManager.isAreaOrientable( areaType ) );
+    DrawingAreaPath area = areaRectangle( areaType );
+    area.setOrientation( 37.0 );
+
+    DrawingAreaPath loaded = roundTripArea( area );
+    assertEquals( 37.0, loaded.mOrientation, 0.0001 );
+    assertTrue( "Therion export lost bedrock orientation",
+                loaded.toTherion().contains( "#orientation 37.0" ) );
+
+    StringWriter writer = new StringWriter();
+    PrintWriter printer = new PrintWriter( writer );
+    loaded.toTCsurvey( printer, "survey", "cave", "branch", null );
+    printer.flush();
+    assertTrue( "cSurvey export lost bedrock orientation",
+                writer.toString().contains( "orientation=\"37.00\"" ) );
+  }
+
+  @Test
   public void oldAreaStreams_loadWithoutOptions() throws Exception
   {
     // a pre-options stream version must not try to read the options UTF: strip the UTF
@@ -202,13 +225,19 @@ public class SketchBrushCompatibilityInstrumentedTest
   {
     int areaType = BrushManager.getAreaIndexByThName( SymbolLibrary.CLAY );
     assertTrue( "Missing clay area", areaType >= 0 );
+    DrawingAreaPath area = areaRectangle( areaType );
+    area.setSketchBrushStyle( style );
+    return area;
+  }
+
+  private DrawingAreaPath areaRectangle( int areaType )
+  {
     DrawingAreaPath area = new DrawingAreaPath( areaType, 1, "probe-a", true, 0 );
     area.addStartPoint( 0.0f, 0.0f );
     area.addPoint( 30.0f, 0.0f );
     area.addPoint( 30.0f, 30.0f );
     area.addPoint( 0.0f, 30.0f );
     area.closePath();
-    area.setSketchBrushStyle( style );
     return area;
   }
 

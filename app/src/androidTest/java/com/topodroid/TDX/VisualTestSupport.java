@@ -40,6 +40,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CompoundButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.test.core.app.ActivityScenario;
@@ -60,6 +61,7 @@ import androidx.test.uiautomator.Until;
 import com.topodroid.prefs.TDSetting;
 import com.topodroid.prefs.TDPrefHelper;
 import com.topodroid.types.PointScale;
+import com.topodroid.ui.ItemButton;
 import com.topodroid.ui.MotionEventWrap;
 import com.topodroid.util.TDColor;
 
@@ -747,6 +749,28 @@ final class VisualTestSupport
     tapChildInContainer( R.id.layout_tool_style, style - 1, "style bar" );
   }
 
+  void tapPresetSettingsButton()
+  {
+    tapChildInContainer( R.id.layout_tool_preset, TDSetting.getSketchPresetSlotCount(), "preset bar settings" );
+  }
+
+  void tapStyleSettingsButton()
+  {
+    tapChildInContainer( R.id.layout_tool_style, TDSetting.getSketchStyleSlotCount(), "style bar settings" );
+  }
+
+  void assertPreferencePageVisible( int expectedTitle )
+  {
+    UiObject2 title = waitForObject( By.res( PACKAGE_NAME, "title_text" ) );
+    assertEquals( "Unexpected preference page title", string( expectedTitle ), title.getText() );
+  }
+
+  void pressBackToDrawingWindow()
+  {
+    mDevice.pressBack();
+    waitForDrawingWindow();
+  }
+
   void assertDefaultSketchToolbarVisible()
   {
     assertPresetBarVisible( "Fine", "Smooth", "Straight", "Snap" );
@@ -761,8 +785,8 @@ final class VisualTestSupport
 
   void assertSketchToggleBarColors( int activePreset, int activeStyle )
   {
-    assertSketchToggleBarColors( R.id.layout_tool_preset, "Preset", activePreset - 1 );
-    assertSketchToggleBarColors( R.id.layout_tool_style, "Style", activeStyle - 1 );
+    assertSketchToggleBarColors( R.id.layout_tool_preset, "Preset", activePreset - 1, TDSetting.getSketchPresetSlotCount() );
+    assertSketchToggleBarColors( R.id.layout_tool_style, "Style", activeStyle - 1, TDSetting.getSketchStyleSlotCount() );
   }
 
   private void assertPresetBarVisible( String... expectedLabels )
@@ -770,7 +794,7 @@ final class VisualTestSupport
     assertButtonBarVisible( R.id.layout_tool_preset, "Preset", expectedLabels );
   }
 
-  private void assertSketchToggleBarColors( int barId, String label, int activeIndex )
+  private void assertSketchToggleBarColors( int barId, String label, int activeIndex, int toggleCount )
   {
     runOnMainChecked( label + " toggle bar", () -> {
       View view = requireDrawingWindowView( barId, label + " bar" );
@@ -779,9 +803,10 @@ final class VisualTestSupport
         view.getVisibility() == View.VISIBLE && view.getWidth() > 0 && view.getHeight() > 0 );
       assertEquals( label + " bar divider background", 0xff26272b, getBackgroundColor( view, label + " bar" ) );
       ViewGroup group = (ViewGroup)view;
-      assertTrue( label + " active index " + activeIndex + " is outside child count " + group.getChildCount(),
-        activeIndex >= 0 && activeIndex < group.getChildCount() );
-      for ( int index = 0; index < group.getChildCount(); ++index ) {
+      assertEquals( "Unexpected " + label + " child count", toggleCount + 1, group.getChildCount() );
+      assertTrue( label + " active index " + activeIndex + " is outside toggle count " + toggleCount,
+        activeIndex >= 0 && activeIndex < toggleCount );
+      for ( int index = 0; index < toggleCount; ++index ) {
         View child = group.getChildAt( index );
         boolean active = index == activeIndex;
         assertTrue( label + " button " + index + " is not visible",
@@ -794,6 +819,7 @@ final class VisualTestSupport
           active ? TDColor.SKETCH_TOGGLE_ON_TEXT : TDColor.SKETCH_TOGGLE_OFF_TEXT,
           ((TextView)child).getCurrentTextColor() );
       }
+      assertToolbarSettingsButton( group.getChildAt( toggleCount ), label );
     } );
   }
 
@@ -811,7 +837,7 @@ final class VisualTestSupport
       assertTrue( label + " bar is not visible",
         view.getVisibility() == View.VISIBLE && view.getWidth() > 0 && view.getHeight() > 0 );
       ViewGroup group = (ViewGroup)view;
-      assertEquals( "Unexpected " + label + " button count", expectedLabels.length, group.getChildCount() );
+      assertEquals( "Unexpected " + label + " button count", expectedLabels.length + 1, group.getChildCount() );
       for ( int index = 0; index < expectedLabels.length; ++index ) {
         View child = group.getChildAt( index );
         assertTrue( label + " button " + index + " is not visible",
@@ -820,7 +846,34 @@ final class VisualTestSupport
         assertEquals( label + " button " + index + " label",
           expectedLabels[index], ((TextView)child).getText().toString() );
       }
+      assertToolbarSettingsButton( group.getChildAt( expectedLabels.length ), label );
     } );
+  }
+
+  private void assertToolbarSettingsButton( View child, String label )
+  {
+    assertTrue( label + " settings button is not visible",
+      child.getVisibility() == View.VISIBLE && child.getWidth() > 0 && child.getHeight() > 0 );
+    assertTrue( label + " settings button does not use the toolbar arrow control", child instanceof ItemButton );
+    int description = label.equals( "Preset" ) ? R.string.desc_preset_settings : R.string.desc_style_settings;
+    assertEquals( label + " settings accessibility label", string( description ), child.getContentDescription() );
+    assertTrue( label + " settings button does not use linear-layout parameters",
+      child.getLayoutParams() instanceof LinearLayout.LayoutParams );
+    LinearLayout.LayoutParams params = (LinearLayout.LayoutParams)child.getLayoutParams();
+    assertEquals( label + " settings button must use the symbol-slot width", 0, params.width );
+    assertEquals( label + " settings button must use the symbol-slot weight", 16.0f, params.weight, 0.0f );
+    ViewGroup parent = (ViewGroup)child.getParent();
+    assertEquals( label + " settings button is not locked to the right edge",
+      parent.getWidth() - parent.getPaddingRight(), child.getRight() );
+    View toolsView = requireDrawingWindowView( R.id.layout_tools, "tools container" );
+    assertTrue( "Tools container is not a ViewGroup", toolsView instanceof ViewGroup );
+    ViewGroup symbolRow = findManualToolbarRow( (ViewGroup)toolsView, 0 );
+    assertNotNull( "No visible symbol toolbar row", symbolRow );
+    View symbolSettings = symbolRow.getChildAt( ItemDrawer.getToolbarSlotCount() );
+    int tolerance = Math.max( 1, Math.round( mTargetContext.getResources().getDisplayMetrics().density ) );
+    assertTrue( label + " settings button width " + child.getWidth()
+        + " does not match symbol settings width " + symbolSettings.getWidth(),
+      Math.abs( child.getWidth() - symbolSettings.getWidth() ) <= tolerance );
   }
 
   private void assertManualToolbarVisible( int expectedSlots )

@@ -37,7 +37,7 @@ class DrawingPointSectionDialog extends MyDialog
   private final DrawingPointPath mPoint;
   private final int mPointType;
   private boolean mIsPlaced;
-  private boolean mIsLegSection;
+  private boolean mIsPlaceableSection;
   private boolean  mHasXSectionOutline;
   private String mXSectionName; // full section name = scrap-name
 
@@ -85,7 +85,7 @@ class DrawingPointSectionDialog extends MyDialog
     mPointType = mPoint.mPointType;
     mXSectionName = null;
     mIsPlaced = false;
-    mIsLegSection = false;
+    mIsPlaceableSection = false;
     mHasXSectionOutline = false;
   }
 
@@ -113,7 +113,7 @@ class DrawingPointSectionDialog extends MyDialog
     
     mXSectionName = TDUtil.replacePrefix( TDInstance.survey, mPoint.getOption(TDString.OPTION_SCRAP) );
     mIsPlaced = SectionPointHelper.isPlaced( mPoint );
-    mIsLegSection = SectionPointHelper.isLegSection( mPoint );
+    mIsPlaceableSection = SectionPointHelper.isPlaceableSection( mPoint );
     if ( mXSectionName != null ) {
       if ( TDLevel.overAdvanced && ! mIsPlaced ) {
         mHasXSectionOutline = mParent.hasXSectionOutline( mXSectionName );
@@ -127,7 +127,7 @@ class DrawingPointSectionDialog extends MyDialog
       mBtnOpen.setVisibility( View.GONE );
     }
 
-    if ( mIsLegSection ) {
+    if ( mIsPlaceableSection ) {
       mETboxWidth.setText( Integer.toString( Math.round( SectionPointHelper.getBoxWidth( mPoint ) ) ) );
       mETboxHeight.setText( Integer.toString( Math.round( SectionPointHelper.getBoxHeight( mPoint ) ) ) );
       mCBshowRefs.setChecked( SectionPointHelper.hasPlacedReferences( mPoint ) );
@@ -226,7 +226,7 @@ class DrawingPointSectionDialog extends MyDialog
 
       if ( TDSetting.mWithLevels > 1 ) setLevel();
 
-      if ( mIsLegSection ) {
+      if ( mIsPlaceableSection ) {
         mParent.setSectionPointPlacementOptions( mPoint, getBoxWidthValue(), getBoxHeightValue(), shouldShowReferences() );
       }
 
@@ -239,7 +239,7 @@ class DrawingPointSectionDialog extends MyDialog
     } else if ( v == mBtnOpen ) {
       if ( mXSectionName != null ) mParent.openXSectionDraw( mXSectionName );
     } else if ( v == mBtnPlace ) {
-      if ( mIsLegSection ) {
+      if ( mIsPlaceableSection ) {
         mParent.setSectionPointPlacementOptions( mPoint, getBoxWidthValue(), getBoxHeightValue(), shouldShowReferences() );
         mParent.placeExistingSectionOnPlan( mPoint );
       }

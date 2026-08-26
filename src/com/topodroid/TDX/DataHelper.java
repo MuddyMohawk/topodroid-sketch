@@ -2359,6 +2359,7 @@ public class DataHelper extends DataSetObservable
     if ( id >= 0 && hasShotId( sid, id ) ) { // if shot ID is already present, use a new ID
       id = -1L;
     }
+    flag = CavwayBacksightFlagPolicy.apply( flag, TDSetting.mCavwayBacksight );
     return doCavwayInsertShot( sid, id, TDUtil.getTimeStamp(), 0L, d, b, c, r, mag, acc, dip, extend, 0.0,             // color=0, stretch=0.0
                                flag, leg, status, comment, 0L, addr, rawMx, rawMy, rawMz, rawGx, rawGy, rawGz, idx, time ); // shot_type=0
   }

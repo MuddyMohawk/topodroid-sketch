@@ -1460,6 +1460,11 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     return ( commandManager == null ) ? null : commandManager.getNearestStation( x, y );
   }
 
+  DrawingStationName getStation( String name )
+  {
+    return ( commandManager == null ) ? null : commandManager.getStation( name );
+  }
+
   List< String > getDrawingStationNames()
   {
     ArrayList< String > names = new ArrayList<>();
@@ -1515,12 +1520,23 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   
   SelectionPoint hotItem() { return commandManager.hotItem(); }
 
+  SelectionPoint selectPathPoint( DrawingPointLinePath path, LinePoint point )
+  {
+    SelectionPoint selected = commandManager.selectPathPoint( path, point );
+    requestSceneRender();
+    return selected;
+  }
+
   boolean hasSelected() { return commandManager.hasSelected(); }
 
   // void shiftHotItem( float dx, float dy, float range ) { commandManager.shiftHotItem( dx, dy, range ); }
   void shiftHotItem( float dx, float dy ) { commandManager.shiftHotItem( dx, dy ); staleBlitWindow( STALE_BLIT_GESTURE_MS ); requestSceneRender(); }
 
   void refreshReferencePath( DrawingReferencePath path ) { commandManager.refreshReferencePath( path ); requestSceneRender(); }
+
+  void refreshDrawingPath( DrawingPath path ) { commandManager.refreshDrawingPath( path ); requestSceneRender(); }
+
+  DrawingLinePath findSectionLine( String id ) { return commandManager.findSectionLine( id ); }
 
   /** rotate the hot item 
    * @param dy   amount of rotation [degrees]

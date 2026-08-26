@@ -92,6 +92,15 @@ class SelectionSet
 
   void addPoint( SelectionPoint pt ) { mPoints.add( pt ); }
 
+  void setOnlyHotItem( SelectionPoint point )
+  {
+    clear();
+    if ( point == null ) return;
+    mPoints.add( point );
+    mIndex = 0;
+    mHotItem = point;
+  }
+
   /** Bounds-based text hits precede the bucket query. Remove only the later
    * anchor duplicate while retaining every distinct overlapping text object.
    */

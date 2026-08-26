@@ -252,6 +252,58 @@ public class AreaPatternRendererInstrumentedTest
     assertUnrelatedPatternSurvives( SymbolLibrary.BEDROCK );
   }
 
+  @Test
+  public void bedrockOrientation_rotatesPerAreaWithoutAngleBleed()
+  {
+    int bedrockType = BrushManager.getAreaIndexByThName( SymbolLibrary.BEDROCK );
+    assertTrue( "Missing packaged bedrock area", bedrockType >= 0 );
+    assertTrue( "Bedrock area should support per-placement orientation",
+                BrushManager.isAreaOrientable( bedrockType ) );
+
+    DrawingAreaPath horizontalProbe = rectangle( bedrockType, 20.0f, 20.0f, 140.0f, 100.0f );
+    DrawingAreaPath tiltedProbe = rectangle( bedrockType, 20.0f, 20.0f, 140.0f, 100.0f );
+    tiltedProbe.setOrientation( 32.0 );
+    Bitmap horizontalProbeBitmap = renderCommands( commands( horizontalProbe ) );
+    Bitmap tiltedProbeBitmap = renderCommands( commands( tiltedProbe ) );
+    assertBitmapsDifferent( "Nonzero bedrock orientation did not rotate the courses",
+                            horizontalProbeBitmap, tiltedProbeBitmap, 1000 );
+    horizontalProbeBitmap.recycle();
+    tiltedProbeBitmap.recycle();
+
+    DrawingAreaPath horizontal = rectangle( bedrockType, 10.0f, 10.0f, 80.0f, 110.0f );
+    DrawingAreaPath tilted = rectangle( bedrockType, 80.0f, 10.0f, 150.0f, 110.0f );
+    tilted.setOrientation( 32.0 );
+
+    Bitmap horizontalOnly = renderCommands( commands( horizontal ) );
+    Bitmap tiltedOnly = renderCommands( commands( tilted ) );
+    Bitmap combined = renderCommands( commands( horizontal, tilted ) );
+
+    assertRegionEquals( "Horizontal bedrock changed beside a tilted area",
+        horizontalOnly, combined, 12.0f, 12.0f, 78.0f, 108.0f );
+    assertRegionEquals( "Tilted bedrock inherited the horizontal area's angle",
+        tiltedOnly, combined, 82.0f, 12.0f, 148.0f, 108.0f );
+
+    horizontalOnly.recycle();
+    tiltedOnly.recycle();
+    combined.recycle();
+  }
+
+  @Test
+  public void sameAngleBedrockAreas_renderAsOneGroup()
+  {
+    int bedrockType = BrushManager.getAreaIndexByThName( SymbolLibrary.BEDROCK );
+    DrawingAreaPath area = rectangle( bedrockType, 20.0f, 18.0f, 140.0f, 102.0f );
+    DrawingAreaPath duplicate = rectangle( bedrockType, 20.0f, 18.0f, 140.0f, 102.0f );
+    area.setOrientation( 32.0 );
+    duplicate.setOrientation( 32.0 );
+
+    Bitmap single = renderCommands( commands( area ) );
+    Bitmap doubled = renderCommands( commands( area, duplicate ) );
+    assertBitmapsEqual( "Same-angle bedrock areas were painted as separate groups", single, doubled );
+    single.recycle();
+    doubled.recycle();
+  }
+
   private static Bitmap renderTransparent( DrawingAreaPath area )
   {
     Bitmap bitmap = Bitmap.createBitmap( WIDTH, HEIGHT, Bitmap.Config.ARGB_8888 );
@@ -307,6 +359,32 @@ public class AreaPatternRendererInstrumentedTest
                       expected.getPixel( x, y ), actual.getPixel( x, y ) );
       }
     }
+  }
+
+  private static void assertRegionEquals( String message, Bitmap expected, Bitmap actual,
+                                          float left, float top, float right, float bottom )
+  {
+    int x0 = Math.round( left * SCALE );
+    int y0 = Math.round( top * SCALE );
+    int x1 = Math.round( right * SCALE );
+    int y1 = Math.round( bottom * SCALE );
+    for ( int y = y0; y < y1; ++y ) {
+      for ( int x = x0; x < x1; ++x ) {
+        assertEquals( message + " at " + x + "," + y,
+                      expected.getPixel( x, y ), actual.getPixel( x, y ) );
+      }
+    }
+  }
+
+  private static void assertBitmapsDifferent( String message, Bitmap first, Bitmap second, int minimum )
+  {
+    int differences = 0;
+    for ( int y = 0; y < first.getHeight(); ++y ) {
+      for ( int x = 0; x < first.getWidth(); ++x ) {
+        if ( first.getPixel( x, y ) != second.getPixel( x, y ) ) ++differences;
+      }
+    }
+    assertTrue( message + ": only " + differences + " pixels changed", differences >= minimum );
   }
 
   private static void assertUnrelatedPatternSurvives( String thName )

@@ -28,20 +28,38 @@ final class StationLrudCalculator
   {
     if ( TDString.isNullOrEmpty( station ) ) return new StationLrudResult();
     if ( reference_leg == null && TDSetting.mOrthogonalLRUD ) return new StationLrudResult();
-    return compute( reference_leg, splays, station, true );
+    return compute( reference_leg, null, null, splays, station, true );
+  }
+
+  /** Station calculation relative to an explicit cross-section facing. */
+  static StationLrudResult computeAtStation( float bearing, float clino, List< DBlock > splays, String station )
+  {
+    if ( TDString.isNullOrEmpty( station ) ) return new StationLrudResult();
+    return compute( null, Float.valueOf( bearing ), Float.valueOf( clino ), splays, station, true );
   }
 
   private static StationLrudResult compute( DBlock leg, List< DBlock > source, String station,
+                                            boolean accept_reverse_splays )
+  {
+    return compute( leg, null, null, source, station, accept_reverse_splays );
+  }
+
+  private static StationLrudResult compute( DBlock leg, Float facing_bearing, Float facing_clino,
+                                            List< DBlock > source, String station,
                                             boolean accept_reverse_splays )
   {
     StationLrudResult result = new StationLrudResult();
     if ( TDString.isNullOrEmpty( station ) ) return result;
     List< DBlock > splays = ( source == null ) ? Collections.< DBlock >emptyList() : source;
 
-    float n0 = ( leg == null ) ? 1.0f : TDMath.cosd( leg.mBearing );
-    float e0 = ( leg == null ) ? 0.0f : TDMath.sind( leg.mBearing );
-    float cc0 = ( leg == null ) ? 1.0f : TDMath.cosd( leg.mClino );
-    float sc0 = ( leg == null ) ? 0.0f : TDMath.sind( leg.mClino );
+    float basis_bearing = ( facing_bearing != null ) ? facing_bearing.floatValue()
+                                                     : ( leg == null ? 0.0f : leg.mBearing );
+    float basis_clino = ( facing_clino != null ) ? facing_clino.floatValue()
+                                                 : ( leg == null ? 0.0f : leg.mClino );
+    float n0 = TDMath.cosd( basis_bearing );
+    float e0 = TDMath.sind( basis_bearing );
+    float cc0 = TDMath.cosd( basis_clino );
+    float sc0 = TDMath.sind( basis_clino );
 
     boolean first_only = TDSetting.mLRUDcount;
     boolean take_left = true;

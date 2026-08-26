@@ -317,7 +317,13 @@ public class BrushManager
   static int getLineSlopeIndex()            { return (mLineLib == null)? -1 : mLineLib.mLineSlopeIndex; }
 
   // FIXME AREA_ORIENT
-  static boolean isAreaOrientable( int index )      { return mAreaLib != null && mAreaLib.isSymbolOrientable( index ); }
+  static boolean isAreaOrientable( int index )
+  {
+    if ( mAreaLib == null ) return false;
+    if ( mAreaLib.isSymbolOrientable( index ) ) return true;
+    AreaLinePattern pattern = mAreaLib.getAreaLinePattern( index );
+    return pattern != null && pattern.mType == AreaLinePattern.TYPE_BEDROCK;
+  }
   static double getAreaOrientation( int index )     { return (mAreaLib == null)? 0 : mAreaLib.getAreaOrientation( index ); }
   static void resetAreaOrientations( )              { if (mAreaLib != null) mAreaLib.resetOrientations(); }
   static void rotateGradArea( int index, double a ) { if (mAreaLib != null) mAreaLib.rotateGrad( index, a ); }

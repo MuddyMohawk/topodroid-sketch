@@ -324,6 +324,16 @@ public class DrawingAreaPath extends DrawingPointLinePath
    */
   int areaType() { return mAreaType; }
 
+  /** @return this placement's effective world-space line-pattern angle */
+  float getPatternAngle( AreaLinePattern pattern )
+  {
+    if ( pattern == null ) return 0.0f;
+    if ( pattern.mType != AreaLinePattern.TYPE_BEDROCK ) return pattern.mAngle;
+    float angle = pattern.mAngle + (float)mOrientation;
+    angle = TDMath.in360( angle );
+    return ( angle == 0.0f )? 0.0f : angle; // canonicalize negative zero for grouping
+  }
+
   /** @return the area Therion name
    */
   public String getThName() { return BrushManager.getAreaThName( mAreaType ); }

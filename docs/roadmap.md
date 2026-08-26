@@ -3,6 +3,9 @@
 The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles.
 
 ## TODO
+- export needs to work in background?
+  - export progress bar/spinny
+  - export performance is slower than expected, notable when exporting a screen without any writing, just stations, legs, and like 3 sketch lines
 - need to be able to delete sketches?
 - need a more intuitive settings name for the style and presets toolbar
 - rename/display the symbol pack name?
@@ -40,6 +43,10 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - make slope point symbol lines stretchable/configurable?
 
 ## Known bugs
+- Investigate and overhaul backups
+  - in-the-field as-you-go backup exports 
+  - export to second write-only location (eg SD card)
+  - project backup policies?
 - Sometimes drawing a section line causes the splay lines it crosses to stop rendered. Fixed by re-opening the sketch
 - Cavway special lines don't seem to be colored in cross-sections like they are in plan. Vanilla bug.
 - Large reference images, and reference images in general, are kinda low and cause lag
@@ -56,6 +63,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Making the toolbars smaller causes point symbols to become illegible. Even smaller, and other rendering problems come up
 
 ## Future possible features / brainstorming
+- export all sketches/scraps
 - z-order is basically a property of the render order, rather than an explicit property of the symbol. Should it become necessary, consider refactoring so that symbols have an explicit rendered z-order
 - make the symbol toolbar sizing controls different than the line styles/preset style controls
 - stamp point symbol from random selection (eg leaf variants, rock variants)
