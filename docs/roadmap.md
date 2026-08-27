@@ -3,6 +3,8 @@
 The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles.
 
 ## TODO
+- Show footage total of selected shots
+- Additional display settings for splays to show only dots or only labelled splays. Having all splays gets crowded. Splay thickness settings?
 - export needs to work in background?
   - export progress bar/spinny
   - export performance is slower than expected, notable when exporting a screen without any writing, just stations, legs, and like 3 sketch lines
@@ -43,6 +45,10 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - make slope point symbol lines stretchable/configurable?
 
 ## Known bugs
+- User reported: The scale bar on the sketching screen is obscured by the toolbars. Apparently people use that. 
+- User reported, but not replicated: "changing an unlocked row caused the row to visually change but the button didn't actually change"
+- User reported: if the app loses permissions for some reason, like an OS update or something, it won't open. Just immediate crash with no indication of what's wrong
+- Multi-device functionality seems terrible. Could not switch between DistoX and Cavway via long-press in multi mode, but could manually swap then at the main screen. 
 - Investigate and overhaul backups
   - in-the-field as-you-go backup exports 
   - export to second write-only location (eg SD card)
@@ -63,6 +69,13 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Making the toolbars smaller causes point symbols to become illegible. Even smaller, and other rendering problems come up
 
 ## Future possible features / brainstorming
+- Need a backsight overhaul
+  - Display backsight tolerance hit/miss on the shots page
+  - Show how much it missed by, and what is the acceptable range
+  - Automatically recognize backsights and label them accordingly
+- Setting to remember the stylus/line weight you last used for a symbol. For example, a user draws a thick wall line, then switches to standard sand symbol. When they switch back to drawing the wall, 
+- user requested that the reverse line button be "trivially" accessible. Probably on the top toolbar and maybe an action
+- Need to be able to precisely control exactly which splays and stations are visible on a cross-section
 - export all sketches/scraps
 - z-order is basically a property of the render order, rather than an explicit property of the symbol. Should it become necessary, consider refactoring so that symbols have an explicit rendered z-order
 - make the symbol toolbar sizing controls different than the line styles/preset style controls
