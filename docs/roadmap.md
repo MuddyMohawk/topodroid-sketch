@@ -69,6 +69,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Making the toolbars smaller causes point symbols to become illegible. Even smaller, and other rendering problems come up
 
 ## Future possible features / brainstorming
+- Tester-level enhanced logging
 - Need a backsight overhaul
   - Display backsight tolerance hit/miss on the shots page
   - Show how much it missed by, and what is the acceptable range
