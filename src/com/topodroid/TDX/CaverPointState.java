@@ -9,7 +9,8 @@ final class CaverPointState implements SpecialPointState
   enum Variant
   {
     MAN( "man" ),
-    WOMAN( "woman" );
+    WOMAN( "woman" ),
+    BANANA_SLUG( "banana-slug" );
 
     final String persistedName;
 
@@ -17,11 +18,15 @@ final class CaverPointState implements SpecialPointState
 
     static Variant fromPersistedName( String value )
     {
-      return WOMAN.persistedName.equalsIgnoreCase( value ) ? WOMAN : MAN;
+      for ( Variant variant : values() ) {
+        if ( variant.persistedName.equalsIgnoreCase( value ) ) return variant;
+      }
+      return MAN;
     }
   }
 
   static final double DEFAULT_HEIGHT_METERS = 1.778;
+  static final double BANANA_SLUG_DEFAULT_HEIGHT_METERS = 0.9144; // exactly 3 ft
 
   final Variant variant;
   final double heightMeters;
@@ -30,11 +35,17 @@ final class CaverPointState implements SpecialPointState
   {
     this.variant = variant == null ? Variant.MAN : variant;
     this.heightMeters = Double.isFinite( height_meters ) && height_meters > 0.0
-      ? height_meters : DEFAULT_HEIGHT_METERS;
+      ? height_meters : defaultHeightMeters( this.variant );
   }
 
   static CaverPointState defaultState()
   {
     return new CaverPointState( Variant.MAN, DEFAULT_HEIGHT_METERS );
+  }
+
+  static double defaultHeightMeters( Variant variant )
+  {
+    return variant == Variant.BANANA_SLUG ? BANANA_SLUG_DEFAULT_HEIGHT_METERS
+                                         : DEFAULT_HEIGHT_METERS;
   }
 }

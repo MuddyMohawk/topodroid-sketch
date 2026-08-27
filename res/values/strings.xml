@@ -1126,6 +1126,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="caver_silhouette">Caver silhouette</string>
     <string name="caver_man">Man</string>
     <string name="caver_woman">Woman</string>
+    <string name="caver_banana_slug">Banana slug</string>
     <string name="caver_height">Height</string>
     <string name="caver_meters">m</string>
     <string name="caver_feet">Feet</string>

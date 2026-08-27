@@ -35,6 +35,7 @@ final class CaverPointEditorController implements SpecialPointEditorController
   private String mInitialMetersText;
   private String mInitialFeetText;
   private String mInitialInchesText;
+  private CaverPointState.Variant mDisplayedVariant;
   private double mPendingHeightMeters = Double.NaN;
 
   CaverPointEditorController( Context context, DrawingSemanticPointPath point )
@@ -62,8 +63,10 @@ final class CaverPointEditorController implements SpecialPointEditorController
     mInches = (EditText)root.findViewById( R.id.caver_height_inches );
 
     mVariant.setLabels( mContext.getString( R.string.caver_man ),
-                        mContext.getString( R.string.caver_woman ) );
-    mVariant.setSelectedIndex( state.variant == CaverPointState.Variant.WOMAN ? 1 : 0 );
+                        mContext.getString( R.string.caver_woman ),
+                        mContext.getString( R.string.caver_banana_slug ) );
+    mDisplayedVariant = state.variant;
+    mVariant.setSelectedIndex( variantIndex( state.variant ) );
 
     mUseFeet = usesFeet();
     mMetricFields.setVisibility( mUseFeet ? View.GONE : View.VISIBLE );
@@ -78,6 +81,14 @@ final class CaverPointEditorController implements SpecialPointEditorController
       mInitialMetersText = formatDecimal( state.heightMeters );
       mMeters.setText( mInitialMetersText );
     }
+    mVariant.setOnSelectionChangedListener( new SegmentedToggleBar.OnSelectionChangedListener() {
+      @Override public void onSelectionChanged( int index )
+      {
+        CaverPointState.Variant next = variantAt( index );
+        updateVariantDefaultHeight( mDisplayedVariant, next );
+        mDisplayedVariant = next;
+      }
+    } );
   }
 
   @Override public boolean canApply()
@@ -99,9 +110,55 @@ final class CaverPointEditorController implements SpecialPointEditorController
   @Override public void apply()
   {
     if ( ! Double.isFinite( mPendingHeightMeters ) || mPendingHeightMeters <= 0.0 ) return;
-    CaverPointState.Variant variant = mVariant.selectedIndex() == 1
-      ? CaverPointState.Variant.WOMAN : CaverPointState.Variant.MAN;
+    CaverPointState.Variant variant = variantAt( mVariant.selectedIndex() );
     mPoint.setSpecialState( new CaverPointState( variant, mPendingHeightMeters ), true );
+  }
+
+  private void updateVariantDefaultHeight( CaverPointState.Variant previous,
+                                           CaverPointState.Variant next )
+  {
+    Double current = displayedHeightMeters();
+    if ( current == null || Math.abs( current - CaverPointState.defaultHeightMeters( previous ) ) > 1.0e-8 ) {
+      return;
+    }
+    setDisplayedHeight( CaverPointState.defaultHeightMeters( next ) );
+  }
+
+  private Double displayedHeightMeters()
+  {
+    if ( ! mUseFeet ) return parseDecimal( mMeters.getText().toString() );
+    try {
+      int feet = Integer.parseInt( mFeet.getText().toString().trim() );
+      Double inches = parseDecimal( mInches.getText().toString() );
+      return inches == null ? null : CaverHeightUnits.toMeters( feet, inches );
+    } catch ( NumberFormatException e ) {
+      return null;
+    }
+  }
+
+  private void setDisplayedHeight( double meters )
+  {
+    if ( mUseFeet ) {
+      CaverHeightUnits.FeetInches value = CaverHeightUnits.fromMeters( meters );
+      mFeet.setText( Integer.toString( value.feet ) );
+      mInches.setText( formatDecimal( value.inches ) );
+    } else {
+      mMeters.setText( formatDecimal( meters ) );
+    }
+  }
+
+  private static int variantIndex( CaverPointState.Variant variant )
+  {
+    if ( variant == CaverPointState.Variant.WOMAN ) return 1;
+    if ( variant == CaverPointState.Variant.BANANA_SLUG ) return 2;
+    return 0;
+  }
+
+  private static CaverPointState.Variant variantAt( int index )
+  {
+    if ( index == 1 ) return CaverPointState.Variant.WOMAN;
+    if ( index == 2 ) return CaverPointState.Variant.BANANA_SLUG;
+    return CaverPointState.Variant.MAN;
   }
 
   private boolean validateImperial()

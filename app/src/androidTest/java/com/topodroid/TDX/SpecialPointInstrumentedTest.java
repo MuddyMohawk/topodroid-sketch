@@ -204,6 +204,21 @@ public class SpecialPointInstrumentedTest
     assertOpaqueInside( rendered, woman );
     rendered.recycle();
 
+    point.setSpecialState( new CaverPointState( CaverPointState.Variant.BANANA_SLUG,
+      CaverPointState.BANANA_SLUG_DEFAULT_HEIGHT_METERS ), true );
+    RectF slug = point.exactSpecialBounds( false );
+    assertEquals( 3.0 * 12.0 * CaverHeightUnits.METERS_PER_INCH * DrawingUtil.SCALE_FIX,
+      slug.height(), 0.001 );
+    assertEquals( 150.0f, slug.bottom, 0.001f );
+    assertEquals( 100.0f, slug.centerX(), 0.001f );
+    assertEquals( slug.height() * CaverPointRenderer.BANANA_SLUG_ASPECT, slug.width(), 0.001f );
+
+    Bitmap rendered_slug = Bitmap.createBitmap( 220, 180, Bitmap.Config.ARGB_8888 );
+    point.draw( new Canvas( rendered_slug ), new Matrix(), 1.0f, new RectF( 0, 0, 220, 180 ) );
+    assertTrue( countOpaque( rendered_slug ) > 100 );
+    assertOpaqueInside( rendered_slug, slug );
+    rendered_slug.recycle();
+
     ByteArrayOutputStream bytes = new ByteArrayOutputStream();
     DataOutputStream output = new DataOutputStream( bytes );
     point.toDataStream( output, 2 );
@@ -213,8 +228,8 @@ public class SpecialPointInstrumentedTest
     DrawingPointPath loaded_path = DrawingPointPath.loadDataStream( TDR_VERSION, input, 0.0f, 0.0f );
     assertTrue( loaded_path instanceof DrawingSemanticPointPath );
     CaverPointState loaded = (CaverPointState)((DrawingSemanticPointPath)loaded_path).specialState();
-    assertEquals( CaverPointState.Variant.WOMAN, loaded.variant );
-    assertEquals( 1.65, loaded.heightMeters, 0.0 );
+    assertEquals( CaverPointState.Variant.BANANA_SLUG, loaded.variant );
+    assertEquals( CaverPointState.BANANA_SLUG_DEFAULT_HEIGHT_METERS, loaded.heightMeters, 0.0 );
     assertTrue( loaded_path.toTherion().contains( CaverPointBehavior.FULL_THERION_NAME ) );
     assertFalse( loaded_path.toTherion().contains( "-tdx-special" ) );
   }
@@ -227,6 +242,8 @@ public class SpecialPointInstrumentedTest
     assertEquals( 10.0, default_height.inches, 1.0e-8 );
     assertEquals( CaverPointState.DEFAULT_HEIGHT_METERS,
       CaverHeightUnits.toMeters( 5, 10.0 ), 1.0e-12 );
+    assertEquals( CaverPointState.BANANA_SLUG_DEFAULT_HEIGHT_METERS,
+      CaverHeightUnits.toMeters( 3, 0.0 ), 1.0e-12 );
     assertEquals( 1.7907, CaverHeightUnits.toMeters( 5, 10.5 ), 1.0e-12 );
     String formatted = CaverPointEditorController.formatDecimal( 1.778 );
     assertEquals( 1.778, CaverPointEditorController.parseDecimal( formatted ), 1.0e-12 );
@@ -289,6 +306,14 @@ public class SpecialPointInstrumentedTest
             metric_container.findViewById( R.id.caver_metric_fields ).getVisibility() );
           assertEquals( View.GONE,
             metric_container.findViewById( R.id.caver_imperial_fields ).getVisibility() );
+          assertEquals( 3, variant.getChildCount() );
+
+          variant.getChildAt( 2 ).performClick();
+          assertEquals( CaverPointState.BANANA_SLUG_DEFAULT_HEIGHT_METERS,
+            CaverPointEditorController.parseDecimal( meters.getText().toString() ), 1.0e-12 );
+          variant.getChildAt( 0 ).performClick();
+          assertEquals( CaverPointState.DEFAULT_HEIGHT_METERS,
+            CaverPointEditorController.parseDecimal( meters.getText().toString() ), 1.0e-12 );
 
           meters.setText( "0" );
           assertFalse( metric.canApply() );
@@ -297,7 +322,7 @@ public class SpecialPointInstrumentedTest
             ((CaverPointState)point.specialState()).heightMeters, 0.0 );
 
           meters.setText( "1.65" );
-          variant.setSelectedIndex( 1 );
+          variant.getChildAt( 1 ).performClick();
           assertTrue( metric.canApply() );
           metric.cancel();
           CaverPointState cancelled = (CaverPointState)point.specialState();
@@ -308,6 +333,16 @@ public class SpecialPointInstrumentedTest
           CaverPointState saved_metric = (CaverPointState)point.specialState();
           assertEquals( CaverPointState.Variant.WOMAN, saved_metric.variant );
           assertEquals( 1.65, saved_metric.heightMeters, 0.0 );
+
+          meters.setText( "1.65" );
+          variant.getChildAt( 2 ).performClick();
+          assertEquals( 1.65,
+            CaverPointEditorController.parseDecimal( meters.getText().toString() ), 1.0e-12 );
+          assertTrue( metric.canApply() );
+          metric.apply();
+          CaverPointState saved_slug = (CaverPointState)point.specialState();
+          assertEquals( CaverPointState.Variant.BANANA_SLUG, saved_slug.variant );
+          assertEquals( 1.65, saved_slug.heightMeters, 0.0 );
 
           TDSetting.mUnitLengthStr = "ft";
           LinearLayout imperial_container = new LinearLayout( context );

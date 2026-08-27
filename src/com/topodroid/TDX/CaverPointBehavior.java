@@ -26,9 +26,10 @@ final class CaverPointBehavior implements SpecialPointBehavior
   @Override public SpecialPointState decodeState( int version, JSONObject payload ) throws JSONException
   {
     if ( version != STATE_VERSION || payload == null ) return null;
-    return new CaverPointState(
-      CaverPointState.Variant.fromPersistedName( payload.optString( "variant", "man" ) ),
-      payload.optDouble( "heightMeters", CaverPointState.DEFAULT_HEIGHT_METERS ) );
+    CaverPointState.Variant variant =
+      CaverPointState.Variant.fromPersistedName( payload.optString( "variant", "man" ) );
+    return new CaverPointState( variant,
+      payload.optDouble( "heightMeters", CaverPointState.defaultHeightMeters( variant ) ) );
   }
 
   @Override public JSONObject encodeState( SpecialPointState state ) throws JSONException

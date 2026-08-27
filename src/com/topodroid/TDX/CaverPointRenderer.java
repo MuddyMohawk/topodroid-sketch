@@ -20,10 +20,12 @@ final class CaverPointRenderer implements SpecialPointRenderer
   // preview bounds correct even if Android cannot decode a resource.
   static final float MAN_ASPECT = 490.0f / 1272.0f;
   static final float WOMAN_ASPECT = 430.0f / 1237.0f;
+  static final float BANANA_SLUG_ASPECT = 278.0f / 210.0f;
 
   private static final Object ARTWORK_LOCK = new Object();
   private static volatile Artwork sMan;
   private static volatile Artwork sWoman;
+  private static volatile Artwork sBananaSlug;
 
   private static final ColorMatrixColorFilter INVERT_FILTER = new ColorMatrixColorFilter(
     new ColorMatrix( new float[] {
@@ -120,6 +122,16 @@ final class CaverPointRenderer implements SpecialPointRenderer
 
   private static Artwork artwork( CaverPointState.Variant variant )
   {
+    if ( variant == CaverPointState.Variant.BANANA_SLUG ) {
+      Artwork cached = sBananaSlug;
+      if ( cached != null ) return cached;
+      synchronized ( ARTWORK_LOCK ) {
+        if ( sBananaSlug == null ) {
+          sBananaSlug = load( R.drawable.caver_banana_slug, BANANA_SLUG_ASPECT );
+        }
+        return sBananaSlug;
+      }
+    }
     if ( variant == CaverPointState.Variant.WOMAN ) {
       Artwork cached = sWoman;
       if ( cached != null ) return cached;
