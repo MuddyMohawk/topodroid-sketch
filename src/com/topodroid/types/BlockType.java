@@ -61,18 +61,18 @@ public class BlockType
   public static boolean isTypeBlank( int t ) { return t == BLANK || t == BLANK_LEG; }
 
   public static final int[] LegToBlock = {
-    BLANK,    // 0: blank, leg, or splay
-    SEC_LEG,
-    X_SPLAY,
-    BACK_LEG, // 3
-    H_SPLAY,
-    V_SPLAY,  // 5
-    SCAN,
-    XSCAN,    // 7
-    HSCAN,
-    VSCAN,    // 9
-    BLUNDER,  // 10
-    INVALID         // invalid
+    BLANK,     // 0 NORMAL: blank, leg, or splay (resolved from station names)
+    SEC_LEG,   // 1 EXTRA
+    SPLAY,     // 2 SPLAY
+    X_SPLAY,   // 3 XSPLAY
+    H_SPLAY,   // 4 HSPLAY
+    V_SPLAY,   // 5 VSPLAY
+    SCAN,      // 6 SCAN
+    XSCAN,     // 7 XSCAN
+    HSCAN,     // 8 HSCAN
+    VSCAN,     // 9 VSCAN
+    BLUNDER,   // 10 BLUNDER
+    BACK_LEG   // 11 BACK
   };
 
 

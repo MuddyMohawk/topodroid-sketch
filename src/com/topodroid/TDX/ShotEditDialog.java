@@ -140,7 +140,7 @@ class ShotEditDialog extends MyDialog
   private static final int flagDepth    = MyKeyboard.FLAG_POINT;
 
   private boolean mFirst;
-  private int splay_type; // 0 plain, 2 X, 4 H, 5 V see LegType
+  private int splay_type; // NORMAL plain, XSPLAY cross, HSPLAY horizontal, VSPLAY vertical
 
   private boolean hasMore = false;
 
@@ -790,10 +790,9 @@ class ShotEditDialog extends MyDialog
 
     if ( all_splay ) {
       if ( set_xsplay >= 0 ) {
-        long leg0 = mBlk.getLegType(); // old leg_type: 0 plain, 2 X, 4 H, 5 V
+        long leg0 = mBlk.getLegType();
         long leg1 = LegType.NORMAL;    // new leg_type
         if ( set_xsplay > 0 ) {
-          leg0 = leg1;
           leg1 = set_xsplay;
         }
         // TDLog.v("[1] all leg type " + leg0 + " -> " + leg1 + " " + set_xsplay );
@@ -1359,4 +1358,3 @@ class ShotEditDialog extends MyDialog
   }
 
 }
-

@@ -16,7 +16,7 @@ public class LegType
   public static final int INVALID = -1;
   public static final int NORMAL  = 0; // either leg, splay, or blank
   public static final int EXTRA   = 1; // additional leg shots
-  public static final int SPLAY   = 2; // cross splay
+  public static final int SPLAY   = 2; // plain splay
   public static final int XSPLAY  = 3; // cross splay
   public static final int HSPLAY  = 4; // horizontal splay
   public static final int VSPLAY  = 5; // vertical splay
@@ -35,7 +35,7 @@ public class LegType
    */
   public static String getString( long leg_type ) 
   {
-    if ( leg_type < 0 || leg_type > 9L ) return null;
+    if ( leg_type < 0 || leg_type >= asString.length ) return null;
     return asString[ (int)leg_type ];
   }
 
@@ -71,10 +71,12 @@ public class LegType
   public static int nextSplayClass( int type ) 
   {
     switch( type ) {
+      // NORMAL remains the plain-splay state used by ShotEditDialog.
+      case NORMAL:
       case SPLAY:  return XSPLAY;
       case XSPLAY: return HSPLAY;
       case HSPLAY: return VSPLAY;
-      case VSPLAY: return SPLAY;
+      case VSPLAY: return NORMAL;
       case SCAN:   return SCAN;   // scan do not cycle
       case XSCAN:  return XSCAN;
       case HSCAN:  return HSCAN;

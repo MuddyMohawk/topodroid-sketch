@@ -2364,7 +2364,7 @@ public class ShotWindow extends Activity
    * @param extend  integer extend
    * @param stretch fractional extend
    * @param flag    shot flags (without cavway flags)
-   * @param leg     leg data-helper value (0 normal, 1 sec, 2 x-splay, 3 back, 4 h-splay, 5 v-splay
+   * @param leg     persisted leg type; see {@link LegType}
    * @param comment shot comment
    * @param blk     shot data block
    * @note called only by ShotEditDialog 
@@ -2399,7 +2399,7 @@ public class ShotWindow extends Activity
    * @param extend  integer extend
    * @param stretch fractional extend
    * @param flag    shot flags (without cavway flag)
-   * @param leg     leg data-helper value (0 normal, 1 sec, 2 x-splay, 3 back, 4 h-splay, 5 v-splay
+   * @param leg     persisted leg type; see {@link LegType}
    * @param comment shot comment
    * @param blk     shot data block
    * @note package because called (only) by alert dialog callback
