@@ -4970,7 +4970,7 @@ public class DataHelper extends DataSetObservable
     if (cursor.moveToFirst()) {
       do {
         int leg = (int)( cursor.getLong(11) );
-        if ( leg == LegType.NORMAL || leg >= LegType.SPLAY ) { // skip repeated-leg blocks
+        if ( leg == LegType.NORMAL || leg >= LegType.XSPLAY ) { // skip repeated-leg blocks
           DBlock block = new DBlock();
           fullFillBlock( sid, block, cursor ); // FIXME FULL_FILL ?
           list.add( block );

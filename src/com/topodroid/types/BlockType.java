@@ -63,8 +63,8 @@ public class BlockType
   public static final int[] LegToBlock = {
     BLANK,     // 0 NORMAL: blank, leg, or splay (resolved from station names)
     SEC_LEG,   // 1 EXTRA
-    SPLAY,     // 2 SPLAY
-    X_SPLAY,   // 3 XSPLAY
+    X_SPLAY,   // 2 XSPLAY
+    BACK_LEG,  // 3 BACK
     H_SPLAY,   // 4 HSPLAY
     V_SPLAY,   // 5 VSPLAY
     SCAN,      // 6 SCAN
@@ -72,7 +72,7 @@ public class BlockType
     HSCAN,     // 8 HSCAN
     VSCAN,     // 9 VSCAN
     BLUNDER,   // 10 BLUNDER
-    BACK_LEG   // 11 BACK
+    INVALID    // 11 is not a current persisted leg type
   };
 
 

@@ -1,5 +1,6 @@
 package com.topodroid.TDX;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -30,9 +31,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.topodroid.util.MyFileProvider;
+import com.topodroid.util.TDStatus;
+import com.topodroid.types.LegType;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.List;
 import java.util.Locale;
 
 @RunWith( AndroidJUnit4.class )
@@ -107,6 +111,7 @@ public class PhysicalCompatInstrumentedTest
     progress( "open round-tripped Sketch survey" );
     mSupport.waitForSurveyOnMainList( mSurveyName );
     mSupport.openSurveyFromMainList( mSurveyName );
+    assertCanonicalLegTypes( mSurveyName );
     mSupport.openExistingPlanPlot( PLOT_NAME );
     mSupport.waitForDrawingWindow();
     mSupport.captureScreen( "roundtrip-opened-in-sketch.png" );
@@ -147,9 +152,56 @@ public class PhysicalCompatInstrumentedTest
     mSupport.createSurveyAndOpenShots( surveyName, "Physical Compat Team", "1", "physical vanilla compatibility" );
     mSupport.addManualShot( "1", "2", "10.0", "90.0", "0.0", false );
     mSupport.addManualShot( "2", "3", "6.0", "0.0", "0.0", false );
-    mSupport.addManualShot( "2", "4", "5.0", "180.0", "0.0", true );
+    mSupport.addManualShot( "2", "4", "5.0", "180.0", "0.0", false );
+    mSupport.addManualShot( "2", "1", "10.1", "270.0", "0.0", false );
+    mSupport.addManualShot( "2", "", "2.0", "45.0", "10.0", false );
+    mSupport.addManualShot( "3", "", "3.0", "315.0", "-10.0", true );
+
+    setPersistedLegType( surveyName, "2", "1", LegType.BACK );
+    setPersistedLegType( surveyName, "3", "", LegType.XSPLAY );
+    assertCanonicalLegTypes( surveyName );
+
+    mSupport.pressBackToMainWindow();
+    mSupport.openSurveyFromMainList( surveyName );
+    assertCanonicalLegTypes( surveyName );
     mSupport.openNewPlotFromShotWindow( PLOT_NAME, "1" );
     mSupport.enterDrawMode();
+  }
+
+  private void setPersistedLegType( String surveyName, String from, String to, int legType )
+  {
+    long sid = requireSurveyId( surveyName );
+    DBlock block = findShot( sid, from, to );
+    TopoDroidApp.mData.updateShotLeg( block.mId, sid, legType );
+  }
+
+  private void assertCanonicalLegTypes( String surveyName )
+  {
+    long sid = requireSurveyId( surveyName );
+    assertEquals( "plain-splay persisted type", LegType.NORMAL,
+      findShot( sid, "2", "" ).getLegType() );
+    assertEquals( "cross-splay persisted type", LegType.XSPLAY,
+      findShot( sid, "3", "" ).getLegType() );
+    assertEquals( "backsight persisted type", LegType.BACK,
+      findShot( sid, "2", "1" ).getLegType() );
+  }
+
+  private long requireSurveyId( String surveyName )
+  {
+    assertNotNull( "Sketch data helper is not available", TopoDroidApp.mData );
+    long sid = TopoDroidApp.mData.getSurveyId( surveyName );
+    assertTrue( "Survey is missing from the Sketch database: " + surveyName, sid > 0L );
+    return sid;
+  }
+
+  private DBlock findShot( long sid, String from, String to )
+  {
+    List< DBlock > shots = TopoDroidApp.mData.selectAllShots( sid, TDStatus.NORMAL );
+    for ( DBlock block : shots ) {
+      if ( from.equals( block.mFrom ) && to.equals( block.mTo ) ) return block;
+    }
+    fail( "Shot is missing from the Sketch database: " + from + " -> " + to );
+    return null;
   }
 
   private void drawCanonicalSketch()

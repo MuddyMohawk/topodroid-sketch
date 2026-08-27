@@ -359,16 +359,19 @@ public class DBlock
      // }
      
      if ( leg_type >= 0 && leg_type < BlockType.LegToBlock.length ) {
-       mBlockType = BlockType.LegToBlock[ leg_type ];
-       if ( mBlockType == BlockType.BLANK ) {
-         if ( ! TDString.isNullOrEmpty( mFrom ) ) {
-           if ( TDString.isNullOrEmpty( mTo ) ) {
+       int mapped_type = BlockType.LegToBlock[ leg_type ];
+       if ( mapped_type != BlockType.INVALID ) {
+         mBlockType = mapped_type;
+         if ( mBlockType == BlockType.BLANK ) {
+           if ( ! TDString.isNullOrEmpty( mFrom ) ) {
+             if ( TDString.isNullOrEmpty( mTo ) ) {
+               mBlockType = BlockType.SPLAY;
+             } else {
+               mBlockType = BlockType.MAIN_LEG;
+             }
+           } else if ( ! TDString.isNullOrEmpty( mTo ) ) {
              mBlockType = BlockType.SPLAY;
-           } else {
-             mBlockType = BlockType.MAIN_LEG;
            }
-         } else if ( ! TDString.isNullOrEmpty( mTo ) ) {
-           mBlockType = BlockType.SPLAY;
          }
        }
      }
@@ -1094,4 +1097,3 @@ public class DBlock
     
 
 }
-

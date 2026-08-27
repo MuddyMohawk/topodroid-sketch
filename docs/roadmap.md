@@ -44,8 +44,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - gypsum crystals should probably be a single crystal
   - make slope point symbol lines stretchable/configurable?
 
-## Known bugs
-- User reported: The scale bar on the sketching screen is obscured by the toolbars. Apparently people use that. 
+## Known bugs 
 - User reported, but not replicated: "changing an unlocked row caused the row to visually change but the button didn't actually change"
 - User reported: if the app loses permissions for some reason, like an OS update or something, it won't open. Just immediate crash with no indication of what's wrong
 - Multi-device functionality seems terrible. Could not switch between DistoX and Cavway via long-press in multi mode, but could manually swap then at the main screen. 
