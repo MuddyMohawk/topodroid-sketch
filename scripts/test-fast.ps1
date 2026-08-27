@@ -27,6 +27,13 @@ $FastTests = @(
     IdleTimeout = 240
   },
   @{
+    Name = "Scale reference toolbar clearance"
+    Class = "com.topodroid.TDX.ScaleReferenceToolbarInstrumentedTest"
+    Estimate = 150
+    Timeout = 360
+    IdleTimeout = 240
+  },
+  @{
     Name = "Compass export fixture"
     Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#exportCompass_matchesFixture"
     Estimate = 120

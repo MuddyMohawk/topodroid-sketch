@@ -27,6 +27,13 @@ $FullTests = @(
     IdleTimeout = 240
   },
   @{
+    Name = "Scale reference toolbar clearance"
+    Class = "com.topodroid.TDX.ScaleReferenceToolbarInstrumentedTest"
+    Estimate = 150
+    Timeout = 360
+    IdleTimeout = 240
+  },
+  @{
     Name = "Visual ZIP round-trip"
     Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#exportZip_includesSurveyCore_and_importRoundTripsThroughPicker"
     Estimate = 300

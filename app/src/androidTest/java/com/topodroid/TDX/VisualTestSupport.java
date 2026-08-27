@@ -461,6 +461,19 @@ final class VisualTestSupport
     fail( "Failed to enter DRAW mode; last title=" + getDrawingWindowTitleText() );
   }
 
+  void enterMoveMode()
+  {
+    if ( ! isInDrawMode() ) return;
+    tapToolbarChild( "listview", 0 );
+    waitForIdle();
+    long deadline = SystemClock.uptimeMillis() + UI_TIMEOUT_MS;
+    while ( SystemClock.uptimeMillis() < deadline ) {
+      if ( ! isInDrawMode() ) return;
+      SystemClock.sleep( 100 );
+    }
+    fail( "Failed to enter MOVE mode; last title=" + getDrawingWindowTitleText() );
+  }
+
   private boolean isInDrawMode()
   {
     String title = getDrawingWindowTitleText();
@@ -776,6 +789,115 @@ final class VisualTestSupport
     assertPresetBarVisible( "Fine", "Smooth", "Straight", "Snap" );
     assertStyleBarVisible( "Thin", "Standard", "Thick" );
     assertManualToolbarVisible( 8 );
+  }
+
+  void configureDrawingToolbarForTest( int updateMode, int rows, float size )
+  {
+    runOnMainChecked( "configure drawing toolbar", () -> {
+      TDSetting.mToolbarUpdate = updateMode;
+      TDSetting.mToolbarRows = rows;
+      TDSetting.mItemButtonSize = size;
+      requireCurrentDrawingWindow().resetRecentTools();
+    } );
+    waitForIdle();
+  }
+
+  void showLatestPointScaleToolbarForTest()
+  {
+    runOnMainChecked( "show point scale toolbar", () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      DrawingPointPath point = findLatestOrdinaryPointPath();
+      assertNotNull( "No ordinary point path found", point );
+      Method method = DrawingWindow.class.getDeclaredMethod( "setScaleToolbar", DrawingPointPath.class );
+      method.setAccessible( true );
+      method.invoke( window, point );
+    } );
+    waitForIdle();
+  }
+
+  void assertScaleReferenceClearsBottomTools( boolean toolsVisible ) throws Exception
+  {
+    final int[] geometry = new int[4]; // surface width/height, obstruction, tools height
+    long deadline = SystemClock.uptimeMillis() + UI_TIMEOUT_MS;
+    while ( SystemClock.uptimeMillis() < deadline ) {
+      runOnMainChecked( "read scale reference obstruction", () -> {
+        DrawingWindow window = requireCurrentDrawingWindow();
+        DrawingSurface surface = requireCurrentDrawingSurface( window );
+        View tools = requireDrawingWindowView( R.id.layout_tools, "tools container" );
+        geometry[0] = surface.getWidth();
+        geometry[1] = surface.getHeight();
+        geometry[2] = surface.getScaleReferenceBottomObstruction();
+        geometry[3] = ( tools.getVisibility() == View.VISIBLE ) ? tools.getHeight() : 0;
+      } );
+      int expected = toolsVisible ? geometry[3] : 0;
+      if ( geometry[0] > 0 && geometry[1] > 0 && geometry[2] == expected
+        && ( ! toolsVisible || expected > 0 ) ) break;
+      SystemClock.sleep( 100 );
+    }
+
+    int expectedObstruction = toolsVisible ? geometry[3] : 0;
+    assertTrue( "Drawing surface has no measured size", geometry[0] > 0 && geometry[1] > 0 );
+    assertTrue( "Expected visible tools to have a measured height", ! toolsVisible || geometry[3] > 0 );
+    assertEquals( "Scale-reference obstruction does not match the visible tool height",
+      expectedObstruction, geometry[2] );
+
+    final Bitmap bitmap = Bitmap.createBitmap( geometry[0], geometry[1], Bitmap.Config.ARGB_8888 );
+    final boolean[] rendered = new boolean[1];
+    runOnMainChecked( "pause scale-reference render", () ->
+      requireCurrentDrawingSurface( requireCurrentDrawingWindow() ).setDrawing( false )
+    );
+    SystemClock.sleep( 250 );
+    try {
+      runOnMainChecked( "render scale reference", () -> {
+        DrawingSurface surface = requireCurrentDrawingSurface( requireCurrentDrawingWindow() );
+        int savedMode = DrawingCommandManager.getDisplayMode();
+        int savedColor = BrushManager.referencePaint.getColor();
+        try {
+          DrawingCommandManager.setDisplayMode( DisplayMode.DISPLAY_SCALEBAR );
+          BrushManager.referencePaint.setColor( 0xffff00ff );
+          rendered[0] = surface.drawCanvas( new Canvas( bitmap ) );
+        } finally {
+          BrushManager.referencePaint.setColor( savedColor );
+          DrawingCommandManager.setDisplayMode( savedMode );
+        }
+      } );
+    } finally {
+      runOnMainChecked( "resume scale-reference render", () ->
+        requireCurrentDrawingSurface( requireCurrentDrawingWindow() ).setDrawing( true )
+      );
+    }
+    assertTrue( "Scale-reference render failed", rendered[0] );
+
+    int minY = bitmap.getHeight();
+    int maxY = -1;
+    int pixels = 0;
+    for ( int y = 0; y < bitmap.getHeight(); ++y ) {
+      for ( int x = 0; x < bitmap.getWidth(); ++x ) {
+        int color = bitmap.getPixel( x, y );
+        int alpha = ( color >>> 24 ) & 0xff;
+        int red = ( color >>> 16 ) & 0xff;
+        int green = ( color >>> 8 ) & 0xff;
+        int blue = color & 0xff;
+        if ( alpha > 200 && red > 240 && green < 20 && blue > 240 ) {
+          minY = Math.min( minY, y );
+          maxY = Math.max( maxY, y );
+          ++pixels;
+        }
+      }
+    }
+    bitmap.recycle();
+
+    assertTrue( "Scale reference did not render in the probe color", pixels > 20 );
+    int baseline = geometry[1] - 20 - expectedObstruction;
+    int expectedArrowTop = baseline - 24 - geometry[0] / 10;
+    int toolbarTop = geometry[1] - expectedObstruction;
+    assertTrue( "Configured toolbars leave no room for the complete north arrow", expectedArrowTop >= 0 );
+    assertTrue( "North arrow top was clipped: expected=" + expectedArrowTop + " actual=" + minY,
+      Math.abs( minY - expectedArrowTop ) <= 3 );
+    assertTrue( "Scale baseline was not rendered at the expected height: expected=" + baseline + " actual=" + maxY,
+      Math.abs( maxY - baseline ) <= 3 );
+    assertTrue( "Scale reference overlaps the tool container: maxY=" + maxY + " toolbarTop=" + toolbarTop,
+      maxY < toolbarTop );
   }
 
   void assertStyleBarVisible( String... expectedLabels )

@@ -56,6 +56,7 @@ public class DrawingCommandManager
   private int mFixedZoom = 0;
 
   private static final int BITMAP_PADDING = 20;
+  private static final int SCREEN_REFERENCE_MARGIN = 20;
   private static final float EXPORT_BITMAP_SCALE = 10.0f;
   private static final float MIN_EXPORT_BITMAP_SCALE = 0.125f;
   private static final float EXPORT_DECORATION_GAP = 24.0f;
@@ -2084,7 +2085,17 @@ public class DrawingCommandManager
    */
   void executeAll( Canvas canvas, float zoom, DrawingStationSplay station_splay, boolean inverted_colors )
   {
-    executeAll( canvas, zoom, station_splay, inverted_colors, mMatrix, mScale, mBBox, true );
+    executeAll( canvas, zoom, station_splay, inverted_colors, mMatrix, mScale, mBBox, true, -1 );
+  }
+
+  /** draw the sketch on a live surface with a bottom screen obstruction
+   * @param bottom_obstruction height [px] occupied by bottom overlay controls
+   */
+  void executeAll( Canvas canvas, float zoom, DrawingStationSplay station_splay, boolean inverted_colors,
+                   int bottom_obstruction )
+  {
+    executeAll( canvas, zoom, station_splay, inverted_colors, mMatrix, mScale, mBBox, true,
+                bottom_obstruction );
   }
 
   /** draw the scene with an explicit transform - used by the scene cache to
@@ -2099,6 +2110,12 @@ public class DrawingCommandManager
    */
   void executeAll( Canvas canvas, float zoom, DrawingStationSplay station_splay, boolean inverted_colors,
                    Matrix mm, float scale, RectF bbox, boolean screen_decos )
+  {
+    executeAll( canvas, zoom, station_splay, inverted_colors, mm, scale, bbox, screen_decos, -1 );
+  }
+
+  private void executeAll( Canvas canvas, float zoom, DrawingStationSplay station_splay, boolean inverted_colors,
+                           Matrix mm, float scale, RectF bbox, boolean screen_decos, int bottom_obstruction )
   {
     if ( canvas == null ) {
       TDLog.e( "drawing execute all: null canvas");
@@ -2251,7 +2268,7 @@ public class DrawingCommandManager
         float sketch_unit = isFixedZoom()? 1.0f : TDSetting.mUnitGrid;
         if ( inverted_colors ) {
           if ( sidebars ) {
-            mScaleRef.draw(canvas, zoom, mLandscape, sketch_unit, 1 );
+            drawLiveScaleReference( canvas, zoom, sketch_unit, bottom_obstruction, true );
           } else {
             if ( isPDFpage ) { // HBX 20-> PDF 1/72 inch
               mScaleRef.draw(canvas, zoom, mLandscape, 20, (bbox.bottom - bbox.top)*pdf_scale-20, sketch_unit, 1 );
@@ -2261,7 +2278,7 @@ public class DrawingCommandManager
           }
         } else {
           if ( sidebars ) {
-            mScaleRef.draw(canvas, zoom, mLandscape, sketch_unit );
+            drawLiveScaleReference( canvas, zoom, sketch_unit, bottom_obstruction, false );
           } else {
             if ( isPDFpage ) {
               mScaleRef.draw(canvas, zoom, mLandscape, 20, (bbox.bottom - bbox.top)*pdf_scale-20, sketch_unit );
@@ -2448,12 +2465,29 @@ public class DrawingCommandManager
     if ( TDSetting.mSideDrag ) drawSideDrag( canvas );
   }
 
+  private void drawLiveScaleReference( Canvas canvas, float zoom, float sketch_unit,
+                                       int bottom_obstruction, boolean inverted_colors )
+  {
+    if ( bottom_obstruction >= 0 ) {
+      float locy = - ( SCREEN_REFERENCE_MARGIN + bottom_obstruction );
+      if ( inverted_colors ) {
+        mScaleRef.draw( canvas, zoom, mLandscape, SCREEN_REFERENCE_MARGIN, locy, sketch_unit, 1 );
+      } else {
+        mScaleRef.draw( canvas, zoom, mLandscape, SCREEN_REFERENCE_MARGIN, locy, sketch_unit );
+      }
+    } else if ( inverted_colors ) {
+      mScaleRef.draw( canvas, zoom, mLandscape, sketch_unit, 1 );
+    } else {
+      mScaleRef.draw( canvas, zoom, mLandscape, sketch_unit );
+    }
+  }
+
   /** draw the over-content screen decorations (scalebar, eraser) - blit path */
-  void drawOverDecos( Canvas canvas, float zoom )
+  void drawOverDecos( Canvas canvas, float zoom, int bottom_obstruction )
   {
     if ( ( (mDisplayMode & DisplayMode.DISPLAY_SCALEBAR) != 0 ) && mScaleRef != null ) {
       float sketch_unit = isFixedZoom()? 1.0f : TDSetting.mUnitGrid;
-      mScaleRef.draw( canvas, zoom, mLandscape, sketch_unit );
+      drawLiveScaleReference( canvas, zoom, sketch_unit, bottom_obstruction, false );
     }
     if ( hasEraser ) drawEraser( canvas );
   }

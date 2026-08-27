@@ -3158,6 +3158,13 @@ public class DrawingWindow extends ItemDrawer
     mLayoutToolsStyle = (LinearLayout) findViewById( R.id.layout_tool_style );
     mLayoutScale  = (LinearLayout) findViewById( R.id.layout_scale  );
     mScaleBar     = (SeekBar)findViewById( R.id.scalebar );
+    mLayoutTools.addOnLayoutChangeListener( new View.OnLayoutChangeListener() {
+      @Override public void onLayoutChange( View v, int left, int top, int right, int bottom,
+                                            int oldLeft, int oldTop, int oldRight, int oldBottom )
+      {
+        updateScaleReferenceBottomObstruction();
+      }
+    } );
     rebuildSketchPresetButtons();
     rebuildSketchStyleButtons();
     mScaleBar.setOnSeekBarChangeListener( new SeekBar.OnSeekBarChangeListener() {
@@ -3171,7 +3178,7 @@ public class DrawingWindow extends ItemDrawer
       public void onStartTrackingTouch(SeekBar seekbar) { }
       public void onStopTrackingTouch(SeekBar seekbar) { }
     } );
-    mLayoutTools.setVisibility( View.INVISIBLE );
+    setToolsLayoutVisibility( View.INVISIBLE );
 
     resetRecentTools();
 
@@ -7771,7 +7778,21 @@ public class DrawingWindow extends ItemDrawer
       mHotPath     = null;
       mHotItemType = -1;
       if ( visibility == View.VISIBLE ) setToolsToolbars();
+      setToolsLayoutVisibility( visibility );
+    }
+
+    private void setToolsLayoutVisibility( int visibility )
+    {
+      if ( mLayoutTools == null ) return;
       mLayoutTools.setVisibility( visibility );
+      updateScaleReferenceBottomObstruction();
+    }
+
+    private void updateScaleReferenceBottomObstruction()
+    {
+      if ( mDrawingSurface == null || mLayoutTools == null ) return;
+      int obstruction = ( mLayoutTools.getVisibility() == View.VISIBLE ) ? mLayoutTools.getHeight() : 0;
+      mDrawingSurface.setScaleReferenceBottomObstruction( obstruction );
     }
 
     /** set the drawing window mode (change the list of buttons)
@@ -12018,7 +12039,7 @@ public class DrawingWindow extends ItemDrawer
                                                              : 20 + 35 * ( 2 + path.getScale() );
       mScaleBar.setProgress( Math.max( 0, Math.min( mScaleBar.getMax(), progress ) ) );
       // TDLog.v("set scale bar - progress " + progress + " scale " + path.getScale() + " visible " );
-      mLayoutTools.setVisibility( View.VISIBLE );
+      setToolsLayoutVisibility( View.VISIBLE );
       mLayoutToolsP.setVisibility( View.GONE );
       mLayoutToolsL.setVisibility( View.GONE );
       mLayoutToolsA.setVisibility( View.GONE );
@@ -12028,7 +12049,7 @@ public class DrawingWindow extends ItemDrawer
       mLayoutScale.setVisibility( View.VISIBLE );
     } else {
       // TDLog.v("set scale bar - invisible " );
-      mLayoutTools.setVisibility( View.INVISIBLE );
+      setToolsLayoutVisibility( View.INVISIBLE );
     }
   }
 

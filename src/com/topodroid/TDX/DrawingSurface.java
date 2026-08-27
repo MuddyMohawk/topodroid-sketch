@@ -118,6 +118,8 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   // live view transform snapshot (written by setTransform, read by the builder)
   private volatile float mViewDx = 0, mViewDy = 0, mViewZoom = 1;
   private volatile boolean mViewLandscape = false;
+  // -1 preserves the legacy fixed live-screen location for surfaces without bottom tools (Overview).
+  private volatile int mScaleReferenceBottomObstruction = -1;
 
   private DrawingPath mPreviewPath;
   // private SurfaceHolder mHolder; // canvas holder
@@ -723,7 +725,8 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   {
     try {
       canvas.drawColor(0, PorterDuff.Mode.CLEAR);
-      commandManager.executeAll( canvas, mZoomer.zoom(), mStationSplay, false ); // false = no inverted_color
+      commandManager.executeAll( canvas, mZoomer.zoom(), mStationSplay, false,
+                                 mScaleReferenceBottomObstruction ); // false = no inverted_color
       return true;
     } catch ( Throwable e ) {
       e.printStackTrace();
@@ -749,7 +752,8 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
         RenderPerf.frameStart();
         canvas.drawColor(0, PorterDuff.Mode.CLEAR);
         if ( ! drawFromSceneCache( canvas, commandManager, mZoomer.zoom() ) ) {
-          commandManager.executeAll( canvas, mZoomer.zoom(), mStationSplay, false ); // false = no inverted_color
+          commandManager.executeAll( canvas, mZoomer.zoom(), mStationSplay, false,
+                                     mScaleReferenceBottomObstruction ); // false = no inverted_color
           scheduleSceneCacheBuild(); // direct render happened: refresh the cache in background
         }
         if ( mPreviewPath != null ) mPreviewPath.draw(canvas, null);
@@ -803,9 +807,20 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
         scheduleSceneCacheBuild(); // converge toward the live transform
       }
     }
-    manager.drawOverDecos( canvas, zoom );
+    manager.drawOverDecos( canvas, zoom, mScaleReferenceBottomObstruction );
     return true;
   }
+
+  /** reserve live-screen space below the scale reference without invalidating the scene cache */
+  void setScaleReferenceBottomObstruction( int obstruction )
+  {
+    int value = Math.max( 0, obstruction );
+    if ( value == mScaleReferenceBottomObstruction ) return;
+    mScaleReferenceBottomObstruction = value;
+    requestRender();
+  }
+
+  int getScaleReferenceBottomObstruction() { return mScaleReferenceBottomObstruction; }
 
   /** kick a background scene-cache build (single-flight; the builder loops
    *  until the built cache matches the live transform and scene version) */
