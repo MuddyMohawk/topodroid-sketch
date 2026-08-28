@@ -83,7 +83,7 @@ Most symbols are now white by default. Added a proper color picker, grid width/c
 
 ## Vanilla TopoDroid compatibility
 
-The intent behind the current compatibility goal is that nothing you do in Sketch should strand your data. The ZIP export/import works with vanilla TopoDroid. TopoDroid Sketch lines degrade to vanilla `user` lines (ugly but intact), and re-importing into another TopoDroid Sketch preserves them fully if exported with personal symbols enabled. The symbol format stays compatible with vanilla's. This is tested via an automated Sketch → vanilla → Sketch round trip on an Active Tab 3. Details in [docs/testing.md](docs/testing.md).
+Right now, you should be able to import a .zip export from the original TopoDroid. Going back is untested. In the future a dedicated importer/exporter will be made for ensuring a base level of cross-compatibility.
 
 ## Known issues
 
@@ -91,7 +91,7 @@ Known bugs are currently listed in [the roadmap](docs/roadmap.md).
 
 ## What's next
 
-The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles. All the brainstorming ideas are in [the roadmap](docs/roadmap.md).
+The next major planned feature is overhauling the brush/symbol picker experience. After that is adding in robust auto-backup features. All the brainstorming ideas are in [the roadmap](docs/roadmap.md).
 
 ## Building from source
 
