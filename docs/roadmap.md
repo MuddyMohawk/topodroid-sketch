@@ -13,13 +13,12 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - rename/display the symbol pack name?
 - new test/demo survey with actual survey lines
 - toolbar defaults
-  - additional toolbars should fill with something else? 
-- the fiddlyness of tweaking the line previews suggests it needs a deeper refactor to mirror the sketch canvas instead of madness
+  - additional toolbars should fill with something else?
 - Area/fill
   - area will need a second pass for the fancier chop/cut/push tools
 - Refactor away from the -tdx-brush options and into dedicated symbol terminology?
 - Bake/export-to-vanilla export
-- more symbol behavior (sand/silt stamps, slope line)
+- more symbol behavior (sand/silt stamps)
 - symbol rotation obeys snapping?
 - Add safety warnings when importing vanilla TopoDroid stuff
 - per-symbol defaults? locking?
@@ -38,10 +37,9 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - I think I've seen better broken formation symbols?
   - bones could be bonier
   - leaves, organic detritus
-  - triangle breakdown
+  - triangular breakdown block
   - different scaling factor for leaves? or maybe they're just small
   - are the bedrock area lines too thin?
-  - gypsum crystals should probably be a single crystal
   - make slope point symbol lines stretchable/configurable?
 
 ## Known bugs 
@@ -53,7 +51,6 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - export to second write-only location (eg SD card)
   - project backup policies?
 - Sometimes drawing a section line causes the splay lines it crosses to stop rendered. Fixed by re-opening the sketch
-- Cavway special lines don't seem to be colored in cross-sections like they are in plan. Vanilla bug.
 - Large reference images, and reference images in general, are kinda low and cause lag
 - Adjusting the number of preset buttons doesn't update that settings screen, causing the user to have to leave and re-enter that settings page to adjust the new preset bars
 - Export to PNG, the north arrow and the scale bar are weird and can overlay the sketch
@@ -68,6 +65,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Making the toolbars smaller causes point symbols to become illegible. Even smaller, and other rendering problems come up
 
 ## Future possible features / brainstorming
+- Sketch item properties overhaul (see similar todo item)
 - Tester-level enhanced logging
 - Need a backsight overhaul
   - Display backsight tolerance hit/miss on the shots page

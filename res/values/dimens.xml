@@ -39,6 +39,8 @@
   <!-- dimen name="divider">5dp</dimen -->
   <dimen name="dividerbig">10dp</dimen>
 
+  <string name="dimxp" translatable="false">1.0f</string>
+  <string name="dimxl" translatable="false">1.3f</string>
   <string name="dimyl" translatable="false">1.9f</string>
   <!-- string name="dimpd" translatable="false">2</string -->
   <string name="dimmx" translatable="false">5</string>
