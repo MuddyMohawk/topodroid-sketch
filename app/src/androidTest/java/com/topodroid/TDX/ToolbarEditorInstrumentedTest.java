@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.SystemClock;
@@ -52,7 +53,7 @@ public class ToolbarEditorInstrumentedTest
   @Test
   public void editorRendersCategoryBrowserRowsAndPinnedQuickZone()
   {
-    assertEquals( 100, ToolsetCatalog.all().size() );
+    assertEquals( 101, ToolsetCatalog.all().size() );
     try ( ActivityScenario< ToolbarEditorActivity > scenario = ActivityScenario.launch( ToolbarEditorActivity.class ) ) {
       scenario.onActivity( activity -> {
         ArrayList< String > labels = new ArrayList<>();
@@ -61,13 +62,17 @@ public class ToolbarEditorInstrumentedTest
 
         assertTrue( labels.contains( "Toolbars" ) );
         assertTrue( labels.contains( "Passages" ) );
+        assertNotNull( findTextViewContaining( activity.getWindow().getDecorView(), "Other" ) );
         assertTrue( labels.contains( "Toolbar rows" ) );
         assertTrue( labels.contains( "ENABLED · DRAG ≡ TO REORDER · TAP SLOT TO SELECT · TAP OR DRAG SYMBOLS" ) );
         assertTrue( labels.contains( "DISABLED · TAP LETTER TO ENABLE/DISABLE ROW" ) );
         assertTrue( labels.contains( "QUICK SWITCHER" ) );
         assertTrue( labels.contains( "Q" ) );
+        assertTrue( labels.contains( "✕" ) );
+        assertEquals( Color.WHITE, findTextView( activity.getWindow().getDecorView(), "ENABLED · DRAG ≡ TO REORDER · TAP SLOT TO SELECT · TAP OR DRAG SYMBOLS" ).getCurrentTextColor() );
+        assertEquals( Color.WHITE, findTextView( activity.getWindow().getDecorView(), "DISABLED · TAP LETTER TO ENABLE/DISABLE ROW" ).getCurrentTextColor() );
         assertEquals( 1, searches.size() );
-        assertEquals( "Search 100 symbols", searches.get( 0 ).getHint().toString() );
+        assertEquals( "Search 101 symbols", searches.get( 0 ).getHint().toString() );
       } );
       writeScreenshotArtifact();
     }
@@ -143,6 +148,44 @@ public class ToolbarEditorInstrumentedTest
     }
   }
 
+  @Test
+  public void quickSwitcherCanBePlacedInARegularToolbarSlot()
+  {
+    DataHelper data = TopoDroidApp.mData;
+    ToolsetProfile savedDefault = ToolsetRepository.profile( data, ToolsetProfile.DEFAULT_ID );
+    String savedSelection = ToolsetRepository.activeProfileId( data, TDInstance.sid );
+    try {
+      assertTrue( ToolsetRepository.saveProfile( data, ToolsetProfile.freshDefault() ) );
+      assertTrue( ToolsetRepository.selectProfile( data, TDInstance.sid, ToolsetProfile.DEFAULT_ID ) );
+      try ( ActivityScenario< ToolbarEditorActivity > scenario = ActivityScenario.launch( ToolbarEditorActivity.class ) ) {
+        scenario.onActivity( activity -> {
+          ArrayList< String > labels = new ArrayList<>();
+          ArrayList< EditText > searches = new ArrayList<>();
+          collectText( activity.getWindow().getDecorView(), labels, searches );
+          assertEquals( 1, searches.size() );
+          searches.get( 0 ).setText( "quick switcher" );
+        } );
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        scenario.onActivity( activity -> {
+          View root = activity.getWindow().getDecorView();
+          View slot = findByDescription( root, "wall, slot 1" );
+          View quickSwitcher = findByDescription( root, "Quick Switcher, tool" );
+          assertNotNull( slot );
+          assertNotNull( quickSwitcher );
+          assertTrue( slot.performClick() );
+          assertTrue( quickSwitcher.performClick() );
+        } );
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        scenario.onActivity( activity -> assertNotNull( findByDescription( activity.getWindow().getDecorView(), "Quick Switcher, slot 1" ) ) );
+        SystemClock.sleep( 250 );
+        assertTrue( ToolsetProfile.isQuickSwitcher( ToolsetRepository.profile( data, ToolsetProfile.DEFAULT_ID ).mRows[0][0] ) );
+      }
+    } finally {
+      ToolsetRepository.saveProfile( data, savedDefault );
+      ToolsetRepository.selectProfile( data, TDInstance.sid, savedSelection );
+    }
+  }
+
   private static void writeScreenshotArtifact()
   {
     InstrumentationRegistry.getInstrumentation().waitForIdleSync();
@@ -183,6 +226,32 @@ public class ToolbarEditorInstrumentedTest
       ViewGroup group = (ViewGroup)view;
       for ( int index = 0; index < group.getChildCount(); ++index ) {
         View found = findByDescription( group.getChildAt( index ), description );
+        if ( found != null ) return found;
+      }
+    }
+    return null;
+  }
+
+  private static TextView findTextView( View view, String text )
+  {
+    if ( view instanceof TextView && text.contentEquals( ( (TextView)view ).getText() ) ) return (TextView)view;
+    if ( view instanceof ViewGroup ) {
+      ViewGroup group = (ViewGroup)view;
+      for ( int index = 0; index < group.getChildCount(); ++index ) {
+        TextView found = findTextView( group.getChildAt( index ), text );
+        if ( found != null ) return found;
+      }
+    }
+    return null;
+  }
+
+  private static TextView findTextViewContaining( View view, String text )
+  {
+    if ( view instanceof TextView && ( (TextView)view ).getText().toString().contains( text ) ) return (TextView)view;
+    if ( view instanceof ViewGroup ) {
+      ViewGroup group = (ViewGroup)view;
+      for ( int index = 0; index < group.getChildCount(); ++index ) {
+        TextView found = findTextViewContaining( group.getChildAt( index ), text );
         if ( found != null ) return found;
       }
     }

@@ -135,7 +135,7 @@ public class SymbolAreaLibrary extends SymbolLibrary
 
     // String user = res.getString( R.string.p_user );
     SymbolArea symbol = new SymbolArea( res.getString( R.string.tha_user ), USER, null, USER, 0x67cccccc, null, TileMode.REPEAT, TileMode.REPEAT, false, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SHP );
-    symbol.setPickerCategory( ToolsetCategory.EXTRAS );
+    symbol.setPickerCategory( ToolsetCategory.OTHER );
     addSymbol( symbol );
     if ( TopoDroidApp.mData != null ) {
       TopoDroidApp.mData.setSymbolEnabled( "a_" +  USER, true );

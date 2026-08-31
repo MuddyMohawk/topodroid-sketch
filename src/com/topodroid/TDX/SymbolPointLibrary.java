@@ -185,7 +185,7 @@ public class SymbolPointLibrary extends SymbolLibrary
     mPointUserIndex = mSymbols.size(); // 0 = no-text, no-value. thname   group fname
     // String user = res.getString( R.string.p_user );
     symbol = new SymbolPoint( res.getString(R.string.thp_user), USER, null, USER, 0xffffffff, p_user, false, 0, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SYM );
-    symbol.setPickerCategory( ToolsetCategory.EXTRAS );
+    symbol.setPickerCategory( ToolsetCategory.OTHER );
     addSymbol( symbol );
 
     mPointLabelIndex = mSymbols.size(); // 1 = text

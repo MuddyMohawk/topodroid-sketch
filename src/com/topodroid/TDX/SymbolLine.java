@@ -380,7 +380,7 @@ public class SymbolLine extends Symbol
   	      name    = null;
   	      th_name = null;
               group   = null;
-              setPickerCategory( ToolsetCategory.EXTRAS );
+              setPickerCategory( ToolsetCategory.OTHER );
               setPickerSection( null );
               setSearchTerms( null );
   	      color   = TDColor.TRANSPARENT;

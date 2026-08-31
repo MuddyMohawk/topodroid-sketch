@@ -42,7 +42,7 @@ public class ToolbarRowsInstrumentedTest
   }
 
   @Test
-  public void freshProfileHasTwoMixedCanvasRowsAndPinnedQuickTools()
+  public void freshProfileHasTwoMixedCanvasRowsMovableQuickSwitcherAndQuickTools()
   {
     ToolsetProfile profile = ToolsetProfile.freshDefault();
 
@@ -55,6 +55,7 @@ public class ToolbarRowsInstrumentedTest
     assertSlot( profile.mRows[1][0], SymbolType.POINT, SymbolLibrary.BLOCKS );
     assertSlot( profile.mRows[1][4], SymbolType.AREA, SymbolLibrary.CLAY );
     assertSlot( profile.mRows[1][5], SymbolType.AREA, SymbolLibrary.WATER );
+    assertTrue( ToolsetProfile.isQuickSwitcher( profile.mRows[1][7] ) );
     assertSlot( profile.mQuick[0], SymbolType.POINT, SymbolLibrary.LABEL );
     assertSlot( profile.mQuick[1], SymbolType.POINT, SymbolLibrary.STATION );
     assertSlot( profile.mQuick[2], SymbolType.LINE, SymbolLibrary.SECTION );
@@ -73,6 +74,14 @@ public class ToolbarRowsInstrumentedTest
     for ( ToolsetProfile.Slot ref : profile.mQuick ) {
       if ( ref != null ) assertNotNull( "Missing quick symbol " + ref.mFullThName, ToolsetCatalog.resolve( ref ) );
     }
+  }
+
+  @Test
+  public void movableQuickSwitcherRoundTripsWithProfileJson() throws Exception
+  {
+    ToolsetProfile restored = ToolsetProfile.fromJson( ToolsetProfile.freshDefault().toJson() );
+    assertNotNull( restored );
+    assertTrue( ToolsetProfile.isQuickSwitcher( restored.mRows[1][7] ) );
   }
 
   @Test

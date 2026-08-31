@@ -3,7 +3,7 @@ symbol point
 name continuation
 th_name continuation
 group continuation
-sketch_picker_category extras
+sketch_picker_category text-marks
 sketch_search_terms lead continues unexplored
 orientation yes
 has_text yes

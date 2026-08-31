@@ -976,6 +976,7 @@ final class VisualTestSupport
     assertNotNull( "No visible symbol toolbar row", symbolRow );
     int profileSlots = ToolsetRepository.activeProfile( TopoDroidApp.mData, TDInstance.sid ).mVisibleSlots;
     View symbolSettings = symbolRow.getChildAt( profileSlots );
+    assertEquals( "Symbol toolbar editor accessibility label", "Edit toolbars", symbolSettings.getContentDescription() );
     int tolerance = Math.max( 1, Math.round( mTargetContext.getResources().getDisplayMetrics().density ) );
     assertTrue( label + " settings button width " + child.getWidth()
         + " does not match symbol settings width " + symbolSettings.getWidth(),
@@ -998,6 +999,11 @@ final class VisualTestSupport
           assertTrue( "Manual toolbar row " + rowIndex + " slot " + slot + " is not visible",
             child.getVisibility() == View.VISIBLE && child.getWidth() > 0 && child.getHeight() > 0 );
         }
+        View editor = row.getChildAt( expectedSlots );
+        assertTrue( "Manual toolbar row " + rowIndex + " editor shortcut is not visible",
+          editor.getVisibility() == View.VISIBLE && editor.getWidth() > 0 && editor.getHeight() > 0 );
+        assertEquals( "Manual toolbar row " + rowIndex + " editor accessibility label",
+          "Edit toolbars", editor.getContentDescription() );
       }
     } );
   }

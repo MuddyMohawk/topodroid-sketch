@@ -38,7 +38,7 @@ public class Symbol implements SymbolInterface
   private String  mThName;   // therion name
   private String  mThPrefix = null; // therion prefix ("u:" or null) 2023-01-31
   String  mGroup;    // group of this symbol (null if no group)
-  private String mPickerCategory = ToolsetCategory.EXTRAS;
+  private String mPickerCategory = ToolsetCategory.OTHER;
   private String mPickerSection = null;
   private final ArrayList< String > mSearchTerms = new ArrayList<>();
   // String  mFilename; // filename coincide with therion name

@@ -23,6 +23,7 @@ final class ToolsetProfile
   static final int MAX_VISIBLE_SLOTS = 16;
   static final int DEFAULT_VISIBLE_SLOTS = 8;
   static final String DEFAULT_ID = "default";
+  static final String QUICK_SWITCHER_NAME = "quick-switcher";
 
   static final class Slot
   {
@@ -35,14 +36,22 @@ final class ToolsetProfile
       mFullThName = ( fullThName == null ) ? null : fullThName.trim();
     }
 
-    boolean isValid() { return isType( mType ) && mFullThName != null && mFullThName.length() > 0; }
+    boolean isQuickSwitcher()
+    {
+      return mType == SymbolType.UNDEF && QUICK_SWITCHER_NAME.equals( mFullThName );
+    }
+
+    boolean isValid()
+    {
+      return isQuickSwitcher() || ( isType( mType ) && mFullThName != null && mFullThName.length() > 0 );
+    }
 
     Slot copy() { return isValid() ? new Slot( mType, mFullThName ) : null; }
 
     JSONObject toJson() throws JSONException
     {
       JSONObject json = new JSONObject();
-      json.put( "type", typeName( mType ) );
+      json.put( "type", isQuickSwitcher() ? "action" : typeName( mType ) );
       json.put( "name", mFullThName );
       return json;
     }
@@ -50,7 +59,9 @@ final class ToolsetProfile
     static Slot fromJson( JSONObject json )
     {
       if ( json == null ) return null;
-      Slot slot = new Slot( typeFromName( json.optString( "type", "" ) ), json.optString( "name", null ) );
+      String type = json.optString( "type", "" );
+      int symbolType = "action".equals( type ) ? SymbolType.UNDEF : typeFromName( type );
+      Slot slot = new Slot( symbolType, json.optString( "name", null ) );
       return slot.isValid() ? slot : null;
     }
 
@@ -177,7 +188,7 @@ final class ToolsetProfile
     );
     profile.mRows[1] = slots(
       point( SymbolLibrary.BLOCKS ), point( "boulder" ), point( SymbolLibrary.PEBBLES ), point( SymbolLibrary.SAND ),
-      area( SymbolLibrary.CLAY ), area( SymbolLibrary.WATER ), point( SymbolLibrary.STALACTITE ), point( SymbolLibrary.STALAGMITE )
+      area( SymbolLibrary.CLAY ), area( SymbolLibrary.WATER ), point( SymbolLibrary.STALACTITE ), quickSwitcher()
     );
     Slot[] quick = {
       point( SymbolLibrary.LABEL ), point( SymbolLibrary.STATION ), line( SymbolLibrary.SECTION ),
@@ -233,6 +244,8 @@ final class ToolsetProfile
   private static Slot point( String name ) { return new Slot( SymbolType.POINT, name ); }
   private static Slot line( String name ) { return new Slot( SymbolType.LINE, name ); }
   private static Slot area( String name ) { return new Slot( SymbolType.AREA, name ); }
+  static Slot quickSwitcher() { return new Slot( SymbolType.UNDEF, QUICK_SWITCHER_NAME ); }
+  static boolean isQuickSwitcher( Slot slot ) { return slot != null && slot.isQuickSwitcher(); }
 
   static boolean isType( int type ) { return type == SymbolType.POINT || type == SymbolType.LINE || type == SymbolType.AREA; }
 

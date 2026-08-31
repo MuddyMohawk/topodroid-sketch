@@ -3,7 +3,7 @@ symbol point
 name air-draught
 th_name air-draught
 group air-draught
-sketch_picker_category extras
+sketch_picker_category other
 sketch_search_terms draft airflow breeze wind
 orientation yes
 color 0xffffff

@@ -197,7 +197,9 @@ public class ToolbarEditorActivity extends Activity
     mUndoButton.setContentDescription( "Undo toolbar change" );
     mUndoButton.setOnClickListener( new View.OnClickListener() { @Override public void onClick( View view ) { undo(); } } );
     bar.addView( mUndoButton, new LinearLayout.LayoutParams( dp( 42 ), dp( 40 ) ) );
-    mDeleteButton = action( "⌫", DANGER );
+    mDeleteButton = action( "✕", DANGER );
+    mDeleteButton.setTextSize( 28 );
+    mDeleteButton.setTypeface( Typeface.DEFAULT_BOLD );
     mDeleteButton.setContentDescription( "Delete profile" );
     mDeleteButton.setOnClickListener( new View.OnClickListener() { @Override public void onClick( View view ) { confirmDelete(); } } );
     bar.addView( mDeleteButton, new LinearLayout.LayoutParams( dp( 42 ), dp( 40 ) ) );
@@ -297,7 +299,7 @@ public class ToolbarEditorActivity extends Activity
     clearParams.setMarginStart( dp( 7 ) );
     head.addView( mClearSlot, clearParams );
     panel.addView( head, lpMatch( dp( 52 ) ) );
-    panel.addView( zoneHeading( "ENABLED · DRAG ≡ TO REORDER · TAP SLOT TO SELECT · TAP OR DRAG SYMBOLS", ACCENT ), lpMatch( dp( 28 ) ) );
+    panel.addView( zoneHeading( "ENABLED · DRAG ≡ TO REORDER · TAP SLOT TO SELECT · TAP OR DRAG SYMBOLS", INK ), lpMatch( dp( 28 ) ) );
     mOnCanvas = persistentList();
     mOnCanvasAdapter = new RowAdapter( true );
     mOnCanvas.setAdapter( mOnCanvasAdapter );
@@ -521,6 +523,10 @@ public class ToolbarEditorActivity extends Activity
   private void placeEntry( final ToolsetCatalog.Entry entry )
   {
     if ( entry == null ) return;
+    if ( mArmedQuick && entry.isQuickSwitcher() ) {
+      TDToast.makeWarn( "Place Quick Switcher on a toolbar row" );
+      return;
+    }
     int row = mArmedQuick ? -1 : mArmedRow;
     int slot = mArmedSlot;
     boolean quick = mArmedQuick;
@@ -633,6 +639,11 @@ public class ToolbarEditorActivity extends Activity
   private void dropOnSlot( final DragPayload payload, final int row, final int slot, final boolean quick )
   {
     if ( payload == null || ( payload.mKind != DRAG_SYMBOL && payload.mKind != DRAG_SLOT ) ) return;
+    ToolsetProfile.Slot incoming = payload.mKind == DRAG_SYMBOL ? payload.mEntry.ref() : sourceValue( payload );
+    if ( quick && ToolsetProfile.isQuickSwitcher( incoming ) ) {
+      TDToast.makeWarn( "Place Quick Switcher on a toolbar row" );
+      return;
+    }
     mutate( new Mutation() { @Override public void apply() {
       ToolsetProfile.Slot value = payload.mKind == DRAG_SYMBOL ? payload.mEntry.ref() : sourceValue( payload );
       if ( value == null ) return;
@@ -1026,8 +1037,13 @@ public class ToolbarEditorActivity extends Activity
   {
     tile.removeAllViews(); tile.setTag( entry ); tile.setBackground( rounded( CHROME_3, Color.TRANSPARENT, 0, 5 ) ); tile.setContentDescription( entry.mSymbol.getName() + ", " + entry.typeMark() );
     LinearLayout content = vertical(); content.setGravity( Gravity.CENTER );
-    SymbolPreviewButton preview = new SymbolPreviewButton( this ); preview.setBackgroundColor( Color.TRANSPARENT ); preview.bind( entry.mType, entry.mIndex, entry.mSymbol ); preview.setClickable( false );
-    content.addView( preview, new LinearLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f ) );
+    if ( entry.isQuickSwitcher() ) {
+      TextView preview = quickSwitcherPreview( 24 );
+      content.addView( preview, new LinearLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f ) );
+    } else {
+      SymbolPreviewButton preview = new SymbolPreviewButton( this ); preview.setBackgroundColor( Color.TRANSPARENT ); preview.bind( entry.mType, entry.mIndex, entry.mSymbol ); preview.setClickable( false );
+      content.addView( preview, new LinearLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f ) );
+    }
     TextView name = label( entry.mSymbol.getName(), 12, DIM ); name.setGravity( Gravity.CENTER ); name.setSingleLine( true ); name.setEllipsize( TextUtils.TruncateAt.END );
     content.addView( name, lpMatch( dp( 24 ) ) ); tile.addView( content, new FrameLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT ) );
     TextView kind = label( entry.typeMark(), 10, DIM ); kind.setTypeface( Typeface.MONOSPACE, Typeface.BOLD ); FrameLayout.LayoutParams kindParams = new FrameLayout.LayoutParams( dp( 28 ), dp( 20 ), Gravity.TOP | Gravity.START ); kindParams.setMargins( dp( 5 ), dp( 2 ), 0, 0 ); tile.addView( kind, kindParams );
@@ -1077,6 +1093,16 @@ public class ToolbarEditorActivity extends Activity
     TextView badge = label( text, 12, Color.rgb( 28, 20, 10 ) ); badge.setTypeface( Typeface.MONOSPACE, Typeface.BOLD ); badge.setGravity( Gravity.CENTER ); badge.setMinWidth( dp( 34 ) ); badge.setPadding( dp( 6 ), 0, dp( 6 ), 0 ); badge.setBackground( rounded( color, CHROME, 1, 4 ) ); badge.setClickable( true ); return badge;
   }
 
+  private TextView quickSwitcherPreview( int textSize )
+  {
+    TextView preview = label( "Q", textSize, Color.rgb( 36, 16, 44 ) );
+    preview.setTypeface( Typeface.DEFAULT_BOLD );
+    preview.setGravity( Gravity.CENTER );
+    preview.setBackground( rounded( QUICK, QUICK, 0, 5 ) );
+    preview.setClickable( false );
+    return preview;
+  }
+
   private FrameLayout.LayoutParams badgeParams( int rightMargin )
   {
     FrameLayout.LayoutParams params = new FrameLayout.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT, dp( 27 ), Gravity.TOP | Gravity.END ); params.setMargins( 0, dp( 2 ), dp( 2 ) + rightMargin, 0 ); return params;
@@ -1100,7 +1126,8 @@ public class ToolbarEditorActivity extends Activity
       removeAllViews(); mFilled = value != null;
       if ( value != null ) {
         Symbol symbol = ToolsetCatalog.resolve( value ); int index = ToolsetCatalog.resolveIndex( value );
-        if ( symbol != null ) { SymbolPreviewButton preview = new SymbolPreviewButton( ToolbarEditorActivity.this ); preview.setBackgroundColor( Color.TRANSPARENT ); preview.bind( value.mType, index, symbol ); preview.setClickable( false ); addView( preview, new FrameLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT ) ); setContentDescription( symbol.getName() + ", slot " + ( mSlot + 1 ) ); }
+        if ( ToolsetProfile.isQuickSwitcher( value ) ) { addView( quickSwitcherPreview( 24 ), new FrameLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT ) ); setContentDescription( "Quick Switcher, slot " + ( mSlot + 1 ) ); }
+        else if ( symbol != null ) { SymbolPreviewButton preview = new SymbolPreviewButton( ToolbarEditorActivity.this ); preview.setBackgroundColor( Color.TRANSPARENT ); preview.bind( value.mType, index, symbol ); preview.setClickable( false ); addView( preview, new FrameLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT ) ); setContentDescription( symbol.getName() + ", slot " + ( mSlot + 1 ) ); }
         else { TextView missing = label( "?", 18, DANGER ); missing.setGravity( Gravity.CENTER ); addView( missing ); setContentDescription( "Missing symbol " + value.mFullThName ); }
       } else setContentDescription( "Empty slot " + ( mSlot + 1 ) );
       setOnTouchListener( value == null ? null : dragTouch( new DragPayload( mRow, mSlot, mQuick ) ) );

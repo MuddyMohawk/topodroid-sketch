@@ -17,7 +17,7 @@ final class ToolsetCategory
   static final String HYDROLOGY = "hydrology";
   static final String GEOLOGY = "geology";
   static final String BIOLOGY = "biology";
-  static final String EXTRAS = "extras";
+  static final String OTHER = "other";
   static final String TEXT_MARKS = "text-marks";
 
   static final String SECTION_FORMATIONS = "formations";
@@ -26,7 +26,7 @@ final class ToolsetCategory
 
   private static final List< String > ORDER = Collections.unmodifiableList( Arrays.asList(
     PASSAGES, SPELEOTHEMS, SPELEOCLASTS, HYDROLOGY, GEOLOGY,
-    BIOLOGY, EXTRAS, TEXT_MARKS
+    BIOLOGY, OTHER, TEXT_MARKS
   ) );
 
   private ToolsetCategory() { }
@@ -35,9 +35,9 @@ final class ToolsetCategory
 
   static String normalizeId( String id )
   {
-    if ( id == null ) return EXTRAS;
+    if ( id == null ) return OTHER;
     String value = id.trim().toLowerCase();
-    return ORDER.contains( value ) ? value : EXTRAS;
+    return ORDER.contains( value ) ? value : OTHER;
   }
 
   static String label( String id )
@@ -50,7 +50,7 @@ final class ToolsetCategory
       case GEOLOGY: return "Geology";
       case BIOLOGY: return "Biology";
       case TEXT_MARKS: return "Text & marks";
-      default: return "Extras";
+      default: return "Other";
     }
   }
 

@@ -344,7 +344,7 @@ public class SymbolPoint extends Symbol
               path = null;
               detail_path = null;
               detail_stroke_scale = 1.0f;
-              setPickerCategory( ToolsetCategory.EXTRAS );
+              setPickerCategory( ToolsetCategory.OTHER );
               setPickerSection( null );
               setSearchTerms( null );
               mSketchStrokeScale = SketchBrushRenderer.DEFAULT_POINT_STROKE_WEIGHT_SCALE;

@@ -20,7 +20,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith( AndroidJUnit4.class )
 public class ToolsetCatalogInstrumentedTest
 {
-  @Test public void defaultPack_hasExactlyOneHundredCategorizedSearchableSymbols()
+  @Test public void defaultPack_hasOneHundredSymbolsAndQuickSwitcherAction()
   {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     TDInstance.setContext( context.getApplicationContext() );
@@ -30,7 +30,7 @@ public class ToolsetCatalogInstrumentedTest
     BrushManager.reloadAreaLibrary( context.getResources() );
 
     ArrayList< ToolsetCatalog.Entry > entries = ToolsetCatalog.all();
-    assertEquals( 100, entries.size() );
+    assertEquals( 101, entries.size() );
     HashMap< String, Integer > counts = new HashMap<>();
     for ( String category : ToolsetCategory.orderedIds() ) counts.put( category, 0 );
     for ( ToolsetCatalog.Entry entry : entries ) {
@@ -45,8 +45,8 @@ public class ToolsetCatalogInstrumentedTest
     assertEquals( Integer.valueOf( 5 ), counts.get( ToolsetCategory.HYDROLOGY ) );
     assertEquals( Integer.valueOf( 6 ), counts.get( ToolsetCategory.GEOLOGY ) );
     assertEquals( Integer.valueOf( 7 ), counts.get( ToolsetCategory.BIOLOGY ) );
-    assertEquals( Integer.valueOf( 4 ), counts.get( ToolsetCategory.EXTRAS ) );
-    assertEquals( Integer.valueOf( 10 ), counts.get( ToolsetCategory.TEXT_MARKS ) );
+    assertEquals( Integer.valueOf( 4 ), counts.get( ToolsetCategory.OTHER ) );
+    assertEquals( Integer.valueOf( 11 ), counts.get( ToolsetCategory.TEXT_MARKS ) );
 
     ToolsetCatalog.Entry air = find( entries, SymbolType.POINT, SymbolLibrary.AIR_DRAUGHT );
     assertNotNull( air );
@@ -61,7 +61,12 @@ public class ToolsetCatalogInstrumentedTest
     assertCategory( entries, SymbolType.POINT, "bones", ToolsetCategory.BIOLOGY );
     assertCategory( entries, SymbolType.POINT, "invertebrate-fossils", ToolsetCategory.BIOLOGY );
     assertCategory( entries, SymbolType.POINT, "midden", ToolsetCategory.BIOLOGY );
-    assertCategory( entries, SymbolType.POINT, "archeo-excavation", ToolsetCategory.EXTRAS );
+    assertCategory( entries, SymbolType.POINT, "archeo-excavation", ToolsetCategory.OTHER );
+    assertCategory( entries, SymbolType.POINT, SymbolLibrary.CONTINUATION, ToolsetCategory.TEXT_MARKS );
+    ToolsetCatalog.Entry quickSwitcher = find( entries, SymbolType.UNDEF, ToolsetProfile.QUICK_SWITCHER_NAME );
+    assertNotNull( quickSwitcher );
+    assertEquals( ToolsetCategory.OTHER, quickSwitcher.mCategory );
+    assertTrue( quickSwitcher.matches( "quick palette chooser" ) );
   }
 
   private static void assertCategory( ArrayList< ToolsetCatalog.Entry > entries, int type, String name, String category )

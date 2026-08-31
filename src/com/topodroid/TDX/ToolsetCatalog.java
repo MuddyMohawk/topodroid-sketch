@@ -15,6 +15,8 @@ import java.util.Locale;
 
 final class ToolsetCatalog
 {
+  private static final Symbol QUICK_SWITCHER_SYMBOL = new QuickSwitcherSymbol();
+
   static final class Entry
   {
     final int mType;
@@ -45,11 +47,17 @@ final class ToolsetCatalog
 
     ToolsetProfile.Slot ref() { return new ToolsetProfile.Slot( mType, mSymbol.getFullThName() ); }
 
+    boolean isQuickSwitcher()
+    {
+      return mType == SymbolType.UNDEF && ToolsetProfile.QUICK_SWITCHER_NAME.equals( mSymbol.getFullThName() );
+    }
+
     String typeMark()
     {
       if ( mType == SymbolType.POINT ) return "pt";
       if ( mType == SymbolType.LINE ) return "ln";
-      return "ar";
+      if ( mType == SymbolType.AREA ) return "ar";
+      return "tool";
     }
 
     boolean matches( String query )
@@ -69,6 +77,7 @@ final class ToolsetCatalog
     addLibrary( entries, SymbolType.POINT, BrushManager.getPointLib() );
     addLibrary( entries, SymbolType.LINE, BrushManager.getLineLib() );
     addLibrary( entries, SymbolType.AREA, BrushManager.getAreaLib() );
+    entries.add( new Entry( SymbolType.UNDEF, -1, QUICK_SWITCHER_SYMBOL ) );
     Collections.sort( entries, new Comparator< Entry >() {
       @Override public int compare( Entry left, Entry right ) {
         int category = ToolsetCategory.orderedIds().indexOf( left.mCategory ) - ToolsetCategory.orderedIds().indexOf( right.mCategory );
@@ -100,6 +109,7 @@ final class ToolsetCatalog
   static Symbol resolve( ToolsetProfile.Slot slot )
   {
     if ( slot == null || ! slot.isValid() ) return null;
+    if ( slot.isQuickSwitcher() ) return QUICK_SWITCHER_SYMBOL;
     switch ( slot.mType ) {
       case SymbolType.POINT: return BrushManager.getPointByThName( slot.mFullThName );
       case SymbolType.LINE: return BrushManager.getLineByThName( slot.mFullThName );
@@ -111,6 +121,7 @@ final class ToolsetCatalog
   static int resolveIndex( ToolsetProfile.Slot slot )
   {
     if ( slot == null || ! slot.isValid() ) return -1;
+    if ( slot.isQuickSwitcher() ) return -1;
     switch ( slot.mType ) {
       case SymbolType.POINT: return BrushManager.getPointIndexByThName( slot.mFullThName );
       case SymbolType.LINE: return BrushManager.getLineIndexByThName( slot.mFullThName );
@@ -173,5 +184,17 @@ final class ToolsetCatalog
     if ( ToolsetCategory.SECTION_MINERAL_POOL.equals( section ) ) return 1;
     if ( ToolsetCategory.SECTION_GYPSUM.equals( section ) ) return 2;
     return 3;
+  }
+
+  private static final class QuickSwitcherSymbol extends Symbol
+  {
+    QuickSwitcherSymbol()
+    {
+      super( Symbol.TYPE_NONE, ToolsetProfile.QUICK_SWITCHER_NAME, "toolbar", null, Symbol.W2D_NONE );
+      setPickerCategory( ToolsetCategory.OTHER );
+      setSearchTerms( "quick switcher toolbar palette chooser" );
+    }
+
+    @Override public String getName() { return "Quick Switcher"; }
   }
 }
