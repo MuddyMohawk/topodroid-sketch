@@ -39,15 +39,14 @@ public class ToolsetCatalogInstrumentedTest
       assertTrue( entry.matches( entry.mSymbol.getName() ) );
       assertTrue( entry.matches( entry.mSymbol.getFullThName() ) );
     }
-    assertEquals( Integer.valueOf( 16 ), counts.get( ToolsetCategory.PASSAGES ) );
+    assertEquals( Integer.valueOf( 15 ), counts.get( ToolsetCategory.PASSAGES ) );
     assertEquals( Integer.valueOf( 38 ), counts.get( ToolsetCategory.SPELEOTHEMS ) );
-    assertEquals( Integer.valueOf( 14 ), counts.get( ToolsetCategory.SPELEOCLASTS ) );
-    assertEquals( Integer.valueOf( 6 ), counts.get( ToolsetCategory.HYDROLOGY ) );
-    assertEquals( Integer.valueOf( 7 ), counts.get( ToolsetCategory.GEOLOGY ) );
-    assertEquals( Integer.valueOf( 4 ), counts.get( ToolsetCategory.BIOLOGY ) );
-    assertEquals( Integer.valueOf( 4 ), counts.get( ToolsetCategory.ARCHAEO ) );
-    assertEquals( Integer.valueOf( 3 ), counts.get( ToolsetCategory.EXTRAS ) );
-    assertEquals( Integer.valueOf( 8 ), counts.get( ToolsetCategory.TEXT_MARKS ) );
+    assertEquals( Integer.valueOf( 15 ), counts.get( ToolsetCategory.SPELEOCLASTS ) );
+    assertEquals( Integer.valueOf( 5 ), counts.get( ToolsetCategory.HYDROLOGY ) );
+    assertEquals( Integer.valueOf( 6 ), counts.get( ToolsetCategory.GEOLOGY ) );
+    assertEquals( Integer.valueOf( 7 ), counts.get( ToolsetCategory.BIOLOGY ) );
+    assertEquals( Integer.valueOf( 4 ), counts.get( ToolsetCategory.EXTRAS ) );
+    assertEquals( Integer.valueOf( 10 ), counts.get( ToolsetCategory.TEXT_MARKS ) );
 
     ToolsetCatalog.Entry air = find( entries, SymbolType.POINT, SymbolLibrary.AIR_DRAUGHT );
     assertNotNull( air );
@@ -55,6 +54,21 @@ public class ToolsetCatalogInstrumentedTest
     assertNotNull( find( entries, SymbolType.POINT, SymbolLibrary.STATION ) );
     assertNotNull( find( entries, SymbolType.POINT, SymbolLibrary.PHOTO ) );
     assertNotNull( find( entries, SymbolType.POINT, SymbolLibrary.AUDIO ) );
+    assertCategory( entries, SymbolType.POINT, "passage-height", ToolsetCategory.TEXT_MARKS );
+    assertCategory( entries, SymbolType.POINT, "u:pit-depth", ToolsetCategory.TEXT_MARKS );
+    assertCategory( entries, SymbolType.POINT, "bedding-slab", ToolsetCategory.SPELEOCLASTS );
+    assertCategory( entries, SymbolType.LINE, "dripline", ToolsetCategory.PASSAGES );
+    assertCategory( entries, SymbolType.POINT, "bones", ToolsetCategory.BIOLOGY );
+    assertCategory( entries, SymbolType.POINT, "invertebrate-fossils", ToolsetCategory.BIOLOGY );
+    assertCategory( entries, SymbolType.POINT, "midden", ToolsetCategory.BIOLOGY );
+    assertCategory( entries, SymbolType.POINT, "archeo-excavation", ToolsetCategory.EXTRAS );
+  }
+
+  private static void assertCategory( ArrayList< ToolsetCatalog.Entry > entries, int type, String name, String category )
+  {
+    ToolsetCatalog.Entry entry = find( entries, type, name );
+    assertNotNull( entry );
+    assertEquals( category, entry.mCategory );
   }
 
   private static ToolsetCatalog.Entry find( ArrayList< ToolsetCatalog.Entry > entries, int type, String name )

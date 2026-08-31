@@ -17,7 +17,6 @@ final class ToolsetCategory
   static final String HYDROLOGY = "hydrology";
   static final String GEOLOGY = "geology";
   static final String BIOLOGY = "biology";
-  static final String ARCHAEO = "archaeo";
   static final String EXTRAS = "extras";
   static final String TEXT_MARKS = "text-marks";
 
@@ -27,7 +26,7 @@ final class ToolsetCategory
 
   private static final List< String > ORDER = Collections.unmodifiableList( Arrays.asList(
     PASSAGES, SPELEOTHEMS, SPELEOCLASTS, HYDROLOGY, GEOLOGY,
-    BIOLOGY, ARCHAEO, EXTRAS, TEXT_MARKS
+    BIOLOGY, EXTRAS, TEXT_MARKS
   ) );
 
   private ToolsetCategory() { }
@@ -50,7 +49,6 @@ final class ToolsetCategory
       case HYDROLOGY: return "Hydrology";
       case GEOLOGY: return "Geology";
       case BIOLOGY: return "Biology";
-      case ARCHAEO: return "Archaeo";
       case TEXT_MARKS: return "Text & marks";
       default: return "Extras";
     }

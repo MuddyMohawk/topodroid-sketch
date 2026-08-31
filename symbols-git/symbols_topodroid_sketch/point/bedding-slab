@@ -3,7 +3,7 @@ symbol point
 name breakdown:_rectangle
 th_name bedding-slab
 group blocks
-sketch_picker_category geology
+sketch_picker_category speleoclasts
 sketch_affine yes
 sketch_occlude breakdown
 sketch_stroke_scale 1

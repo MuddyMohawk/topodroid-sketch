@@ -3,7 +3,7 @@ symbol line
 name dripline
 th_name dripline
 group wall
-sketch_picker_category hydrology
+sketch_picker_category passages
 color 0xffffff 0xff
 width 2
 dash 4.2 3.4

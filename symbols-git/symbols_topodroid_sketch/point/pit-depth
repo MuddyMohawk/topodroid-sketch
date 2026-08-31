@@ -2,7 +2,7 @@ encoding utf-8
 symbol point
 name pit depth
 th_name u:pit-depth
-sketch_picker_category passages
+sketch_picker_category text-marks
 sketch_search_terms depth drop
 sketch_stroke_scale 1
 orientation no

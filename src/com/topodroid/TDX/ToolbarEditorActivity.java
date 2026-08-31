@@ -297,13 +297,13 @@ public class ToolbarEditorActivity extends Activity
     clearParams.setMarginStart( dp( 7 ) );
     head.addView( mClearSlot, clearParams );
     panel.addView( head, lpMatch( dp( 52 ) ) );
-    panel.addView( zoneHeading( "ON CANVAS", ACCENT ), lpMatch( dp( 28 ) ) );
+    panel.addView( zoneHeading( "ENABLED · DRAG ≡ TO REORDER · TAP SLOT TO SELECT · TAP OR DRAG SYMBOLS", ACCENT ), lpMatch( dp( 28 ) ) );
     mOnCanvas = persistentList();
     mOnCanvasAdapter = new RowAdapter( true );
     mOnCanvas.setAdapter( mOnCanvasAdapter );
     mOnCanvas.setOnDragListener( rowZoneDropListener( true ) );
     panel.addView( mOnCanvas, new LinearLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.4f ) );
-    panel.addView( zoneHeading( "CONFIGURED · NOT ON CANVAS", INK ), lpMatch( dp( 28 ) ) );
+    panel.addView( zoneHeading( "DISABLED · TAP LETTER TO ENABLE/DISABLE ROW", INK ), lpMatch( dp( 28 ) ) );
     mConfigured = persistentList();
     mConfiguredAdapter = new RowAdapter( false );
     mConfigured.setAdapter( mConfiguredAdapter );
@@ -906,7 +906,6 @@ public class ToolbarEditorActivity extends Activity
     if ( ToolsetCategory.HYDROLOGY.equals( category ) ) return "≈";
     if ( ToolsetCategory.GEOLOGY.equals( category ) ) return "∠";
     if ( ToolsetCategory.BIOLOGY.equals( category ) ) return "⌁";
-    if ( ToolsetCategory.ARCHAEO.equals( category ) ) return "⌂";
     if ( ToolsetCategory.TEXT_MARKS.equals( category ) ) return "A";
     return "✣";
   }

@@ -62,8 +62,8 @@ public class ToolbarEditorInstrumentedTest
         assertTrue( labels.contains( "Toolbars" ) );
         assertTrue( labels.contains( "Passages" ) );
         assertTrue( labels.contains( "Toolbar rows" ) );
-        assertTrue( labels.contains( "ON CANVAS" ) );
-        assertTrue( labels.contains( "CONFIGURED · NOT ON CANVAS" ) );
+        assertTrue( labels.contains( "ENABLED · DRAG ≡ TO REORDER · TAP SLOT TO SELECT · TAP OR DRAG SYMBOLS" ) );
+        assertTrue( labels.contains( "DISABLED · TAP LETTER TO ENABLE/DISABLE ROW" ) );
         assertTrue( labels.contains( "QUICK SWITCHER" ) );
         assertTrue( labels.contains( "Q" ) );
         assertEquals( 1, searches.size() );

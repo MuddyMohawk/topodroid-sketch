@@ -2,7 +2,7 @@ encoding utf-8
 symbol point
 name passage_height
 th_name passage-height
-sketch_picker_category passages
+sketch_picker_category text-marks
 sketch_search_terms height ceiling
 sketch_stroke_scale 1
 orientation no
