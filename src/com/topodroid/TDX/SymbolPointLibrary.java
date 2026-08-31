@@ -185,31 +185,45 @@ public class SymbolPointLibrary extends SymbolLibrary
     mPointUserIndex = mSymbols.size(); // 0 = no-text, no-value. thname   group fname
     // String user = res.getString( R.string.p_user );
     symbol = new SymbolPoint( res.getString(R.string.thp_user), USER, null, USER, 0xffffffff, p_user, false, 0, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SYM );
+    symbol.setPickerCategory( ToolsetCategory.EXTRAS );
     addSymbol( symbol );
 
     mPointLabelIndex = mSymbols.size(); // 1 = text
     // String label = res.getString( R.string.p_label );
     symbol = new SymbolPoint( res.getString(R.string.thp_label), LABEL, null, LABEL, 0xffffffff, p_label, true, 1, DrawingLevel.LEVEL_LABEL, Symbol.W2D_NONE );
+    symbol.setPickerCategory( ToolsetCategory.TEXT_MARKS );
+    symbol.setSearchTerms( "text annotation note" );
+    addSymbol( symbol );
+
+    symbol = new SymbolPoint( res.getString(R.string.thp_station), STATION, null, STATION, 0xffff6633,
+      "addCircle 0 0 0.4 moveTo -3.0 1.73 lineTo 3.0 1.73 lineTo 0.0 -3.46 lineTo -3.0 1.73",
+      false, DrawingLevel.LEVEL_WALL, Symbol.W2D_WALLS_SYM );
+    symbol.setPickerCategory( ToolsetCategory.TEXT_MARKS );
+    symbol.setSearchTerms( "survey station mark" );
     addSymbol( symbol );
 
     mPointSectionIndex = mSymbols.size();
     // String section = res.getString( R.string.p_section );
     symbol = new SymbolPoint( res.getString(R.string.thp_section), SECTION, null, SECTION, 0xffcccccc, p_section, false, 0, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SYM );
+    symbol.setPickerCategory( ToolsetCategory.TEXT_MARKS );
     addSymbol( symbol );
 
     mPointPictureIndex = mSymbols.size();
     // String section = res.getString( R.string.p_section );
     symbol = new SymbolPoint( res.getString(R.string.thp_picture), PICTURE, null, PICTURE, 0xffcccccc, p_picture, false, 0, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SYM );
+    symbol.setPickerCategory( ToolsetCategory.TEXT_MARKS );
     addSymbol( symbol );
 
     mPointReferenceIndex = mSymbols.size();
     symbol = new SymbolPoint( res.getString(R.string.thp_reference), REFERENCE, null, REFERENCE, 0xffcccccc, p_reference, false, 0, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SYM );
+    symbol.setPickerCategory( ToolsetCategory.TEXT_MARKS );
     addSymbol( symbol );
 
     // TDLog.v("PointLibrary user " + mPointUserIndex + " label " + mPointLabelIndex + " section " + mPointSectionIndex );
     if ( TopoDroidApp.mData != null ) {
       TopoDroidApp.mData.setSymbolEnabled( "p_" +  USER, true );
       TopoDroidApp.mData.setSymbolEnabled( "p_" + LABEL, true );
+      TopoDroidApp.mData.setSymbolEnabled( "p_" + STATION, true );
     }
   }
 
@@ -236,9 +250,8 @@ public class SymbolPointLibrary extends SymbolLibrary
       for ( File file : files ) { // there is a null-pointer exception here, but files cannot be null !!!
         String fname = file.getName();
 
-        if ( fname.equals( PHOTO ) && ! TDandroid.checkCamera( ctx ) ) continue;
-        // if ( fname.equals( PICTURE ) && ! TDandroid.checkCamera( ctx ) ) continue;
-        if ( fname.equals( AUDIO ) && ! TDandroid.checkMicrophone( ctx ) ) continue;
+        // Keep installed media symbols in the catalog even when this device lacks the
+        // matching hardware. DrawingWindow already handles unavailable capture actions.
 
         // if ( fname.equals(USER) || fname.equals(LABEL) || fname.equals(SECTION) ) continue;
 

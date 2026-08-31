@@ -3,6 +3,8 @@ symbol line
 name flowstone
 th_name flowstone
 group floor
+sketch_picker_category speleothems
+sketch_picker_section mineral-pool
 color 0xffffff 0xff
 width 2
 # units: line-widths (1 = ink thickness); arcs stroke at the line weight

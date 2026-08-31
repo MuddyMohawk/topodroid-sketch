@@ -3,6 +3,7 @@ symbol line
 name talus
 th_name talus
 group floor
+sketch_picker_category speleoclasts
 color 0xffffff 0xff
 width 2
 # units: line-widths (1 = ink thickness). Retain Pit's 3.4 depth. Each centered

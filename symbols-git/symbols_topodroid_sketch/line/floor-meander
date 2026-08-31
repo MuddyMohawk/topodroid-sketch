@@ -3,6 +3,7 @@ symbol line
 name floor_channel
 th_name floor-meander
 group floor
+sketch_picker_category passages
 color 0xffffff 0xff
 width 2
 dash 4.2 1.4

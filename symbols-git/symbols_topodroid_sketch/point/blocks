@@ -3,6 +3,8 @@ symbol point
 name blocks
 th_name blocks
 group blocks
+sketch_picker_category speleoclasts
+sketch_search_terms breakdown rocks
 orientation yes
 color 0xffffff
 path

@@ -3,6 +3,8 @@ symbol point
 name water-flow
 th_name water-flow
 group water-flow
+sketch_picker_category hydrology
+sketch_search_terms flow current stream
 orientation yes
 color 0x6699ff
 path

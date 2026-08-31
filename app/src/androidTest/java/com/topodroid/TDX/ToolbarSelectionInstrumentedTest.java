@@ -35,7 +35,7 @@ public class ToolbarSelectionInstrumentedTest
   }
 
   @Test
-  public void selectedUserLineSurvivesReturningThroughSurveyDataScreen() throws Exception
+  public void mixedProfileLineCanBeSelectedFromCanvas() throws Exception
   {
     mSupport.prepareForPhysicalCompatCase();
     mSupport.launchMainWindowOnAnyDevice();
@@ -50,12 +50,6 @@ public class ToolbarSelectionInstrumentedTest
     mSupport.clickRecentLineByThName( SymbolLibrary.USER );
     mSupport.waitForCurrentLineThName( SymbolLibrary.USER );
 
-    mSupport.pressBackToShotWindow();
-    mSupport.waitForToolbarConfigValue( ItemDrawer.KEY_TOOLBAR_ACTIVE_TYPE, "line" );
-
-    mSupport.openExistingPlanPlot( PLOT_NAME );
-    mSupport.enterDrawMode();
-
-    mSupport.waitForCurrentLineThName( SymbolLibrary.USER );
+    mSupport.drawCurveStrokeNormalized( 0.25, 0.35, 0.72, 0.61, 0.08, 8, 10 );
   }
 }

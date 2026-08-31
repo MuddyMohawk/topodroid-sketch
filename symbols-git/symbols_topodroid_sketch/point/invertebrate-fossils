@@ -3,6 +3,7 @@ symbol point
 name invertebrate_fossils
 th_name invertebrate-fossils
 group organic
+sketch_picker_category archaeo
 orientation yes
 color 0xffffff
 path

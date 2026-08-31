@@ -2,6 +2,8 @@ encoding utf-8
 symbol point
 name caver
 th_name u:caver
+sketch_picker_category text-marks
+sketch_search_terms person surveyor
 orientation no
 scalable no
 color 0x777777

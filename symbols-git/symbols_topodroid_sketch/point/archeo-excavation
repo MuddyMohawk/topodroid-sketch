@@ -3,6 +3,7 @@ symbol point
 name archeo-excavation
 th_name archeo-excavation
 group archeo
+sketch_picker_category archaeo
 orientation no
 color 0xffffff
 path

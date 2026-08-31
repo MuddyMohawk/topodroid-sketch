@@ -3,6 +3,8 @@ symbol point
 name calcite_crust
 th_name calcite-crust
 group mineral
+sketch_picker_category speleothems
+sketch_picker_section mineral-pool
 orientation no
 color 0xffffff
 path

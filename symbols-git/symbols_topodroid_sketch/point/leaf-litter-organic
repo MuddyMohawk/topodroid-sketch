@@ -3,6 +3,7 @@ symbol point
 name leaf_litter
 th_name leaf-litter-organic
 group organic
+sketch_picker_category biology
 orientation yes
 color 0xffffff
 path

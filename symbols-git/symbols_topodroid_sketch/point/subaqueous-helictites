@@ -3,6 +3,8 @@ symbol point
 name helictite,_subaqueous
 th_name subaqueous-helictites
 group speleothem
+sketch_picker_category speleothems
+sketch_picker_section formations
 orientation no
 color 0x6699ff
 path

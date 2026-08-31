@@ -3,6 +3,7 @@ symbol line
 name dashed_line_with_arrow
 th_name u:dashed-line-with-arrow
 group user
+sketch_picker_category passages
 color 0x6699ff 0xff
 width 2
 # Reuse the standard Dashed line's 6-on/4-off rhythm in line-width units.

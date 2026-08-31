@@ -4,3 +4,4 @@
 - Vanilla briefly used the same interim numbering after the upstream change on April 6, 2026, then reverted it on May 14, 2026 without migration; surveys created by affected Vanilla builds can likewise retain incompatible leg-type values.
 - Compass `.dat` export currently writes a named backsight as a separate reverse shot instead of combining it with the foresight record, producing duplicated length rather than one `A`-to-`B` FS/BS pair.
 - Survey ZIP export does not currently add `points.zip`, `lines.zip`, or `areas.zip`, even when `DISTOX_ZIP_WITH_SYMBOLS` is enabled; the importer can consume those entries, so custom symbol files are not preserved by a current Sketch export/import round trip.
+- Sketch symbol files now carry private `sketch_picker_category`, `sketch_picker_section`, and `sketch_search_terms` directives; a future Vanilla symbol conversion path must strip or safely ignore these directives while preserving the standard symbol definition.

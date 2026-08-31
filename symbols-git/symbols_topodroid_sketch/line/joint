@@ -3,6 +3,7 @@ symbol line
 name joint
 th_name joint
 group joint
+sketch_picker_category geology
 color 0x7030a0 0xff
 width 2
 # units: line-widths (1 = ink thickness). The 3.0-square is slightly smaller

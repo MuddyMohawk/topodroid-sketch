@@ -3,6 +3,7 @@ symbol area
 name water
 th_name water
 group water
+sketch_picker_category hydrology
 color 0x3366ff 0x66
 close-horizontal
 level 7

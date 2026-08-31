@@ -3,6 +3,7 @@ symbol point
 name bat_skeleton
 th_name bat-skeleton
 group organic
+sketch_picker_category biology
 orientation yes
 color 0xffffff
 path

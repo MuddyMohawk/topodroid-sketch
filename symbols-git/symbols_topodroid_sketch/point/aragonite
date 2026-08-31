@@ -3,6 +3,8 @@ symbol point
 name aragonite
 th_name aragonite
 group mineral
+sketch_picker_category speleothems
+sketch_picker_section mineral-pool
 orientation yes
 color 0xffffff
 path

@@ -3,6 +3,8 @@ symbol point
 name draperies
 th_name curtain
 group curtain
+sketch_picker_category speleothems
+sketch_picker_section formations
 orientation yes
 color 0xffffff
 path

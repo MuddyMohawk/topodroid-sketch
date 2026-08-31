@@ -701,55 +701,34 @@ final class VisualTestSupport
     tapChildInContainer( containerId, childIndex, containerResName );
   }
 
-  void clickRecentLineButton( int childIndex )
-  {
-    if ( ItemDrawer.isManualToolbar() ) {
-      tapManualToolbarChild( ItemDrawer.getToolbarViewIndexForRow( 0 ), childIndex );
-    } else {
-      tapChildInContainer( R.id.layout_tool_l, childIndex, "layout_tool_l" );
-    }
-  }
-
-  /** Tap the recent-line toolbar button for a specific symbol, identified by
-   * its therion name (e.g. "u:user"). The position of each symbol in the
-   * recent-line palette is not stable across installs — out of the box,
-   * TopoDroid sits walls at index 0 and section at index 1, pushing the user
-   * line further right. Hard-coded indices in tests were hitting walls
-   * / section by mistake, which in turn opened the cross-section dialog. Look
-   * the symbol up at runtime instead so we always click the right button.
-   */
+  /** Tap a line tool by stable symbol name in the active mixed-type profile. */
   void clickRecentLineByThName( String thName )
   {
-    int index = resolveRecentLineIndex( thName );
-    assertTrue( "User sketch line not present in recent-line palette: " + thName + "; "
-      + "current=" + describeRecentLinePalette(), index >= 0 );
-    clickRecentLineButton( index );
-  }
-
-  private int resolveRecentLineIndex( String thName )
-  {
-    String target = Symbol.deprefix_u( thName );
-    for ( int k = 0; k < ItemDrawer.getToolbarSlotCount(); ++k ) {
-      Symbol symbol = ItemDrawer.mRecentLine[k];
-      if ( symbol == null ) continue;
-      String full = symbol.getFullThName();
-      if ( full == null ) continue;
-      if ( full.equals( thName ) ) return k;
-      if ( target != null && target.equals( Symbol.deprefix_u( full ) ) ) return k;
-    }
-    return -1;
-  }
-
-  private String describeRecentLinePalette()
-  {
-    StringBuilder sb = new StringBuilder( "[" );
-    for ( int k = 0; k < ItemDrawer.getToolbarSlotCount(); ++k ) {
-      if ( k > 0 ) sb.append( "," );
-      Symbol symbol = ItemDrawer.mRecentLine[k];
-      sb.append( symbol == null ? "null" : symbol.getFullThName() );
-    }
-    sb.append( "]" );
-    return sb.toString();
+    final int[] location = { -1, -1 };
+    final String[] contents = { "[]" };
+    runOnMainChecked( "find toolbar line " + thName, () -> {
+      ToolsetProfile profile = ToolsetRepository.activeProfile( TopoDroidApp.mData, TDInstance.sid );
+      String target = Symbol.deprefix_u( thName );
+      StringBuilder sb = new StringBuilder( "[" );
+      for ( int viewRow = 0; viewRow < profile.mOnCanvas.size(); ++viewRow ) {
+        int row = profile.mOnCanvas.get( viewRow );
+        for ( int slot = 0; slot < profile.mVisibleSlots; ++slot ) {
+          ToolsetProfile.Slot ref = profile.mRows[row][slot];
+          if ( sb.length() > 1 ) sb.append( "," );
+          sb.append( ref == null ? "null" : ToolsetProfile.typeName( ref.mType ) + ":" + ref.mFullThName );
+          if ( ref == null || ref.mType != com.topodroid.types.SymbolType.LINE ) continue;
+          if ( ref.mFullThName.equals( thName )
+            || ( target != null && target.equals( Symbol.deprefix_u( ref.mFullThName ) ) ) ) {
+            location[0] = viewRow;
+            location[1] = slot;
+          }
+        }
+      }
+      contents[0] = sb.append( "]" ).toString();
+    } );
+    assertTrue( "Line is not present in the active toolbar profile: " + thName
+      + "; current=" + contents[0], location[0] >= 0 );
+    tapManualToolbarChild( location[0], location[1] );
   }
 
   void tapPresetButton( int preset )
@@ -791,11 +770,15 @@ final class VisualTestSupport
     assertManualToolbarVisible( 8 );
   }
 
-  void configureDrawingToolbarForTest( int updateMode, int rows, float size )
+  void configureDrawingToolbarForTest( int rows, float size )
   {
     runOnMainChecked( "configure drawing toolbar", () -> {
-      TDSetting.mToolbarUpdate = updateMode;
-      TDSetting.mToolbarRows = rows;
+      ToolsetProfile profile = ToolsetRepository.activeProfile( TopoDroidApp.mData, TDInstance.sid );
+      int count = Math.max( 1, Math.min( ToolsetProfile.ROW_COUNT, rows ) );
+      profile.mOnCanvas.clear();
+      for ( int row = 0; row < count; ++row ) profile.mOnCanvas.add( row );
+      assertTrue( "Unable to persist toolbar test profile",
+        ToolsetRepository.saveProfile( TopoDroidApp.mData, profile ) );
       TDSetting.mItemButtonSize = size;
       requireCurrentDrawingWindow().resetRecentTools();
     } );
@@ -991,7 +974,8 @@ final class VisualTestSupport
     assertTrue( "Tools container is not a ViewGroup", toolsView instanceof ViewGroup );
     ViewGroup symbolRow = findManualToolbarRow( (ViewGroup)toolsView, 0 );
     assertNotNull( "No visible symbol toolbar row", symbolRow );
-    View symbolSettings = symbolRow.getChildAt( ItemDrawer.getToolbarSlotCount() );
+    int profileSlots = ToolsetRepository.activeProfile( TopoDroidApp.mData, TDInstance.sid ).mVisibleSlots;
+    View symbolSettings = symbolRow.getChildAt( profileSlots );
     int tolerance = Math.max( 1, Math.round( mTargetContext.getResources().getDisplayMetrics().density ) );
     assertTrue( label + " settings button width " + child.getWidth()
         + " does not match symbol settings width " + symbolSettings.getWidth(),
@@ -1003,7 +987,7 @@ final class VisualTestSupport
     runOnMainChecked( "manual toolbar", () -> {
       View view = requireDrawingWindowView( R.id.layout_tools, "tools container" );
       assertTrue( "Tools container is not a ViewGroup", view instanceof ViewGroup );
-      int rows = ItemDrawer.getToolbarRowCount();
+      int rows = ToolsetRepository.activeProfile( TopoDroidApp.mData, TDInstance.sid ).mOnCanvas.size();
       for ( int rowIndex = 0; rowIndex < rows; ++rowIndex ) {
         ViewGroup row = findManualToolbarRow( (ViewGroup)view, rowIndex );
         assertNotNull( "Manual toolbar row " + rowIndex + " is not visible", row );
@@ -2680,7 +2664,8 @@ selection.mHotItem.getHandleRole() );
       if ( child.getId() != View.NO_ID ) continue;
       if ( child.getVisibility() != View.VISIBLE || child.getWidth() <= 0 || child.getHeight() <= 0 ) continue;
       ViewGroup row = (ViewGroup)child;
-      if ( row.getChildCount() < ItemDrawer.getToolbarSlotCount() + 1 ) continue;
+      int profileSlots = ToolsetRepository.activeProfile( TopoDroidApp.mData, TDInstance.sid ).mVisibleSlots;
+      if ( row.getChildCount() < profileSlots + 1 ) continue;
       if ( found == rowIndex ) return row;
       ++found;
     }

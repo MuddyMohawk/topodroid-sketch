@@ -3,6 +3,8 @@ symbol point
 name moonmilk
 th_name moonmilk
 group speleothem
+sketch_picker_category speleothems
+sketch_picker_section mineral-pool
 orientation yes
 color 0xffffff
 path

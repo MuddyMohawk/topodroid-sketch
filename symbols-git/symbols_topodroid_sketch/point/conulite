@@ -3,6 +3,8 @@ symbol point
 name conulite
 th_name conulite
 group speleothem
+sketch_picker_category speleothems
+sketch_picker_section mineral-pool
 orientation no
 color 0xffffff
 path

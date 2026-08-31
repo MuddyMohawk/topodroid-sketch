@@ -3,6 +3,7 @@ symbol point
 name slope
 th_name slope
 group slope
+sketch_picker_category passages
 orientation yes
 color 0xffffff
 path

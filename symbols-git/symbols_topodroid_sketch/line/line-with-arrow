@@ -3,6 +3,7 @@ symbol line
 name line_with_arrow
 th_name u:line-with-arrow
 group user
+sketch_picker_category passages
 color 0x6699ff 0xff
 width 2
 # The carrier and filled terminal arrow are authored in line-width units.

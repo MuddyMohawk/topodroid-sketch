@@ -3,6 +3,7 @@ symbol point
 name anastomosis
 th_name anastomosis
 group passage
+sketch_picker_category geology
 orientation yes
 color 0xffffff
 path

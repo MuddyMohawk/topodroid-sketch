@@ -3,6 +3,7 @@ symbol line
 name dotted
 th_name dotted
 group user
+sketch_picker_category passages
 color 0xffffff 0xff
 width 2
 # Tiny on-length plus round caps renders dots whose diameter follows the active brush weight.

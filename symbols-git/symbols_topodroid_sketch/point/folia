@@ -3,6 +3,8 @@ symbol point
 name folia
 th_name folia
 group aragonite
+sketch_picker_category speleothems
+sketch_picker_section mineral-pool
 orientation yes
 color 0xffffff
 path

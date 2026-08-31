@@ -61,6 +61,7 @@ class RecentSymbolsTask extends AsyncTask<Void, Integer, Boolean>
   private void saveRecentSymbols()
   {
     // TDLog.v( "save recent tools");
+    if ( mDrawer instanceof DrawingWindow ) return; // profiles autosave independently; preserve legacy keys untouched
     if ( ItemDrawer.isManualToolbar() ) {
       ItemDrawer.saveManualToolbarSymbols( mData );
       return;
@@ -125,6 +126,7 @@ class RecentSymbolsTask extends AsyncTask<Void, Integer, Boolean>
   private void loadRecentSymbols()
   {
     // TDLog.v( "load recent symbols"); // ENABLED_LIST
+    if ( mDrawer instanceof DrawingWindow ) return; // DrawingWindow resolves its selected profile directly
     if ( ItemDrawer.isManualToolbar() ) {
       ItemDrawer.loadManualToolbarSymbols( mData );
       return;

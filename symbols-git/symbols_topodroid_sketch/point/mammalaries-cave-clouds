@@ -3,6 +3,8 @@ symbol point
 name mammalaries_cave_clouds
 th_name mammalaries-cave-clouds
 group speleothem
+sketch_picker_category speleothems
+sketch_picker_section mineral-pool
 orientation yes
 color 0xffffff
 path

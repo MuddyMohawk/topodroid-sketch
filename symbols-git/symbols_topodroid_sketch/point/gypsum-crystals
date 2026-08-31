@@ -3,6 +3,8 @@ symbol point
 name gypsum_crystals
 th_name gypsum-crystals
 group mineral
+sketch_picker_category speleothems
+sketch_picker_section gypsum
 orientation no
 color 0xffffff
 path

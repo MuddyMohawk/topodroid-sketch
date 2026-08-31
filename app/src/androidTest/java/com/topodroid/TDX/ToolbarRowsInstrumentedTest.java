@@ -1,7 +1,7 @@
 package com.topodroid.TDX;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -10,7 +10,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import com.topodroid.prefs.TDSetting;
 import com.topodroid.types.SymbolType;
 
 import org.junit.After;
@@ -22,282 +21,75 @@ import org.junit.runner.RunWith;
 @LargeTest
 public class ToolbarRowsInstrumentedTest
 {
-  private static final String[] DEFAULT_LINE_NAMES_RIGHT_TO_LEFT = {
-    "wall", "pit", "chimney", "flowstone", "dashed", "dotted", "section", "user",
-    "wall", "pit", "chimney", "flowstone", "dashed", "dotted", "section", "user"
-  };
-
-  private static final String[] DEFAULT_POINT_NAMES_RIGHT_TO_LEFT = {
-    "blocks", "boulder", "stalagmite", "stalactite", "bedrock", "slope", "clay", "sand",
-    "blocks", "boulder", "stalagmite", "stalactite", "bedrock", "slope", "clay", "sand"
-  };
-
-  private int mPreviousToolbarUpdate;
-  private int mPreviousToolbarSlots;
-  private int mPreviousToolbarRows;
   private Context mPreviousContext;
 
   @Before
   public void setUp()
   {
-    mPreviousToolbarUpdate = TDSetting.mToolbarUpdate;
-    mPreviousToolbarSlots  = TDSetting.mToolbarSlots;
-    mPreviousToolbarRows   = TDSetting.mToolbarRows;
     mPreviousContext = TDInstance.context;
-
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     TDInstance.setContext( context.getApplicationContext() );
     TopoDroidApp.installSymbols( true );
     BrushManager.reloadPointLibrary( context, context.getResources() );
     BrushManager.reloadLineLibrary( context.getResources() );
     BrushManager.reloadAreaLibrary( context.getResources() );
-
-    TDSetting.mToolbarUpdate = TDSetting.TOOLBAR_UPDATE_MANUAL;
-    TDSetting.mToolbarSlots = 8;
-    TDSetting.mToolbarRows = 2;
-    ItemDrawer.loadManualToolbarSymbols( null );
   }
 
   @After
   public void tearDown()
   {
-    TDSetting.mToolbarUpdate = mPreviousToolbarUpdate;
-    TDSetting.mToolbarSlots  = mPreviousToolbarSlots;
-    TDSetting.mToolbarRows   = mPreviousToolbarRows;
     TDInstance.context = mPreviousContext;
   }
 
   @Test
-  public void freshManualToolbar_usesDefaultLineAndPointRows()
+  public void freshProfileHasTwoMixedCanvasRowsAndPinnedQuickTools()
   {
-    assertDefaultToolbarSeed();
+    ToolsetProfile profile = ToolsetProfile.freshDefault();
+
+    assertEquals( 8, profile.mVisibleSlots );
+    assertEquals( 2, profile.mOnCanvas.size() );
+    assertEquals( Integer.valueOf( 0 ), profile.mOnCanvas.get( 0 ) );
+    assertEquals( Integer.valueOf( 1 ), profile.mOnCanvas.get( 1 ) );
+    assertSlot( profile.mRows[0][0], SymbolType.LINE, SymbolLibrary.WALL );
+    assertSlot( profile.mRows[0][1], SymbolType.LINE, SymbolLibrary.USER );
+    assertSlot( profile.mRows[1][0], SymbolType.POINT, SymbolLibrary.BLOCKS );
+    assertSlot( profile.mRows[1][4], SymbolType.AREA, SymbolLibrary.CLAY );
+    assertSlot( profile.mRows[1][5], SymbolType.AREA, SymbolLibrary.WATER );
+    assertSlot( profile.mQuick[0], SymbolType.POINT, SymbolLibrary.LABEL );
+    assertSlot( profile.mQuick[1], SymbolType.POINT, SymbolLibrary.STATION );
+    assertSlot( profile.mQuick[2], SymbolType.LINE, SymbolLibrary.SECTION );
   }
 
   @Test
-  public void defaultSymbolInstall_includesCurrentSketchPackSymbols()
+  public void installedPackResolvesEveryFreshProfileReference()
   {
-    int pit = BrushManager.getLineIndexByThName( SymbolLibrary.PIT );
-    int flowstone = BrushManager.getLineIndexByThName( SymbolLibrary.FLOWSTONE );
-    int wall = BrushManager.getLineIndexByThName( SymbolLibrary.WALL );
-    int clay = BrushManager.getPointIndexByThName( SymbolLibrary.CLAY );
-    int bedrock = BrushManager.getPointIndexByThName( SymbolLibrary.BEDROCK );
-    int bedrockArea = BrushManager.getAreaIndexByThName( SymbolLibrary.BEDROCK );
-    int sumpArea = BrushManager.getAreaIndexByThName( SymbolLibrary.SUMP );
-    int boulder = BrushManager.getPointIndexByThName( "boulder" );
-    int waterFlow = BrushManager.getLineIndexByThName( SymbolLibrary.WATER_FLOW );
-
-    assertTrue( "Missing wall line", wall >= 0 );
-    assertTrue( "Missing sketch pit line", pit >= 0 );
-    assertTrue( "Missing sketch flowstone line", flowstone >= 0 );
-    assertTrue( "Missing sketch clay point", clay >= 0 );
-    assertTrue( "Missing sketch bedrock point", bedrock >= 0 );
-    assertTrue( "Missing sketch bedrock area", bedrockArea >= 0 );
-    assertTrue( "Missing sketch sump area", sumpArea >= 0 );
-    AreaLinePattern bedrockPattern = BrushManager.getAreaLinePattern( bedrockArea );
-    assertTrue( "Sketch bedrock area should declare a line pattern", bedrockPattern != null );
-    assertEquals( AreaLinePattern.TYPE_BEDROCK, bedrockPattern.mType );
-    assertEquals( "Bedrock should truncate, not fade, at its boundary",
-                  0.0f, bedrockPattern.mFadeScale, 0.001f );
-    AreaLinePattern sumpPattern = BrushManager.getAreaLinePattern( sumpArea );
-    assertTrue( "Sketch sump area should declare a line pattern", sumpPattern != null );
-    assertEquals( AreaLinePattern.TYPE_CROSSHATCH, sumpPattern.mType );
-    assertEquals( SymbolLibrary.WATER, sumpPattern.mReplacesThName );
-    assertTrue( "Sump should be registered for fresh-install default enablement",
-                SymbolAreaLibrary.isDefaultArea( SymbolLibrary.SUMP ) );
-    assertTrue( "Missing sketch boulder point", boulder >= 0 );
-    assertTrue( "Missing sketch water-flow line", waterFlow >= 0 );
-    for ( int k = 0; k < BrushManager.getLineLibSize(); ++k ) {
-      assertTrue( "Line should be enabled by default: " + BrushManager.getLineThName( k ),
-                  BrushManager.getLineByIndex( k ).isEnabled() );
-    }
-    assertEquals( "pit", BrushManager.getLineName( pit ) );
-    assertEquals( "flowstone", BrushManager.getLineName( flowstone ) );
-    assertEquals( "clay", BrushManager.getPointName( clay ) );
-    assertEquals( "bedrock", BrushManager.getPointName( bedrock ) );
-    assertEquals( 0xffffffff, BrushManager.getLineColor( wall ) );
-
-    assertTrue( "Flowstone should have a production preview renderer",
-        SymbolPreviewRenderer.create( SymbolType.LINE, flowstone,
-            BrushManager.getLineByIndex( flowstone ), contextDensity() ) != null );
-  }
-
-  private float contextDensity()
-  {
-    return TDInstance.context.getResources().getDisplayMetrics().density;
-  }
-
-  @Test
-  public void manualToolbarSeed_overwritesPriorSymbolsAndLocks()
-  {
-    ItemDrawer.mToolbarLine[0][0] = ItemDrawer.mToolbarLine[0][3];
-    ItemDrawer.mToolbarPoint[1][0] = ItemDrawer.mToolbarPoint[1][3];
-    ItemDrawer.setToolbarRowLock( 0, ItemDrawer.TOOLBAR_LOCK_UNLOCKED );
-    ItemDrawer.setToolbarRowLock( 1, SymbolType.LINE );
-    ItemDrawer.setToolbarCurrentType( SymbolType.LINE );
-
-    ItemDrawer.loadManualToolbarSymbols( null );
-
-    assertDefaultToolbarSeed();
-  }
-
-  private void assertDefaultToolbarSeed()
-  {
-    assertEquals( 2, ItemDrawer.getToolbarRowCount() );
-    assertEquals( 8, ItemDrawer.getToolbarSlotCount() );
-    assertEquals( SymbolType.LINE, ItemDrawer.getToolbarRowLock( 0 ) );
-    assertTrue( ! ItemDrawer.isToolbarRowLocked( 1 ) );
-    assertEquals( SymbolType.LINE, ItemDrawer.getToolbarDisplayType( 0 ) );
-    assertEquals( SymbolType.POINT, ItemDrawer.getToolbarDisplayType( 1 ) );
-    for ( int slot = 0; slot < DEFAULT_LINE_NAMES_RIGHT_TO_LEFT.length; ++slot ) {
-      int storageSlot = ItemDrawer.NR_RECENT - slot - 1;
-      assertEquals( DEFAULT_LINE_NAMES_RIGHT_TO_LEFT[slot], ItemDrawer.mToolbarLine[0][storageSlot].getThName() );
-    }
-    for ( int slot = 0; slot < ItemDrawer.getToolbarSlotCount(); ++slot ) {
-      int storageSlot = ItemDrawer.getToolbarSlotCount() - slot - 1;
-      assertEquals( DEFAULT_LINE_NAMES_RIGHT_TO_LEFT[slot], ItemDrawer.mToolbarLine[0][storageSlot].getThName() );
-    }
-    for ( int slot = 0; slot < DEFAULT_POINT_NAMES_RIGHT_TO_LEFT.length; ++slot ) {
-      int storageSlot = ItemDrawer.NR_RECENT - slot - 1;
-      assertEquals( DEFAULT_POINT_NAMES_RIGHT_TO_LEFT[slot], ItemDrawer.mToolbarPoint[1][storageSlot].getThName() );
-    }
-    for ( int slot = 0; slot < ItemDrawer.getToolbarSlotCount(); ++slot ) {
-      int storageSlot = ItemDrawer.getToolbarSlotCount() - slot - 1;
-      assertEquals( DEFAULT_POINT_NAMES_RIGHT_TO_LEFT[slot], ItemDrawer.mToolbarPoint[1][storageSlot].getThName() );
-    }
-  }
-
-  @Test
-  public void manualRows_copyRowZeroDefaultsAndRemainAvailableWhenHidden()
-  {
-    TDSetting.mToolbarRows = 3;
-    assertEquals( 3, ItemDrawer.getToolbarRowCount() );
-    for ( int slot = 0; slot < ItemDrawer.getToolbarSlotCount(); ++slot ) {
-      assertEquals( ItemDrawer.mToolbarLine[0][slot].getFullThName(), ItemDrawer.mToolbarLine[1][slot].getFullThName() );
-      assertEquals( ItemDrawer.mToolbarLine[0][slot].getFullThName(), ItemDrawer.mToolbarLine[2][slot].getFullThName() );
-    }
-
-    Symbol hiddenRowSymbol = ItemDrawer.mToolbarLine[2][3];
-    TDSetting.mToolbarRows = 1;
-    assertEquals( 1, ItemDrawer.getToolbarRowCount() );
-    TDSetting.mToolbarRows = 3;
-    assertSame( hiddenRowSymbol, ItemDrawer.mToolbarLine[2][3] );
-  }
-
-  @Test
-  public void manualRows_displayAboveRowZeroAsTheyAreAdded()
-  {
-    TDSetting.mToolbarRows = 3;
-
-    assertEquals( 2, ItemDrawer.getToolbarRowForViewIndex( 0 ) );
-    assertEquals( 1, ItemDrawer.getToolbarRowForViewIndex( 1 ) );
-    assertEquals( 0, ItemDrawer.getToolbarRowForViewIndex( 2 ) );
-    assertEquals( 2, ItemDrawer.getToolbarViewIndexForRow( 0 ) );
-    assertEquals( 1, ItemDrawer.getToolbarViewIndexForRow( 1 ) );
-    assertEquals( 0, ItemDrawer.getToolbarViewIndexForRow( 2 ) );
-  }
-
-  @Test
-  public void rowLock_controlsDisplayedTypeOnlyForThatRow()
-  {
-    TDSetting.mToolbarRows = 3;
-    ItemDrawer.setToolbarRowLock( 0, ItemDrawer.TOOLBAR_LOCK_UNLOCKED );
-    ItemDrawer.setToolbarCurrentType( SymbolType.POINT );
-    ItemDrawer.setToolbarRowLock( 1, SymbolType.AREA );
-    assertEquals( SymbolType.POINT, ItemDrawer.getToolbarDisplayType( 0 ) );
-    assertEquals( SymbolType.AREA, ItemDrawer.getToolbarDisplayType( 1 ) );
-
-    ItemDrawer.setToolbarCurrentType( SymbolType.LINE );
-    assertEquals( SymbolType.LINE, ItemDrawer.getToolbarDisplayType( 0 ) );
-    assertEquals( SymbolType.AREA, ItemDrawer.getToolbarDisplayType( 1 ) );
-
-    ItemDrawer.setToolbarRowLock( 1, ItemDrawer.TOOLBAR_LOCK_UNLOCKED );
-    assertEquals( SymbolType.LINE, ItemDrawer.getToolbarDisplayType( 1 ) );
-  }
-
-  @Test
-  public void pickerLockCallbacks_updateLockAndTabImmediately()
-  {
-    TestDrawer drawer = newTestDrawer();
-    drawer.itemPickerLockChanged( 2, true, SymbolType.LINE );
-    assertEquals( SymbolType.LINE, ItemDrawer.getToolbarRowLock( 2 ) );
-
-    drawer.itemPickerTypeChanged( 2, SymbolType.AREA );
-    assertEquals( SymbolType.AREA, ItemDrawer.getToolbarRowLock( 2 ) );
-
-    drawer.itemPickerLockChanged( 2, false, SymbolType.AREA );
-    assertTrue( ! ItemDrawer.isToolbarRowLocked( 2 ) );
-  }
-
-  @Test
-  public void replacingDuplicateSymbol_swapsOnlyWithinSameRowAndType()
-  {
-    TestDrawer drawer = newTestDrawer();
-    Symbol first = ItemDrawer.mToolbarLine[0][0];
-    Symbol second = ItemDrawer.mToolbarLine[0][1];
-    int secondIndex = BrushManager.getLineIndex( second );
-    assertTrue( secondIndex >= 0 );
-
-    drawer.activateSlot( 0, SymbolType.LINE, 0 );
-    int replacedSlot = drawer.replaceSymbol( 0, SymbolType.LINE, secondIndex );
-
-    assertEquals( 0, replacedSlot );
-    assertSame( second, ItemDrawer.mToolbarLine[0][0] );
-    assertSame( first, ItemDrawer.mToolbarLine[0][1] );
-    assertEquals( first.getFullThName(), ItemDrawer.mToolbarLine[1][0].getFullThName() );
-    assertEquals( second.getFullThName(), ItemDrawer.mToolbarLine[1][1].getFullThName() );
-  }
-
-  @Test
-  public void activeToolbarSelection_tracksRowTypeAndSlotWithNormalizedReloadValues()
-  {
-    TestDrawer drawer = newTestDrawer();
-
-    drawer.activateSlot( 1, SymbolType.POINT, 2 );
-
-    assertEquals( 1, ItemDrawer.getToolbarActiveRow() );
-    assertEquals( SymbolType.POINT, ItemDrawer.getToolbarActiveType() );
-    assertEquals( 2, ItemDrawer.mToolbarActiveSlot[1] );
-    assertEquals( 2, ItemDrawer.rowFromString( "2" ) );
-    assertEquals( -1, ItemDrawer.rowFromString( "-1" ) );
-    assertEquals( -1, ItemDrawer.rowFromString( "999" ) );
-    assertEquals( SymbolType.LINE, ItemDrawer.typeFromString( "line", SymbolType.UNDEF ) );
-    assertEquals( SymbolType.POINT, ItemDrawer.typeFromString( "bogus", SymbolType.POINT ) );
-  }
-
-  @Test
-  public void legacyRecentModes_keepSixSlotSingleRowBehavior()
-  {
-    TDSetting.mToolbarUpdate = TDSetting.TOOLBAR_UPDATE_OLDEST;
-    TDSetting.mToolbarRows = 8;
-    TDSetting.mToolbarSlots = 16;
-
-    assertEquals( 1, ItemDrawer.getToolbarRowCount() );
-    assertEquals( ItemDrawer.NR_LEGACY_RECENT, ItemDrawer.getToolbarSlotCount() );
-  }
-
-  private TestDrawer newTestDrawer()
-  {
-    final TestDrawer[] drawer = new TestDrawer[1];
-    InstrumentationRegistry.getInstrumentation().runOnMainSync( new Runnable() {
-      @Override
-      public void run()
-      {
-        drawer[0] = new TestDrawer();
+    ToolsetProfile profile = ToolsetProfile.freshDefault();
+    for ( int row = 0; row < ToolsetProfile.ROW_COUNT; ++row ) {
+      for ( int slot = 0; slot < ToolsetProfile.ROW_CAPACITY; ++slot ) {
+        ToolsetProfile.Slot ref = profile.mRows[row][slot];
+        if ( ref != null ) assertNotNull( "Missing row symbol " + ref.mFullThName, ToolsetCatalog.resolve( ref ) );
       }
-    } );
-    return drawer[0];
+    }
+    for ( ToolsetProfile.Slot ref : profile.mQuick ) {
+      if ( ref != null ) assertNotNull( "Missing quick symbol " + ref.mFullThName, ToolsetCatalog.resolve( ref ) );
+    }
   }
 
-  private static class TestDrawer extends ItemDrawer
+  @Test
+  public void canvasVisibilityDoesNotDestroyConfiguredRows()
   {
-    void activateSlot( int row, int type, int slot )
-    {
-      setActiveToolbarSlot( row, type, slot );
-    }
+    ToolsetProfile profile = ToolsetProfile.freshDefault();
+    profile.mRows[7][15] = new ToolsetProfile.Slot( SymbolType.LINE, SymbolLibrary.WALL );
+    profile.moveRowToCanvasEnd( 7 );
+    assertTrue( profile.moveRowOffCanvas( 7 ) );
+    assertSlot( profile.mRows[7][15], SymbolType.LINE, SymbolLibrary.WALL );
+    assertEquals( 2, profile.mOnCanvas.size() );
+  }
 
-    int replaceSymbol( int row, int type, int index )
-    {
-      return replaceManualToolbarSymbol( row, type, index );
-    }
+  private static void assertSlot( ToolsetProfile.Slot slot, int type, String name )
+  {
+    assertNotNull( slot );
+    assertEquals( type, slot.mType );
+    assertEquals( name, slot.mFullThName );
   }
 }

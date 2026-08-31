@@ -3,6 +3,8 @@ symbol line
 name pool_fingers
 th_name pool-fingers
 group floor
+sketch_picker_category speleothems
+sketch_picker_section mineral-pool
 color 0xffffff 0xff
 width 2
 # units: line-widths (1 = ink thickness); the drawn line is the carrier

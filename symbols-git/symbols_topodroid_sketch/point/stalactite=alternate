@@ -3,6 +3,8 @@ symbol point
 name stalactite_alternate
 th_name stalactite:alternate
 group stalactite
+sketch_picker_category speleothems
+sketch_picker_section formations
 orientation no
 color 0xffffff
 path

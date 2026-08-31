@@ -244,7 +244,11 @@ public class SymbolArea extends Symbol
           if ( ! in_symbol ) {
   	    if ( vals[k].equals("symbol") ) {
   	      name    = null;
-  	      th_name = null;
+	      th_name = null;
+              group = null;
+              setPickerCategory( ToolsetCategory.EXTRAS );
+              setPickerSection( null );
+              setSearchTerms( null );
   	      mColor  = TDColor.TRANSPARENT;
               in_symbol = true;
             }
@@ -263,11 +267,25 @@ public class SymbolArea extends Symbol
   	        // 2023-01-31 th_name = deprefix_u( vals[k] );
                 th_name = vals[k];
   	      }
-  	    } else if ( vals[k].equals("group") ) {  
+	    } else if ( vals[k].equals("group") ) {
   	      ++k; while ( k < s && vals[k].length() == 0 ) ++k;
   	      if ( k < s ) {
-  	        group = vals[k]; // should .trim(); for tab etc. ? no: require syntax without tabs etc.
-  	      }
+	        group = vals[k]; // should .trim(); for tab etc. ? no: require syntax without tabs etc.
+	      }
+            } else if ( vals[k].equals("sketch_picker_category") ) {
+              ++k; while ( k < s && vals[k].length() == 0 ) ++k;
+              if ( k < s ) setPickerCategory( vals[k] );
+            } else if ( vals[k].equals("sketch_picker_section") ) {
+              ++k; while ( k < s && vals[k].length() == 0 ) ++k;
+              if ( k < s ) setPickerSection( vals[k] );
+            } else if ( vals[k].equals("sketch_search_terms") ) {
+              StringBuilder search = new StringBuilder();
+              for ( ++k; k < s; ++k ) {
+                if ( vals[k].length() == 0 ) continue;
+                if ( search.length() > 0 ) search.append( ' ' );
+                search.append( vals[k] );
+              }
+              appendSearchTerms( search.toString() );
             } else if ( vals[k].equals("options") ) {
               StringBuilder sb = new StringBuilder();
               boolean space = false;

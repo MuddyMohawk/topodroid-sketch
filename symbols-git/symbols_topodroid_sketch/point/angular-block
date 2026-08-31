@@ -3,6 +3,8 @@ symbol point
 name breakdown:_square
 th_name angular-block
 group blocks
+sketch_picker_category speleoclasts
+sketch_search_terms breakdown rock
 sketch_affine yes
 sketch_occlude breakdown
 sketch_stroke_scale 1

@@ -19,8 +19,6 @@ public class ScaleReferenceToolbarInstrumentedTest
   public void liveScaleReference_tracksMeasuredBottomToolHeight() throws Exception
   {
     VisualTestSupport support = new VisualTestSupport( "scale_reference_toolbar" );
-    int savedUpdate = TDSetting.mToolbarUpdate;
-    int savedRows = TDSetting.mToolbarRows;
     float savedSize = TDSetting.mItemButtonSize;
     try {
       support.prepareForPhysicalCompatCase();
@@ -31,19 +29,16 @@ public class ScaleReferenceToolbarInstrumentedTest
       support.openNewPlotFromShotWindow( PLOT, "1" );
       support.enterDrawMode();
 
-      support.configureDrawingToolbarForTest( TDSetting.TOOLBAR_UPDATE_MANUAL, 1, 2.5f );
+      support.configureDrawingToolbarForTest( 1, 2.5f );
       support.assertScaleReferenceClearsBottomTools( true );
 
-      support.configureDrawingToolbarForTest( TDSetting.TOOLBAR_UPDATE_MANUAL, 8, 2.5f );
+      support.configureDrawingToolbarForTest( 8, 2.5f );
       support.assertScaleReferenceClearsBottomTools( true );
 
-      support.configureDrawingToolbarForTest( TDSetting.TOOLBAR_UPDATE_MANUAL, 1, 5.0f );
+      support.configureDrawingToolbarForTest( 1, 5.0f );
       support.assertScaleReferenceClearsBottomTools( true );
 
-      support.configureDrawingToolbarForTest( TDSetting.TOOLBAR_UPDATE_OLDEST, 1, 2.5f );
-      support.assertScaleReferenceClearsBottomTools( true );
-
-      support.configureDrawingToolbarForTest( TDSetting.TOOLBAR_UPDATE_MANUAL, 1, 2.5f );
+      support.configureDrawingToolbarForTest( 1, 2.5f );
       support.dragPlaceOrdinaryPointWithActiveStyle( false, 0.35, 0.35, 100.0f, 0.0f );
       support.showLatestPointScaleToolbarForTest();
       support.assertScaleReferenceClearsBottomTools( true );
@@ -51,8 +46,6 @@ public class ScaleReferenceToolbarInstrumentedTest
       support.enterMoveMode();
       support.assertScaleReferenceClearsBottomTools( false );
     } finally {
-      TDSetting.mToolbarUpdate = savedUpdate;
-      TDSetting.mToolbarRows = savedRows;
       TDSetting.mItemButtonSize = savedSize;
       support.finish();
     }

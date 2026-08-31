@@ -3,6 +3,8 @@ symbol point
 name soda-straw
 th_name soda-straw
 group stalactite
+sketch_picker_category speleothems
+sketch_picker_section formations
 orientation no
 color 0xffffff
 path

@@ -3,6 +3,8 @@ symbol point
 name gypsum_needles
 th_name gypsum-needles
 group gypsum
+sketch_picker_category speleothems
+sketch_picker_section gypsum
 orientation yes
 color 0xffffff
 path

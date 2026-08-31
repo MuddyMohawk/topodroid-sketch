@@ -3,6 +3,8 @@ symbol point
 name raft_cone
 th_name raft-cone
 group speleothem
+sketch_picker_category speleothems
+sketch_picker_section mineral-pool
 orientation yes
 color 0xffffff
 path

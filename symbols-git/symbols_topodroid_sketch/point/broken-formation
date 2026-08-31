@@ -3,6 +3,8 @@ symbol point
 name broken_formation
 th_name broken-formation
 group speleothem
+sketch_picker_category speleothems
+sketch_picker_section formations
 orientation yes
 color 0xffffff
 path

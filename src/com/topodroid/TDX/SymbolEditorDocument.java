@@ -328,6 +328,9 @@ class SymbolEditorDocument
   private static boolean isEditableField( String key )
   {
     return "group".equals( key )
+        || "sketch_picker_category".equals( key )
+        || "sketch_picker_section".equals( key )
+        || "sketch_search_terms".equals( key )
         || "options".equals( key )
         || "color".equals( key )
         || "alpha".equals( key )

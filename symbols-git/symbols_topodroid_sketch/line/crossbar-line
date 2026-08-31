@@ -3,6 +3,7 @@ symbol line
 name crossbar_line
 th_name crossbar-line
 group floor
+sketch_picker_category passages
 color 0xffffff 0xff
 width 2
 # units: line-widths (1 = ink thickness); carrier/crossbar width 1 = line weight

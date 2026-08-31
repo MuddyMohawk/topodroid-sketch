@@ -3,6 +3,7 @@ symbol line
 name slope_fan
 th_name u:slope-fan
 group slope
+sketch_picker_category passages
 color 0xffffff 0xff
 width 2
 # Same carrier-free base hachure and repeat as Slope. Sketch smoothly scales

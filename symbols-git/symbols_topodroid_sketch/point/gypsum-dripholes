@@ -3,6 +3,8 @@ symbol point
 name gypsum_dripholes
 th_name gypsum-dripholes
 group gypsum
+sketch_picker_category speleothems
+sketch_picker_section gypsum
 orientation no
 color 0xffffff
 style fill

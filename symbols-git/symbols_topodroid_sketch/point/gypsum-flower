@@ -3,6 +3,8 @@ symbol point
 name gypsum_flower
 th_name gypsum-flower
 group gypsum
+sketch_picker_category speleothems
+sketch_picker_section gypsum
 orientation yes
 color 0xffffff
 path

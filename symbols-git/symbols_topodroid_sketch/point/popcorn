@@ -3,6 +3,8 @@ symbol point
 name popcorn
 th_name popcorn
 group popcorn
+sketch_picker_category speleothems
+sketch_picker_section mineral-pool
 orientation yes
 color 0xffffff
 path

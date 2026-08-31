@@ -3,6 +3,7 @@ symbol point
 name clay
 th_name clay
 group clay
+sketch_picker_category speleoclasts
 orientation no
 color 0xffffff
 path

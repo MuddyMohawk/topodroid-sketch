@@ -3,6 +3,7 @@ symbol point
 name vegetation
 th_name vegetation
 group organic
+sketch_picker_category biology
 orientation no
 color 0x33cc33
 path

@@ -3,6 +3,8 @@ symbol line
 name Intermittent_Dotted_Arrow
 th_name u:intermittent-dotted-arrow
 group user
+sketch_picker_category hydrology
+sketch_search_terms intermittent stream flow
 color 0x6699ff 0xff
 width 2
 # A solid 18-unit carrier run alternates with a 12-unit break containing

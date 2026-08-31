@@ -3,6 +3,7 @@ symbol line
 name reverse_fault
 th_name reverse-fault
 group fault
+sketch_picker_category geology
 color 0x7030a0 0xff
 width 2
 # units: line-widths (1 = ink thickness). Each filled half-square has a

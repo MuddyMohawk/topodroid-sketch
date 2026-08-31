@@ -100,11 +100,13 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Gravity;
 //
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.PopupWindow;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ZoomButtonsController;
 import android.widget.ZoomButtonsController.OnZoomListener;
@@ -125,6 +127,8 @@ import android.graphics.pdf.PdfDocument.PageInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.GradientDrawable;
 import android.graphics.Paint;
 // import android.graphics.Canvas;
 import android.graphics.Paint.FontMetrics;
@@ -623,8 +627,21 @@ public class DrawingWindow extends ItemDrawer
   private ItemButton[] mBtnRecentA;
   private LinearLayout[] mManualToolbarRows;
   private ItemButton[][] mBtnManualToolbar;
-  private ItemButton[] mBtnManualPicker;
+  private Button[] mBtnManualPicker;
+  private ToolsetProfile mToolsetProfile;
+  private PopupWindow mQuickToolPopup;
   private SeekBar      mScaleBar;
+
+  /** DrawingWindow uses profile dimensions; legacy SketchWindow keeps its own picker dimensions. */
+  static int getToolbarSlotCount()
+  {
+    return ToolsetRepository.activeProfile( TopoDroidApp.mData, TDInstance.sid ).mVisibleSlots;
+  }
+
+  static int getToolbarRowCount()
+  {
+    return ToolsetRepository.activeProfile( TopoDroidApp.mData, TDInstance.sid ).mOnCanvas.size();
+  }
 
   // window mode
   // static final int MODE_NONE  = 0; // initial mode
@@ -2783,11 +2800,12 @@ public class DrawingWindow extends ItemDrawer
   private void rebuildManualToolbarRows( int rowHeight )
   {
     if ( mManualToolbarRows == null ) return;
+    loadToolsetProfile();
     removeManualToolbarRows();
-    int rows = getToolbarRowCount();
-    int slots = getToolbarSlotCount();
+    int rows = mToolsetProfile.mOnCanvas.size();
+    int slots = mToolsetProfile.mVisibleSlots;
     for ( int viewIndex = 0; viewIndex < rows; ++viewIndex ) {
-      int row = getToolbarRowForViewIndex( viewIndex );
+      int row = mToolsetProfile.mOnCanvas.get( viewIndex );
       LinearLayout layout = mManualToolbarRows[row];
       if ( layout == null ) {
         layout = new LinearLayout( this );
@@ -2797,7 +2815,9 @@ public class DrawingWindow extends ItemDrawer
       layout.removeAllViews();
       layout.setLayoutParams( new LinearLayout.LayoutParams( LinearLayout.LayoutParams.MATCH_PARENT, rowHeight ) );
       for ( int slot = 0; slot < slots; ++slot ) layout.addView( mBtnManualToolbar[row][slot], makeToolbarButtonParams() );
-      layout.addView( mBtnManualPicker[row], makeToolbarButtonParams() );
+      Button quick = mBtnManualPicker[row];
+      quick.setVisibility( viewIndex == rows - 1 ? View.VISIBLE : View.INVISIBLE );
+      layout.addView( quick, makeToolbarButtonParams() );
       layout.setVisibility( View.VISIBLE );
       mLayoutTools.addView( layout, viewIndex );
     }
@@ -2818,26 +2838,26 @@ public class DrawingWindow extends ItemDrawer
   private void setManualToolbarRowsVisibility( int visibility )
   {
     if ( mManualToolbarRows == null ) return;
-    int rows = getToolbarRowCount();
+    loadToolsetProfile();
     for ( int row = 0; row < NR_TOOLBAR_ROWS; ++row ) {
       LinearLayout layout = mManualToolbarRows[row];
       if ( layout == null ) continue;
-      layout.setVisibility( row < rows ? visibility : View.GONE );
+      layout.setVisibility( mToolsetProfile.isOnCanvas( row ) ? visibility : View.GONE );
     }
   }
 
   private void redrawManualToolbars()
   {
     if ( mBtnManualToolbar == null ) return;
-    int rows = getToolbarRowCount();
-    for ( int row = 0; row < rows; ++row ) redrawManualToolbarRow( row );
-    if ( mActiveToolbarRow >= rows ) {
+    loadToolsetProfile();
+    for ( Integer row : mToolsetProfile.mOnCanvas ) redrawManualToolbarRow( row );
+    if ( ! mToolsetProfile.isOnCanvas( mActiveToolbarRow ) ) {
       highlightRow = -1;
       highlightIndex = -1;
       highlightType = SymbolType.UNDEF;
       return;
     }
-    if ( highlightRow >= 0 && highlightRow < rows && getToolbarDisplayType( highlightRow ) == highlightType ) {
+    if ( highlightRow >= 0 && mToolsetProfile.isOnCanvas( highlightRow ) ) {
       setHighlight( highlightRow, highlightType, highlightIndex );
     } else {
       highlightRow = -1;
@@ -2848,13 +2868,12 @@ public class DrawingWindow extends ItemDrawer
 
   private void redrawManualToolbarRow( int row )
   {
-    int type = getToolbarDisplayType( row );
-    Symbol[] symbols = getToolbarSymbols( row, type );
-    if ( symbols == null ) return;
-    int slots = getToolbarSlotCount();
+    loadToolsetProfile();
+    int slots = mToolsetProfile.mVisibleSlots;
     for ( int slot = 0; slot < slots; ++slot ) {
       ItemButton button = mBtnManualToolbar[row][slot];
-      Symbol symbol = symbols[slot];
+      ToolsetProfile.Slot ref = mToolsetProfile.mRows[row][slot];
+      Symbol symbol = ToolsetCatalog.resolve( ref );
       if ( button == null ) continue;
       button.highlight( false );
       if ( symbol == null ) {
@@ -2862,8 +2881,13 @@ public class DrawingWindow extends ItemDrawer
         continue;
       }
       button.setVisibility( View.VISIBLE );
-      bindSymbolPreview( button, type, symbol );
+      bindSymbolPreview( button, ref.mType, symbol );
     }
+  }
+
+  private void loadToolsetProfile()
+  {
+    mToolsetProfile = ToolsetRepository.activeProfile( TopoDroidApp.mData, TDInstance.sid );
   }
 
   private void bindSymbolPreview( ItemButton button, int type, Symbol symbol )
@@ -3212,7 +3236,7 @@ public class DrawingWindow extends ItemDrawer
     mBtnRecentA = new ItemButton[ NR_RECENT + 1 ];
     mManualToolbarRows = new LinearLayout[ NR_TOOLBAR_ROWS ];
     mBtnManualToolbar = new ItemButton[ NR_TOOLBAR_ROWS ][ NR_RECENT ];
-    mBtnManualPicker = new ItemButton[ NR_TOOLBAR_ROWS ];
+    mBtnManualPicker = new Button[ NR_TOOLBAR_ROWS ];
     for ( int k = 0; k<NR_RECENT; ++k ) {
       mBtnRecentP[k] = new SymbolPreviewButton( this );
       mBtnRecentP[k].setOnClickListener(
@@ -3266,7 +3290,8 @@ public class DrawingWindow extends ItemDrawer
           new View.OnClickListener() {
             @Override public void onClick( View v ) {
               if ( ! setCurrentToolbarSymbol( toolbarRow, toolbarSlot, false ) ) {
-                int type = getToolbarDisplayType( toolbarRow );
+                ToolsetProfile.Slot ref = mToolsetProfile == null ? null : mToolsetProfile.mRows[toolbarRow][toolbarSlot];
+                int type = ref == null ? SymbolType.UNDEF : ref.mType;
                 if ( type == SymbolType.POINT ) {
                   TDToast.makeWarn( R.string.section_point_not_allowed );
                 } else if ( type == SymbolType.LINE ) {
@@ -3310,13 +3335,18 @@ public class DrawingWindow extends ItemDrawer
       }
     );
     for ( int row = 0; row < NR_TOOLBAR_ROWS; ++row ) {
-      mBtnManualPicker[row] = new ItemButton( this );
-      mBtnManualPicker[row].resetPaintPath( BrushManager.labelPaint, path, 2, 2 );
-      mBtnManualPicker[row].invalidate();
-      final int toolbarRow = row;
+      mBtnManualPicker[row] = new Button( this );
+      mBtnManualPicker[row].setText( "Q" );
+      mBtnManualPicker[row].setTextColor( 0xff24102c );
+      mBtnManualPicker[row].setBackground( makeToolsetBackground( 0xffc98ae0, 0xffc98ae0, 4 ) );
+      mBtnManualPicker[row].setMinWidth( 0 );
+      mBtnManualPicker[row].setMinHeight( 0 );
+      mBtnManualPicker[row].setPadding( 0, 0, 0, 0 );
+      mBtnManualPicker[row].setStateListAnimator( null );
+      mBtnManualPicker[row].setContentDescription( "Quick switcher" );
       mBtnManualPicker[row].setOnClickListener(
         new View.OnClickListener() {
-          @Override public void onClick( View v ) { startItemPickerDialog( getToolbarDisplayType( toolbarRow ), toolbarRow ); }
+          @Override public void onClick( View v ) { showQuickToolSwitcher( v ); }
         }
       );
     }
@@ -3805,15 +3835,7 @@ public class DrawingWindow extends ItemDrawer
    */
   void startItemPickerDialog()
   {
-    if ( isManualToolbar() ) {
-      startItemPickerDialog( getToolbarDisplayType( mActiveToolbarRow ), mActiveToolbarRow );
-      return;
-    }
-    int symbol = mSymbol;
-    if ( mRecentTools == mRecentPoint )     { symbol = SymbolType.POINT; }
-    else if ( mRecentTools == mRecentLine ) { symbol = SymbolType.LINE; }
-    else if ( mRecentTools == mRecentArea ) { symbol = SymbolType.AREA; }
-    startItemPickerDialog( symbol );
+    startToolbarEditor( false );
   }
 
   /** start the item picker dialog
@@ -3821,12 +3843,123 @@ public class DrawingWindow extends ItemDrawer
    */
   private void startItemPickerDialog( int symbol )
   {
-    new ItemPickerDialog( mActivity, this, mType, symbol ).show();
+    startToolbarEditor( false );
   }
 
   private void startItemPickerDialog( int symbol, int row )
   {
-    new ItemPickerDialog( mActivity, this, mType, symbol, row ).show();
+    startToolbarEditor( false );
+  }
+
+  private void startToolbarEditor( boolean focusQuick )
+  {
+    Intent intent = new Intent( this, ToolbarEditorActivity.class );
+    intent.putExtra( ToolbarEditorActivity.EXTRA_FOCUS_QUICK, focusQuick );
+    startActivity( intent );
+  }
+
+  private void showQuickToolSwitcher( View anchor )
+  {
+    loadToolsetProfile();
+    if ( mQuickToolPopup != null ) mQuickToolPopup.dismiss();
+    final LinearLayout popup = new LinearLayout( this );
+    popup.setOrientation( LinearLayout.VERTICAL );
+    popup.setPadding( toolsetDp( 12 ), toolsetDp( 12 ), toolsetDp( 12 ), toolsetDp( 12 ) );
+    popup.setBackground( makeToolsetBackground( 0xff20262b, 0xff3d474e, 6 ) );
+    TextView title = new TextView( this );
+    title.setText( "Quick switcher" );
+    title.setTextColor( 0xffc98ae0 );
+    title.setTextSize( 13 );
+    title.setTypeface( android.graphics.Typeface.DEFAULT_BOLD );
+    title.setPadding( toolsetDp( 4 ), toolsetDp( 2 ), toolsetDp( 4 ), toolsetDp( 8 ) );
+    popup.addView( title, new LinearLayout.LayoutParams( LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT ) );
+
+    int columns = getResources().getConfiguration().smallestScreenWidthDp >= 600 ? 4 : 3;
+    LinearLayout row = null;
+    int added = 0;
+    for ( int slot = 0; slot < ToolsetProfile.QUICK_CAPACITY; ++slot ) {
+      final int quickSlot = slot;
+      final ToolsetProfile.Slot ref = mToolsetProfile.mQuick[slot];
+      final Symbol symbol = ToolsetCatalog.resolve( ref );
+      if ( ref == null || symbol == null ) continue;
+      if ( added % columns == 0 ) {
+        row = new LinearLayout( this );
+        row.setOrientation( LinearLayout.HORIZONTAL );
+        popup.addView( row, new LinearLayout.LayoutParams( LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT ) );
+      }
+      LinearLayout cell = new LinearLayout( this );
+      cell.setOrientation( LinearLayout.VERTICAL );
+      cell.setGravity( Gravity.CENTER );
+      cell.setPadding( toolsetDp( 4 ), toolsetDp( 4 ), toolsetDp( 4 ), toolsetDp( 4 ) );
+      cell.setBackground( makeToolsetBackground( 0xff343d44, 0xff3d474e, 4 ) );
+      SymbolPreviewButton preview = new SymbolPreviewButton( this );
+      preview.setBackgroundColor( android.graphics.Color.TRANSPARENT );
+      preview.bind( ref.mType, ToolsetCatalog.resolveIndex( ref ), symbol );
+      preview.setClickable( false );
+      cell.addView( preview, new LinearLayout.LayoutParams( LinearLayout.LayoutParams.MATCH_PARENT, toolsetDp( 54 ) ) );
+      TextView name = new TextView( this );
+      name.setText( symbol.getName() );
+      name.setTextColor( 0xffe9eef0 );
+      name.setTextSize( 10 );
+      name.setSingleLine( true );
+      name.setEllipsize( TextUtils.TruncateAt.END );
+      name.setGravity( Gravity.CENTER );
+      cell.addView( name, new LinearLayout.LayoutParams( LinearLayout.LayoutParams.MATCH_PARENT, toolsetDp( 30 ) ) );
+      cell.setContentDescription( symbol.getName() );
+      cell.setOnClickListener( new View.OnClickListener() {
+        @Override public void onClick( View view ) {
+          if ( selectToolsetSlot( ref, -1, quickSlot, false ) && mQuickToolPopup != null ) mQuickToolPopup.dismiss();
+        }
+      } );
+      LinearLayout.LayoutParams cellParams = new LinearLayout.LayoutParams( 0, toolsetDp( 92 ), 1.0f );
+      cellParams.setMargins( toolsetDp( 3 ), toolsetDp( 3 ), toolsetDp( 3 ), toolsetDp( 3 ) );
+      row.addView( cell, cellParams );
+      ++added;
+    }
+    if ( added == 0 ) {
+      TextView empty = new TextView( this );
+      empty.setText( "No quick tools configured" );
+      empty.setTextColor( 0xff8c979c );
+      empty.setGravity( Gravity.CENTER );
+      empty.setPadding( toolsetDp( 12 ), toolsetDp( 24 ), toolsetDp( 12 ), toolsetDp( 24 ) );
+      popup.addView( empty );
+    }
+    Button edit = new Button( this );
+    edit.setText( "Edit toolbars" );
+    edit.setTextColor( 0xff08222a );
+    edit.setBackground( makeToolsetBackground( 0xff52c0d4, 0xff52c0d4, 4 ) );
+    edit.setMinHeight( 0 );
+    edit.setStateListAnimator( null );
+    edit.setOnClickListener( new View.OnClickListener() {
+      @Override public void onClick( View view ) {
+        if ( mQuickToolPopup != null ) mQuickToolPopup.dismiss();
+        startToolbarEditor( true );
+      }
+    } );
+    LinearLayout.LayoutParams editParams = new LinearLayout.LayoutParams( LinearLayout.LayoutParams.MATCH_PARENT, toolsetDp( 48 ) );
+    editParams.setMargins( toolsetDp( 3 ), toolsetDp( 9 ), toolsetDp( 3 ), toolsetDp( 3 ) );
+    popup.addView( edit, editParams );
+    int screen = getResources().getDisplayMetrics().widthPixels;
+    int width = Math.min( screen - toolsetDp( 24 ), toolsetDp( 440 ) );
+    mQuickToolPopup = new PopupWindow( popup, width, LinearLayout.LayoutParams.WRAP_CONTENT, true );
+    mQuickToolPopup.setBackgroundDrawable( new ColorDrawable( 0xff20262b ) );
+    mQuickToolPopup.setOutsideTouchable( true );
+    mQuickToolPopup.setElevation( toolsetDp( 12 ) );
+    mQuickToolPopup.showAtLocation( anchor, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, mLayoutTools == null ? 0 : mLayoutTools.getHeight() );
+  }
+
+  private int toolsetDp( int value )
+  {
+    return Math.round( value * getResources().getDisplayMetrics().density );
+  }
+
+  private GradientDrawable makeToolsetBackground( int fill, int stroke, int radiusDp )
+  {
+    GradientDrawable background = new GradientDrawable();
+    background.setColor( fill );
+    background.setCornerRadius( toolsetDp( radiusDp ) );
+    background.setStroke( toolsetDp( 1 ), stroke );
+    return background;
   }
 
   // ==============================================================
@@ -3841,6 +3974,8 @@ public class DrawingWindow extends ItemDrawer
     TDLog.v( "Drawing Activity on Resume " );
     // TDLog.v( "Drawing Activity onResume " + ((mDataDownloader!=null)?"with DataDownloader":"") );
     doResume();
+    loadToolsetProfile();
+    if ( mBtnManualToolbar != null && mLayoutTools != null ) setToolsToolbarParams();
     if ( mDataDownloader != null ) {
       mDataDownloader.onResume();
       setConnectionStatus( mDataDownloader.getStatus() );
@@ -12083,35 +12218,45 @@ public class DrawingWindow extends ItemDrawer
 
   private boolean setCurrentToolbarSymbol( int row, int slot, boolean update_recent )
   {
-    row = normalizeToolbarRow( row );
-    int type = getToolbarDisplayType( row );
-    return setCurrentToolbarSymbol( row, type, slot, update_recent );
+    loadToolsetProfile();
+    if ( row < 0 || row >= ToolsetProfile.ROW_COUNT || ! mToolsetProfile.isOnCanvas( row ) ) return false;
+    if ( slot < 0 || slot >= mToolsetProfile.mVisibleSlots ) return false;
+    ToolsetProfile.Slot ref = mToolsetProfile.mRows[row][slot];
+    return selectToolsetSlot( ref, row, slot, update_recent );
   }
 
   private boolean setCurrentToolbarSymbol( int row, int type, int slot, boolean update_recent )
   {
-    if ( row < 0 || row >= getToolbarRowCount() ) return false;
-    if ( slot < 0 || slot >= getToolbarSlotCount() ) return false;
-    Symbol[] symbols = getToolbarSymbols( row, type );
-    if ( symbols == null ) return false;
-    int index = getToolbarSymbolIndex( type, symbols[slot] );
-    if ( index < 0 ) return false;
-    if ( ! selectToolbarSymbol( type, index, update_recent ) ) return false;
-    setRecentToolsForType( type );
-    setActiveToolbarSlot( row, type, slot );
-    setHighlight( row, type, slot );
+    return setCurrentToolbarSymbol( row, slot, update_recent );
+  }
+
+  private boolean selectToolsetSlot( ToolsetProfile.Slot ref, int row, int slot, boolean updateRecent )
+  {
+    int index = ToolsetCatalog.resolveIndex( ref );
+    if ( ref == null || index < 0 || ! selectToolbarSymbol( ref.mType, index, updateRecent ) ) return false;
+    setRecentToolsForType( ref.mType );
+    mActiveToolbarRow = row;
+    mActiveToolbarType = ref.mType;
+    mActiveToolbarSlot = slot;
+    if ( row >= 0 ) {
+      setHighlight( row, ref.mType, slot );
+    } else {
+      if ( highlightRow >= 0 && highlightRow < ToolsetProfile.ROW_COUNT && highlightIndex >= 0 && highlightIndex < ToolsetProfile.ROW_CAPACITY ) {
+        mBtnManualToolbar[highlightRow][highlightIndex].highlight( false );
+      }
+      highlightRow = -1;
+      highlightType = SymbolType.UNDEF;
+      highlightIndex = -1;
+    }
     setButtonTool();
     return true;
   }
 
   private boolean setCurrentSavedToolbarSymbol()
   {
-    int row = getToolbarActiveRow();
-    int type = getToolbarActiveType();
-    if ( row < 0 || row >= getToolbarRowCount() ) return false;
-    if ( ! isToolbarType( type ) ) return false;
-    if ( ! isToolbarRowLocked( row ) ) setToolbarCurrentType( type );
-    return setCurrentToolbarSymbol( row, type, mToolbarActiveSlot[row], false );
+    loadToolsetProfile();
+    if ( mActiveToolbarRow < 0 || ! mToolsetProfile.isOnCanvas( mActiveToolbarRow ) ) return false;
+    return setCurrentToolbarSymbol( mActiveToolbarRow, mActiveToolbarSlot, false );
   }
 
   private void setRecentToolsForType( int type )
@@ -12131,12 +12276,11 @@ public class DrawingWindow extends ItemDrawer
 
   private boolean setCurrentUnlockedToolbarSymbol( int type )
   {
-    int rows = getToolbarRowCount();
-    int slots = getToolbarSlotCount();
-    for ( int row = 0; row < rows; ++row ) {
-      if ( isToolbarRowLocked( row ) ) continue;
-      for ( int slot = 0; slot < slots; ++slot ) {
-        if ( setCurrentToolbarSymbol( row, type, slot, false ) ) return true;
+    loadToolsetProfile();
+    for ( Integer row : mToolsetProfile.mOnCanvas ) {
+      for ( int slot = 0; slot < mToolsetProfile.mVisibleSlots; ++slot ) {
+        ToolsetProfile.Slot ref = mToolsetProfile.mRows[row][slot];
+        if ( ref != null && ref.mType == type && setCurrentToolbarSymbol( row, slot, false ) ) return true;
       }
     }
     return false;
@@ -12144,15 +12288,9 @@ public class DrawingWindow extends ItemDrawer
 
   private boolean setCurrentFirstVisibleToolbarSymbol()
   {
-    int rows = getToolbarRowCount();
-    int slots = getToolbarSlotCount();
-    for ( int row = 0; row < rows; ++row ) {
-      int type = getToolbarDisplayType( row );
-      int active = mToolbarActiveSlot[row];
-      if ( active >= 0 && active < slots && setCurrentToolbarSymbol( row, type, active, false ) ) return true;
-      for ( int slot = 0; slot < slots; ++slot ) {
-        if ( setCurrentToolbarSymbol( row, type, slot, false ) ) return true;
-      }
+    loadToolsetProfile();
+    for ( Integer row : mToolsetProfile.mOnCanvas ) {
+      for ( int slot = 0; slot < mToolsetProfile.mVisibleSlots; ++slot ) if ( setCurrentToolbarSymbol( row, slot, false ) ) return true;
     }
     return false;
   }
@@ -12362,11 +12500,12 @@ public class DrawingWindow extends ItemDrawer
   {
     // TDLog.v("PLOT highlight " + type + " from " + highlightType + "/" + highlightIndex + " to " + index );
     if ( isManualToolbar() ) {
-      if ( highlightRow >= 0 && highlightRow < getToolbarRowCount() && highlightIndex >= 0 && highlightIndex < getToolbarSlotCount() ) {
+      loadToolsetProfile();
+      if ( highlightRow >= 0 && highlightRow < ToolsetProfile.ROW_COUNT && highlightIndex >= 0 && highlightIndex < mToolsetProfile.mVisibleSlots ) {
         mBtnManualToolbar[ highlightRow ][ highlightIndex ].highlight( false );
       }
       row = normalizeToolbarRow( row );
-      if ( row >= getToolbarRowCount() || index < 0 || index >= getToolbarSlotCount() ) {
+      if ( ! mToolsetProfile.isOnCanvas( row ) || index < 0 || index >= mToolsetProfile.mVisibleSlots ) {
         highlightRow = -1;
         highlightIndex = -1;
         highlightType = SymbolType.UNDEF;

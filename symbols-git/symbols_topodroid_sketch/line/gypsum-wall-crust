@@ -3,6 +3,8 @@ symbol line
 name gypsum_wall_crust
 th_name gypsum-wall-crust
 group wall
+sketch_picker_category speleothems
+sketch_picker_section gypsum
 color 0xffffff 0xff
 width 2
 # units: line-widths (1 = ink thickness). The rosette is a compact copy of the

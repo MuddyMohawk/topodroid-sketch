@@ -3,6 +3,8 @@ symbol point
 name pebbles
 th_name pebbles
 group pebbles
+sketch_picker_category speleoclasts
+sketch_search_terms cobbles gravel
 orientation yes
 color 0xffffff
 path

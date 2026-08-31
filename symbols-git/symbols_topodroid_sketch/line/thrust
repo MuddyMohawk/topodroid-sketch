@@ -3,6 +3,7 @@ symbol line
 name thrust_fault
 th_name thrust
 group fault
+sketch_picker_category geology
 color 0x7030a0 0xff
 width 2
 # units: line-widths (1 = ink thickness). Each filled tooth has a 4.0-wide

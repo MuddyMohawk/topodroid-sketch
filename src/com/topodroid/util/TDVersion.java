@@ -35,7 +35,7 @@ public class TDVersion
   // 47: first expanded TopoDroid Sketch symbol batch
   // 48: file-backed water area with world-aligned stripe fill
   // 49: file-backed clay area with world-anchored broken-dash fill
-  public static final String SYMBOL_VERSION = "49";
+  public static final String SYMBOL_VERSION = "50";
 
   // increase to install last version of DistoX2 firmware
   public static final String FIRMWARE_VERSION = "28";

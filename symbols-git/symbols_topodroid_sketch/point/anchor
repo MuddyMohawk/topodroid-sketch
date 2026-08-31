@@ -3,6 +3,8 @@ symbol point
 name anchor
 th_name anchor
 group anchor
+sketch_picker_category extras
+sketch_search_terms bolt rigging
 orientation yes
 color 0xffffff
 path

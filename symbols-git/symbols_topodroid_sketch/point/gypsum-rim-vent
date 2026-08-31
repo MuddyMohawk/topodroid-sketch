@@ -3,6 +3,8 @@ symbol point
 name gypsum_rim_vent
 th_name gypsum-rim-vent
 group gypsum
+sketch_picker_category speleothems
+sketch_picker_section gypsum
 orientation no
 color 0xffffff
 path

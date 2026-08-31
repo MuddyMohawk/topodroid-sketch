@@ -135,6 +135,7 @@ public class SymbolAreaLibrary extends SymbolLibrary
 
     // String user = res.getString( R.string.p_user );
     SymbolArea symbol = new SymbolArea( res.getString( R.string.tha_user ), USER, null, USER, 0x67cccccc, null, TileMode.REPEAT, TileMode.REPEAT, false, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SHP );
+    symbol.setPickerCategory( ToolsetCategory.EXTRAS );
     addSymbol( symbol );
     if ( TopoDroidApp.mData != null ) {
       TopoDroidApp.mData.setSymbolEnabled( "a_" +  USER, true );
@@ -150,6 +151,7 @@ public class SymbolAreaLibrary extends SymbolLibrary
     if ( hasSymbolByThName( WATER ) ) return;
     TDLog.e( "water area file missing - using flat builtin fallback" );
     SymbolArea symbol = new SymbolArea( res.getString( R.string.tha_water ), WATER, null, WATER, 0x663366ff, null, TileMode.REPEAT, TileMode.REPEAT, true, DrawingLevel.LEVEL_WATER, Symbol.W2D_DETAIL_SHP );
+    symbol.setPickerCategory( ToolsetCategory.HYDROLOGY );
     addSymbol( symbol );
     if ( TopoDroidApp.mData != null ) {
       TopoDroidApp.mData.setSymbolEnabled( "a_" + WATER, true );

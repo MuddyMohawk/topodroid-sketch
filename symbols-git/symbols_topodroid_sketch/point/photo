@@ -1,0 +1,33 @@
+encoding utf-8
+symbol point
+name photo
+name-de Foto
+name-fr photo
+name-hu fotó
+name-pt foto
+name-ro fotografie
+name-ru фото
+name-sk fotografia
+th_name photo
+sketch_picker_category text-marks
+sketch_search_terms camera image picture media
+orientation yes
+has_text yes
+color 0xffffff
+path
+  moveTo -5 3
+  lineTo 5 3
+  lineTo 5 -3
+  lineTo 3 -3
+  lineTo 1 -5
+  lineTo -1 -5
+  lineTo -3 -3
+  lineTo -5 -3
+  lineTo -5 3
+  addCircle 0 0 1.5
+  moveTo 2 -5
+  lineTo 3 -7
+  moveTo -2 -5
+  lineTo -3 -7
+endpath
+endsymbol

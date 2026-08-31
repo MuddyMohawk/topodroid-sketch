@@ -3,6 +3,7 @@ symbol point
 name corrosion_residue
 th_name corrosion-residue
 group geology
+sketch_picker_category speleoclasts
 orientation no
 color 0xffffff
 path

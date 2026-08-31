@@ -3,6 +3,7 @@ symbol line
 name ceiling_channel
 th_name ceiling-meander
 group ceiling
+sketch_picker_category passages
 color 0xffffff 0xff
 width 2
 dash 4.2 1.4

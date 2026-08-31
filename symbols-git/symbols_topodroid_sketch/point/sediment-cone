@@ -3,6 +3,7 @@ symbol point
 name sediment_cone
 th_name sediment-cone
 group sediment
+sketch_picker_category speleoclasts
 orientation no
 color 0xffffff
 path

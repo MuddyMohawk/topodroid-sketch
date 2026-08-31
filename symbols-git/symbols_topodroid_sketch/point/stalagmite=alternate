@@ -3,6 +3,8 @@ symbol point
 name stalagmite_alternate
 th_name stalagmite:alternate
 group stalagmite
+sketch_picker_category speleothems
+sketch_picker_section formations
 orientation no
 color 0xffffff
 path

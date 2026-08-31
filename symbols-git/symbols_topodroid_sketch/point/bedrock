@@ -3,6 +3,7 @@ symbol point
 name bedrock
 th_name bedrock
 group bedrock
+sketch_picker_category speleoclasts
 orientation no
 color 0xffffff
 path

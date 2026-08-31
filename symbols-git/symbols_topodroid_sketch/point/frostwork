@@ -3,6 +3,8 @@ symbol point
 name frostwork
 th_name frostwork
 group aragonite
+sketch_picker_category speleothems
+sketch_picker_section mineral-pool
 orientation yes
 color 0xffffff
 path

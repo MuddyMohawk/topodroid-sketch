@@ -3,6 +3,7 @@ symbol point
 name sand
 th_name sand
 group sand
+sketch_picker_category speleoclasts
 orientation yes
 color 0xffffff
 style fill

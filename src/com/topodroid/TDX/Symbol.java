@@ -14,6 +14,10 @@ package com.topodroid.TDX;
 import android.graphics.Paint;
 import android.graphics.Path;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 public class Symbol implements SymbolInterface
 {
   public static final int W2D_NONE       = 0; // Walls roundtrip values
@@ -34,6 +38,9 @@ public class Symbol implements SymbolInterface
   private String  mThName;   // therion name
   private String  mThPrefix = null; // therion prefix ("u:" or null) 2023-01-31
   String  mGroup;    // group of this symbol (null if no group)
+  private String mPickerCategory = ToolsetCategory.EXTRAS;
+  private String mPickerSection = null;
+  private final ArrayList< String > mSearchTerms = new ArrayList<>();
   // String  mFilename; // filename coincide with therion name
   protected String mDefaultOptions;
 
@@ -161,6 +168,36 @@ public class Symbol implements SymbolInterface
   /** @return the symbol group
    */
   String getGroup() { return mGroup; }
+
+  String getPickerCategory() { return ToolsetCategory.normalizeId( mPickerCategory ); }
+
+  String getPickerSection() { return mPickerSection; }
+
+  List< String > getSearchTerms() { return Collections.unmodifiableList( mSearchTerms ); }
+
+  void setPickerCategory( String category )
+  {
+    mPickerCategory = ToolsetCategory.normalizeId( category );
+  }
+
+  void setPickerSection( String section )
+  {
+    mPickerSection = ( section == null || section.trim().length() == 0 ) ? null : section.trim();
+  }
+
+  void setSearchTerms( String terms )
+  {
+    mSearchTerms.clear();
+    appendSearchTerms( terms );
+  }
+
+  void appendSearchTerms( String terms )
+  {
+    if ( terms == null ) return;
+    for ( String term : terms.trim().split( "\\s+" ) ) {
+      if ( term.length() > 0 && ! mSearchTerms.contains( term ) ) mSearchTerms.add( term );
+    }
+  }
 
   /** @return true if the symbol group is the given name
    * @param group   given name

@@ -106,22 +106,18 @@ abstract class ItemDrawer extends Activity
 
   static boolean isManualToolbar()
   {
-    return TDSetting.mToolbarUpdate == TDSetting.TOOLBAR_UPDATE_MANUAL;
+    return true;
   }
 
   static int getToolbarSlotCount()
   {
-    if ( isManualToolbar() ) {
-      if ( TDSetting.mToolbarSlots < TDSetting.TOOLBAR_SLOTS_MIN ) return TDSetting.TOOLBAR_SLOTS_MIN;
-      if ( TDSetting.mToolbarSlots > TDSetting.TOOLBAR_SLOTS_MAX ) return TDSetting.TOOLBAR_SLOTS_MAX;
-      return TDSetting.mToolbarSlots;
-    }
-    return NR_LEGACY_RECENT;
+    if ( TDSetting.mToolbarSlots < TDSetting.TOOLBAR_SLOTS_MIN ) return TDSetting.TOOLBAR_SLOTS_MIN;
+    if ( TDSetting.mToolbarSlots > TDSetting.TOOLBAR_SLOTS_MAX ) return TDSetting.TOOLBAR_SLOTS_MAX;
+    return TDSetting.mToolbarSlots;
   }
 
   static int getToolbarRowCount()
   {
-    if ( ! isManualToolbar() ) return 1;
     if ( TDSetting.mToolbarRows < TDSetting.TOOLBAR_ROWS_MIN ) return TDSetting.TOOLBAR_ROWS_MIN;
     if ( TDSetting.mToolbarRows > TDSetting.TOOLBAR_ROWS_MAX ) return TDSetting.TOOLBAR_ROWS_MAX;
     return TDSetting.mToolbarRows;

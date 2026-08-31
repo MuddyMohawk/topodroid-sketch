@@ -380,6 +380,9 @@ public class SymbolLine extends Symbol
   	      name    = null;
   	      th_name = null;
               group   = null;
+              setPickerCategory( ToolsetCategory.EXTRAS );
+              setPickerSection( null );
+              setSearchTerms( null );
   	      color   = TDColor.TRANSPARENT;
               in_symbol = true;
               break;
@@ -395,11 +398,25 @@ public class SymbolLine extends Symbol
   	      if ( k < s ) {
                 th_name = vals[k];
   	      }
-  	    } else if ( vals[k].equals("group") ) {
+	    } else if ( vals[k].equals("group") ) {
   	      ++k; while ( k < s && vals[k].length() == 0 ) ++k;
   	      if ( k < s ) {
-  	        group = vals[k];
-  	      }
+	        group = vals[k];
+	      }
+            } else if ( vals[k].equals("sketch_picker_category") ) {
+              ++k; while ( k < s && vals[k].length() == 0 ) ++k;
+              if ( k < s ) setPickerCategory( vals[k] );
+            } else if ( vals[k].equals("sketch_picker_section") ) {
+              ++k; while ( k < s && vals[k].length() == 0 ) ++k;
+              if ( k < s ) setPickerSection( vals[k] );
+            } else if ( vals[k].equals("sketch_search_terms") ) {
+              StringBuilder search = new StringBuilder();
+              for ( ++k; k < s; ++k ) {
+                if ( vals[k].length() == 0 ) continue;
+                if ( search.length() > 0 ) search.append( ' ' );
+                search.append( vals[k] );
+              }
+              appendSearchTerms( search.toString() );
             } else if ( vals[k].equals("options") ) {
               StringBuilder sb = new StringBuilder();
               boolean space = false;

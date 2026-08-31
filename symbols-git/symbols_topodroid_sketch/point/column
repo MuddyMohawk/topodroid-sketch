@@ -3,6 +3,8 @@ symbol point
 name column
 th_name column
 group pillar
+sketch_picker_category speleothems
+sketch_picker_section formations
 orientation yes
 color 0xffffff
 style fill

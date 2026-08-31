@@ -3,6 +3,8 @@ symbol point
 name helictite
 th_name helictite
 group helictite
+sketch_picker_category speleothems
+sketch_picker_section formations
 orientation yes
 color 0xffffff
 path

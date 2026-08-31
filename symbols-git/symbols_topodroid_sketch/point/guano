@@ -3,6 +3,7 @@ symbol point
 name guano
 th_name guano
 group guano
+sketch_picker_category biology
 orientation no
 color 0xffffff
 path

@@ -57,6 +57,17 @@
       <item name="android:buttonStyle">@android:style/Widget.Button.Small</item>
     </style>
 
+    <style name="Theme.ToolsetEditor" parent="@android:style/Theme.Material.NoActionBar" tools:targetApi="lollipop">
+      <item name="android:windowActionBar">false</item>
+      <item name="android:windowNoTitle">true</item>
+      <item name="android:fontFamily">sans</item>
+      <item name="android:windowBackground">#20262b</item>
+      <item name="android:colorAccent">#52c0d4</item>
+      <item name="android:navigationBarColor">#12171a</item>
+      <item name="android:statusBarColor">#12171a</item>
+      <item name="android:windowLightStatusBar">false</item>
+    </style>
+
     <style name="titleTextStyle">
       <!-- item name="android:layout_height">18dip</item -->
       <item name="android:layout_marginTop">-10dip</item>
@@ -341,4 +352,3 @@
     </style -->
 
 </resources>
-

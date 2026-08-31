@@ -3,6 +3,7 @@ symbol line
 name pit
 th_name pit
 group floor
+sketch_picker_category passages
 color 0xffffff 0xff
 width 2
 # units: line-widths (1 = ink thickness); carrier/tick width 1 = line weight

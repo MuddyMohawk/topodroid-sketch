@@ -3,6 +3,7 @@ symbol point
 name bedding strike and dip
 th_name u:bedding-attitude
 group strata
+sketch_picker_category geology
 sketch_stroke_scale 1
 orientation no
 has_value yes

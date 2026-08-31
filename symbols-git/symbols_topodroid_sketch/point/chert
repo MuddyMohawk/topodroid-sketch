@@ -3,6 +3,7 @@ symbol point
 name chert
 th_name chert
 group mineral
+sketch_picker_category geology
 orientation yes
 color 0xffffff
 style fill

@@ -96,10 +96,14 @@ public class SymbolLineLibrary extends SymbolLibrary
     if ( mSymbols.size() > 0 ) return;                                  //  th_name   group fname
     // String user = res.getString ( R.string.p_user );
     SymbolLine symbol = new SymbolLine( res.getString( R.string.thl_user ), USER, null, USER, 0xffffffff, 1, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SHP );
+    symbol.setPickerCategory( ToolsetCategory.TEXT_MARKS );
+    symbol.setSearchTerms( "freehand custom line" );
     addSymbol( symbol );
 
     // String wall = res.getString ( R.string.p_wall );
     symbol = new SymbolLine( res.getString( R.string.thl_wall ), WALL, WALL, WALL, 0xffffffff, 2, DrawingLevel.LEVEL_WALL, Symbol.W2D_WALLS_SHP );
+    symbol.setPickerCategory( ToolsetCategory.PASSAGES );
+    symbol.setSearchTerms( "passage boundary outline" );
     addSymbol( symbol );
 
     // dash intervals in line-width units: 3 and 6 line-widths (0.75 / 1.5 scene units at width 0.25)
@@ -108,6 +112,8 @@ public class SymbolLineLibrary extends SymbolLibrary
     x[1] = 6.0f;
     // String section = res.getString ( R.string.p_section );
     symbol = new SymbolLine( res.getString( R.string.thl_section ), SECTION, null, SECTION, 0xbfcccccc, 0.25f, x, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SHP );
+    symbol.setPickerCategory( ToolsetCategory.TEXT_MARKS );
+    symbol.setSearchTerms( "cross section cut" );
     addSymbol( symbol );
 
     // mSymbolNr = mSymbols.size();

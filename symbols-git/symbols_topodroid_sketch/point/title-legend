@@ -2,6 +2,8 @@ encoding utf-8
 symbol point
 name title_sheet_and_legend
 th_name u:title-legend
+sketch_picker_category text-marks
+sketch_search_terms text title legend key
 sketch_stroke_scale 1
 orientation no
 color 0xffffff

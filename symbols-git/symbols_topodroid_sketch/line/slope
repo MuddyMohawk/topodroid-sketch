@@ -3,6 +3,7 @@ symbol line
 name slope
 th_name slope
 group slope
+sketch_picker_category passages
 color 0xffffff 0xff
 width 2
 # units: line-widths (1 = ink thickness). Pit hachures are 3.4 deep;

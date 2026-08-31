@@ -3,6 +3,8 @@ symbol point
 name gypsum_chandelier
 th_name gypsum-chandelier
 group gypsum
+sketch_picker_category speleothems
+sketch_picker_section gypsum
 orientation yes
 color 0xffffff
 path

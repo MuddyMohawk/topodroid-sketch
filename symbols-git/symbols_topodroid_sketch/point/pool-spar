@@ -3,6 +3,8 @@ symbol point
 name pool_spar
 th_name pool-spar
 group mineral
+sketch_picker_category speleothems
+sketch_picker_section mineral-pool
 orientation yes
 color 0xffffff
 path
