@@ -15,6 +15,8 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -26,6 +28,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.view.ViewConfiguration;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -92,11 +95,15 @@ public class ToolbarEditorActivity extends Activity
   private int mArmedSlot = -1;
   private boolean mArmedQuick;
   private boolean mLastSaveSucceeded = true;
+  private Handler mSaveHandler;
+  private boolean mSavePending;
+  private final Runnable mSaveRunnable = new Runnable() { @Override public void run() { save(); } };
 
   @Override protected void onCreate( Bundle state )
   {
     super.onCreate( state );
     mData = TopoDroidApp.mData;
+    mSaveHandler = new Handler( Looper.getMainLooper() );
     mSurveyId = TDInstance.sid;
     mProfile = ToolsetRepository.activeProfile( mData, mSurveyId );
     mCatalog = ToolsetCatalog.all();
@@ -111,6 +118,18 @@ public class ToolbarEditorActivity extends Activity
   }
 
   @Override public void onBackPressed() { requestExit(); }
+
+  @Override protected void onPause()
+  {
+    if ( mSavePending ) save();
+    super.onPause();
+  }
+
+  @Override protected void onDestroy()
+  {
+    if ( mSaveHandler != null ) mSaveHandler.removeCallbacks( mSaveRunnable );
+    super.onDestroy();
+  }
 
   private View buildScreen()
   {
@@ -204,6 +223,16 @@ public class ToolbarEditorActivity extends Activity
     mSearch.setPadding( dp( 10 ), 0, dp( 10 ), 0 );
     mSearch.setBackground( rounded( Color.argb( 72, 0, 0, 0 ), Color.TRANSPARENT, 0, 5 ) );
     mSearch.setHint( "Search " + mCatalog.size() + " symbols" );
+    mSearch.setOnTouchListener( new View.OnTouchListener() {
+      @Override public boolean onTouch( View view, MotionEvent event ) {
+        if ( event.getActionMasked() == MotionEvent.ACTION_DOWN && ! mSearch.hasFocus() ) {
+          mSearch.requestFocus();
+          InputMethodManager keyboard = (InputMethodManager)getSystemService( INPUT_METHOD_SERVICE );
+          if ( keyboard != null ) keyboard.showSoftInput( mSearch, InputMethodManager.SHOW_IMPLICIT );
+        }
+        return false;
+      }
+    } );
     mSearch.addTextChangedListener( new TextWatcher() {
       @Override public void beforeTextChanged( CharSequence text, int start, int count, int after ) { }
       @Override public void onTextChanged( CharSequence text, int start, int before, int count ) {
@@ -334,13 +363,74 @@ public class ToolbarEditorActivity extends Activity
     if ( mOnCanvasAdapter != null ) { mOnCanvasAdapter.rebuild(); mOnCanvasAdapter.notifyDataSetChanged(); }
     if ( mConfiguredAdapter != null ) { mConfiguredAdapter.rebuild(); mConfiguredAdapter.notifyDataSetChanged(); }
     if ( mQuickRow != null ) buildQuickRow();
+    updateClearSlot();
+  }
+
+  private void updateClearSlot()
+  {
     if ( mClearSlot != null ) {
       boolean armed = mArmedSlot >= 0;
       mClearSlot.setEnabled( armed );
       mClearSlot.setTextColor( armed ? INK : DIM );
       mClearSlot.setAlpha( armed ? 1.0f : 0.5f );
     }
-    refreshBrowser();
+  }
+
+  private void selectSlot( int row, int slot, boolean quick )
+  {
+    mArmedQuick = quick;
+    mArmedRow = quick ? -1 : row;
+    mArmedSlot = slot;
+    refreshArmedState( mOnCanvas );
+    refreshArmedState( mConfigured );
+    refreshArmedState( mQuickRow );
+    updateClearSlot();
+  }
+
+  private void refreshArmedState( View view )
+  {
+    if ( view == null ) return;
+    if ( view instanceof ToolsetSlotView ) {
+      ToolsetSlotView slot = (ToolsetSlotView)view;
+      slot.setArmed( mArmedSlot == slot.mSlot && mArmedQuick == slot.mQuick
+        && ( slot.mQuick || mArmedRow == slot.mRow ) );
+      return;
+    }
+    if ( view instanceof ViewGroup ) {
+      ViewGroup group = (ViewGroup)view;
+      for ( int index = 0; index < group.getChildCount(); ++index ) refreshArmedState( group.getChildAt( index ) );
+    }
+  }
+
+  private void refreshVisibleSlot( int row, int slot, boolean quick )
+  {
+    View root = quick ? mQuickRow : ( mProfile.isOnCanvas( row ) ? mOnCanvas : mConfigured );
+    refreshVisibleSlot( root, row, slot, quick );
+  }
+
+  private void refreshVisibleSlot( View view, int row, int slot, boolean quick )
+  {
+    if ( view == null ) return;
+    if ( view instanceof ToolsetSlotView ) {
+      ToolsetSlotView target = (ToolsetSlotView)view;
+      if ( target.mRow == row && target.mSlot == slot && target.mQuick == quick ) target.bindCurrentValue();
+      return;
+    }
+    if ( view instanceof ViewGroup ) {
+      ViewGroup group = (ViewGroup)view;
+      for ( int index = 0; index < group.getChildCount(); ++index ) refreshVisibleSlot( group.getChildAt( index ), row, slot, quick );
+    }
+  }
+
+  private void refreshSlotMutationUi( int row, int slot, boolean quick,
+                                      ToolsetProfile.Slot first, ToolsetProfile.Slot second )
+  {
+    refreshVisibleSlot( row, slot, quick );
+    refreshArmedState( mOnCanvas );
+    refreshArmedState( mConfigured );
+    refreshArmedState( mQuickRow );
+    updateClearSlot();
+    refreshVisibleBrowserAssignments( mBrowser, first, second );
   }
 
   private void buildQuickRow()
@@ -357,15 +447,32 @@ public class ToolbarEditorActivity extends Activity
 
   private void mutate( Mutation mutation )
   {
+    mutate( mutation, null );
+  }
+
+  private void mutate( Mutation mutation, Runnable targetedRefresh )
+  {
     undoStack().push( mProfile.copy() );
     if ( undoStack().size() > 100 ) undoStack().removeLast();
     mutation.apply();
-    save();
-    refreshAll();
+    if ( targetedRefresh == null ) refreshAll();
+    else { targetedRefresh.run(); updateUndoState(); }
+    scheduleSave();
+  }
+
+  private void scheduleSave()
+  {
+    mSavePending = true;
+    mSaved.setText( "Saving…" );
+    mSaved.setTextColor( DIM );
+    mSaveHandler.removeCallbacks( mSaveRunnable );
+    mSaveHandler.postDelayed( mSaveRunnable, 150 );
   }
 
   private void save()
   {
+    if ( mSaveHandler != null ) mSaveHandler.removeCallbacks( mSaveRunnable );
+    mSavePending = false;
     mSaved.setText( "Saving…" );
     mLastSaveSucceeded = ToolsetRepository.saveProfile( mData, mProfile );
     mSaved.setText( mLastSaveSucceeded ? "Saved" : "Save failed" );
@@ -374,6 +481,7 @@ public class ToolbarEditorActivity extends Activity
 
   private void requestExit()
   {
+    if ( mSavePending ) save();
     if ( mLastSaveSucceeded ) { finish(); return; }
     new AlertDialog.Builder( this )
       .setTitle( "Toolbar changes are not saved" )
@@ -392,8 +500,8 @@ public class ToolbarEditorActivity extends Activity
     ArrayDeque< ToolsetProfile > stack = undoStack();
     if ( stack.isEmpty() ) return;
     mProfile = stack.pop();
-    save();
     refreshAll();
+    scheduleSave();
   }
 
   private ArrayDeque< ToolsetProfile > undoStack()
@@ -426,10 +534,14 @@ public class ToolbarEditorActivity extends Activity
     final int targetRow = row;
     final int targetSlot = slot;
     final boolean targetQuick = quick;
+    final ToolsetProfile.Slot previous = targetQuick ? mProfile.mQuick[targetSlot] : mProfile.mRows[targetRow][targetSlot];
+    final ToolsetProfile.Slot placed = entry.ref();
     mutate( new Mutation() { @Override public void apply() {
-      if ( targetQuick ) mProfile.mQuick[targetSlot] = entry.ref();
-      else mProfile.mRows[targetRow][targetSlot] = entry.ref();
+      if ( targetQuick ) mProfile.mQuick[targetSlot] = placed;
+      else mProfile.mRows[targetRow][targetSlot] = placed;
       armNext( targetRow, targetSlot, targetQuick );
+    } }, new Runnable() { @Override public void run() {
+      refreshSlotMutationUi( targetRow, targetSlot, targetQuick, previous, placed );
     } } );
   }
 
@@ -439,8 +551,11 @@ public class ToolbarEditorActivity extends Activity
     final int row = mArmedRow;
     final int slot = mArmedSlot;
     final boolean quick = mArmedQuick;
+    final ToolsetProfile.Slot removed = quick ? mProfile.mQuick[slot] : ( row >= 0 ? mProfile.mRows[row][slot] : null );
     mutate( new Mutation() { @Override public void apply() {
       if ( quick ) mProfile.mQuick[slot] = null; else if ( row >= 0 ) mProfile.mRows[row][slot] = null;
+    } }, new Runnable() { @Override public void run() {
+      refreshSlotMutationUi( row, slot, quick, removed, null );
     } } );
   }
 
@@ -562,6 +677,7 @@ public class ToolbarEditorActivity extends Activity
   private void switchProfile( String id )
   {
     if ( id == null || id.equals( mProfile.mId ) ) return;
+    if ( mSavePending ) save();
     if ( ! mLastSaveSucceeded ) {
       save();
       if ( ! mLastSaveSucceeded ) { TDToast.makeBad( "Save the current profile before switching" ); return; }
@@ -584,6 +700,8 @@ public class ToolbarEditorActivity extends Activity
       .setNegativeButton( "Cancel", null )
       .setPositiveButton( "Duplicate", new DialogInterface.OnClickListener() {
         @Override public void onClick( DialogInterface dialog, int which ) {
+          if ( mSavePending ) save();
+          if ( ! mLastSaveSucceeded ) { TDToast.makeBad( "Save the current profile before duplicating" ); return; }
           String name = input.getText().toString();
           if ( ! ToolsetRepository.validNewName( mData, name ) ) { TDToast.makeBad( "Use a unique profile name (1–40 characters)" ); return; }
           ToolsetProfile duplicate = ToolsetRepository.duplicate( mData, mProfile, name );
@@ -605,6 +723,8 @@ public class ToolbarEditorActivity extends Activity
       .setNegativeButton( "Cancel", null )
       .setPositiveButton( "Delete", new DialogInterface.OnClickListener() {
         @Override public void onClick( DialogInterface dialog, int which ) {
+          if ( mSavePending ) save();
+          if ( ! mLastSaveSucceeded ) { TDToast.makeBad( "Save the current profile before deleting" ); return; }
           if ( ! ToolsetRepository.deleteProfile( mData, id ) ) { TDToast.makeBad( "Could not delete profile" ); return; }
           ToolsetRepository.selectProfile( mData, mSurveyId, ToolsetProfile.DEFAULT_ID );
           mProfile = ToolsetRepository.profile( mData, ToolsetProfile.DEFAULT_ID );
@@ -618,9 +738,8 @@ public class ToolbarEditorActivity extends Activity
     ToolsetProfile.Slot value = quick ? mProfile.mQuick[slot] : mProfile.mRows[row][slot];
     final ToolsetSlotView view = new ToolsetSlotView( value, row, slot, quick );
     view.setOnClickListener( new View.OnClickListener() { @Override public void onClick( View target ) {
-      mArmedQuick = quick; mArmedRow = quick ? -1 : row; mArmedSlot = slot; refreshRows();
+      selectSlot( row, slot, quick );
     } } );
-    if ( value != null ) view.setOnTouchListener( dragTouch( new DragPayload( row, slot, quick ) ) );
     view.setOnDragListener( new View.OnDragListener() {
       @Override public boolean onDrag( View target, DragEvent event ) {
         if ( event.getLocalState() instanceof DragPayload
@@ -645,8 +764,13 @@ public class ToolbarEditorActivity extends Activity
       float downX, downY;
       boolean dragging;
       @Override public boolean onTouch( View view, MotionEvent event ) {
-        if ( event.getActionMasked() == MotionEvent.ACTION_DOWN ) { downX = event.getX(); downY = event.getY(); dragging = false; return ownsGesture; }
-        if ( event.getActionMasked() == MotionEvent.ACTION_MOVE && ! dragging ) {
+        int action = event.getActionMasked();
+        if ( action == MotionEvent.ACTION_DOWN ) {
+          downX = event.getX(); downY = event.getY(); dragging = false;
+          if ( ownsGesture && view.getParent() != null ) view.getParent().requestDisallowInterceptTouchEvent( true );
+          return ownsGesture;
+        }
+        if ( action == MotionEvent.ACTION_MOVE && ! dragging ) {
           float dx = event.getX() - downX, dy = event.getY() - downY;
           if ( dx * dx + dy * dy > slop * slop ) {
             ClipData data = ClipData.newPlainText( "toolset", "toolset" );
@@ -655,6 +779,12 @@ public class ToolbarEditorActivity extends Activity
             if ( dragging ) view.performHapticFeedback( HapticFeedbackConstants.LONG_PRESS );
             return dragging;
           }
+        }
+        if ( action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL ) {
+          boolean handled = dragging || ownsGesture;
+          if ( ownsGesture && view.getParent() != null ) view.getParent().requestDisallowInterceptTouchEvent( false );
+          dragging = false;
+          return handled;
         }
         return dragging || ownsGesture;
       }
@@ -672,14 +802,11 @@ public class ToolbarEditorActivity extends Activity
     int cycle = mBadgeCycle.containsKey( key ) ? mBadgeCycle.get( key ) : 0;
     Assignment assignment = wanted.get( cycle % wanted.size() );
     mBadgeCycle.put( key, cycle + 1 );
-    mArmedQuick = assignment.mQuick;
-    mArmedRow = assignment.mQuick ? -1 : assignment.mRow;
-    mArmedSlot = assignment.mSlot;
+    selectSlot( assignment.mRow, assignment.mSlot, assignment.mQuick );
     if ( ! assignment.mQuick ) {
       if ( mProfile.isOnCanvas( assignment.mRow ) ) mOnCanvas.smoothScrollToPosition( mProfile.mOnCanvas.indexOf( assignment.mRow ) );
       else mConfigured.smoothScrollToPosition( configuredRows().indexOf( assignment.mRow ) );
     }
-    refreshRows();
   }
 
   private ArrayList< Assignment > assignments( ToolsetCatalog.Entry entry )
@@ -882,7 +1009,14 @@ public class ToolbarEditorActivity extends Activity
 
   private View symbolTile( final ToolsetCatalog.Entry entry )
   {
-    FrameLayout tile = new FrameLayout( this ); tile.setBackground( rounded( CHROME_3, Color.TRANSPARENT, 0, 5 ) ); tile.setContentDescription( entry.mSymbol.getName() + ", " + entry.typeMark() );
+    FrameLayout tile = new FrameLayout( this );
+    bindSymbolTile( tile, entry );
+    return tile;
+  }
+
+  private void bindSymbolTile( final FrameLayout tile, final ToolsetCatalog.Entry entry )
+  {
+    tile.removeAllViews(); tile.setTag( entry ); tile.setBackground( rounded( CHROME_3, Color.TRANSPARENT, 0, 5 ) ); tile.setContentDescription( entry.mSymbol.getName() + ", " + entry.typeMark() );
     LinearLayout content = vertical(); content.setGravity( Gravity.CENTER );
     SymbolPreviewButton preview = new SymbolPreviewButton( this ); preview.setBackgroundColor( Color.TRANSPARENT ); preview.bind( entry.mType, entry.mIndex, entry.mSymbol ); preview.setClickable( false );
     content.addView( preview, new LinearLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f ) );
@@ -912,7 +1046,22 @@ public class ToolbarEditorActivity extends Activity
     }
     tile.setOnClickListener( new View.OnClickListener() { @Override public void onClick( View view ) { placeEntry( entry ); } } );
     tile.setOnTouchListener( dragTouch( new DragPayload( entry ) ) );
-    return tile;
+  }
+
+  private void refreshVisibleBrowserAssignments( View view, ToolsetProfile.Slot first, ToolsetProfile.Slot second )
+  {
+    if ( view == null ) return;
+    Object tag = view.getTag();
+    if ( view instanceof FrameLayout && tag instanceof ToolsetCatalog.Entry ) {
+      ToolsetCatalog.Entry entry = (ToolsetCatalog.Entry)tag;
+      ToolsetProfile.Slot reference = entry.ref();
+      if ( reference.equals( first ) || reference.equals( second ) ) bindSymbolTile( (FrameLayout)view, entry );
+      return;
+    }
+    if ( view instanceof ViewGroup ) {
+      ViewGroup group = (ViewGroup)view;
+      for ( int index = 0; index < group.getChildCount(); ++index ) refreshVisibleBrowserAssignments( group.getChildAt( index ), first, second );
+    }
   }
 
   private TextView badge( String text, int color )
@@ -927,19 +1076,29 @@ public class ToolbarEditorActivity extends Activity
 
   private final class ToolsetSlotView extends FrameLayout
   {
-    final int mRow, mSlot; final boolean mQuick; final boolean mFilled, mArmed; boolean mDropping;
+    final int mRow, mSlot; final boolean mQuick; boolean mFilled, mArmed, mDropping;
     ToolsetSlotView( ToolsetProfile.Slot value, int row, int slot, boolean quick )
     {
       super( ToolbarEditorActivity.this ); mRow = row; mSlot = slot; mQuick = quick; setPadding( dp( 2 ), dp( 2 ), dp( 2 ), dp( 2 ) );
-      mFilled = value != null;
       mArmed = mArmedSlot == slot && mArmedQuick == quick && ( quick || mArmedRow == row );
+      bindValue( value );
+    }
+    void bindCurrentValue()
+    {
+      bindValue( mQuick ? mProfile.mQuick[mSlot] : mProfile.mRows[mRow][mSlot] );
+    }
+    void bindValue( ToolsetProfile.Slot value )
+    {
+      removeAllViews(); mFilled = value != null;
       if ( value != null ) {
         Symbol symbol = ToolsetCatalog.resolve( value ); int index = ToolsetCatalog.resolveIndex( value );
-        if ( symbol != null ) { SymbolPreviewButton preview = new SymbolPreviewButton( ToolbarEditorActivity.this ); preview.setBackgroundColor( Color.TRANSPARENT ); preview.bind( value.mType, index, symbol ); preview.setClickable( false ); addView( preview, new FrameLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT ) ); setContentDescription( symbol.getName() + ", slot " + ( slot + 1 ) ); }
+        if ( symbol != null ) { SymbolPreviewButton preview = new SymbolPreviewButton( ToolbarEditorActivity.this ); preview.setBackgroundColor( Color.TRANSPARENT ); preview.bind( value.mType, index, symbol ); preview.setClickable( false ); addView( preview, new FrameLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT ) ); setContentDescription( symbol.getName() + ", slot " + ( mSlot + 1 ) ); }
         else { TextView missing = label( "?", 18, DANGER ); missing.setGravity( Gravity.CENTER ); addView( missing ); setContentDescription( "Missing symbol " + value.mFullThName ); }
-      } else setContentDescription( "Empty slot " + ( slot + 1 ) );
+      } else setContentDescription( "Empty slot " + ( mSlot + 1 ) );
+      setOnTouchListener( value == null ? null : dragTouch( new DragPayload( mRow, mSlot, mQuick ) ) );
       restoreBackground();
     }
+    void setArmed( boolean armed ) { if ( mArmed != armed ) { mArmed = armed; restoreBackground(); } }
     void setDropping( boolean dropping )
     {
       mDropping = dropping;

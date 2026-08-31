@@ -2,6 +2,7 @@ package com.topodroid.TDX;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -30,6 +31,7 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 
 @RunWith( AndroidJUnit4.class )
 @LargeTest
@@ -72,7 +74,7 @@ public class ToolbarEditorInstrumentedTest
   }
 
   @Test
-  public void rowHandleDragReordersCanvasRowsAcrossSlotTargets()
+  public void rowHandleStraightDownDragReordersCanvasRows()
   {
     DataHelper data = TopoDroidApp.mData;
     ToolsetProfile savedDefault = ToolsetRepository.profile( data, ToolsetProfile.DEFAULT_ID );
@@ -88,12 +90,52 @@ public class ToolbarEditorInstrumentedTest
         assertNotNull( rowB );
         Rect aBounds = rowA.getVisibleBounds();
         Rect bBounds = rowB.getVisibleBounds();
-        Point source = new Point( bBounds.centerX(), bBounds.centerY() );
-        Point target = new Point( aBounds.centerX() + 150, aBounds.centerY() );
+        Point source = new Point( aBounds.centerX(), aBounds.centerY() );
+        Point target = new Point( aBounds.centerX(), bBounds.centerY() );
         assertTrue( device.drag( source.x, source.y, target.x, target.y, 80 ) );
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
         SystemClock.sleep( 400 );
         assertEquals( Integer.valueOf( 1 ), ToolsetRepository.profile( data, ToolsetProfile.DEFAULT_ID ).onCanvasRows().get( 0 ) );
+      }
+    } finally {
+      ToolsetRepository.saveProfile( data, savedDefault );
+      ToolsetRepository.selectProfile( data, TDInstance.sid, savedSelection );
+    }
+  }
+
+  @Test
+  public void slotSelectionAndPlacementUpdateExistingViewsInPlace()
+  {
+    DataHelper data = TopoDroidApp.mData;
+    ToolsetProfile savedDefault = ToolsetRepository.profile( data, ToolsetProfile.DEFAULT_ID );
+    String savedSelection = ToolsetRepository.activeProfileId( data, TDInstance.sid );
+    AtomicReference< View > slotReference = new AtomicReference<>();
+    AtomicReference< View > rowHandleReference = new AtomicReference<>();
+    try {
+      assertTrue( ToolsetRepository.saveProfile( data, ToolsetProfile.freshDefault() ) );
+      assertTrue( ToolsetRepository.selectProfile( data, TDInstance.sid, ToolsetProfile.DEFAULT_ID ) );
+      try ( ActivityScenario< ToolbarEditorActivity > scenario = ActivityScenario.launch( ToolbarEditorActivity.class ) ) {
+        scenario.onActivity( activity -> {
+          View root = activity.getWindow().getDecorView();
+          View slot = findByDescription( root, "wall, slot 1" );
+          View symbol = findByDescription( root, "ceiling channel, ln" );
+          View handle = findByDescription( root, "Drag row A" );
+          assertNotNull( slot );
+          assertNotNull( symbol );
+          assertNotNull( handle );
+          slotReference.set( slot );
+          rowHandleReference.set( handle );
+          assertTrue( slot.performClick() );
+          assertTrue( symbol.performClick() );
+        } );
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        scenario.onActivity( activity -> {
+          View root = activity.getWindow().getDecorView();
+          assertSame( slotReference.get(), findByDescription( root, "ceiling channel, slot 1" ) );
+          assertSame( rowHandleReference.get(), findByDescription( root, "Drag row A" ) );
+        } );
+        SystemClock.sleep( 250 );
+        assertEquals( "ceiling-meander", ToolsetRepository.profile( data, ToolsetProfile.DEFAULT_ID ).mRows[0][0].mFullThName );
       }
     } finally {
       ToolsetRepository.saveProfile( data, savedDefault );
@@ -131,5 +173,19 @@ public class ToolbarEditorInstrumentedTest
       ViewGroup group = (ViewGroup)view;
       for ( int index = 0; index < group.getChildCount(); ++index ) collectText( group.getChildAt( index ), labels, searches );
     }
+  }
+
+  private static View findByDescription( View view, String description )
+  {
+    CharSequence current = view.getContentDescription();
+    if ( current != null && description.contentEquals( current ) ) return view;
+    if ( view instanceof ViewGroup ) {
+      ViewGroup group = (ViewGroup)view;
+      for ( int index = 0; index < group.getChildCount(); ++index ) {
+        View found = findByDescription( group.getChildAt( index ), description );
+        if ( found != null ) return found;
+      }
+    }
+    return null;
   }
 }
