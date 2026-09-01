@@ -661,6 +661,33 @@ final class VisualTestSupport
     return manager;
   }
 
+  void setDrawingViewTransform( float offsetX, float offsetY, float zoom )
+  {
+    waitForDrawingWindow();
+    runOnMainChecked( "set drawing view transform", () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      PointF offset = (PointF)getPrivateField( window, "mOffset" );
+      offset.x = offsetX;
+      offset.y = offsetY;
+      setPrivateField( window, "mZoom", zoom );
+      requireCurrentDrawingSurface( window ).setTransform(
+        window, offsetX, offsetY, zoom, window.isLandscape() );
+    } );
+    waitForIdle();
+  }
+
+  float[] getDrawingViewTransform()
+  {
+    waitForDrawingWindow();
+    final float[][] transform = new float[1][];
+    runOnMainChecked( "read drawing view transform", () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      PointF offset = (PointF)getPrivateField( window, "mOffset" );
+      transform[0] = new float[]{ offset.x, offset.y, getPrivateFloat( window, "mZoom" ) };
+    } );
+    return transform[0];
+  }
+
   private DrawingReferencePath requireFirstReferencePoint( DrawingWindow window )
   {
     DrawingCommandManager manager = requireCurrentDrawingManager( window );

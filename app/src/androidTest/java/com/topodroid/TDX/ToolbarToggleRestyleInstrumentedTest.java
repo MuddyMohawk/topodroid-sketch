@@ -1,5 +1,6 @@
 package com.topodroid.TDX;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -91,9 +92,20 @@ public class ToolbarToggleRestyleInstrumentedTest
     assertNotNull( device.wait( Until.findObject( By.text( "Quick switcher" ) ), 3000 ) );
     device.pressBack();
 
+    mSupport.setDrawingViewTransform( 123.5f, -87.25f, 2.75f );
+    float[] expectedTransform = mSupport.getDrawingViewTransform();
+
     UiObject2 editor = device.wait( Until.findObject( By.desc( "Edit toolbars" ) ), 3000 );
     assertNotNull( editor );
     editor.click();
     assertNotNull( device.wait( Until.findObject( By.text( "Toolbars" ) ), 3000 ) );
+
+    device.pressBack();
+    assertNotNull( device.wait( Until.findObject( By.res( "com.topodroid.TDX.sketch", "drawingSurface" ) ), 3000 ) );
+    device.waitForIdle();
+    float[] actualTransform = mSupport.getDrawingViewTransform();
+    assertEquals( expectedTransform[0], actualTransform[0], 0.01f );
+    assertEquals( expectedTransform[1], actualTransform[1], 0.01f );
+    assertEquals( expectedTransform[2], actualTransform[2], 0.01f );
   }
 }

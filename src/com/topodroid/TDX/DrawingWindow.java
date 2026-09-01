@@ -4075,7 +4075,10 @@ public class DrawingWindow extends ItemDrawer
       mOffset.y = info.yoffset;
       mZoom     = info.zoom;
       // TDLog.v("PLOT resume: " + mOffset.x + " " + mOffset.y + " " + mZoom );
-      setPlotType( mType, PARAMS_YES );
+      // The current PlotInfo fields are long-lived snapshots from when the
+      // sketch was opened. Restoring their parameters here would overwrite
+      // the fresh transform above with that stale opening view.
+      setPlotType( mType, false );
     }
     mDrawingSurface.setDrawing( true );
     // TDLog.v( "do Resume. offset " + mOffset.x + " " + mOffset.y + " zoom " + mZoom );
