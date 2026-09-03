@@ -60,6 +60,8 @@ public class ToolbarEditorInstrumentedTest
         ArrayList< EditText > searches = new ArrayList<>();
         collectText( activity.getWindow().getDecorView(), labels, searches );
 
+        assertTrue( ( activity.getWindow().getDecorView().getSystemUiVisibility()
+          & View.SYSTEM_UI_FLAG_FULLSCREEN ) != 0 );
         assertTrue( labels.contains( "Toolbars" ) );
         assertTrue( labels.contains( "Passages" ) );
         assertNotNull( findTextViewContaining( activity.getWindow().getDecorView(), "Other" ) );

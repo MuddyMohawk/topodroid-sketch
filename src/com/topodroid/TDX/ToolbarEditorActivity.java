@@ -4,6 +4,7 @@
  */
 package com.topodroid.TDX;
 
+import com.topodroid.prefs.TDSetting;
 import com.topodroid.types.SymbolType;
 
 import android.app.Activity;
@@ -102,6 +103,7 @@ public class ToolbarEditorActivity extends Activity
   @Override protected void onCreate( Bundle state )
   {
     super.onCreate( state );
+    getWindow().getDecorView().setSystemUiVisibility( TDSetting.mUiVisibility );
     mData = TopoDroidApp.mData;
     mSaveHandler = new Handler( Looper.getMainLooper() );
     mSurveyId = TDInstance.sid;
