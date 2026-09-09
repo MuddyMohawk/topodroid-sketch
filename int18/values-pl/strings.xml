@@ -38,7 +38,6 @@ Refer to the web pages for details.\n
 
     <!-- OK string name="app_name" translatable="false">TopoDroid</string -->
     <!-- UNUSED string name="version_ask">Updating to a new version of TopoDroid.\nDo you want to reinstall drawing tools?</string -->
-    <string name="symbols_ask">Zainstaluj narzędzia do rysowania v.%1$s?\n(Obecnie v.%2$s)</string>
 
     <string name="setup_textsize_title">Konfiguracja TopoDroid. Rozmiar czcionki</string>
     <string name="setup_buttonsize_title">Konfiguracja TopoDroid. Rozmiar przycisku</string>
@@ -831,17 +830,7 @@ There are other settings for the presentation of the sketchs (icon size, label s
     <string name="btn_import">Importuj</string>
     <string name="btn_install">Instaluj</string>
 
-    <!-- TODO string name="symbol_archeo">Archeo</string -->
-    <!-- TODO string name="symbol_anthro">Anthro</string -->
-    <!-- TODO string name="symbol_bio">Biology</string -->
-    <!-- TODO string name="symbol_geo">Geology</string -->
-    <!-- TODO string name="symbol_karst">Karst</string -->
-    <!-- TODO string name="symbol_mine">Mining</string -->
-    <!-- TODO string name="symbol_paleo">Paleo</string -->
-    <!-- TODO string name="symbol_speleo">Speleo</string -->
-    <!-- TODO string name="symbol_extra">Speleo (2)</string -->
 
-    <string name="symbol_reload">Narzędzia rysowania</string>
     <!-- TODO string name="warning_no_palette">Warning: palette not yet loaded</string -->
 
     <!-- UNUSED string name="length">Długość [m]</string -->
@@ -1258,8 +1247,6 @@ There are other settings for the presentation of the sketchs (icon size, label s
   <!-- TODO string name="pref_with_android_azimuth_summary">Enable Android compass/clino</string -->
   <!-- TODO string name="pref_with_levels_title">Layers</string -->
   <!-- TODO string name="pref_with_levels_summary">Use canvas layers</string -->
-  <!-- TODO string name="pref_palettes_title">Palettes</string -->
-  <!-- TODO string name="pref_palettes_summary">Enable additional palettes</string -->
   <!-- TODO string name="pref_packet_logger_title">Packets log</string -->
   <!-- TODO string name="pref_packet_logger_summary">Enable packets logging</string -->
 
@@ -1413,8 +1400,6 @@ There are other settings for the presentation of the sketchs (icon size, label s
 
   <!-- UNUSED string name="pref_data_backup_title">Automatyczny eksport danych</string -->
   <!-- UNUSED string name="pref_data_backup_summary">Automatyczny eksport danych (wymagany domyślny format)</string -->
-  <!-- TODO string name="pref_zipped_symbols_title">Zipped symbols files</string -->
-  <!-- TODO string name="pref_zipped_symbols_summary">Store/load symbol files to/from zip archive</string -->
   <!-- TODO string name="pref_fixed_origin_title">Sketch origin</string -->
   <!-- TODO string name="pref_fixed_origin_summary">Fixed sketch origin</string -->
   <string name="pref_shared_xsections_title">Wspólne przekroje poprzeczne</string>

@@ -61,7 +61,6 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="cave3d_label" translatable="false">Cave3D</string>
 
     <!-- UNUSED string name="version_ask">Updating to a new version of TopoDroid.\nDo you want to reinstall drawing tools?</string -->
-    <string name="symbols_ask">Install drawing tools v.%1$s?\n(Current v.%2$s)</string>
     <!-- UNUSED string name="version_check">Last version</string -->
     <!-- UNUSED string name="version_check_failed">Failed version check</string -->
     <!-- UNUSED string name="version_check_latest">Version already at latest</string -->
@@ -556,6 +555,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="menu_packets">PACKETS</string>
     <string name="menu_calib_auto" copyable="pt">AUTO-CALIB</string><!-- lint: unused -->
     <!-- UNUSED string name="menu_pair">PAIR</string -->
+    <string name="menu_restore_drawing_tools">RESTORE DRAWING TOOLS</string>
     <string name="menu_palette" copyable="fr it">PALETTE</string>
     <string name="menu_photo" copyable="fr">PHOTO</string>
     <string name="menu_stations">STATIONS</string>
@@ -1072,17 +1072,8 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <string name="btn_import">Import</string>
     <string name="btn_install">Install</string>
 
-    <string name="symbol_archeo">Archeo</string>
-    <string name="symbol_anthro">Anthro</string>
-    <string name="symbol_bio">Biology</string>
-    <string name="symbol_geo">Geology</string>
-    <string name="symbol_karst" copyable="es">Karst</string>
-    <string name="symbol_mine">Mining</string>
-    <string name="symbol_paleo">Paleo</string>
-    <string name="symbol_speleo" copyable="it">Speleo</string>
-    <string name="symbol_extra" copyable="it">Speleo (2)</string>
-
-    <string name="symbol_reload">Drawing Tools</string>
+    <string name="restore_drawing_tools_confirm">Restore the TopoDroid Sketch drawing tools? This permanently removes custom symbols, enabled-tool choices, recent tools, and custom toolbar profiles.</string>
+    <string name="restore_drawing_tools_done">Drawing tools restored</string>
     <string name="warning_no_palette">Warning: palette not yet loaded</string>
 
     <!-- UNUSED string name="length">Length [m]</string -->
@@ -1734,8 +1725,6 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_with_levels_summary">Canvas layers</string>
   <!-- UNUSED string name="pref_with_rename_title">Survey renaming</string -->
   <!-- UNUSED string name="pref_with_rename_summary">Enable "survey renaming" menu</string -->
-  <string name="pref_palettes_title" copyable="fr">Palettes</string>
-  <string name="pref_palettes_summary">Enable additional palettes</string>
   <string name="pref_packet_logger_title">Packets log</string>
   <string name="pref_packet_logger_summary">Enable packets logging</string>
   <string name="pref_th2_edit_title">Sketch editing</string>
@@ -1941,8 +1930,6 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <!-- UNUSED string name="pref_data_backup_summary">Automatic data export (need default format)</string -->
   <!-- UNUSED string name="pref_editable_stations_title">Editable stations</string -->
   <!-- UNUSED string name="pref_editable_stations_summary">Editable station names in the shot list</string -->
-  <string name="pref_zipped_symbols_title">Zipped symbols files</string>
-  <string name="pref_zipped_symbols_summary">Store/load symbol files to/from zip archive</string>
   <string name="pref_fixed_origin_title">Sketch origin</string>
   <string name="pref_fixed_origin_summary">Fixed sketch origin</string>
   <string name="pref_shared_xsections_title">Shared x-sections</string>

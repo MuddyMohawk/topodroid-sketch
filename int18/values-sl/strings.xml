@@ -17,7 +17,6 @@ Translation with more than 70 lint errors are dropped from the app.
     <string name="double_back">Klikni ponovno nazaj za izhod</string>
 
     <string name="version_ask">Posodobitev topodroida na novejšo različico.\nŽelite reinstalirati orodje za risanje?</string>
-    <!-- TODO string name="symbols_ask">Install drawing tools v.%1$s?\n(Current v.%2$s)</string -->
 
     <string name="POINT">točka</string>
     <string name="LINE">Linija</string>
@@ -614,16 +613,7 @@ Translation with more than 70 lint errors are dropped from the app.
     <string name="btn_import">Uvozi</string>
     <!-- TODO string name="btn_install">Install</string -->
 
-    <!-- TODO string name="symbol_archeo">Archeo</string -->
-    <!-- TODO string name="symbol_bio">Biology</string -->
-    <!-- TODO string name="symbol_geo">Geology</string -->
-    <!-- TODO string name="symbol_karst">Karst</string -->
-    <!-- TODO string name="symbol_mine">Mining</string -->
-    <!-- TODO string name="symbol_paleo">Paleo</string -->
-    <!-- TODO string name="symbol_speleo">Speleo</string -->
-    <!-- TODO string name="symbol_extra">Speleo (2)</string -->
 
-    <!-- TODO string name="symbol_reload">Drawing Tools</string -->
 
 <!-- FIXME_SKETCH_3D -->    
     <!-- OK string name="title_sketch">[%1$s] %2$s %3$s %4$s</string -->

@@ -50,8 +50,6 @@ class SymbolEnableDialog extends MyDialog
   private  Button mBTline;
   private  Button mBTarea;
 
-  // private  Button mBTreload;
-
   // private  Button mBTsave;
   // private  Button mBTcancel;
   // private  Button mBTok;
@@ -87,13 +85,6 @@ class SymbolEnableDialog extends MyDialog
     mBTpoint = (Button) findViewById(R.id.symbol_point);
     mBTarea  = (Button) findViewById(R.id.symbol_area );
 
-    // mBTreload = (Button) findViewById(R.id.symbol_reload );
-    // if ( TDLevel.overNormal ) {
-    //   mBTreload.setOnClickListener( this );
-    // } else {
-    //   mBTreload.setVisibility( View.GONE );
-    // }
- 
     mBTline.setOnClickListener( this );
     if ( TDLevel.overBasic ) {
       mBTpoint.setOnClickListener( this );
@@ -213,21 +204,6 @@ class SymbolEnableDialog extends MyDialog
       type = SymbolType.LINE;
     } else if ( vid == R.id.symbol_area ) {
       if ( TDLevel.overBasic ) type = SymbolType.AREA;
-    // } else if ( vid == R.id.symbol_reload ) {
-    //   String old_version = mApp.mDData.getValue( "symbol_version" );
-    //   if ( old_version == null ) old_version = "-";
-    //   String message = String.format( resString( R.string.symbols_ask ), mApp.SYMBOL_VERSION, old_version );
-    //   TopoDroidAlertDialog.makeAlert( mContext, mContext.getResources(), message, // R.string.symbols_ask,
-    //     new DialogInterface.OnClickListener() {
-    //       @Override
-    //       public void onClick( DialogInterface dialog, int btn ) {
-    //         mApp.installSymbols( true );
-    //         BrushManager.loadAllSymbolLibraries( mContext.getResources() );
-    //         createAdapters();
-    //         updateList();
-    //       }
-    //     }
-    //   );
     }
     if ( type >= 0 && type != mType ) {
       updateList( /* mType, */ type );

@@ -47,7 +47,6 @@
     <!-- NO string name="cave3d_label">Cave3D</string -->
 
     <!-- UNUSED string name="version_ask">Usted va a actualizar a una nueva versión de topodroid.\n¿Quiere volver a instalar los elementos de dibujo?</string -->
-    <string name="symbols_ask">¿Quiere instalar simbologías para el croquis v.%1$s?\n(Actualiza v.%2$s)</string>
     <!-- UNUSED string name="version_check">Ultima versión</string -->
     <!-- UNUSED string name="version_check_failed">Comprobación de versión fallida</string -->
     <!-- UNUSED string name="version_check_latest">Esta es la última versión</string -->
@@ -1024,17 +1023,7 @@ debe ajustarlos a sus necesidades./n/n </string>
     <string name="btn_import">Importar</string>
     <string name="btn_install">Instalar</string>
 
-    <string name="symbol_archeo">Arqueología</string>
-    <string name="symbol_anthro">antrópico</string>
-    <string name="symbol_bio">Biología</string>
-    <string name="symbol_geo">Geología</string>
-    <string name="symbol_karst">Karst</string>
-    <string name="symbol_mine">Minería</string>
-    <string name="symbol_paleo">Paleontología</string>
-    <string name="symbol_speleo">Espeleo</string>
-    <string name="symbol_extra">Espeleo(2)</string>
 
-    <string name="symbol_reload">Herramientas dibujo</string>
     <string name="warning_no_palette">Atención: paleta no cargada</string>
 
     <!-- UNUSED string name="length">Longitud [m]</string -->
@@ -1553,8 +1542,6 @@ debe ajustarlos a sus necesidades./n/n </string>
   <string name="pref_splay_group_summary">Cambio de nombre de solo grupo de reproducción</string>
   <string name="pref_with_levels_title">Capas</string>
   <string name="pref_with_levels_summary">Usa capas en dibujo</string>
-  <string name="pref_palettes_title">Paletas</string>
-  <string name="pref_palettes_summary">Activar paletas adicionales</string>
   <string name="pref_packet_logger_title">Registro de paquetes</string>
   <string name="pref_packet_logger_summary">Habilitar el registro de paquetes</string>
   <string name="pref_th2_edit_title">Edición de dibujo</string>
@@ -1755,8 +1742,6 @@ debe ajustarlos a sus necesidades./n/n </string>
   
   <!-- UNUSED string name="pref_editable_stations_title">Puntos de referencia editables </string -->
   <!-- UNUSED string name="pref_editable_stations_summary">Puntos de referencia editables en la lista de datos</string -->
-  <string name="pref_zipped_symbols_title">Archivo de símbolos en formato ZIP</string>
-  <string name="pref_zipped_symbols_summary">Guardar / Cargar símbolos a / desde archivo ZIP</string>
   <string name="pref_fixed_origin_title">Origen del dibujo</string>
   <string name="pref_fixed_origin_summary">Origen de dibujo fijo</string>
   <string name="pref_shared_xsections_title">Secciones x compartidas</string>

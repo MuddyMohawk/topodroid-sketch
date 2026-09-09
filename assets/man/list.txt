@@ -126,7 +126,7 @@ page_label_dialog.htm
 page_photo_edit_dialog.htm
 page_line_dialog.htm
 page_area_dialog.htm
-page_symbol_reload.htm
+page_symbol_restore.htm
 manual11.htm
 page_section_point.htm
 manual12.htm

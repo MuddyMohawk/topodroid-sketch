@@ -37,7 +37,6 @@ On Android-11+ storage access must be granted to TopoDroidX.\nYou can do this wi
   <string name="double_back">Clicar novamente em VOLTAR para sair</string>
   <string name="new_survey_label">Nova topo</string>
   <!-- UNUSED string name="version_ask">Atualizando para uma nova versão do TopoDroidX.\nQuer re-instalar os símbolos?</string -->
-  <string name="symbols_ask">Instalar símbolos versão %1$s?\n(Versão atual %2$s)</string>
   <!-- UNUSED string name="version_check">Last version</string -->
   <!-- UNUSED string name="version_check_failed">Failed version check</string -->
   <!-- UNUSED string name="version_check_latest">Version already at latest</string -->
@@ -951,16 +950,6 @@ On Android-11+ storage access must be granted to TopoDroidX.\nYou can do this wi
   <string name="btn_export">Exportar</string>
   <string name="btn_import">Importar</string>
   <string name="btn_install">Instalar</string>
-  <string name="symbol_archeo">Arqueologia</string>
-  <string name="symbol_anthro">Antrópico</string>
-  <string name="symbol_bio">Biologia</string>
-  <string name="symbol_geo">Geologia</string>
-  <string name="symbol_karst">Carste</string>
-  <string name="symbol_mine">Mineração</string>
-  <string name="symbol_paleo">Paleontologia</string>
-  <string name="symbol_speleo">Espeleologia</string>
-  <string name="symbol_extra">Espeleologia (extras)</string>
-  <string name="symbol_reload">Símbolos</string>
   <string name="warning_no_palette">Alerta: paleta ainda não foi carregada</string>
   <!-- UNUSED string name="length">Comprimento [m]</string -->
   <!-- UNUSED string name="azimuth">Azimute [deg]</string -->
@@ -1455,8 +1444,6 @@ On Android-11+ storage access must be granted to TopoDroidX.\nYou can do this wi
   <string name="pref_with_levels_summary">Organizar croquis em camadas (layers)</string>
   <!-- UNUSED string name="pref_with_rename_title">Survey renaming</string -->
   <!-- UNUSED string name="pref_with_rename_summary">Enable "survey renaming" menu</string -->
-  <string name="pref_palettes_title">Paleta</string>
-  <string name="pref_palettes_summary">Habilitar paletas adicionais de símbolos de desenho</string>
   <string name="pref_packet_logger_title">Log pacote</string>
   <string name="pref_packet_logger_summary">Habilitar log de pacotes</string>
   <string name="pref_th2_edit_title">Editor croqui</string>
@@ -1650,8 +1637,6 @@ On Android-11+ storage access must be granted to TopoDroidX.\nYou can do this wi
   <!-- UNUSED string name="pref_data_backup_summary">Exportação automática de dados (exige definição de formato padrão)</string -->
   <!-- UNUSED string name="pref_editable_stations_title">Base editável</string -->
   <!-- UNUSED string name="pref_editable_stations_summary">Nomes de bases editáveis na lista de medidas</string -->
-  <string name="pref_zipped_symbols_title">Símbolos zip em arquivos</string>
-  <string name="pref_zipped_symbols_summary">Armazenar e carregar arquivos de símbolos em/de arquivo zip</string>
   <string name="pref_fixed_origin_title">Origem fixa croqui</string>
   <string name="pref_fixed_origin_summary">Mesma origem sugerida para todos os croquis</string>
   <string name="pref_shared_xsections_title">Cortes compartilhados</string>

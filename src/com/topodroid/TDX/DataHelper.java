@@ -5621,6 +5621,17 @@ public class DataHelper extends DataSetObservable
     } catch ( SQLiteException e ) { logError( "config delete " + key, e ); }
   }
 
+  /** delete configuration values whose keys start with the supplied prefix */
+  void deleteValuesWithPrefix( String prefix )
+  {
+    if ( myDB == null || TDString.isNullOrEmpty( prefix ) ) return;
+    try {
+      myDB.delete( CONFIG_TABLE, "substr(key,1,?)=?",
+                   new String[] { Integer.toString( prefix.length() ), prefix } );
+    } catch ( SQLiteDiskIOException e ) { handleDiskIOError( e );
+    } catch ( SQLiteException e ) { logError( "config prefix delete " + prefix, e ); }
+  }
+
   // SYMBOLS ------------------------------------------------------------------
 
   /** store a symbol state (enabled/disabled)

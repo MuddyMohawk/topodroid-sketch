@@ -74,7 +74,6 @@ public class VisualGoldenInstrumentedTest
     mSupport.openSurveyWindowFromMainListLongPress( SURVEY_ZIP );
     mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
     mSupport.chooseSpinnerValue( R.id.spin, "ZIP" );
-    mSupport.setZipSymbolsExportEnabled( true );
     mSupport.tapViewByDevice( R.id.button_ok );
 
     File zipFile = mSupport.waitForFile( mSupport.getZipFile( SURVEY_ZIP ), VisualTestSupport.FILE_TIMEOUT_MS );

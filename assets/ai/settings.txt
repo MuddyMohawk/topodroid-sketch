@@ -13,7 +13,6 @@ DISTOX_LOCALE: N, Enum{ "", "en", "es", "it", "ru", "de", "pt", "bg", "cn", "hu"
 DISTOX_ORIENTATION: T, Enum{0 unspecified, 1 portrait, 2 landscape}, "Orientation", "Preferred display orientation. The default is 0 (unspecified). The orientation affects the way the app is presented to the user"
 DISTOX_SINGLE_BACK: A, Bool, "Single back", "Close windows with a single back instead of a double back"
 DISTOX_HIDE_NAVBAR: N, Bool, "Hide navigation bar", "Make navigation bar hidden and temporary brought back by a slide up"
-DISTOX_PALETTES: T, Bool, "Tools palettes", "Enable the additional tools palettes"
 DISTOX_MKEYBOARD: T, Bool, "Custom keypad", "Enable TopoDroid keypad, instead of Android keyboard"
 DISTOX_NO_CURSOR: T, Bool, "No cursor", "Don't show cursor in combination with custom keypad"
 DISTOX_PACKET_LOGGER: T, Bool, "Packet logger", "Enable packet logging"
@@ -81,7 +80,6 @@ EXPORT {
 DISTOX_EXPORT_SHOTS: N, Enum{-1 no preference, 0 Therion, 2 Compass, 3 Survex, 4 VisualTopo (VTopo), 5 CSV, 7 cSurvey, 8 DXF, 9 Walls, 16 Polygon, 17 Topo, 20 Winkarst, 21 TopoRobot}, "Preferred data export format", "If set the data export dialog opens with the preferred format selected"
 DISTOX_EXPORT_PLOT: N, Enum{-1 no prefrence, 6 DXF, 7 cSurvey, 13 SVG, 14 Therion, 23 shapefile, 24 xtherion, 27 PDF}, "Preferred sketch export format", "If set the sketch export dialog opens with the preferred format selected"
 DISTOX_AUTO_PLOT_EXPORT: N, Enum{-1 no choice, 6 DXF, 7 cSurvey, 13 SVG, 14 Therion, 23 shapefile, 24 xtherion}, "Auto sketch export format".  "If set the sketches are automatically exported in the format when closed"
-DISTOX_ZIP_WITH_SYMBOLS: T, Bool, "Symbols in zips", "Include the symbols used in the drawings in the zip archive"
 DISTOX_ZIP_SHARE_CATEGORY: T, Bool, "Zip share category", "Add a category 'com.topodroid.TDX.CATGORY_SURVEY' to the SEND intent for sharing zips"
 }
 EXPORT_DATA {

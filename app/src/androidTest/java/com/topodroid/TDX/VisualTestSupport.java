@@ -1795,16 +1795,6 @@ selection.mHotItem.getHandleRole() );
     } );
   }
 
-  void setZipSymbolsExportEnabled( boolean enabled )
-  {
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences( mTargetContext );
-    SharedPreferences.Editor editor = prefs.edit();
-    editor.putBoolean( "DISTOX_ZIP_WITH_SYMBOLS", enabled );
-    editor.apply();
-    TDPrefHelper.update( "DISTOX_ZIP_WITH_SYMBOLS", enabled );
-    TDSetting.mZipWithSymbols = enabled;
-  }
-
   void setReferenceEraseEnabled( boolean enabled )
   {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences( mTargetContext );
@@ -2147,6 +2137,7 @@ selection.mHotItem.getHandleRole() );
     boolean foundManifest = false;
     boolean foundSurveySql = false;
     boolean foundPlotTdr = false;
+    boolean foundSymbolBundle = false;
     ZipInputStream zip = new ZipInputStream( new FileInputStream( zipFile ) );
     try {
       ZipEntry entry;
@@ -2155,6 +2146,7 @@ selection.mHotItem.getHandleRole() );
         if ( name.equals( "manifest" ) || name.endsWith( "/manifest" ) ) foundManifest = true;
         if ( name.equals( "survey.sql" ) || name.endsWith( "/survey.sql" ) ) foundSurveySql = true;
         if ( name.endsWith( ".tdr" ) ) foundPlotTdr = true;
+        if ( Archiver.isEmbeddedSymbolBundle( name ) ) foundSymbolBundle = true;
       }
     } finally {
       zip.close();
@@ -2163,6 +2155,7 @@ selection.mHotItem.getHandleRole() );
     assertTrue( "ZIP export is missing manifest", foundManifest );
     assertTrue( "ZIP export is missing survey.sql", foundSurveySql );
     assertTrue( "ZIP export is missing plot TDR", foundPlotTdr );
+    assertFalse( "ZIP export must not contain embedded symbol bundles", foundSymbolBundle );
   }
 
   File copyFileToDownloads( File sourceFile ) throws Exception

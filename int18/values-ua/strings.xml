@@ -17,7 +17,6 @@ Translation with more than 70 lint errors are dropped from the app.
     <string name="double_back">Натисніть "НАЗАД" ще раз для виходу</string>
 
     <!-- UNUSED string name="version_ask">Оновлення до нової версії TopoDroid.\nВи хочете переінсталювати інструменти малюнків?</string -->
-    <string name="symbols_ask">Встановити інструменти малювання v.%1$s?\n(Поточна v.%2$s)</string>
 
     <!-- TODO string name="setup_textsize_title">TopoDroid setup. Text size</string -->
     <!-- TODO string name="setup_buttonsize_title">TopoDroid setup. Button size</string -->
@@ -34,7 +33,6 @@ Translation with more than 70 lint errors are dropped from the app.
 	    you should set them to your needs./n/n
     </string -->
     <!-- OK string name="lorem_ipsum">Lorem ipsum dolor sit amet</string -->
-    <!-- REPLACED string name="symbols_ask">Ви хочете переінсталювати інструменти малювання?</string -->
     <string name="POINT">ТОЧКА</string>
     <string name="LINE">ЛІНІЯ</string>
     <string name="AREA">ОБЛАСТЬ</string>
@@ -681,16 +679,7 @@ Translation with more than 70 lint errors are dropped from the app.
     <string name="btn_import">Імпорт</string>
     <string name="btn_install">Встановити</string>
 
-    <string name="symbol_archeo">Архео.</string>
-    <string name="symbol_bio">Біологія</string>
-    <string name="symbol_geo">Геологія</string>
-    <!-- TODO string name="symbol_karst">Karst</string -->
-    <string name="symbol_mine">Шахти</string>
-    <string name="symbol_paleo">Палео</string>
-    <string name="symbol_speleo">Спелео</string>
-    <!-- TODO string name="symbol_extra">Speleo (2)</string -->
 
-    <string name="symbol_reload">Інструменти Малювання</string>
 
     <!-- UNUSED string name="length">Довжина [м]</string -->
     <!-- UNUSED string name="azimuth">Азимут [грд]</string -->
@@ -973,8 +962,6 @@ Translation with more than 70 lint errors are dropped from the app.
   <!-- TODO string name="pref_with_sensors_summary">Enable "sensors" data</string -->
   <!-- TODO string name="pref_with_levels_title">Layers</string -->
   <!-- TODO string name="pref_with_levels_summary">Use canvas layers</string -->
-  <!-- TODO string name="pref_palettes_title">Palettes</string -->
-  <!-- TODO string name="pref_palettes_summary">Enable additional palettes</string -->
   <!-- TODO string name="pref_packet_logger_title">Packets log</string -->
   <!-- TODO string name="pref_packet_logger_summary">Enable packets logging</string -->
 

@@ -168,7 +168,7 @@ public class MainWindow extends Activity
   private static final int[] menus = {
                           R.string.menu_exit,
                           R.string.menu_cwd,
-                          R.string.menu_palette,
+                          R.string.menu_restore_drawing_tools,
                           // R.string.menu_logs, // NO_LOGS
 			  // R.string.menu_backups, // CLEAR_BACKUPS
                           // R.string.menu_join_survey,
@@ -650,7 +650,6 @@ public class MainWindow extends Activity
   // FIXME TOOLBAR Toolbar mToolbar;
   
   private boolean mWithPalette  = false;
-  private boolean mWithPalettes = false;
   // private boolean mWithLogs     = false; // NO_LOGS
   // private boolean mWithBackupsClear = false; // CLEAR_BACKUPS
 
@@ -674,7 +673,6 @@ public class MainWindow extends Activity
     ArrayAdapter< String > menu_adapter = new ArrayAdapter<String >(mActivity, R.layout.menu );
 
     mWithPalette  = TDLevel.overNormal;
-    mWithPalettes = TDLevel.overExpert && TDSetting.mPalettes; // mWithPalettes ==> mWithPalette
     // mWithLogs     = TDLevel.overAdvanced; // NO_LOGS
     // mWithBackupsClear = TDLevel.overExpert && TDSetting.mBackupsClear; // CLEAR_BACKUPS
     // TDLog.v("Main Window set menu adapter. With palette " + mWithPalette + " With palettes " + mWithPalettes );
@@ -722,9 +720,15 @@ public class MainWindow extends Activity
       } else if ( p++ == pos ) { // DISTOX_CWD
         intent = new Intent( TDInstance.context, com.topodroid.TDX.CWDActivity.class ); // this
         startActivityForResult( intent, TDRequest.REQUEST_CWD );
-      } else if ( mWithPalette && p++ == pos ) { // PALETTE EXTRA SYMBOLS
-        // (new SymbolEnableDialog( mActivity )).show();
-        (new SymbolReload( mActivity, mApp, mWithPalettes )).show();
+      } else if ( mWithPalette && p++ == pos ) { // RESTORE DRAWING TOOLS
+        TopoDroidAlertDialog.makeAlert( this, getResources(), R.string.restore_drawing_tools_confirm,
+          new DialogInterface.OnClickListener() {
+            @Override public void onClick( DialogInterface dialog, int btn ) {
+              mApp.restoreDrawingTools();
+              TDToast.make( R.string.restore_drawing_tools_done );
+            }
+          }
+        );
       // } else if ( mWithLogs && p++ == pos ) { // NO_LOGS
       //   intent = new Intent( mActivity, com.topodroid.prefs.TDPrefActivity.class );
       //   intent.putExtra( TDPrefCat.PREF_CATEGORY, TDPrefCat.PREF_CATEGORY_LOG );

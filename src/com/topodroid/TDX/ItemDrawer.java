@@ -499,6 +499,17 @@ abstract class ItemDrawer extends Activity
     data.setValue( KEY_TOOLBAR_AREAS,  serializeSymbols( mRecentArea,  NR_RECENT, false ) );
   }
 
+  /** clear every persisted drawing-tool shortcut and seed the factory toolbar */
+  static void resetDrawingToolState( DataHelper data )
+  {
+    if ( data == null ) return;
+    data.deleteValuesWithPrefix( "toolbar_" );
+    data.deleteValue( "recent_points" );
+    data.deleteValue( "recent_lines" );
+    data.deleteValue( "recent_areas" );
+    loadManualToolbarSymbols( data );
+  }
+
   private static void loadOrCopyManualToolbarList( int type, Symbol[] symbols, Symbol[] source, String names )
   {
     if ( hasToolbarNames( names ) ) {

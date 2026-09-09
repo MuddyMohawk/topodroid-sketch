@@ -1294,7 +1294,6 @@ public class TopoDroidApp extends Application
     if ( symbol_version == null || ! TDVersion.SYMBOL_VERSION.equals( symbol_version ) || ! hasInstalledSymbolFiles() ) {
       installSymbols( true );
     }
-    installTitleLegendSymbolOnce();
 
     TDPrefHelper prefHlp = new TDPrefHelper( thisApp );
 
@@ -2212,89 +2211,15 @@ public class TopoDroidApp extends Application
   // -------------------------------------------------------------
   // SYMBOLS
 
-  /** @return true if installed symbol files are present on disk
-   * @note checks the private point-symbol folder: it is populated only by the symbol
-   *       install (or user-created symbols), so an empty/missing folder means the
-   *       symbol files have been lost and the default set must be re-installed.
-   *       A non-empty folder is left alone to respect user curation of the library.
+  /** @return true if representative canonical symbol files are present on disk
+   * @note custom files are allowed, but cannot by themselves make an incomplete
+   *       canonical installation appear healthy.
    */
   static private boolean hasInstalledSymbolFiles()
   {
-    File dir = TDPath.getPointDir();
-    if ( dir == null || ! dir.exists() ) return false;
-    String[] files = dir.list();
-    return files != null && files.length > 0;
-  }
-
-  private static final String TITLE_LEGEND_DELIVERY_KEY = "title_legend_symbol_delivery_v1";
-
-  /**
-   * Deliver this one new default symbol to existing alpha installs without a
-   * symbol-version bump or overwriting a same-name user file. The completion
-   * flag deliberately respects a user's later deletion.
-   */
-  static void installTitleLegendSymbolOnce()
-  {
-    if ( mDData == null ) return;
-    if ( "done".equals( mDData.getValue( TITLE_LEGEND_DELIVERY_KEY ) ) ) return;
-    if ( TDFile.existPrivateFile( "point", TitleLegendPointBehavior.THERION_NAME )
-        || installSinglePackagedSymbol( R.raw.symbols_topodroid_sketch, "point",
-                                       TitleLegendPointBehavior.THERION_NAME ) ) {
-      mDData.setValue( TITLE_LEGEND_DELIVERY_KEY, "done" );
-    }
-  }
-
-  static boolean installSinglePackagedSymbol( int resource, String wanted_type, String wanted_name )
-  {
-    if ( wanted_type == null || wanted_name == null ) return false;
-    File target = TDFile.getPrivateFile( wanted_type, wanted_name );
-    if ( target.exists() ) return true;
-    File temporary = TDFile.getPrivateFile( wanted_type, wanted_name + ".installing" );
-    InputStream source = null;
-    ZipInputStream zip = null;
-    try {
-      source = TDInstance.getResources().openRawResource( resource );
-      zip = new ZipInputStream( source );
-      ZipEntry entry;
-      byte[] buffer = new byte[4096];
-      while ( ( entry = zip.getNextEntry() ) != null ) {
-        if ( entry.isDirectory() ) { zip.closeEntry(); continue; }
-        String path = entry.getName().replace( '\\', '/' );
-        int first = path.indexOf( '/' );
-        if ( first >= 0 && path.startsWith( "symbol" ) ) path = path.substring( first + 1 );
-        int separator = path.indexOf( '/' );
-        if ( separator <= 0 ) { zip.closeEntry(); continue; }
-        String type = path.substring( 0, separator );
-        String name = path.substring( separator + 1 );
-        if ( ! wanted_type.equals( type ) || ! wanted_name.equals( name ) ) {
-          zip.closeEntry();
-          continue;
-        }
-        FileOutputStream output = new FileOutputStream( temporary, false );
-        try {
-          int count;
-          while ( ( count = zip.read( buffer ) ) != -1 ) output.write( buffer, 0, count );
-          output.getFD().sync();
-        } finally {
-          output.close();
-        }
-        zip.closeEntry();
-        if ( target.exists() ) {
-          temporary.delete();
-          return true;
-        }
-        if ( temporary.renameTo( target ) ) return true;
-        temporary.delete();
-        return target.exists();
-      }
-    } catch ( IOException | RuntimeException e ) {
-      TDLog.e( "Title/legend symbol install failed: " + e.getMessage() );
-    } finally {
-      if ( zip != null ) try { zip.close(); } catch ( IOException e ) { /* no-op */ }
-      else if ( source != null ) try { source.close(); } catch ( IOException e ) { /* no-op */ }
-      if ( temporary.exists() ) temporary.delete();
-    }
-    return false;
+    return TDFile.existPrivateFile( "point", TitleLegendPointBehavior.THERION_NAME )
+        && TDFile.existPrivateFile( "line", "ceiling-meander" )
+        && TDFile.existPrivateFile( "area", "bedrock" );
   }
 
   /** install default TopoDroid Sketch symbols
@@ -2302,7 +2227,6 @@ public class TopoDroidApp extends Application
    */
   static void installSymbols( boolean overwrite )
   {
-    deleteObsoleteSymbols();
     // TDLog.v("PATH " + "install symbol version " + TDVersion.SYMBOL_VERSION );
     installSymbols( R.raw.symbols_topodroid_sketch, overwrite );
     if ( mDData != null ) mDData.setValue( "symbol_version", TDVersion.SYMBOL_VERSION );
@@ -2318,85 +2242,21 @@ public class TopoDroidApp extends Application
     symbolsUncompress( is, overwrite );
   }
 
-  /** delete the files of obsolete symbols 
-   */
-  static private void deleteObsoleteSymbols()
+  /** factory-reset files and saved state to the canonical Sketch drawing tools */
+  void restoreDrawingTools()
   {
-    String[] lines = { 
-      SymbolLibrary.BLOCKS,
-      SymbolLibrary.DEBRIS,
-      SymbolLibrary.CLAY,
-      SymbolLibrary.CONTOUR,
-      SymbolLibrary.WALL_PRESUMED,
-      SymbolLibrary.SAND,
-      SymbolLibrary.ICE,
-      SymbolLibrary.SECTION,
-      "wall:sand"
-    };
-    for ( String line : lines ) {
-      TDPath.deleteLineFile( line );
+    TDPath.clearSymbols();
+    if ( mData != null ) {
+      mData.deleteValuesWithPrefix( "p_" );
+      mData.deleteValuesWithPrefix( "l_" );
+      mData.deleteValuesWithPrefix( "a_" );
     }
-    String[] points = {
-      "breakdown-choke",
-      "low-end",
-      "paleo-flow",
-      SymbolLibrary.SECTION
-    };
-    for ( String point : points ) {
-      TDPath.deletePointFile( point );
-    }
-  }
-
-  /** reload all symbols
-   * @param clear   whether to first clear symbols
-   * @param speleo  whether to load symbols "speleo"
-   * @param extra   whether to load symbols "extra"
-   * @param mine    whether to load symbols "mine"
-   * @param geo     whether to load symbols "geo"
-   * @param archeo  whether to load symbols "archeo"
-   * @param anthro  whether to load symbols "anthro"
-   * @param paleo   whether to load symbols "paleo"
-   * @param bio     whether to load symbols "bio"
-   * @param karst   whether to load symbols "karst"
-   */
-  void reloadSymbols( boolean clear, 
-                      boolean speleo, boolean extra, boolean mine, boolean geo, boolean archeo, boolean anthro, boolean paleo,
-                      boolean bio,    boolean karst )
-  {
-    // TDLog.v( "Reload symbols " + speleo + " " + mine + " " + geo + " " + archeo + " " + paleo + " " + bio + " clear " + clear );
-    // if ( extra ) speleo = true; // extra implies speleo
-
-    if ( clear ) {
-      if (speleo || extra || mine || geo || archeo || anthro || paleo || bio || karst ) { 
-        TDPath.clearSymbols();
-      }
-    }
-    if ( speleo ) installSymbols( R.raw.symbols_speleo, true );
-    if ( extra  ) installSymbols( R.raw.symbols_extra,  true );
-    if ( mine   ) installSymbols( R.raw.symbols_mine,   true );
-    if ( geo    ) installSymbols( R.raw.symbols_geo,    true );
-    if ( archeo ) installSymbols( R.raw.symbols_archeo, true );
-    if ( anthro ) installSymbols( R.raw.symbols_anthro, true );
-    if ( paleo  ) installSymbols( R.raw.symbols_paleo,  true );
-    if ( bio    ) installSymbols( R.raw.symbols_bio,    true );
-    if ( karst  ) installSymbols( R.raw.symbols_karst,  true );
-
-    if ( mDData != null ) mDData.setValue( "symbol_version", TDVersion.SYMBOL_VERSION );
-    BrushManager.setHasSymbolLibraries( false );
-    BrushManager.loadAllSymbolLibraries( this, getResources() );
-    // BrushManager.doMakePaths( ); // TODO FIXME needed ?
-    BrushManager.setHasSymbolLibraries( true );
-    DrawingSurface.clearManagersCache();
-  }
-
-  /** reload the fork default symbol set */
-  void reloadDefaultSymbols( boolean clear, boolean overwrite )
-  {
-    if ( clear ) TDPath.clearSymbols();
-    installSymbols( overwrite );
+    installSymbols( true );
     BrushManager.setHasSymbolLibraries( false );
     BrushManager.loadAllSymbolLibraries( this, getResources() );
     BrushManager.setHasSymbolLibraries( true );
+    ToolsetRepository.resetToDefault( mData );
+    ItemDrawer.resetDrawingToolState( mData );
     DrawingSurface.clearManagersCache();
   }
 

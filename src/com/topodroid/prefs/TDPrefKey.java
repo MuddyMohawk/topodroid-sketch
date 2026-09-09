@@ -990,7 +990,6 @@ class TDPrefKey
   /** additional settings
    * enable single-back close
    * enable navbar hiding
-   * ensble extra palettes
    * whether to use TopoDroid keypads
    * no cursor for custom keyboard
    * enable bulk export
@@ -998,7 +997,6 @@ class TDPrefKey
    */ 
   static TDPrefKey[] mGeek = {
     new TDPrefKey( A, BOOL, UI,  "DISTOX_SINGLE_BACK",   R.string.pref_single_back_title,   R.string.pref_single_back_summary,   FALSE ),
-    new TDPrefKey( T, BOOL, GEN, "DISTOX_PALETTES",      R.string.pref_palettes_title,      R.string.pref_palettes_summary,      FALSE ),
     new TDPrefKey( T, BOOL, UI,  "DISTOX_MKEYBOARD",     R.string.pref_mkeyboard_title,     R.string.pref_mkeyboard_summary,     FALSE ),
     new TDPrefKey( T, BOOL, UI,  "DISTOX_NO_CURSOR",     R.string.pref_no_cursor_title,     R.string.pref_no_cursor_summary,     TRUE  ), 
     new TDPrefKey( T, BOOL, GEN, "DISTOX_BULK_EXPORT",   R.string.pref_bulk_export_title,   R.string.pref_bulk_export_summary,   FALSE ),
@@ -1023,7 +1021,6 @@ class TDPrefKey
    * ZIP share app (?)
    */
   static TDPrefKey[] mGeekImport = {
-    new TDPrefKey( T, BOOL, XP, "DISTOX_ZIP_WITH_SYMBOLS",  R.string.pref_zipped_symbols_title,    R.string.pref_zipped_symbols_summary,     TRUE  ),
     new TDPrefKey( T,       XP, "DISTOX_IMPORT_DATAMODE",   R.string.pref_import_datamode_title,   R.string.pref_import_datamode_summary,    TDString.ZERO, R.array.importDatamode, R.array.importDatamodeValue),
     new TDPrefKey( T, BOOL, XP, "DISTOX_AUTO_XSECTIONS",    R.string.pref_auto_xsections_title,    R.string.pref_auto_xsections_summary,     TRUE  ),
     new TDPrefKey( T, BOOL, XP, "DISTOX_AUTO_STATIONS",     R.string.pref_autoStations_title,      R.string.pref_autoStations_summary,       TRUE  ),

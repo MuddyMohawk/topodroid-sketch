@@ -42,7 +42,6 @@
   <string name="r_quit">ЗАКРЫТЬ</string>
 
     <!-- UNUSED string name="version_ask">Обновление до новой версии TopoDroid.\nВы хотите переустановить инструменты рисования?</string -->
-    <string name="symbols_ask">Установить инструменты рисования v.%1$s?\n(Текущая v.%2$s)</string>
     <!-- UNUSED string name="version_check">Последняя версия</string -->
     <!-- UNUSED string name="version_check_failed">Сбой проверки версии</string -->
     <!-- UNUSED string name="version_check_latest">Установлена самая последняя версия</string -->
@@ -1015,17 +1014,7 @@
     <string name="btn_import">Импорт</string>
     <string name="btn_install">Установитъ</string>
 
-    <string name="symbol_archeo">Археология</string>
-    <string name="symbol_anthro">Антропогенез</string>
-    <string name="symbol_bio">Биология</string>
-    <string name="symbol_geo">Геология</string>
-    <string name="symbol_karst">Карст</string>
-    <string name="symbol_mine">Шахты</string>
-    <string name="symbol_paleo">Палео</string>
-    <string name="symbol_speleo">Спелео</string>
-    <string name="symbol_extra">Спелео (2)</string>
 
-    <string name="symbol_reload">Инструменты Рисования</string>
     <string name="warning_no_palette">Внимание: инструменты рисования еще не загрузились</string>
 
     <!-- UNUSED string name="length">Длина [м]</string -->
@@ -1560,8 +1549,6 @@
   <string name="pref_splay_group_summary">Переназначение номера пикета группе сплеев</string>
   <string name="pref_with_levels_title">Слои</string>
   <string name="pref_with_levels_summary">Включть слои абриса</string>
-  <string name="pref_palettes_title">Доп. Знаки</string>
-  <string name="pref_palettes_summary">Включить дополнительные наборы условных знаков</string>
   <string name="pref_packet_logger_title">Журнал пакетов</string>
   <string name="pref_packet_logger_summary">Включить запись журнала пакетов DistoX</string>
   <string name="pref_th2_edit_title">Редактирование абрисов</string>
@@ -1756,8 +1743,6 @@
   <!-- UNUSED string name="pref_data_backup_summary">Автоматический экспорт данных (требуется установить формат по умолчанию)</string -->
   <!-- UNUSED string name="pref_editable_stations_title">Редактируемые пикеты</string -->
   <!-- UNUSED string name="pref_editable_stations_summary">Редактируемые номера пикетов в списке изиерений</string -->
-  <string name="pref_zipped_symbols_title">Архив условных обозначений</string>
-  <string name="pref_zipped_symbols_summary">Добавить/извлечь файлы условных обозначений в/из zip архив</string>
   <string name="pref_fixed_origin_title">Точка отсчета абрисов</string>
   <string name="pref_fixed_origin_summary">Зафиксировать точку отсчета координат абриса</string>
   <string name="pref_shared_xsections_title">Общий поперечный разрез</string>

@@ -38,8 +38,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
@@ -468,25 +466,6 @@ public class SpecialPointInstrumentedTest
     bitmap.recycle();
   }
 
-  @Test public void titleLegend_targetedInstallIsMissingOnlyAndNonOverwriting() throws Exception
-  {
-    File target = com.topodroid.util.TDFile.getPrivateFile( "point", TitleLegendPointBehavior.THERION_NAME );
-    assertTrue( target.exists() );
-    assertTrue( target.delete() );
-    assertTrue( TopoDroidApp.installSinglePackagedSymbol( R.raw.symbols_topodroid_sketch,
-      "point", TitleLegendPointBehavior.THERION_NAME ) );
-    assertTrue( target.exists() );
-    String installed = readUtf8( target );
-    assertTrue( installed.contains( "th_name u:title-legend" ) );
-
-    FileOutputStream output = new FileOutputStream( target, false );
-    output.write( "user-owned".getBytes( StandardCharsets.UTF_8 ) );
-    output.close();
-    assertTrue( TopoDroidApp.installSinglePackagedSymbol( R.raw.symbols_topodroid_sketch,
-      "point", TitleLegendPointBehavior.THERION_NAME ) );
-    assertEquals( "user-owned", readUtf8( target ) );
-  }
-
   @Test public void beddingState_roundTripsProvenanceProjectionAndTypography() throws Exception
   {
     int type = BrushManager.getPointIndexByThName( BeddingAttitudePointBehavior.THERION_NAME );
@@ -911,17 +890,6 @@ public class SpecialPointInstrumentedTest
       if ( first.getPixel( x, y ) != second.getPixel( x, y ) ) ++count;
     }
     return count;
-  }
-
-  private static String readUtf8( File file ) throws Exception
-  {
-    FileInputStream input = new FileInputStream( file );
-    ByteArrayOutputStream output = new ByteArrayOutputStream();
-    byte[] buffer = new byte[1024];
-    int count;
-    while ( ( count = input.read( buffer ) ) != -1 ) output.write( buffer, 0, count );
-    input.close();
-    return new String( output.toByteArray(), StandardCharsets.UTF_8 );
   }
 
   private static void assertOpaqueInside( Bitmap bitmap, RectF bounds )

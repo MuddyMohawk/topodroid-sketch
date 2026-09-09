@@ -39,7 +39,6 @@
     <string name="double_back">Erneut ZURÜCK drücken zum verlassen</string>
     <string name="new_survey_label">Neue Vermessung</string>
     <!-- UNUSED string name="version_ask">TopoDroid wurde auf eine neue Version aktualisiert.\nSollen die Zeichensymbole aktualisiert werden?</string -->
-    <string name="symbols_ask">Zeichenwerkzeuge von v.%2$s auf v.%1$s aktualisieren?</string>
     <!-- UNUSED string name="version_check">Last version</string -->
     <!-- UNUSED string name="version_check_failed">Failed version check</string -->
     <!-- UNUSED string name="version_check_latest">Version already at latest</string -->
@@ -960,16 +959,6 @@
     <string name="btn_export">Exportieren</string>
     <string name="btn_import">Importieren</string>
     <string name="btn_install">Neu installieren</string>
-    <string name="symbol_archeo">Archäologie</string>
-    <string name="symbol_anthro">Anthropologie</string>
-    <string name="symbol_bio">Biologie</string>
-    <string name="symbol_geo">Geologie</string>
-    <string name="symbol_karst">Karst</string>
-    <string name="symbol_mine">Bergbau</string>
-    <string name="symbol_paleo">Paläontologie</string>
-    <string name="symbol_speleo">Speläologie</string>
-    <string name="symbol_extra">Speläologie (Extra)</string>
-    <string name="symbol_reload">Zeichenwerkzeuge</string>
     <string name="warning_no_palette">Warnung: Palette noch nicht geladen</string>
     <!-- UNUSED string name="length">Length [m]</string -->
     <!-- UNUSED string name="azimuth">Azimuth [deg]</string -->
@@ -1468,8 +1457,6 @@
     <string name="pref_with_levels_summary">Aktiviere Symbolebenen in der Skizze</string>
     <!-- UNUSED string name="pref_with_rename_title">Survey renaming</string -->
     <!-- UNUSED string name="pref_with_rename_summary">Enable "survey renaming" menu</string -->
-    <string name="pref_palettes_title">Paletten</string>
-    <string name="pref_palettes_summary">Zusätzliche Paletten aktivieren</string>
     <string name="pref_packet_logger_title">Datenpakete loggen</string>
     <string name="pref_packet_logger_summary">Datenpakete zum DistoX aufzeichnen</string>
     <string name="pref_th2_edit_title">Externe Skizzen editieren</string>
@@ -1673,8 +1660,6 @@
     <!-- UNUSED string name="pref_data_backup_summary">Automatischer Datenexport beim Verlassen (benötigt ein Standard Exportformat)</string -->
     <!-- UNUSED string name="pref_editable_stations_title">Messpunkte editierbar</string -->
     <!-- UNUSED string name="pref_editable_stations_summary">Messpunktnamen sind direkt in der Liste editierbar</string -->
-    <string name="pref_zipped_symbols_title">Gezippte Symbolfiles</string>
-    <string name="pref_zipped_symbols_summary">Speichere/Lade Symbole in Zip-Files</string>
     <string name="pref_fixed_origin_title">Skizzen fixieren</string>
     <string name="pref_fixed_origin_summary">Skizzen haben einen fixen Verankerungspunkt</string>
     <string name="pref_shared_xsections_title">Profil-Sichtbarkeit</string>

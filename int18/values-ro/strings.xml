@@ -43,7 +43,6 @@ Refer to the web pages for details.\n
     <string name="cave3d_label" translatable="false">Cave3D</string>
 
 	<!-- UNUSED string name="version_ask">Updating to a new version of TopoDroid.\nDo you want to reinstall drawing tools?</string -->
-    <string name="symbols_ask">Vrei să instalezi uneltele de desen v.%1$s?\n(Actual v.%2$s)</string>
     <!-- UNUSED string name="version_check">Last version</string -->
     <!-- UNUSED string name="version_check_failed">Failed version check</string -->
     <!-- UNUSED string name="version_check_latest">Version already at latest</string -->
@@ -869,17 +868,7 @@ Refer to the web pages for details.\n
     <string name="btn_import">Importă</string>
     <string name="btn_install">Instalează</string>
 
-    <string name="symbol_archeo">Arheologie</string>
-    <string name="symbol_anthro">Antropic</string>
-    <string name="symbol_bio">Biologie</string>
-    <string name="symbol_geo">Geologie</string>
-    <string name="symbol_karst">Carst</string>
-    <string name="symbol_mine">Minerit</string>
-    <string name="symbol_paleo">Paleontologic</string>
-    <string name="symbol_speleo">Speologie</string>
-    <string name="symbol_extra">Speologie (2)</string>
 
-    <string name="symbol_reload">Unelte desen</string>
     <string name="warning_no_palette">Avertisment: paleta încă nu a fost încărcată</string>
 
     <!-- UNUSED string name="length">Lungime [m]</string -->
@@ -1331,8 +1320,6 @@ Refer to the web pages for details.\n
 	<string name="pref_with_levels_summary">Folosește strate desen</string>
 	<!-- UNUSED string name="pref_with_rename_title">Survey renaming</string -->
 	<!-- UNUSED string name="pref_with_rename_summary">Enable "survey renaming" menu</string -->
-	<string name="pref_palettes_title">Palete</string>
-	<string name="pref_palettes_summary">Activează palete suplimentare</string>
 	<string name="pref_packet_logger_title">Jurnal pachete</string>
 	<string name="pref_packet_logger_summary">Activează înregistrare pachete</string>
 	<string name="pref_th2_edit_title" translatable="false">Sketch editing</string>
@@ -1489,8 +1476,6 @@ Refer to the web pages for details.\n
 	<!-- UNUSED string name="pref_data_backup_summary">Export datelor se face automat (e nevoie de format implicit definit)</string -->
 	<string name="pref_editable_stations_title">Stații editabile</string>
 	<string name="pref_editable_stations_summary">Nume stații editabile în lista măsurătorilor</string>  
-	<string name="pref_zipped_symbols_title">Fișiere cu simboluri arhivate ZIP</string>
-	<string name="pref_zipped_symbols_summary">Salvează/încarcă fișiere cu simboluri în/din fișiere arhivă ZIP</string>
 	<string name="pref_fixed_origin_title">Origine schiță</string>
 	<string name="pref_fixed_origin_summary">Origine schiță fixă</string>
 	<string name="pref_shared_xsections_title">Secțiuni-X comune</string>

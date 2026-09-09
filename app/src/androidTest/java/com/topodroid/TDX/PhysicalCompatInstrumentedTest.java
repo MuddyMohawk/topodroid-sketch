@@ -126,7 +126,6 @@ public class PhysicalCompatInstrumentedTest
     mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
     mSupport.chooseSpinnerValue( R.id.spin, "ZIP" );
     mSupport.setCheckboxChecked( R.id.export_share, false );
-    mSupport.setZipSymbolsExportEnabled( true );
     mSupport.tapViewByDevice( R.id.button_ok );
     return mSupport.waitForFile( mSupport.getZipFile( surveyName ), EXPORT_TIMEOUT_MS );
   }

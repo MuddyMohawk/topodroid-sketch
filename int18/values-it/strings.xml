@@ -40,7 +40,6 @@
     <!-- NO string name="cave3d_label">Cave3D</string -->
 
     <!-- UNUSED string name="version_ask">Stai aggiornando ad una nuova versione di TopoDroid.\nVuoi reinstallare prototipi grafici?</string -->
-    <string name="symbols_ask">Installare gli strumenti di disegno v.%1$s?\n(Current v.%2$s)</string>
     <!-- UNUSED string name="version_check">Ultima versione</string -->
     <!-- UNUSED string name="version_check_failed">Verifica versione fallita</string -->
     <!-- UNUSED string name="version_check_latest">Versione già ultima</string -->
@@ -1014,17 +1013,7 @@
     <string name="btn_import">Importa</string>
     <string name="btn_install">Installa</string>
 
-    <string name="symbol_archeo">Archeologico</string>
-    <string name="symbol_anthro">Antropici</string>
-    <string name="symbol_bio">Biologico</string>
-    <string name="symbol_geo">Geologico</string>
-    <string name="symbol_karst">Carsico</string>
-    <string name="symbol_mine">Minerario</string>
-    <string name="symbol_paleo">Paleologico</string>
-    <string name="symbol_speleo">Speleologico</string>
-    <string name="symbol_extra">Speleo (2)</string>
 
-    <string name="symbol_reload">Strumenti Disegno</string>
     <string name="warning_no_palette">Warning: palette non caricata</string>
 
     <!-- UNUSED string name="length">Lunghezza [m]</string -->
@@ -1558,8 +1547,6 @@
   <string name="pref_splay_group_summary">Riassegna caposalso solo agli splay successivi</string>
   <string name="pref_with_levels_title">Strati</string>
   <string name="pref_with_levels_summary">Usa strati di tele</string>
-  <string name="pref_palettes_title">Simbologie</string>
-  <string name="pref_palettes_summary">Simbologia addizionali</string>
   <string name="pref_packet_logger_title">Log Pacchetti</string>
   <string name="pref_packet_logger_summary">Log dei pacchetti dati</string>
   <string name="pref_th2_edit_title">Editing di schizzi</string>
@@ -1754,8 +1741,6 @@
   <!-- UNUSED string name="pref_data_backup_summary">Esportazione automatica dei dati (necessita formato di default)</string -->
   <!-- UNUSED string name="pref_editable_stations_title">Capisaldi editabili</string -->
   <!-- UNUSED string name="pref_editable_stations_summary">Capisaldi editabili nella lista dati</string -->
-  <string name="pref_zipped_symbols_title">File simboli formato ZIP</string>
-  <string name="pref_zipped_symbols_summary">Salva/Carica simboli a/da archivio ZIP</string>
   <string name="pref_fixed_origin_title">Origine disegno</string>
   <string name="pref_fixed_origin_summary">Origine disegno fissa</string>
   <string name="pref_shared_xsections_title">X-section condivise</string>

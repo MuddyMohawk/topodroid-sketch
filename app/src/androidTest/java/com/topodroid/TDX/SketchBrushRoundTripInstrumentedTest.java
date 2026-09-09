@@ -74,7 +74,6 @@ public class SketchBrushRoundTripInstrumentedTest
     mSupport.openSurveyWindowFromMainListLongPress( SURVEY );
     mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
     mSupport.chooseSpinnerValue( R.id.spin, "ZIP" );
-    mSupport.setZipSymbolsExportEnabled( true );
     mSupport.tapViewByDevice( R.id.button_ok );
 
     File zipFile = mSupport.waitForFile( mSupport.getZipFile( SURVEY ), VisualTestSupport.FILE_TIMEOUT_MS );

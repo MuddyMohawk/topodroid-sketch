@@ -131,6 +131,19 @@ final class ToolsetRepository
     return true;
   }
 
+  /** replace all saved profiles and survey selections with the factory default */
+  static boolean resetToDefault( DataHelper data )
+  {
+    if ( data == null ) return false;
+    synchronized ( LOCK ) {
+      data.deleteValuesWithPrefix( KEY_SURVEY_PREFIX );
+      sLoaded = true;
+      sProfiles.clear();
+      sProfiles.add( ToolsetProfile.freshDefault() );
+      return write( data );
+    }
+  }
+
   private static void ensureLoaded( DataHelper data )
   {
     if ( sLoaded ) return;

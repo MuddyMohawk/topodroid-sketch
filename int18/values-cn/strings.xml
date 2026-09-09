@@ -42,7 +42,6 @@
   <string name="r_quit">退出</string>
 
     <!-- UNUSED string name="version_ask">Updating to a new version of TopoDroid.\nDo you want to reinstall drawing tools?</string -->
-    <string name="symbols_ask">安装绘图工具 v.%1$s?\n(Current v.%2$s)</string>
     <!-- UNUSED string name="version_check">Last version</string -->
     <!-- UNUSED string name="version_check_failed">Failed version check</string -->
     <!-- UNUSED string name="version_check_latest">Version already at latest</string -->
@@ -1019,17 +1018,7 @@
     <string name="btn_import">输入</string>
     <string name="btn_install">安装</string>
 
-    <string name="symbol_archeo">考古学</string>
-    <string name="symbol_anthro">人类学</string>
-    <string name="symbol_bio">生物学</string>
-    <string name="symbol_geo">地质学</string>
-    <string name="symbol_karst">岩溶学</string>
-    <string name="symbol_mine">采矿学</string>
-    <string name="symbol_paleo">古生物学</string>
-    <string name="symbol_speleo">洞穴学</string>
-    <string name="symbol_extra">洞穴学(2)</string>
 
-    <string name="symbol_reload">绘图工具</string>
     <string name="warning_no_palette">警告: 调色板尚未加载</string>
 
     <!-- UNUSED string name="length">Length [m]</string -->
@@ -1565,8 +1554,6 @@
   <string name="pref_with_levels_summary">使用画布图层</string>
   <!-- UNUSED string name="pref_with_rename_title">Survey renaming</string -->
   <!-- UNUSED string name="pref_with_rename_summary">Enable "survey renaming" menu</string -->
-  <string name="pref_palettes_title">调色板</string>
-  <string name="pref_palettes_summary">启用附加调色板</string>
   <string name="pref_packet_logger_title">日志包</string>
   <string name="pref_packet_logger_summary">启用日志包</string>
   <string name="pref_th2_edit_title">草图编辑</string>
@@ -1762,8 +1749,6 @@
   <!-- UNUSED string name="pref_data_backup_summary">自动输出数据 (需要设置默认格式)</string -->
   <!-- UNUSED string name="pref_editable_stations_title">站点可编辑</string -->
   <!-- UNUSED string name="pref_editable_stations_summary">在数据列表中站点名可编辑</string -->
-  <string name="pref_zipped_symbols_title">压缩符号文件</string>
-  <string name="pref_zipped_symbols_summary">存储/加载符号文件到/从压缩档案</string>
   <string name="pref_fixed_origin_title">草图原点</string>
   <string name="pref_fixed_origin_summary">修复草图原点</string>
   <string name="pref_shared_xsections_title">共享横截面</string>

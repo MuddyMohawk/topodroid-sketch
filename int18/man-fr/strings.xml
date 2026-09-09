@@ -43,7 +43,6 @@ Refer to the web pages for details.\n
     <string name="cave3d_label" translatable="false">Cave3D</string>  
 
     <!-- UNUSED string name="version_ask">Vous être en train de mettre à jour vers une nouvelle version de TopoDroid.\n Voulez-vous réinstaller les symboles de dessins ?</string -->
-    <string name="symbols_ask">Installer les outils de dessin v.%1$s?\n ? (v. actuelle: v.%2$s) </string>
 	<!-- UNUSED string name="version_check">Last version</string -->
 	<!-- UNUSED string name="version_check_failed">Failed version check</string -->
     <!-- UNUSED string name="version_check_latest">Version already at latest</string -->
@@ -877,17 +876,7 @@ D\'autres paramètres concernent la présentation dans la fenêtre de croquis (t
     <string name="btn_import">Importer</string>
     <string name="btn_install">Installer</string>
 
-    <string name="symbol_archeo">Archéologie</string>
-    <string name="symbol_anthro">Anthropique</string>
-    <string name="symbol_bio">Biologie</string>
-    <string name="symbol_geo">Géologie</string>
-    <string name="symbol_karst">Karstologie</string>
-    <string name="symbol_mine">Mine</string>
 
-    <string name="symbol_paleo">Paléo</string>
-    <string name="symbol_speleo">Spéléo</string>
-    <string name="symbol_extra">Spéléo (2)</string>
-    <string name="symbol_reload">Outils de dessin</string>
     <string name="warning_no_palette">Attention : la palette n\'est pas chargée</string>
 
     <!-- UNUSED string name="length">Longueur [m]</string -->
@@ -1341,8 +1330,6 @@ D\'autres paramètres concernent la présentation dans la fenêtre de croquis (t
   <string name="pref_with_levels_summary">Utiliser des couches de calque</string>
   <!-- UNUSED string name="pref_with_rename_title">Survey renaming</string -->
   <!-- UNUSED string name="pref_with_rename_summary">Enable "survey renaming" menu</string -->
-  <string name="pref_palettes_title">Palettes</string>
-  <string name="pref_palettes_summary">Activer des palettes supplémentaires</string>
   <string name="pref_packet_logger_title">Journalisation des paquets</string>
   <string name="pref_packet_logger_summary">Activer la journalisation des paquets de données</string>
   <string name="pref_th2_edit_title" translatable="false">Édition croquis</string>
@@ -1499,8 +1486,6 @@ D\'autres paramètres concernent la présentation dans la fenêtre de croquis (t
   <!-- UNUSED string name="pref_data_backup_summary">Export automatique des données (nécessite le format par défaut)</string -->
   <string name="pref_editable_stations_title">Stations modifiables</string>
   <string name="pref_editable_stations_summary">Noms des stations modifiables dans la liste des visées</string>
-  <string name="pref_zipped_symbols_title">Fichiers de symboles zippés</string>
-  <string name="pref_zipped_symbols_summary">Stocker/télécharger des fichiers de symboles vers/depuis une archive zip</string>
   <string name="pref_fixed_origin_title">Origine croquis</string>
   <string name="pref_fixed_origin_summary">Origine de croquis fixe</string>
   <string name="pref_shared_xsections_title">Partage des sections transverses</string>

@@ -304,7 +304,6 @@ public class TDSetting
   public static boolean mExportMedia          = false;  // whether to include media in export
   public static boolean mExportStationsPrefix = false;  // whether to prepend cave name to station in cSurvey/compass export
   public static String  mExportPrefix         = null;   // export prefix - only for the current run
-  public static boolean mZipWithSymbols       = true;   // whether to add/load symbols to/from archive
   // public static boolean mZipShare             = false;  // whether to share exported zip
   public static boolean mZipShareCategory     = false;  // DISTOX_ZIP_SHARE_CATEGORY
   public static boolean mZipOverwrite         = true;   // whether to overwrite exported zip
@@ -667,7 +666,6 @@ public class TDSetting
   public static boolean mSingleBack = false; // with single back
   // public static boolean mHideNavBar = false; // hide nav_bar
   public static int     mUiVisibility = View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_FULLSCREEN;
-  public static boolean mPalettes = false;   // extra tools palettes
   // public static boolean mCompositeActions = false;
   // public static boolean mWithLineJoin = false;  // with line join
   public static boolean mLegOnlyUpdate = false; // whether to update display of drawing window at every shot (not just at legs)
@@ -1212,14 +1210,12 @@ public class TDSetting
 
     key = TDPrefKey.mGeek;
     mSingleBack = prefs.getBoolean(  key[0].key, bool(key[0].dflt) ); // DISTOX_SINGLE_BACK
-    setPalettes(  prefs.getBoolean(  key[1].key, bool(key[1].dflt) ) ); // DISTOX_PALETTES
-    // setBackupsClear( prefs.getBoolean( key[1], bool(defGeek[1]) ) ); // DISTOX_BACKUPS_CLEAR CLEAR_BACKUPS
-    mKeyboard = prefs.getBoolean(   key[2].key, bool(key[2].dflt) ); // DISTOX_MKEYBOARD
-    mNoCursor = prefs.getBoolean(   key[3].key, bool(key[3].dflt) ); // DISTOX_NO_CURSOR
-    mBulkExport = prefs.getBoolean( key[4].key, bool(key[4].dflt) ); // DISTOX_BULK_EXPORT
-    mPacketLog = prefs.getBoolean(  key[5].key, bool(key[5].dflt) ); // DISTOX_PACKET_LOGGER
-    mTh2Edit   = prefs.getBoolean(  key[6].key, bool(key[6].dflt) ); // DISTOX_TH2_EDIT
-    retrieveGeminiApiKey( prefs.getString( key[7].key, key[7].dflt ) );      // DISTOX_GEMINI
+    mKeyboard = prefs.getBoolean(   key[1].key, bool(key[1].dflt) ); // DISTOX_MKEYBOARD
+    mNoCursor = prefs.getBoolean(   key[2].key, bool(key[2].dflt) ); // DISTOX_NO_CURSOR
+    mBulkExport = prefs.getBoolean( key[3].key, bool(key[3].dflt) ); // DISTOX_BULK_EXPORT
+    mPacketLog = prefs.getBoolean(  key[4].key, bool(key[4].dflt) ); // DISTOX_PACKET_LOGGER
+    mTh2Edit   = prefs.getBoolean(  key[5].key, bool(key[5].dflt) ); // DISTOX_TH2_EDIT
+    retrieveGeminiApiKey( prefs.getString( key[6].key, key[6].dflt ) );      // DISTOX_GEMINI
     TDPrefKey debug_key = key[ key.length - 1 ];
     mWithDebug = TDLevel.isDebugBuild() ? prefs.getBoolean( debug_key.key, bool(debug_key.dflt) ) : false; // DISTOX_WITH_DEBUG
 
@@ -1401,12 +1397,11 @@ public class TDSetting
     // TDLog.v("SETTING load secondary export import done");
 
     key = TDPrefKey.mGeekImport;
-    mZipWithSymbols = prefs.getBoolean( key[ 0].key, bool(key[ 0].dflt) ); // DISTOX_ZIP_WITH_SYMBOLS
-    mImportDatamode = tryInt(   prefs,  key[ 1].key,      key[ 1].dflt );  // DISTOX_IMPORT_DATAMODE
-    mAutoXSections  = prefs.getBoolean( key[ 2].key, bool(key[ 2].dflt) ); // DISTOX_AUTO_XSECTIONS
-    mAutoStations   = prefs.getBoolean( key[ 3].key, bool(key[ 3].dflt) ); // DISTOX_AUTO_STATIONS
-    mLRUDcount      = prefs.getBoolean( key[ 4].key, bool(key[ 4].dflt) ); // DISTOX_LRUD_COUNT
-    mZipShareCategory = prefs.getBoolean( key[ 5].key, bool(key[ 5].dflt) ); // DISTOX_ZIP_SHARE_CATEGORY
+    mImportDatamode = tryInt(   prefs,  key[ 0].key,      key[ 0].dflt );  // DISTOX_IMPORT_DATAMODE
+    mAutoXSections  = prefs.getBoolean( key[ 1].key, bool(key[ 1].dflt) ); // DISTOX_AUTO_XSECTIONS
+    mAutoStations   = prefs.getBoolean( key[ 2].key, bool(key[ 2].dflt) ); // DISTOX_AUTO_STATIONS
+    mLRUDcount      = prefs.getBoolean( key[ 3].key, bool(key[ 3].dflt) ); // DISTOX_LRUD_COUNT
+    mZipShareCategory = prefs.getBoolean( key[ 4].key, bool(key[ 4].dflt) ); // DISTOX_ZIP_SHARE_CATEGORY
     // mAutoExportPlotFormat = tryInt( prefs,  key[ 4].key,      key[ 4].dflt );  // DISTOX_AUTO_PLOT_EXPORT choice: ...
     // mExportTcsx     = prefs.getBoolean(     key[ 2].key, bool(key[ 2].dflt) ); // DISTOX_TRANSFER_CSURVEY
     // TDLog.v("SETTING load secondary GEEK import done");
@@ -2315,24 +2310,20 @@ public class TDSetting
     TDPrefKey[] key = TDPrefKey.mGeek;
     if ( k.equals( key[0].key ) ) {
       mSingleBack = tryBooleanValue( hlp, k, v, bool(key[0].dflt) ); // DISTOX_SINGLE_BACK
-    } else if ( k.equals( key[ 1 ].key ) ) { // DISTOX_PALETTES
-      setPalettes( tryBooleanValue( hlp, k, v, bool(key[1].dflt) ) );
-    // } else if ( k.equals( key[1] ) ) { // CLEAR_BACKUPS
-    //   setBackupsClear( tryBooleanValue( hlp, k, v, bool(key[1].dflt) ) ); // DISTOX_BACKUPS_CLEAR
-    } else if ( k.equals( key[ 2 ].key ) ) {           // DISTOX_MKEYBOARD (bool)
-      mKeyboard = tryBooleanValue( hlp, k, v, bool(key[2].dflt) );
-    } else if ( k.equals( key[ 3 ].key ) ) {           // DISTOX_NO_CURSOR(bool)
-      mNoCursor = tryBooleanValue( hlp, k, v, bool(key[3].dflt) );
+    } else if ( k.equals( key[ 1 ].key ) ) {           // DISTOX_MKEYBOARD (bool)
+      mKeyboard = tryBooleanValue( hlp, k, v, bool(key[1].dflt) );
+    } else if ( k.equals( key[ 2 ].key ) ) {           // DISTOX_NO_CURSOR(bool)
+      mNoCursor = tryBooleanValue( hlp, k, v, bool(key[2].dflt) );
+    } else if ( k.equals( key[ 3 ].key ) ) {
+      mBulkExport = tryBooleanValue( hlp, k, v, bool(key[3].dflt) );
     } else if ( k.equals( key[ 4 ].key ) ) {
-      mBulkExport = tryBooleanValue( hlp, k, v, bool(key[4].dflt) );
+      mPacketLog = tryBooleanValue( hlp, k, v, bool(key[4].dflt) ); // DISTOX_PACKET_LOGGER
     } else if ( k.equals( key[ 5 ].key ) ) {
-      mPacketLog = tryBooleanValue( hlp, k, v, bool(key[5].dflt) ); // DISTOX_PACKET_LOGGER
-    } else if ( k.equals( key[ 6 ].key ) ) {
-      mTh2Edit = tryBooleanValue( hlp, k, v, bool(key[6].dflt) ); // DISTOX_TH2_EDIT
+      mTh2Edit = tryBooleanValue( hlp, k, v, bool(key[5].dflt) ); // DISTOX_TH2_EDIT
       mMainFlag |= FLAG_BUTTON;
-    } else if ( k.equals( key[ 7 ].key ) ) {           // DISTOX_GEMINI
+    } else if ( k.equals( key[ 6 ].key ) ) {           // DISTOX_GEMINI
       TDLog.e("Gemini API key is not set in normal way");
-      // mGeminiApiKey = tryStringValue( hlp, k, v, key[7].dflt );
+      // mGeminiApiKey = tryStringValue( hlp, k, v, key[6].dflt );
     } else if ( TDLevel.isDebugBuild() && k.equals( key[ key.length - 1 ].key ) ) {
       mWithDebug =  tryBooleanValue( hlp, k, v, bool(key[ key.length - 1 ].dflt) ); // DISTOX_WITH_DEBUG
       TDLevel.setLevelWithDebug( mWithDebug );
@@ -2632,18 +2623,16 @@ public class TDSetting
   {
     // TDLog.v("update pref geek import: " + k );
     TDPrefKey[] key = TDPrefKey.mGeekImport;
-    if ( k.equals( key[ 0 ].key ) ) {        // DISTOX_ZIP_WITH_SYMBOLS
-      mZipWithSymbols = tryBooleanValue( hlp, k, v, bool(key[ 0].dflt) ); 
-    } else if ( k.equals( key[ 1 ].key ) ) { // DISTOX_IMPORT_DATAMODE (choice)
-      mImportDatamode = tryIntValue( hlp, k, v, key[ 1].dflt );
-    } else if ( k.equals( key[ 2 ].key ) ) {        // DISTOX_AUTO_XSECTIONS
-      mAutoXSections = tryBooleanValue( hlp, k, v, bool(key[ 2].dflt) ); 
-    } else if ( k.equals( key[ 3 ].key ) ) {        // DISTOX_AUTO_STATIONS
-      mAutoStations = tryBooleanValue( hlp, k, v, bool(key[ 3].dflt) ); 
-    } else if ( k.equals( key[ 4 ].key ) ) {        // DISTOX_LRUD_COUNT
-      mLRUDcount = tryBooleanValue( hlp, k, v, bool(key[ 4].dflt) );
-    } else if ( k.equals( key[ 5 ].key ) ) {        // DISTOX_ZIP_SHARE_CATEGORY
-      mZipShareCategory = tryBooleanValue( hlp, k, v, bool(key[ 5].dflt) );
+    if ( k.equals( key[ 0 ].key ) ) { // DISTOX_IMPORT_DATAMODE (choice)
+      mImportDatamode = tryIntValue( hlp, k, v, key[ 0].dflt );
+    } else if ( k.equals( key[ 1 ].key ) ) {        // DISTOX_AUTO_XSECTIONS
+      mAutoXSections = tryBooleanValue( hlp, k, v, bool(key[ 1].dflt) );
+    } else if ( k.equals( key[ 2 ].key ) ) {        // DISTOX_AUTO_STATIONS
+      mAutoStations = tryBooleanValue( hlp, k, v, bool(key[ 2].dflt) );
+    } else if ( k.equals( key[ 3 ].key ) ) {        // DISTOX_LRUD_COUNT
+      mLRUDcount = tryBooleanValue( hlp, k, v, bool(key[ 3].dflt) );
+    } else if ( k.equals( key[ 4 ].key ) ) {        // DISTOX_ZIP_SHARE_CATEGORY
+      mZipShareCategory = tryBooleanValue( hlp, k, v, bool(key[ 4].dflt) );
     // } else if ( k.equals( key[ 4 ].key ) ) {        // DISTOX_AUTO_PLOT_EXPORT moved to EXPORT
     //   mAutoExportPlotFormat = tryIntValue( hlp, k, v, key[ 4].dflt );
     // } else if ( k.equals( key[ 2 ].key ) ) {        // DISTOX_TRANSFER_CSURVEY
@@ -4346,16 +4335,6 @@ public class TDSetting
   //   }
   // }
 
-  private static void setPalettes( boolean b )
-  {
-    if ( mPalettes != b ) {
-      mPalettes = b;
-      // TopoDroidApp.resetButtonBar();
-      // TopoDroidApp.setMenuAdapter(); // was in 6.0.33
-      mMainFlag |= FLAG_MENU;
-    }
-  }
-
   private static void setActivityBooleans( SharedPreferences prefs, int level )
   {
     // TDLog.v("Level current " + TDLevel.mLevel + " set " + level );
@@ -4720,7 +4699,6 @@ B DISTOX_SAP5_BIT16_BUG true
       k="DISTOX_NO_CURSOR";        if ( TDPrefKey.checkKeyGroup(k,flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mNoCursor) );
       k="DISTOX_BULK_EXPORT";      if ( TDPrefKey.checkKeyGroup(k,flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mBulkExport) );
       k="DISTOX_LOCAL_MAN";        if ( TDPrefKey.checkKeyGroup(k,flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mLocalManPages) );
-      k="DISTOX_PALETTES";         if ( TDPrefKey.checkKeyGroup(k,flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mPalettes) );
       k="DISTOX_ORIENTATION";      if ( TDPrefKey.checkKeyGroup(k,flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mOrientation );
       k="DISTOX_EXPORT_SHOTS";     if ( TDPrefKey.checkKeyGroup(k,flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mExportShotsFormat );
       k="DISTOX_EXPORT_PLOT";      if ( TDPrefKey.checkKeyGroup(k,flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mExportPlotFormat );
@@ -4836,7 +4814,6 @@ B DISTOX_SAP5_BIT16_BUG true
       k="DISTOX_LRUD_HORIZONTAL";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mLRUDhorizontal );
       k="DISTOX_LRUD_COUNT";            if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mLRUDcount) );
       k="DISTOX_IMPORT_DATAMODE";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mImportDatamode );
-      k="DISTOX_ZIP_WITH_SYMBOLS";      if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mZipWithSymbols) );
       k="DISTOX_ZIP_SHARE_CATEGORY";    if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mZipShareCategory) );
       k="DISTOX_SHOT_TIMER";            if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mTimerWait );
       k="DISTOX_BEEP_VOLUME";           if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mBeepVolume );
@@ -5380,9 +5357,6 @@ B DISTOX_SAP5_BIT16_BUG true
               mPacketLog = Boolean.parseBoolean( value ); setPreference( editor, kay, mPacketLog );
               break;
         
-            case "DISTOX_PALETTES":
-              setPalettes( Boolean.parseBoolean( value ) ); setPreference( editor, kay, mPalettes );
-              break;
             case "DISTOX_EXPORT_SHOTS":
               mExportShotsFormat = Integer.parseInt( value ); setPreference( editor, kay, mExportShotsFormat );
               break;
@@ -5663,9 +5637,6 @@ B DISTOX_SAP5_BIT16_BUG true
               break;
             case "DISTOX_IMPORT_DATAMODE":
               mImportDatamode = Integer.parseInt( value ); setPreference( editor, kay, mImportDatamode );
-              break;
-            case "DISTOX_ZIP_WITH_SYMBOLS":
-              mZipWithSymbols = Boolean.parseBoolean( value ); setPreference( editor, kay, mZipWithSymbols );
               break;
             case "DISTOX_ZIP_SHARE_CATEGORY":
               mZipShareCategory = Boolean.parseBoolean( value ); setPreference( editor, kay, mZipShareCategory ); // DISTOX_ZIP_SHARE_CATEGORY

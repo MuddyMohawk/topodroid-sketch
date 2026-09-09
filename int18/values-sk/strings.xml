@@ -35,7 +35,6 @@ V systéme Android-11+ musí byť pre TopoDroid udelený prístup k úložisku.\
 
 
     <!-- UNUSED string name="version_ask">Updating to a new version of TopoDroid.\nDo you want to reinstall drawing tools?</string -->
-    <string name="symbols_ask">Inštalovať kresliace symboly v.%1$s?\n(Aktuálne v.%2$s)</string>
     <!-- UNUSED string name="version_check">Last version</string -->
     <!-- UNUSED string name="version_check_failed">Failed version check</string -->
     <!-- UNUSED string name="version_check_latest">Version already at latest</string -->
@@ -997,17 +996,7 @@ Existujú aj ďalšie dodatočné nastavenia, ktoré sa dajú nastaviť hocikedy
     <string name="btn_import">Importovať</string>
     <string name="btn_install">Inštalovať</string>
 
-    <string name="symbol_archeo">Archeológia</string>
-    <string name="symbol_anthro">Antropológia</string>
-    <string name="symbol_bio">Biológia</string>
-    <string name="symbol_geo">Geológia</string>
-    <string name="symbol_karst">Kras</string>
-    <string name="symbol_mine">Baníctvo</string>
-    <string name="symbol_paleo">Paleontológia</string>
-    <string name="symbol_speleo">Speleológia</string>
-    <string name="symbol_extra">Speleo (2)</string>
 
-    <string name="symbol_reload">Symboly na kreslenie</string>
     <string name="warning_no_palette">Varovanie: Paleta ešte nenahraná</string>
 
     <!-- UNUSED string name="length">Length [m]</string -->
@@ -1527,8 +1516,6 @@ Existujú aj ďalšie dodatočné nastavenia, ktoré sa dajú nastaviť hocikedy
   <string name="pref_with_levels_summary">Umožní používanie vrstiev pri kreslení</string>
   <!-- UNUSED string name="pref_with_rename_title">Survey renaming</string -->
   <!-- UNUSED string name="pref_with_rename_summary">Enable "survey renaming" menu</string -->
-  <string name="pref_palettes_title">Palety</string>
-  <string name="pref_palettes_summary">Povolí doplnkové palety</string>
   <string name="pref_packet_logger_title">Paket log</string>
   <string name="pref_packet_logger_summary">Povolí logging Paketov</string>
   <string name="pref_th2_edit_title">Editácia Nákresu</string>
@@ -1724,8 +1711,6 @@ Existujú aj ďalšie dodatočné nastavenia, ktoré sa dajú nastaviť hocikedy
   <!-- UNUSED string name="pref_data_backup_summary">Automatický export údajov (vyžaduje predvolený formát)</string -->
   <string name="pref_editable_stations_title">Editovateľné Staničenia</string>
   <string name="pref_editable_stations_summary">Umožní prepisovať Číslovanie Staničení</string>
-  <string name="pref_zipped_symbols_title">Zip archív Symbolov</string>
-  <string name="pref_zipped_symbols_summary">Uložiť/Načítať Symboly do/zo zip archívu</string>
   <string name="pref_fixed_origin_title">Predvolené číslo meračského bodu v Nákrese</string>
   <string name="pref_fixed_origin_summary">Predvolí číslo meračského bodu v Nákrese - predvolené je rovnaké aj pri viacerých nákresoch</string>
   <string name="pref_shared_xsections_title">Zdielané priečne rezy</string>

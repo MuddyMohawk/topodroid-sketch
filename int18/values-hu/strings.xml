@@ -41,7 +41,6 @@
   <string name="r_quit">KILÉPÉS</string>
 
     <!-- UNUSED string name="version_ask">A TopoDroid frissítése.\nSzeretnéd újratelepíteni a rajzeszközöket?</string -->
-    <string name="symbols_ask">Telepíted a rajzeszközök következő verzióját v.%1$s?\n(Jelenlegi v.%2$s)</string>
     <!-- UNUSED string name="version_check">Utolsó verzió</string -->
     <!-- UNUSED string name="version_check_failed">Verzió ellenőrzés nem sikerült</string -->
     <!-- UNUSED string name="version_check_latest">Ez már a legújabb verzió</string -->
@@ -1020,17 +1019,7 @@
     <string name="btn_import">Importálás</string>
     <string name="btn_install">Telepítés</string>
 
-    <string name="symbol_archeo">Régészet</string>
-    <string name="symbol_anthro">Antropogén</string>
-    <string name="symbol_bio">Biológia</string>
-    <string name="symbol_geo">Geológia</string>
-    <string name="symbol_karst">Karszt</string>
-    <string name="symbol_mine">Bányászat</string>
-    <string name="symbol_paleo">Őslénytan</string>
-    <string name="symbol_speleo">Barlangászat</string>
-    <string name="symbol_extra">Barlangászat (2)</string>
 	
-    <string name="symbol_reload">Rajz eszközök</string>
     <string name="warning_no_palette">Figyelmeztetés: a paletta még nincs betöltve</string>
 
     <!-- UNUSED string name="length">Hossz [m]</string -->
@@ -1567,8 +1556,6 @@
   <string name="pref_with_levels_summary">Rajzlap rétegek használata</string>
   <!-- UNUSED string name="pref_with_rename_title">Mérés átnevezés</string -->
   <!-- UNUSED string name="pref_with_rename_summary">Engedélyezi a "mérés átnevezés" menüt</string -->
-  <string name="pref_palettes_title">Paletták</string>
-  <string name="pref_palettes_summary">Hozzáadott paletták engedélyezése</string>
   <string name="pref_packet_logger_title">Csomag naplózás</string>
   <string name="pref_packet_logger_summary">Csomag naplózás engedélyezése</string>
   <string name="pref_th2_edit_title">Vázlat szerkesztés</string>
@@ -1764,8 +1751,6 @@
   <!-- UNUSED string name="pref_data_backup_summary">Automatkus adat export(alapértelmezett formátumra van szükség)</string -->
   <!-- UNUSED string name="pref_editable_stations_title">Átírható pontszám</string -->
   <!-- UNUSED string name="pref_editable_stations_summary">Módosíthatók a pont nevek a jegyzőkönyvben</string -->
-  <string name="pref_zipped_symbols_title">Tömörített szimbólum</string>
-  <string name="pref_zipped_symbols_summary">Szimbólum fájlok tárolása/beolvasása zip archívumokba/ból</string>
   <string name="pref_fixed_origin_title">Vázlat kezdőpont</string>
   <string name="pref_fixed_origin_summary">Rögzített vázlat kezdőpont</string>
   <string name="pref_shared_xsections_title">Megosztott metszet</string>

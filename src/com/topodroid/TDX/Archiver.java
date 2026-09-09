@@ -33,7 +33,6 @@ import java.io.StringReader;
 import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.BufferedInputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
 import java.io.BufferedOutputStream;
@@ -312,102 +311,10 @@ public class Archiver
     return ret;
   }
 
-  /** compress symbol files
-   * @param zipfile  compressed zip file
-   * @param lib      symbol library
-   * @param type     symbols type
-   * @return true if successful
-   */
-  private boolean compressSymbols( File zipfile, SymbolLibrary lib, String type )
+  /** @return whether an archive entry is a legacy embedded symbol bundle */
+  static boolean isEmbeddedSymbolBundle( String name )
   {
-    if ( lib == null ) return false;
-    if ( ! (TDFile.getPrivateDir( type )).exists() ) return false;
-    // TDLog.v( "ZIP symbols zip " + zipfile.getPath() );
-    List< Symbol > symbols = lib.getSymbols();
-    ZipOutputStream zos = null;
-    try { 
-      zos = new ZipOutputStream( new BufferedOutputStream( new FileOutputStream( zipfile ) ) );
-      for ( Symbol symbol : symbols ) {
-        if ( symbol.isEnabled() ) {
-          String filename = symbol.getThName(); // 2023-01-31 this is already deprifixed_u
-          // THERION-U: filename = Symbol.deprefix_u( filename );
-          String filepath = type + "/" + filename;
-          // TDLog.v( "ZIP symbols compress " + type + " " + filepath );
-          addOptionalEntry( zos, TDFile.getPrivateFile( type, filename ), filepath );
-        }
-      }
-    } catch ( FileNotFoundException e ) {
-      return false;
-    } finally {
-      if ( zos != null ) try { zos.close(); } catch ( IOException e ) { TDLog.e("ZIP-symbol close error"); }
-    }
-    return true;
-  }
-
-  /** uncompress symbol files
-   * @param zin      compressed input stream
-   * @param type     symbols type
-   * @param prefix   symbol prefix in the database config table
-   * @param force    whether to ignore the expert zip-symbol gate
-   * @param overwrite whether to overwrite existing symbols
-   * @return true is a symbol has been uncompressed
-   */
-  static private boolean uncompressSymbols( InputStream zin, String type, String prefix, boolean force, boolean overwrite )
-  {
-    if ( ! force && ! (TDLevel.overExpert && TDSetting.mZipWithSymbols ) ) return false;
-    boolean ret = false;
-    // TDLog.v( "ZIP-uncompress symbol type " + type + " prefix " + prefix );
-    File tempfile = TDPath.getTmpFile( "tmp.zip" );
-    FileOutputStream fout; // = null;
-    int c;
-    byte[] sbuffer = new byte[4096];
-    try { 
-      fout = new FileOutputStream( tempfile );
-      while ( ( c = zin.read( sbuffer ) ) != -1 ) fout.write(sbuffer, 0, c);
-      fout.close();
-      // fout = null;
-      // uncompress symbols zip
-      ZipEntry sze;
-      FileInputStream fis = new FileInputStream( tempfile );
-      ZipInputStream szin = new ZipInputStream( fis );
-      while ( ( sze = szin.getNextEntry() ) != null ) { // NOTE getNextEntry() throws ZipException if zip file entry name contains '..' or starts with '/'
-        File symbolfile = TDFile.getPrivateFile( type, sze.getName() );
-        // TDLog.v( "ZIP try to uncompress symbol " + type + " " + sze.getName() );
-        if ( overwrite || ! symbolfile.exists() ) {
-          // TDLog.v( "ZIP-uncompress symbol " + symbolfile.getPath() );
-          // FileOutputStream sfout = TDFile.getFileOutputStream( symbolfilename ); // uncompress symbols zip
-          FileOutputStream sfout = new FileOutputStream( symbolfile ); 
-          while ( ( c = szin.read( sbuffer ) ) != -1 ) sfout.write(sbuffer, 0, c);
-          sfout.close();
-          ret = true;
-          // add symbol to library and enable it
-        }
-        szin.closeEntry();
-        // need to get the thname from the file
-        // FileInputStream sfis = TDFile.getFileInputStream( symbolfilename );
-        FileInputStream sfis = new FileInputStream( symbolfile );
-        BufferedReader br = new BufferedReader( new InputStreamReader( sfis, "UTF-8" /* StandardCharsets.UTF_8 */ ) ); // String iso = "UTF-8";
-        String line;
-        while ( (line = br.readLine()) != null ) {
-          line = line.trim();
-          if ( line.startsWith("th_name") ) {
-            String th_name = line.substring(8).trim();
-            // TDLog.v( "ZIP enable " + th_name );
-            TopoDroidApp.mData.setSymbolEnabled( prefix + Symbol.deprefix_u( th_name ), true );
-            break;
-          }
-        }
-        sfis.close();
-      }
-      fis.close();
-    } catch ( FileNotFoundException e1 ) { 
-      TDLog.v( "ZIP 9 file not found " + e1.getMessage() );
-    } catch ( IOException e2 ) {
-      TDLog.v( "ZIP 9 IO error " + e2.getMessage() );
-    } finally {
-      TDFile.deleteFile( tempfile );
-    }
-    return ret;
+    return "points.zip".equals( name ) || "lines.zip".equals( name ) || "areas.zip".equals( name );
   }
 
   /** archive the current survey - compress to the default zip file
@@ -796,18 +703,9 @@ public class Archiver
             pathname = TDPath.getSurveyPhotoDir( mManifestSurveyname );
             TDFile.makeTopoDroidDir( pathname );
             pathname = TDPath.getSurveyPhotoFile( mManifestSurveyname, ze.getName() );
-          } else if ( ze.getName().equals( "points.zip" ) ) { // POINTS
-            if ( uncompressSymbols( zin, TDPath.getSymbolPointDirname(), "p_", false, false ) ) {
-              BrushManager.reloadPointLibrary( app, app.getResources() );
-            }
-          } else if ( ze.getName().equals( "lines.zip" ) ) { // LINES
-            if ( uncompressSymbols( zin, TDPath.getSymbolLineDirname(), "l_", true, true ) ) {
-              BrushManager.reloadLineLibrary( app.getResources() );
-            }
-          } else if ( ze.getName().equals( "areas.zip" ) ) { // AREAS
-            if ( uncompressSymbols( zin, TDPath.getSymbolAreaDirname(), "a_", false, false ) ) {
-              BrushManager.reloadAreaLibrary( app.getResources() );
-            }
+          } else if ( isEmbeddedSymbolBundle( ze.getName() ) ) {
+            // Legacy symbol payloads are deliberately ignored. Symbols are global
+            // app state and must not be installed as a side effect of survey import.
           } else {
             TDLog.e("ZIP 7 unexpected file type " + ze.getName() );
             // pathname = null; // already null
@@ -956,18 +854,8 @@ public class Archiver
           } else if ( ze.getName().endsWith( ".jpg" ) || ze.getName().endsWith( ".png" ) ) { // PHOTOS
             // TDFile.makeTopoDroidDir( pathname );
             pathname = ze.getName().endsWith( ".png" ) ? TDPath.getPngFile( ze.getName() ) : TDPath.getJpgFile( ze.getName() );
-          } else if ( ze.getName().equals( "points.zip" ) ) { // POINTS
-            if ( uncompressSymbols( zin, TDPath.getSymbolPointDirname(), "p_", false, false ) ) {
-              BrushManager.reloadPointLibrary( app, app.getResources() );
-            }
-          } else if ( ze.getName().equals( "lines.zip" ) ) { // LINES
-            if ( uncompressSymbols( zin, TDPath.getSymbolLineDirname(), "l_", true, true ) ) {
-              BrushManager.reloadLineLibrary( app.getResources() );
-            }
-          } else if ( ze.getName().equals( "areas.zip" ) ) { // AREAS
-            if ( uncompressSymbols( zin, TDPath.getSymbolAreaDirname(), "a_", false, false ) ) {
-              BrushManager.reloadAreaLibrary( app.getResources() );
-            }
+          } else if ( isEmbeddedSymbolBundle( ze.getName() ) ) {
+            // See the ZipFile import path above. Closing this entry discards it.
           } else {
             // TDLog.e("unexpected file type " + ze.getName() );
             // pathname = null; // already null
