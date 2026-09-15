@@ -26,6 +26,7 @@
     <color name="seekbar">#cccccccc</color>
 
     <!-- Shared minimal-grid palette for the sketch toolbars and toolbar editor. -->
+    <color name="toolbar_black">#000000</color>
     <color name="toolbar_dock">#20262B</color>
     <color name="toolbar_surface">#2A3238</color>
     <color name="toolbar_cell">#343D44</color>

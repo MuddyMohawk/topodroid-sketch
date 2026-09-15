@@ -616,6 +616,7 @@ public class DrawingWindow extends ItemDrawer
   private LinearLayout mLayoutToolsA;
   private LinearLayout mLayoutToolsPreset;
   private LinearLayout mLayoutToolsStyle;
+  private View mLayoutToolsTopDivider;
   private View mLayoutToolsGroupDivider;
   private LinearLayout mLayoutScale;
   private Button[] mBtnPreset;
@@ -2709,17 +2710,20 @@ public class DrawingWindow extends ItemDrawer
   {
     float scale = 8 * TDSetting.mItemButtonSize;
     int rowHeight = (int)(scale * Float.parseFloat( getResources().getString( R.string.dimyl ) ) ) + 8; // 4 pxl on both sides
-    mLayoutTools.setBackgroundColor( ToolbarVisualStyle.color( this, R.color.toolbar_dock ) );
+    mLayoutTools.setBackgroundColor( ToolbarVisualStyle.color( this, R.color.toolbar_black ) );
     styleToolbarRow( mLayoutToolsP, true );
     styleToolbarRow( mLayoutToolsL, true );
     styleToolbarRow( mLayoutToolsA, true );
     styleToolbarRow( mLayoutToolsPreset, true );
     styleToolbarRow( mLayoutToolsStyle, false );
+    if ( mLayoutToolsTopDivider != null ) {
+      mLayoutToolsTopDivider.setBackgroundColor( ToolbarVisualStyle.color( this, R.color.toolbar_grid_line ) );
+    }
     if ( mLayoutToolsGroupDivider != null ) {
       mLayoutToolsGroupDivider.setBackgroundColor( ToolbarVisualStyle.color( this, R.color.toolbar_grid_line ) );
     }
-    if ( mLayoutScale != null ) mLayoutScale.setBackgroundColor( ToolbarVisualStyle.color( this, R.color.toolbar_dock ) );
-    if ( mScaleBar != null ) mScaleBar.setBackgroundColor( ToolbarVisualStyle.color( this, R.color.toolbar_dock ) );
+    if ( mLayoutScale != null ) mLayoutScale.setBackgroundColor( ToolbarVisualStyle.color( this, R.color.toolbar_black ) );
+    if ( mScaleBar != null ) mScaleBar.setBackgroundColor( ToolbarVisualStyle.color( this, R.color.toolbar_black ) );
     setToolbarLayoutHeight( mLayoutToolsP, rowHeight );
     setToolbarLayoutHeight( mLayoutToolsL, rowHeight );
     setToolbarLayoutHeight( mLayoutToolsA, rowHeight );
@@ -2770,14 +2774,14 @@ public class DrawingWindow extends ItemDrawer
 
   private void styleToolbarCell( View view )
   {
-    if ( view != null ) view.setBackground( ToolbarVisualStyle.cell( this, R.color.toolbar_dock ) );
+    if ( view != null ) view.setBackground( ToolbarVisualStyle.cell( this, R.color.toolbar_black ) );
   }
 
   private void styleToolbarSymbolButton( ItemButton button, boolean selected )
   {
     if ( button != null ) button.setBackground( selected
       ? ToolbarVisualStyle.symbolCell( this, true )
-      : ToolbarVisualStyle.cell( this, R.color.toolbar_dock ) );
+      : ToolbarVisualStyle.cell( this, R.color.toolbar_black ) );
   }
 
   private void setToolbarLayoutHeight( LinearLayout layout, int rowHeight )
@@ -2867,7 +2871,7 @@ public class DrawingWindow extends ItemDrawer
       editor.setVisibility( View.VISIBLE );
       layout.addView( editor, makeToolbarSymbolButtonParams() );
       layout.setVisibility( View.VISIBLE );
-      mLayoutTools.addView( layout, viewIndex );
+      mLayoutTools.addView( layout, viewIndex + 1 );
     }
   }
 
@@ -3237,6 +3241,7 @@ public class DrawingWindow extends ItemDrawer
     mLayoutToolsA = (LinearLayout) findViewById( R.id.layout_tool_a );
     mLayoutToolsPreset = (LinearLayout) findViewById( R.id.layout_tool_preset );
     mLayoutToolsStyle = (LinearLayout) findViewById( R.id.layout_tool_style );
+    mLayoutToolsTopDivider = findViewById( R.id.layout_tool_top_divider );
     mLayoutToolsGroupDivider = findViewById( R.id.layout_tool_group_divider );
     mLayoutScale  = (LinearLayout) findViewById( R.id.layout_scale  );
     mScaleBar     = (SeekBar)findViewById( R.id.scalebar );
@@ -3450,7 +3455,7 @@ public class DrawingWindow extends ItemDrawer
 
   private void styleSketchToggle( Button button, boolean active )
   {
-    button.setBackground( ToolbarVisualStyle.cell( this, active ? R.color.toolbar_accent : R.color.toolbar_dock ) );
+    button.setBackground( ToolbarVisualStyle.cell( this, active ? R.color.toolbar_accent : R.color.toolbar_black ) );
     button.setTextColor( ToolbarVisualStyle.color( this, active ? R.color.toolbar_active_ink : R.color.toolbar_ink ) );
     button.setTypeface( active ? android.graphics.Typeface.DEFAULT_BOLD : android.graphics.Typeface.DEFAULT );
   }
@@ -12162,6 +12167,7 @@ public class DrawingWindow extends ItemDrawer
   {
     // TDLog.v("set tools toolbars - visible P " + mCurrentPoint + " L " + mCurrentLine + " A " + mCurrentArea );
     int k = -1;
+    if ( mLayoutToolsTopDivider != null ) mLayoutToolsTopDivider.setVisibility( View.VISIBLE );
     if ( mLayoutToolsGroupDivider != null ) mLayoutToolsGroupDivider.setVisibility( View.VISIBLE );
     // ZOOM_TRANSLATION = ZOOM_TRANSLATION_1;
     mZoomView.setTranslationY( ZOOM_TRANSLATION );
@@ -12240,6 +12246,7 @@ public class DrawingWindow extends ItemDrawer
       setManualToolbarRowsVisibility( View.GONE );
       mLayoutToolsPreset.setVisibility( View.GONE );
       mLayoutToolsStyle.setVisibility( View.GONE );
+      if ( mLayoutToolsTopDivider != null ) mLayoutToolsTopDivider.setVisibility( View.GONE );
       if ( mLayoutToolsGroupDivider != null ) mLayoutToolsGroupDivider.setVisibility( View.GONE );
       mLayoutScale.setVisibility( View.VISIBLE );
     } else {

@@ -918,6 +918,13 @@ final class VisualTestSupport
 
   void assertSketchToggleBarColors( int activePreset, int activeStyle )
   {
+    runOnMainChecked( "Toolbar top divider", () -> {
+      View divider = requireDrawingWindowView( R.id.layout_tool_top_divider, "Toolbar top divider" );
+      assertTrue( "Toolbar top divider is not visible",
+        divider.getVisibility() == View.VISIBLE && divider.getWidth() > 0 && divider.getHeight() > 0 );
+      assertEquals( "Toolbar top divider color", toolbarColor( R.color.toolbar_grid_line ),
+        getBackgroundColor( divider, "Toolbar top divider" ) );
+    } );
     assertSketchToggleBarColors( R.id.layout_tool_preset, "Preset", activePreset - 1, TDSetting.getSketchPresetSlotCount() );
     assertSketchToggleBarColors( R.id.layout_tool_style, "Style", activeStyle - 1, TDSetting.getSketchStyleSlotCount() );
   }
@@ -947,7 +954,7 @@ final class VisualTestSupport
           child.getVisibility() == View.VISIBLE && child.getWidth() > 0 && child.getHeight() > 0 );
         assertTrue( label + " button " + index + " has no text", child instanceof TextView );
         assertEquals( label + " button " + index + " background",
-          toolbarColor( active ? R.color.toolbar_accent : R.color.toolbar_dock ),
+          toolbarColor( active ? R.color.toolbar_accent : R.color.toolbar_black ),
           getGradientBackgroundColor( child, label + " button " + index ) );
         assertEquals( label + " button " + index + " text color",
           toolbarColor( active ? R.color.toolbar_active_ink : R.color.toolbar_ink ),
