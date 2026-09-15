@@ -641,15 +641,22 @@ public class ToolbarEditorActivity extends Activity
   private void dropOnSlot( final DragPayload payload, final int row, final int slot, final boolean quick )
   {
     if ( payload == null || ( payload.mKind != DRAG_SYMBOL && payload.mKind != DRAG_SLOT ) ) return;
+    if ( payload.mKind == DRAG_SLOT && payload.mQuick == quick && payload.mSlot == slot
+      && ( quick || payload.mRow == row ) ) return;
     ToolsetProfile.Slot incoming = payload.mKind == DRAG_SYMBOL ? payload.mEntry.ref() : sourceValue( payload );
+    final ToolsetProfile.Slot displaced = quick ? mProfile.mQuick[slot] : mProfile.mRows[row][slot];
     if ( quick && ToolsetProfile.isQuickSwitcher( incoming ) ) {
+      TDToast.makeWarn( "Place Quick Switcher on a toolbar row" );
+      return;
+    }
+    if ( payload.mKind == DRAG_SLOT && payload.mQuick && ToolsetProfile.isQuickSwitcher( displaced ) ) {
       TDToast.makeWarn( "Place Quick Switcher on a toolbar row" );
       return;
     }
     mutate( new Mutation() { @Override public void apply() {
       ToolsetProfile.Slot value = payload.mKind == DRAG_SYMBOL ? payload.mEntry.ref() : sourceValue( payload );
       if ( value == null ) return;
-      if ( payload.mKind == DRAG_SLOT ) clearSourceSlotValue( payload );
+      if ( payload.mKind == DRAG_SLOT ) setSourceSlotValue( payload, displaced );
       if ( quick ) mProfile.mQuick[slot] = value; else mProfile.mRows[row][slot] = value;
       mArmedQuick = quick; mArmedRow = quick ? -1 : row; mArmedSlot = slot;
     } } );
@@ -668,8 +675,13 @@ public class ToolbarEditorActivity extends Activity
 
   private void clearSourceSlotValue( DragPayload payload )
   {
-    if ( payload.mQuick ) mProfile.mQuick[payload.mSlot] = null;
-    else mProfile.mRows[payload.mRow][payload.mSlot] = null;
+    setSourceSlotValue( payload, null );
+  }
+
+  private void setSourceSlotValue( DragPayload payload, ToolsetProfile.Slot value )
+  {
+    if ( payload.mQuick ) mProfile.mQuick[payload.mSlot] = value;
+    else mProfile.mRows[payload.mRow][payload.mSlot] = value;
   }
 
   private void showProfileMenu()
@@ -771,8 +783,8 @@ public class ToolbarEditorActivity extends Activity
 
   private View.OnTouchListener dragTouch( final DragPayload payload )
   {
+    if ( payload.mKind != DRAG_ROW ) return longPressDragTouch( payload );
     final int slop = ViewConfiguration.get( this ).getScaledTouchSlop();
-    final boolean ownsGesture = payload.mKind == DRAG_ROW;
     return new View.OnTouchListener() {
       float downX, downY;
       boolean dragging;
@@ -780,8 +792,8 @@ public class ToolbarEditorActivity extends Activity
         int action = event.getActionMasked();
         if ( action == MotionEvent.ACTION_DOWN ) {
           downX = event.getX(); downY = event.getY(); dragging = false;
-          if ( ownsGesture && view.getParent() != null ) view.getParent().requestDisallowInterceptTouchEvent( true );
-          return ownsGesture;
+          if ( view.getParent() != null ) view.getParent().requestDisallowInterceptTouchEvent( true );
+          return true;
         }
         if ( action == MotionEvent.ACTION_MOVE && ! dragging ) {
           float dx = event.getX() - downX, dy = event.getY() - downY;
@@ -794,12 +806,64 @@ public class ToolbarEditorActivity extends Activity
           }
         }
         if ( action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL ) {
-          boolean handled = dragging || ownsGesture;
-          if ( ownsGesture && view.getParent() != null ) view.getParent().requestDisallowInterceptTouchEvent( false );
+          if ( view.getParent() != null ) view.getParent().requestDisallowInterceptTouchEvent( false );
           dragging = false;
-          return handled;
+          return true;
         }
-        return dragging || ownsGesture;
+        return true;
+      }
+    };
+  }
+
+  private View.OnTouchListener longPressDragTouch( final DragPayload payload )
+  {
+    final int slop = ViewConfiguration.get( this ).getScaledTouchSlop();
+    final int longPressTimeout = ViewConfiguration.getLongPressTimeout();
+    return new View.OnTouchListener() {
+      float downX, downY;
+      boolean tracking, longPressed, dragging;
+      View touchedView;
+      final Runnable beginDrag = new Runnable() {
+        @Override public void run() {
+          if ( ! tracking || touchedView == null ) return;
+          longPressed = true;
+          ViewParent parent = touchedView.getParent();
+          if ( parent != null ) parent.requestDisallowInterceptTouchEvent( true );
+          ClipData data = ClipData.newPlainText( "toolset", "toolset" );
+          if ( Build.VERSION.SDK_INT >= 24 ) dragging = touchedView.startDragAndDrop( data, new View.DragShadowBuilder( touchedView ), payload, 0 );
+          else dragging = touchedView.startDrag( data, new View.DragShadowBuilder( touchedView ), payload, 0 );
+          if ( dragging ) touchedView.performHapticFeedback( HapticFeedbackConstants.LONG_PRESS );
+          else if ( parent != null ) parent.requestDisallowInterceptTouchEvent( false );
+        }
+      };
+
+      @Override public boolean onTouch( View view, MotionEvent event ) {
+        int action = event.getActionMasked();
+        if ( action == MotionEvent.ACTION_DOWN ) {
+          downX = event.getX(); downY = event.getY();
+          tracking = true; longPressed = false; dragging = false; touchedView = view;
+          view.postDelayed( beginDrag, longPressTimeout );
+          return true;
+        }
+        if ( action == MotionEvent.ACTION_MOVE && tracking && ! longPressed ) {
+          float dx = event.getX() - downX, dy = event.getY() - downY;
+          if ( dx * dx + dy * dy > slop * slop ) {
+            view.removeCallbacks( beginDrag );
+            tracking = false;
+            return false;
+          }
+        }
+        if ( action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL ) {
+          view.removeCallbacks( beginDrag );
+          boolean click = action == MotionEvent.ACTION_UP && tracking && ! longPressed && ! dragging;
+          tracking = false;
+          if ( view.getParent() != null ) view.getParent().requestDisallowInterceptTouchEvent( false );
+          touchedView = null;
+          dragging = false;
+          if ( click ) view.performClick();
+          return true;
+        }
+        return tracking || longPressed || dragging;
       }
     };
   }

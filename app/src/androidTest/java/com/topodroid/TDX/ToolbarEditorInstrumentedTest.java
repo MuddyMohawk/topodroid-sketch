@@ -5,13 +5,16 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import android.app.UiAutomation;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.SystemClock;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -111,6 +114,38 @@ public class ToolbarEditorInstrumentedTest
   }
 
   @Test
+  public void draggingFilledToolbarSlotSwapsSymbols()
+  {
+    DataHelper data = TopoDroidApp.mData;
+    ToolsetProfile savedDefault = ToolsetRepository.profile( data, ToolsetProfile.DEFAULT_ID );
+    String savedSelection = ToolsetRepository.activeProfileId( data, TDInstance.sid );
+    try {
+      assertTrue( ToolsetRepository.saveProfile( data, ToolsetProfile.freshDefault() ) );
+      assertTrue( ToolsetRepository.selectProfile( data, TDInstance.sid, ToolsetProfile.DEFAULT_ID ) );
+      try ( ActivityScenario< ToolbarEditorActivity > scenario = ActivityScenario.launch( ToolbarEditorActivity.class ) ) {
+        UiDevice device = UiDevice.getInstance( InstrumentationRegistry.getInstrumentation() );
+        UiObject2 wall = device.wait( Until.findObject( By.desc( "wall, slot 1" ) ), 3000 );
+        UiObject2 pit = device.wait( Until.findObject( By.desc( "pit, slot 3" ) ), 3000 );
+        assertNotNull( wall );
+        assertNotNull( pit );
+        Rect wallBounds = wall.getVisibleBounds();
+        Rect pitBounds = pit.getVisibleBounds();
+        Point source = new Point( wallBounds.centerX(), wallBounds.centerY() );
+        Point target = new Point( pitBounds.centerX(), pitBounds.centerY() );
+        longPressDrag( source, target );
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        SystemClock.sleep( 400 );
+        ToolsetProfile stored = ToolsetRepository.profile( data, ToolsetProfile.DEFAULT_ID );
+        assertEquals( SymbolLibrary.PIT, stored.mRows[0][0].mFullThName );
+        assertEquals( SymbolLibrary.WALL, stored.mRows[0][2].mFullThName );
+      }
+    } finally {
+      ToolsetRepository.saveProfile( data, savedDefault );
+      ToolsetRepository.selectProfile( data, TDInstance.sid, savedSelection );
+    }
+  }
+
+  @Test
   public void slotSelectionAndPlacementUpdateExistingViewsInPlace()
   {
     DataHelper data = TopoDroidApp.mData;
@@ -125,16 +160,19 @@ public class ToolbarEditorInstrumentedTest
         scenario.onActivity( activity -> {
           View root = activity.getWindow().getDecorView();
           View slot = findByDescription( root, "wall, slot 1" );
-          View symbol = findByDescription( root, "ceiling channel, ln" );
           View handle = findByDescription( root, "Drag row A" );
           assertNotNull( slot );
-          assertNotNull( symbol );
           assertNotNull( handle );
           slotReference.set( slot );
           rowHandleReference.set( handle );
-          assertTrue( slot.performClick() );
-          assertTrue( symbol.performClick() );
         } );
+        UiDevice device = UiDevice.getInstance( InstrumentationRegistry.getInstrumentation() );
+        UiObject2 slot = device.wait( Until.findObject( By.desc( "wall, slot 1" ) ), 3000 );
+        UiObject2 symbol = device.wait( Until.findObject( By.desc( "ceiling channel, ln" ) ), 3000 );
+        assertNotNull( slot );
+        assertNotNull( symbol );
+        slot.click();
+        symbol.click();
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
         scenario.onActivity( activity -> {
           View root = activity.getWindow().getDecorView();
@@ -186,6 +224,30 @@ public class ToolbarEditorInstrumentedTest
       ToolsetRepository.saveProfile( data, savedDefault );
       ToolsetRepository.selectProfile( data, TDInstance.sid, savedSelection );
     }
+  }
+
+  private static void longPressDrag( Point source, Point target )
+  {
+    UiAutomation automation = InstrumentationRegistry.getInstrumentation().getUiAutomation();
+    long downTime = SystemClock.uptimeMillis();
+    sendPointer( automation, downTime, MotionEvent.ACTION_DOWN, source.x, source.y );
+    SystemClock.sleep( ViewConfiguration.getLongPressTimeout() + 100 );
+    final int steps = 16;
+    for ( int step = 1; step <= steps; ++step ) {
+      float fraction = step / (float)steps;
+      float x = source.x + ( target.x - source.x ) * fraction;
+      float y = source.y + ( target.y - source.y ) * fraction;
+      sendPointer( automation, downTime, MotionEvent.ACTION_MOVE, x, y );
+      SystemClock.sleep( 16 );
+    }
+    sendPointer( automation, downTime, MotionEvent.ACTION_UP, target.x, target.y );
+  }
+
+  private static void sendPointer( UiAutomation automation, long downTime, int action, float x, float y )
+  {
+    MotionEvent event = MotionEvent.obtain( downTime, SystemClock.uptimeMillis(), action, x, y, 0 );
+    assertTrue( automation.injectInputEvent( event, true ) );
+    event.recycle();
   }
 
   private static void writeScreenshotArtifact()
