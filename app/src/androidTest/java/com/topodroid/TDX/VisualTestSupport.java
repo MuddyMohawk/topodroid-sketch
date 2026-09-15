@@ -27,6 +27,8 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Paint.FontMetrics;
 import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.drawable.ColorDrawable;
@@ -796,6 +798,41 @@ final class VisualTestSupport
     assertPresetBarVisible( "Fine", "Smooth", "Straight", "Snap" );
     assertStyleBarVisible( "Thin", "Standard", "Thick" );
     assertManualToolbarVisible( 8 );
+  }
+
+  float[] assertSketchToggleLabelsFit()
+  {
+    final float[] firstPresetMetrics = { -1.0f, -1.0f, -1.0f, -1.0f };
+    runOnMainChecked( "sketch toggle label fit", () -> {
+      int[] bars = { R.id.layout_tool_preset, R.id.layout_tool_style };
+      int[] counts = { TDSetting.getSketchPresetSlotCount(), TDSetting.getSketchStyleSlotCount() };
+      for ( int bar = 0; bar < bars.length; ++bar ) {
+        View view = requireDrawingWindowView( bars[bar], "Sketch toggle bar" );
+        assertTrue( "Sketch toggle bar is not a ViewGroup", view instanceof ViewGroup );
+        ViewGroup group = (ViewGroup)view;
+        for ( int index = 0; index < counts[bar]; ++index ) {
+          View child = group.getChildAt( index );
+          assertTrue( "Sketch toggle is not a TextView", child instanceof TextView );
+          TextView label = (TextView)child;
+          int availableWidth = label.getWidth() - label.getPaddingLeft() - label.getPaddingRight();
+          int availableHeight = label.getHeight() - label.getPaddingTop() - label.getPaddingBottom();
+          Paint paint = label.getPaint();
+          FontMetrics metrics = paint.getFontMetrics();
+          assertTrue( "Sketch toggle label exceeds available width: " + label.getText(),
+            paint.measureText( label.getText().toString() ) <= availableWidth + 1 );
+          assertTrue( "Sketch toggle label exceeds available height: " + label.getText(),
+            metrics.descent - metrics.ascent <= availableHeight + 1 );
+          if ( bar == 0 && index == 0 ) {
+            firstPresetMetrics[0] = label.getTextSize();
+            firstPresetMetrics[1] = availableWidth;
+            firstPresetMetrics[2] = availableHeight;
+            firstPresetMetrics[3] = group.getHeight();
+          }
+        }
+      }
+    } );
+    assertTrue( "Preset text size was not measured", firstPresetMetrics[0] > 0.0f );
+    return firstPresetMetrics;
   }
 
   void configureDrawingToolbarForTest( int rows, float size )

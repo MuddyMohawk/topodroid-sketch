@@ -1,5 +1,7 @@
 package com.topodroid.TDX;
 
+import static org.junit.Assert.assertTrue;
+
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
@@ -35,7 +37,17 @@ public class ScaleReferenceToolbarInstrumentedTest
       support.configureDrawingToolbarForTest( 8, 2.5f );
       support.assertScaleReferenceClearsBottomTools( true );
 
+      support.configureDrawingToolbarForTest( 1, 1.5f );
+      float[] compact = support.assertSketchToggleLabelsFit();
+      support.assertScaleReferenceClearsBottomTools( true );
+
       support.configureDrawingToolbarForTest( 1, 5.0f );
+      float[] expanded = support.assertSketchToggleLabelsFit();
+      assertTrue( "Preset/style text did not grow with available toolbar space: compact="
+          + compact[0] + "px in " + compact[1] + "x" + compact[2] + " (row " + compact[3] + ")"
+          + ", expanded=" + expanded[0] + "px in " + expanded[1] + "x" + expanded[2]
+          + " (row " + expanded[3] + ")",
+        expanded[0] > compact[0] + 1.0f );
       support.assertScaleReferenceClearsBottomTools( true );
 
       support.configureDrawingToolbarForTest( 1, 2.5f );

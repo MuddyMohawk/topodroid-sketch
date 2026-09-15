@@ -95,6 +95,7 @@ import android.os.ParcelFileDescriptor;
 // import java.lang.reflect.Method;
 
 import android.text.TextUtils;
+import android.util.TypedValue;
 
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -621,6 +622,10 @@ public class DrawingWindow extends ItemDrawer
   private LinearLayout mLayoutScale;
   private Button[] mBtnPreset;
   private Button[] mBtnStyle;
+  private static final float SKETCH_TOGGLE_MIN_TEXT_SP = 6.0f;
+  private static final float SKETCH_TOGGLE_DEFAULT_TEXT_SP = 14.0f;
+  private static final float SKETCH_TOGGLE_MAX_TEXT_SP = 18.0f;
+  private static final float SKETCH_TOGGLE_DEFAULT_TOOLBAR_SIZE = 2.5f;
   private int mPendingSketchPreset = 0;
   private int mPendingSketchStyle = 0;
   // private ItemButton[] mBtnRecent;
@@ -3438,8 +3443,7 @@ public class DrawingWindow extends ItemDrawer
     for ( int index = 0; index < slots; ++ index ) {
       final int preset = index + 1;
       Button button = new Button( this );
-      button.setSingleLine( true );
-      button.setEllipsize( TextUtils.TruncateAt.END );
+      configureSketchToggleText( button );
       button.setOnClickListener( new View.OnClickListener() {
         @Override public void onClick( View v ) { requestSketchPresetSelection( preset ); }
       } );
@@ -3460,6 +3464,60 @@ public class DrawingWindow extends ItemDrawer
     button.setTypeface( active ? android.graphics.Typeface.DEFAULT_BOLD : android.graphics.Typeface.DEFAULT );
   }
 
+  private void configureSketchToggleText( final Button button )
+  {
+    button.setSingleLine( true );
+    button.setEllipsize( TextUtils.TruncateAt.END );
+    button.setGravity( Gravity.CENTER );
+    button.setIncludeFontPadding( false );
+    button.setMinWidth( 0 );
+    button.setMinimumWidth( 0 );
+    button.setMinHeight( 0 );
+    button.setMinimumHeight( 0 );
+    int horizontalPadding = Math.max( 2, Math.round( 4 * getResources().getDisplayMetrics().density ) );
+    button.setPadding( horizontalPadding, 0, horizontalPadding, 0 );
+    button.addOnLayoutChangeListener( new View.OnLayoutChangeListener() {
+      @Override public void onLayoutChange( View view, int left, int top, int right, int bottom,
+                                            int oldLeft, int oldTop, int oldRight, int oldBottom ) {
+        fitSketchToggleText( button );
+      }
+    } );
+  }
+
+  private void fitSketchToggleText( Button button )
+  {
+    CharSequence label = button.getText();
+    int availableWidth = button.getWidth() - button.getPaddingLeft() - button.getPaddingRight();
+    int availableHeight = button.getHeight() - button.getPaddingTop() - button.getPaddingBottom();
+    if ( label == null || label.length() == 0 || availableWidth <= 0 || availableHeight <= 0 ) return;
+
+    float scaledDensity = getResources().getDisplayMetrics().scaledDensity;
+    float low = SKETCH_TOGGLE_MIN_TEXT_SP * scaledDensity;
+    float preferredSp = SKETCH_TOGGLE_DEFAULT_TEXT_SP * TDSetting.mItemButtonSize
+                      / SKETCH_TOGGLE_DEFAULT_TOOLBAR_SIZE;
+    preferredSp = Math.max( SKETCH_TOGGLE_MIN_TEXT_SP,
+      Math.min( SKETCH_TOGGLE_MAX_TEXT_SP, preferredSp ) );
+    float high = preferredSp * scaledDensity;
+    float best = low;
+    Paint paint = new Paint( button.getPaint() );
+    for ( int attempt = 0; attempt < 12; ++attempt ) {
+      float candidate = ( low + high ) * 0.5f;
+      paint.setTextSize( candidate );
+      FontMetrics metrics = paint.getFontMetrics();
+      boolean fits = paint.measureText( label.toString() ) <= availableWidth
+                  && metrics.descent - metrics.ascent <= availableHeight;
+      if ( fits ) {
+        best = candidate;
+        low = candidate;
+      } else {
+        high = candidate;
+      }
+    }
+    if ( Math.abs( button.getTextSize() - best ) >= 0.5f ) {
+      button.setTextSize( TypedValue.COMPLEX_UNIT_PX, best );
+    }
+  }
+
   private void updateSketchPresetButton( Button button, int preset, boolean active )
   {
     if ( button == null ) return;
@@ -3467,6 +3525,7 @@ public class DrawingWindow extends ItemDrawer
     button.setText( name );
     button.setContentDescription( getString( R.string.desc_preset, preset, name ) );
     styleSketchToggle( button, active );
+    fitSketchToggleText( button );
   }
 
   private void updateSketchPresetButtons()
@@ -3528,8 +3587,7 @@ public class DrawingWindow extends ItemDrawer
     for ( int index = 0; index < slots; ++ index ) {
       final int style = index + 1;
       Button button = new Button( this );
-      button.setSingleLine( true );
-      button.setEllipsize( TextUtils.TruncateAt.END );
+      configureSketchToggleText( button );
       button.setOnClickListener( new View.OnClickListener() {
         @Override public void onClick( View v ) { requestSketchStyleSelection( style ); }
       } );
@@ -3550,6 +3608,7 @@ public class DrawingWindow extends ItemDrawer
     button.setText( name );
     button.setContentDescription( getString( R.string.desc_style, style, name ) );
     styleSketchToggle( button, active );
+    fitSketchToggleText( button );
   }
 
   private void updateSketchStyleButtons()
