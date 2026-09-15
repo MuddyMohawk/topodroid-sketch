@@ -45,7 +45,7 @@
   <dimen name="toolbar_editor_inset">8dp</dimen>
   <dimen name="toolbar_assignment_stroke">1dp</dimen>
   <dimen name="toolbar_drop_stroke">2dp</dimen>
-  <dimen name="toolbar_selection_stroke">4dp</dimen>
+  <dimen name="toolbar_selection_stroke">3dp</dimen>
 
   <string name="dimxp" translatable="false">1.0f</string>
   <string name="dimxl" translatable="false">1.3f</string>
