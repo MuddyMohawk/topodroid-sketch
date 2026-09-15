@@ -39,6 +39,14 @@
   <!-- dimen name="divider">5dp</dimen -->
   <dimen name="dividerbig">10dp</dimen>
 
+  <!-- Shared minimal-grid geometry for the sketch toolbars and toolbar editor. -->
+  <dimen name="toolbar_grid_gap">1dp</dimen>
+  <dimen name="toolbar_grid_radius">0dp</dimen>
+  <dimen name="toolbar_editor_inset">8dp</dimen>
+  <dimen name="toolbar_assignment_stroke">1dp</dimen>
+  <dimen name="toolbar_drop_stroke">2dp</dimen>
+  <dimen name="toolbar_selection_stroke">4dp</dimen>
+
   <string name="dimxp" translatable="false">1.0f</string>
   <string name="dimxl" translatable="false">1.3f</string>
   <string name="dimyl" translatable="false">1.9f</string>

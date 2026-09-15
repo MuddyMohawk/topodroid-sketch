@@ -48,16 +48,16 @@ public class ToolbarEditorActivity extends Activity
 {
   static final String EXTRA_FOCUS_QUICK = "focus_quick";
 
-  private static final int CHROME = Color.rgb( 32, 38, 43 );
-  private static final int CHROME_2 = Color.rgb( 42, 50, 56 );
-  private static final int CHROME_3 = Color.rgb( 52, 61, 68 );
-  private static final int LINE = Color.rgb( 61, 71, 78 );
-  private static final int INK = Color.WHITE;
-  private static final int DIM = INK;
-  private static final int ACCENT = Color.rgb( 82, 192, 212 );
-  private static final int AMBER = Color.rgb( 229, 160, 87 );
-  private static final int QUICK = Color.rgb( 201, 138, 224 );
-  private static final int DANGER = Color.rgb( 226, 120, 110 );
+  private int CHROME;
+  private int CHROME_2;
+  private int CHROME_3;
+  private int LINE;
+  private int INK;
+  private int DIM;
+  private int ACCENT;
+  private int AMBER;
+  private int QUICK;
+  private int DANGER;
 
   private static final int DRAG_SYMBOL = 1;
   private static final int DRAG_SLOT = 2;
@@ -104,6 +104,7 @@ public class ToolbarEditorActivity extends Activity
   {
     super.onCreate( state );
     getWindow().getDecorView().setSystemUiVisibility( TDSetting.mUiVisibility );
+    loadVisualStyle();
     mData = TopoDroidApp.mData;
     mSaveHandler = new Handler( Looper.getMainLooper() );
     mSurveyId = TDInstance.sid;
@@ -117,6 +118,20 @@ public class ToolbarEditorActivity extends Activity
       if ( mArmedSlot < 0 ) mArmedSlot = 0;
       mQuickRow.post( new Runnable() { @Override public void run() { refreshRows(); } } );
     }
+  }
+
+  private void loadVisualStyle()
+  {
+    CHROME = ToolbarVisualStyle.color( this, R.color.toolbar_dock );
+    CHROME_2 = ToolbarVisualStyle.color( this, R.color.toolbar_surface );
+    CHROME_3 = ToolbarVisualStyle.color( this, R.color.toolbar_cell );
+    LINE = ToolbarVisualStyle.color( this, R.color.toolbar_grid_line );
+    INK = ToolbarVisualStyle.color( this, R.color.toolbar_ink );
+    DIM = ToolbarVisualStyle.color( this, R.color.toolbar_dim );
+    ACCENT = ToolbarVisualStyle.color( this, R.color.toolbar_accent );
+    AMBER = ToolbarVisualStyle.color( this, R.color.toolbar_amber );
+    QUICK = ToolbarVisualStyle.color( this, R.color.toolbar_quick );
+    DANGER = ToolbarVisualStyle.color( this, R.color.toolbar_danger );
   }
 
   @Override public void onBackPressed() { requestExit(); }
@@ -139,8 +154,8 @@ public class ToolbarEditorActivity extends Activity
     root.setBackgroundColor( CHROME );
     root.addView( buildAppBar(), lpMatch( dp( 56 ) ) );
     root.addView( buildSearchBar(), lpMatch( dp( 56 ) ) );
-    mCategoryBar = new ToolsetFlowLayout( this, dp( 5 ) );
-    mCategoryBar.setPadding( dp( 10 ), dp( 6 ), dp( 10 ), dp( 6 ) );
+    mCategoryBar = new ToolsetFlowLayout( this, gridGap() );
+    mCategoryBar.setPadding( editorInset(), gridGap(), editorInset(), gridGap() );
     for ( String category : ToolsetCategory.orderedIds() ) {
       final String id = category;
       TextView chip = chip( categoryIcon( id ) + "  " + ToolsetCategory.label( id ) );
@@ -175,7 +190,7 @@ public class ToolbarEditorActivity extends Activity
   {
     LinearLayout bar = horizontal();
     bar.setGravity( Gravity.CENTER_VERTICAL );
-    bar.setPadding( dp( 7 ), dp( 5 ), dp( 7 ), dp( 5 ) );
+    bar.setPadding( editorInset(), dp( 5 ), editorInset(), dp( 5 ) );
     bar.setBackgroundColor( CHROME_2 );
     TextView back = action( "‹", DIM );
     back.setTextSize( 26 );
@@ -191,7 +206,7 @@ public class ToolbarEditorActivity extends Activity
     mProfileButton = action( "Default ▾", ACCENT );
     mProfileButton.setMaxWidth( dp( 120 ) );
     mProfileButton.setEllipsize( TextUtils.TruncateAt.END );
-    mProfileButton.setBackground( rounded( Color.argb( 36, 82, 192, 212 ), ACCENT, 1, 4 ) );
+    mProfileButton.setBackground( rounded( Color.argb( 36, 82, 192, 212 ), ACCENT, 1, 1 ) );
     mProfileButton.setOnClickListener( new View.OnClickListener() { @Override public void onClick( View view ) { showProfileMenu(); } } );
     bar.addView( mProfileButton, new LinearLayout.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT, dp( 40 ) ) );
     mUndoButton = action( "↶", INK );
@@ -208,7 +223,7 @@ public class ToolbarEditorActivity extends Activity
     TextView done = action( "Done", Color.rgb( 8, 34, 42 ) );
     done.setTypeface( Typeface.DEFAULT_BOLD );
     done.setGravity( Gravity.CENTER );
-    done.setBackground( rounded( ACCENT, ACCENT, 0, 4 ) );
+    done.setBackground( rounded( ACCENT, ACCENT, 0, 1 ) );
     done.setOnClickListener( new View.OnClickListener() { @Override public void onClick( View view ) { requestExit(); } } );
     bar.addView( done, new LinearLayout.LayoutParams( dp( 66 ), dp( 40 ) ) );
     return bar;
@@ -218,14 +233,14 @@ public class ToolbarEditorActivity extends Activity
   {
     LinearLayout bar = horizontal();
     bar.setGravity( Gravity.CENTER_VERTICAL );
-    bar.setPadding( dp( 10 ), dp( 6 ), dp( 10 ), dp( 6 ) );
+    bar.setPadding( editorInset(), dp( 6 ), editorInset(), dp( 6 ) );
     mSearch = new EditText( this );
     mSearch.setSingleLine( true );
     mSearch.setTextColor( INK );
     mSearch.setHintTextColor( DIM );
     mSearch.setTextSize( 16 );
     mSearch.setPadding( dp( 10 ), 0, dp( 10 ), 0 );
-    mSearch.setBackground( rounded( Color.argb( 72, 0, 0, 0 ), Color.TRANSPARENT, 0, 5 ) );
+    mSearch.setBackground( rounded( CHROME_2, LINE, 1, 1 ) );
     mSearch.setHint( "Search " + mCatalog.size() + " symbols" );
     mSearch.setOnTouchListener( new View.OnTouchListener() {
       @Override public boolean onTouch( View view, MotionEvent event ) {
@@ -261,8 +276,8 @@ public class ToolbarEditorActivity extends Activity
         @Override public void onClick( View view ) { mTypeFilter = type; refreshBrowser(); }
       } );
       mTypeButtons.put( type, filter );
-      LinearLayout.LayoutParams params = new LinearLayout.LayoutParams( dp( 42 ), dp( 36 ) );
-      params.setMarginStart( dp( 3 ) );
+      LinearLayout.LayoutParams params = new LinearLayout.LayoutParams( dp( 42 ), ViewGroup.LayoutParams.MATCH_PARENT );
+      params.setMarginStart( gridGap() );
       bar.addView( filter, params );
     }
     return bar;
@@ -274,12 +289,12 @@ public class ToolbarEditorActivity extends Activity
     panel.setBackgroundColor( Color.argb( 44, 0, 0, 0 ) );
     LinearLayout head = horizontal();
     head.setGravity( Gravity.CENTER_VERTICAL );
-    head.setPadding( dp( 10 ), dp( 4 ), dp( 10 ), dp( 4 ) );
+    head.setPadding( editorInset(), dp( 4 ), editorInset(), dp( 4 ) );
     TextView heading = label( "Toolbar rows", 16, INK );
     heading.setTypeface( Typeface.DEFAULT_BOLD );
     head.addView( heading, new LinearLayout.LayoutParams( 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f ) );
     LinearLayout stepper = horizontal();
-    stepper.setBackground( rounded( Color.TRANSPARENT, LINE, 1, 4 ) );
+    stepper.setBackground( rounded( CHROME_2, LINE, 1, 1 ) );
     TextView minus = action( "−", INK );
     minus.setGravity( Gravity.CENTER );
     minus.setOnClickListener( new View.OnClickListener() { @Override public void onClick( View view ) { changeSlotCount( -1 ); } } );
@@ -295,10 +310,10 @@ public class ToolbarEditorActivity extends Activity
     head.addView( stepper );
     mClearSlot = action( "Clear slot", DIM );
     mClearSlot.setGravity( Gravity.CENTER );
-    mClearSlot.setBackground( rounded( Color.TRANSPARENT, LINE, 1, 4 ) );
+    mClearSlot.setBackground( rounded( CHROME_2, LINE, 1, 1 ) );
     mClearSlot.setOnClickListener( new View.OnClickListener() { @Override public void onClick( View view ) { clearArmedSlot(); } } );
     LinearLayout.LayoutParams clearParams = new LinearLayout.LayoutParams( dp( 104 ), dp( 40 ) );
-    clearParams.setMarginStart( dp( 7 ) );
+    clearParams.setMarginStart( gridGap() );
     head.addView( mClearSlot, clearParams );
     panel.addView( head, lpMatch( dp( 52 ) ) );
     panel.addView( zoneHeading( "ENABLED · DRAG ≡ TO REORDER · TAP SLOT TO SELECT · TAP OR DRAG SYMBOLS", INK ), lpMatch( dp( 28 ) ) );
@@ -323,9 +338,9 @@ public class ToolbarEditorActivity extends Activity
     panel.addView( zoneHeading( "QUICK SWITCHER", QUICK ), lpMatch( dp( 28 ) ) );
     mQuickRow = horizontal();
     mQuickRow.setGravity( Gravity.CENTER_VERTICAL );
-    mQuickRow.setPadding( dp( 8 ), dp( 4 ), dp( 8 ), dp( 4 ) );
-    mQuickRow.setBackgroundColor( Color.argb( 28, 201, 138, 224 ) );
-    panel.addView( mQuickRow, lpMatch( dp( 64 ) ) );
+    mQuickRow.setPadding( editorInset(), gridGap(), editorInset(), gridGap() );
+    mQuickRow.setBackgroundColor( CHROME_2 );
+    panel.addView( mQuickRow, lpMatch( dp( 56 ) ) );
     return panel;
   }
 
@@ -350,15 +365,15 @@ public class ToolbarEditorActivity extends Activity
     for ( String id : ToolsetCategory.orderedIds() ) {
       TextView chip = mCategoryButtons.get( id );
       boolean selected = id.equals( mCategory ) && query.length() == 0;
-      chip.setTextColor( selected ? Color.rgb( 8, 34, 42 ) : DIM );
+      chip.setTextColor( selected ? ToolbarVisualStyle.color( this, R.color.toolbar_active_ink ) : DIM );
       chip.setTypeface( selected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT );
-      chip.setBackground( rounded( selected ? ACCENT : Color.TRANSPARENT, selected ? ACCENT : LINE, 1, 15 ) );
+      chip.setBackground( rounded( selected ? ACCENT : CHROME_2, selected ? ACCENT : LINE, 1, 1 ) );
     }
     for ( Integer type : mTypeButtons.keySet() ) {
       TextView button = mTypeButtons.get( type );
       boolean selected = type == mTypeFilter;
       button.setTextColor( selected ? INK : DIM );
-      button.setBackground( rounded( selected ? CHROME_3 : Color.TRANSPARENT, LINE, 1, 3 ) );
+      button.setBackground( rounded( selected ? CHROME_3 : CHROME_2, LINE, 1, 1 ) );
     }
   }
 
@@ -441,12 +456,14 @@ public class ToolbarEditorActivity extends Activity
   {
     mQuickRow.removeAllViews();
     TextView tag = rowTag( "Q", QUICK, false );
-    mQuickRow.addView( tag, new LinearLayout.LayoutParams( dp( 42 ), dp( 42 ) ) );
+    mQuickRow.addView( tag, new LinearLayout.LayoutParams( dp( 42 ), dp( 54 ) ) );
     HorizontalScrollView scroll = horizontalScroller();
     LinearLayout slots = horizontal();
     for ( int slot = 0; slot < ToolsetProfile.QUICK_CAPACITY; ++slot ) slots.addView( slotView( -1, slot, true ), slotParams( true ) );
     scroll.addView( slots );
-    mQuickRow.addView( scroll, new LinearLayout.LayoutParams( 0, dp( 58 ), 1.0f ) );
+    LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams( 0, dp( 54 ), 1.0f );
+    scrollParams.setMarginStart( gridGap() );
+    mQuickRow.addView( scroll, scrollParams );
   }
 
   private void mutate( Mutation mutation )
@@ -916,7 +933,7 @@ public class ToolbarEditorActivity extends Activity
 
   private LinearLayout zoneHeading( String text, int color )
   {
-    LinearLayout row = horizontal(); row.setGravity( Gravity.CENTER_VERTICAL ); row.setPadding( dp( 10 ), 0, dp( 10 ), 0 );
+    LinearLayout row = horizontal(); row.setGravity( Gravity.CENTER_VERTICAL ); row.setPadding( editorInset(), 0, editorInset(), 0 );
     TextView label = label( text, 12, color ); label.setTypeface( Typeface.MONOSPACE, Typeface.BOLD ); row.addView( label );
     View line = new View( this ); line.setBackgroundColor( LINE ); LinearLayout.LayoutParams params = new LinearLayout.LayoutParams( 0, 1, 1.0f ); params.setMarginStart( dp( 8 ) ); row.addView( line, params );
     return row;
@@ -924,15 +941,15 @@ public class ToolbarEditorActivity extends Activity
 
   private TextView rowTag( String text, int color, boolean spare )
   {
-    TextView tag = label( text, 15, spare ? DIM : Color.rgb( 13, 21, 23 ) );
+    TextView tag = label( text, 15, spare ? DIM : ToolbarVisualStyle.color( this, R.color.toolbar_active_ink ) );
     tag.setTypeface( Typeface.MONOSPACE, Typeface.BOLD ); tag.setGravity( Gravity.CENTER );
-    tag.setBackground( rounded( spare ? Color.TRANSPARENT : color, spare ? LINE : color, 1, 4 ) );
+    tag.setBackground( rounded( spare ? CHROME_2 : color, spare ? LINE : color, 1, 1 ) );
     return tag;
   }
 
   private TextView chip( String text )
   {
-    TextView chip = label( text, 14, DIM ); chip.setGravity( Gravity.CENTER ); chip.setPadding( dp( 10 ), dp( 6 ), dp( 10 ), dp( 6 ) ); return chip;
+    TextView chip = label( text, 14, DIM ); chip.setGravity( Gravity.CENTER ); chip.setMinHeight( dp( 38 ) ); chip.setPadding( dp( 10 ), dp( 6 ), dp( 10 ), dp( 6 ) ); return chip;
   }
 
   private TextView action( String text, int color )
@@ -950,15 +967,20 @@ public class ToolbarEditorActivity extends Activity
   private LinearLayout.LayoutParams lpMatch( int height ) { return new LinearLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, height ); }
   private LinearLayout.LayoutParams slotParams( boolean quick )
   {
-    int reserved = dp( quick ? 58 : 98 );
-    int gap = dp( 5 );
+    int gap = gridGap();
+    int reserved = quick
+      ? 2 * editorInset() + dp( 42 ) + gap
+      : 2 * editorInset() + dp( 30 ) + dp( 42 ) + 2 * gap;
     int cells = quick ? ToolsetProfile.QUICK_CAPACITY : ToolsetProfile.DEFAULT_VISIBLE_SLOTS;
-    int width = Math.max( dp( 54 ), ( getResources().getDisplayMetrics().widthPixels - reserved ) / cells - gap );
+    int width = Math.max( dp( 54 ),
+      ( getResources().getDisplayMetrics().widthPixels - reserved - gap * ( cells - 1 ) ) / cells );
     LinearLayout.LayoutParams params = new LinearLayout.LayoutParams( width, dp( 54 ) );
     params.setMarginEnd( gap );
     return params;
   }
   private int dp( int value ) { return Math.round( value * getResources().getDisplayMetrics().density ); }
+  private int gridGap() { return ToolbarVisualStyle.gap( this ); }
+  private int editorInset() { return ToolbarVisualStyle.inset( this ); }
 
   private HorizontalScrollView horizontalScroller()
   {
@@ -1041,14 +1063,14 @@ public class ToolbarEditorActivity extends Activity
     {
       BrowserItem item = mItems.get( position );
       if ( item.mHeader != null ) {
-        TextView header = label( item.mHeader, 15, INK ); header.setTypeface( Typeface.DEFAULT_BOLD ); header.setPadding( dp( 10 ), dp( 7 ), dp( 10 ), dp( 6 ) );
+        TextView header = label( item.mHeader, 15, INK ); header.setTypeface( Typeface.DEFAULT_BOLD ); header.setPadding( editorInset(), dp( 7 ), editorInset(), dp( 6 ) );
         if ( item.mEntries == null && item.mHeader.contains( "tap to clear" ) ) header.setOnClickListener( new View.OnClickListener() { @Override public void onClick( View view ) { mSearch.setText( "" ); } } );
         return header;
       }
-      LinearLayout row = horizontal(); row.setPadding( dp( 9 ), dp( 3 ), dp( 9 ), dp( 3 ) );
+      LinearLayout row = horizontal(); row.setPadding( editorInset(), gridGap(), editorInset(), 0 );
       int columns = getResources().getConfiguration().smallestScreenWidthDp >= 600 ? 6 : ( getResources().getDisplayMetrics().widthPixels / getResources().getDisplayMetrics().density >= 390 ? 4 : 3 );
       for ( int k = 0; k < columns; ++k ) {
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams( 0, dp( 78 ), 1.0f ); if ( k > 0 ) params.setMarginStart( dp( 5 ) );
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams( 0, dp( 78 ), 1.0f ); if ( k > 0 ) params.setMarginStart( gridGap() );
         if ( k < item.mEntries.size() ) row.addView( symbolTile( item.mEntries.get( k ) ), params ); else row.addView( new View( ToolbarEditorActivity.this ), params );
       }
       return row;
@@ -1066,23 +1088,28 @@ public class ToolbarEditorActivity extends Activity
     @Override public View getView( final int position, View recycled, ViewGroup parent )
     {
       final int rowIndex = mRows.get( position );
-      LinearLayout row = horizontal(); row.setGravity( Gravity.CENTER_VERTICAL ); row.setPadding( dp( 7 ), dp( 3 ), dp( 7 ), dp( 3 ) );
-      row.setAlpha( 1.0f ); if ( mCanvas ) row.setBackgroundColor( Color.argb( 14, 82, 192, 212 ) );
+      LinearLayout row = horizontal(); row.setGravity( Gravity.CENTER_VERTICAL ); row.setPadding( editorInset(), gridGap(), editorInset(), 0 );
+      row.setAlpha( 1.0f ); row.setBackgroundColor( CHROME );
       TextView handle = label( "≡", 22, mCanvas ? ACCENT : DIM ); handle.setGravity( Gravity.CENTER ); handle.setContentDescription( "Drag row " + ToolsetProfile.rowName( rowIndex ) ); handle.setOnTouchListener( dragTouch( new DragPayload( rowIndex ) ) );
-      row.addView( handle, new LinearLayout.LayoutParams( dp( 30 ), dp( 56 ) ) );
+      row.addView( handle, new LinearLayout.LayoutParams( dp( 30 ), dp( 54 ) ) );
       TextView tag = rowTag( ToolsetProfile.rowName( rowIndex ), ACCENT, ! mCanvas ); tag.setOnClickListener( new View.OnClickListener() { @Override public void onClick( View view ) { toggleRow( rowIndex ); } } );
-      row.addView( tag, new LinearLayout.LayoutParams( dp( 42 ), dp( 42 ) ) );
-      HorizontalScrollView scroll = horizontalScroller(); LinearLayout slots = horizontal(); slots.setPadding( dp( 8 ), 0, 0, 0 );
+      LinearLayout.LayoutParams tagParams = new LinearLayout.LayoutParams( dp( 42 ), dp( 54 ) );
+      tagParams.setMarginStart( gridGap() );
+      row.addView( tag, tagParams );
+      HorizontalScrollView scroll = horizontalScroller(); LinearLayout slots = horizontal();
       for ( int slot = 0; slot < mProfile.mVisibleSlots; ++slot ) slots.addView( slotView( rowIndex, slot, false ), slotParams( false ) );
-      scroll.addView( slots ); row.addView( scroll, new LinearLayout.LayoutParams( 0, dp( 58 ), 1.0f ) );
+      scroll.addView( slots );
+      LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams( 0, dp( 54 ), 1.0f );
+      scrollParams.setMarginStart( gridGap() );
+      row.addView( scroll, scrollParams );
       row.setOnDragListener( new View.OnDragListener() {
         @Override public boolean onDrag( View view, DragEvent event ) {
           if ( event.getAction() == DragEvent.ACTION_DRAG_ENTERED ) {
             view.setBackgroundColor( Color.argb( 45, 82, 192, 212 ) );
           } else if ( event.getAction() == DragEvent.ACTION_DRAG_EXITED || event.getAction() == DragEvent.ACTION_DRAG_ENDED ) {
-            view.setBackgroundColor( mCanvas ? Color.argb( 14, 82, 192, 212 ) : Color.TRANSPARENT );
+            view.setBackgroundColor( CHROME );
           } else if ( event.getAction() == DragEvent.ACTION_DROP && event.getLocalState() instanceof DragPayload ) {
-            view.setBackgroundColor( mCanvas ? Color.argb( 14, 82, 192, 212 ) : Color.TRANSPARENT );
+            view.setBackgroundColor( CHROME );
             dropOnRow( (DragPayload)event.getLocalState(), rowIndex, position, mCanvas );
           }
           return true;
@@ -1101,7 +1128,7 @@ public class ToolbarEditorActivity extends Activity
 
   private void bindSymbolTile( final FrameLayout tile, final ToolsetCatalog.Entry entry )
   {
-    tile.removeAllViews(); tile.setTag( entry ); tile.setBackground( rounded( CHROME_3, Color.TRANSPARENT, 0, 5 ) ); tile.setContentDescription( entry.mSymbol.getName() + ", " + entry.typeMark() );
+    tile.removeAllViews(); tile.setTag( entry ); tile.setBackground( ToolbarVisualStyle.cell( this, R.color.toolbar_cell ) ); tile.setContentDescription( entry.mSymbol.getName() + ", " + entry.typeMark() );
     LinearLayout content = vertical(); content.setGravity( Gravity.CENTER );
     if ( entry.isQuickSwitcher() ) {
       TextView preview = quickSwitcherPreview( 24 );
@@ -1128,7 +1155,8 @@ public class ToolbarEditorActivity extends Activity
       String badgeText = rows == 1 ? ToolsetProfile.rowName( single.mRow ) + ( single.mSlot + 1 ) : "×" + rows;
       TextView badge = badge( badgeText, rows == 1 ? AMBER : ACCENT ); badge.setOnClickListener( new View.OnClickListener() { @Override public void onClick( View view ) { jumpToAssignments( entry, false ); } } );
       tile.addView( badge, badgeParams( 0 ) );
-      if ( rows == 1 ) tile.setBackground( rounded( CHROME_3, Color.argb( 150, 229, 160, 87 ), 1, 5 ) );
+      if ( rows == 1 ) tile.setBackground( ToolbarVisualStyle.outlinedCell( this,
+        R.color.toolbar_selected_tint, R.color.toolbar_amber, R.dimen.toolbar_assignment_stroke ) );
     }
     if ( quick ) {
       TextView q = badge( "Q", QUICK ); q.setOnClickListener( new View.OnClickListener() { @Override public void onClick( View view ) { jumpToAssignments( entry, true ); } } );
@@ -1156,15 +1184,15 @@ public class ToolbarEditorActivity extends Activity
 
   private TextView badge( String text, int color )
   {
-    TextView badge = label( text, 12, Color.rgb( 28, 20, 10 ) ); badge.setTypeface( Typeface.MONOSPACE, Typeface.BOLD ); badge.setGravity( Gravity.CENTER ); badge.setMinWidth( dp( 34 ) ); badge.setPadding( dp( 6 ), 0, dp( 6 ), 0 ); badge.setBackground( rounded( color, CHROME, 1, 4 ) ); badge.setClickable( true ); return badge;
+    TextView badge = label( text, 12, ToolbarVisualStyle.color( this, R.color.toolbar_active_ink ) ); badge.setTypeface( Typeface.MONOSPACE, Typeface.BOLD ); badge.setGravity( Gravity.CENTER ); badge.setMinWidth( dp( 34 ) ); badge.setPadding( dp( 6 ), 0, dp( 6 ), 0 ); badge.setBackground( rounded( color, CHROME, 1, 1 ) ); badge.setClickable( true ); return badge;
   }
 
   private TextView quickSwitcherPreview( int textSize )
   {
-    TextView preview = label( "Q", textSize, Color.rgb( 36, 16, 44 ) );
+    TextView preview = label( "Q", textSize, ToolbarVisualStyle.color( this, R.color.toolbar_quick_ink ) );
     preview.setTypeface( Typeface.DEFAULT_BOLD );
     preview.setGravity( Gravity.CENTER );
-    preview.setBackground( rounded( QUICK, QUICK, 0, 5 ) );
+    preview.setBackground( rounded( QUICK, QUICK, 0, 1 ) );
     preview.setClickable( false );
     return preview;
   }
@@ -1179,7 +1207,7 @@ public class ToolbarEditorActivity extends Activity
     final int mRow, mSlot; final boolean mQuick; boolean mFilled, mArmed, mDropping;
     ToolsetSlotView( ToolsetProfile.Slot value, int row, int slot, boolean quick )
     {
-      super( ToolbarEditorActivity.this ); mRow = row; mSlot = slot; mQuick = quick; setPadding( dp( 2 ), dp( 2 ), dp( 2 ), dp( 2 ) );
+      super( ToolbarEditorActivity.this ); mRow = row; mSlot = slot; mQuick = quick; setPadding( gridGap(), gridGap(), gridGap(), gridGap() );
       mArmed = mArmedSlot == slot && mArmedQuick == quick && ( quick || mArmedRow == row );
       bindValue( value );
     }
@@ -1203,13 +1231,17 @@ public class ToolbarEditorActivity extends Activity
     void setDropping( boolean dropping )
     {
       mDropping = dropping;
-      if ( dropping ) setBackground( rounded( Color.argb( 42, 82, 192, 212 ), ACCENT, 2, 5 ) ); else restoreBackground();
+      if ( dropping ) setBackground( ToolbarVisualStyle.dropCell( ToolbarEditorActivity.this ) ); else restoreBackground();
     }
     private void restoreBackground()
     {
-      GradientDrawable background = rounded( mFilled ? CHROME_3 : Color.TRANSPARENT, mArmed ? AMBER : LINE, mArmed ? 2 : 1, 5 );
-      if ( ! mFilled && ! mArmed ) background.setStroke( dp( 1 ), LINE, dp( 3 ), dp( 3 ) );
-      setBackground( background );
+      if ( mArmed ) {
+        setBackground( ToolbarVisualStyle.symbolCell( ToolbarEditorActivity.this, true ) );
+      } else if ( mFilled ) {
+        setBackground( ToolbarVisualStyle.cell( ToolbarEditorActivity.this, R.color.toolbar_cell ) );
+      } else {
+        setBackground( ToolbarVisualStyle.dashedCell( ToolbarEditorActivity.this, R.color.toolbar_dock ) );
+      }
     }
   }
 

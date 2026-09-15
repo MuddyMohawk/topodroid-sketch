@@ -616,6 +616,7 @@ public class DrawingWindow extends ItemDrawer
   private LinearLayout mLayoutToolsA;
   private LinearLayout mLayoutToolsPreset;
   private LinearLayout mLayoutToolsStyle;
+  private View mLayoutToolsGroupDivider;
   private LinearLayout mLayoutScale;
   private Button[] mBtnPreset;
   private Button[] mBtnStyle;
@@ -2708,6 +2709,17 @@ public class DrawingWindow extends ItemDrawer
   {
     float scale = 8 * TDSetting.mItemButtonSize;
     int rowHeight = (int)(scale * Float.parseFloat( getResources().getString( R.string.dimyl ) ) ) + 8; // 4 pxl on both sides
+    mLayoutTools.setBackgroundColor( ToolbarVisualStyle.color( this, R.color.toolbar_dock ) );
+    styleToolbarRow( mLayoutToolsP, true );
+    styleToolbarRow( mLayoutToolsL, true );
+    styleToolbarRow( mLayoutToolsA, true );
+    styleToolbarRow( mLayoutToolsPreset, true );
+    styleToolbarRow( mLayoutToolsStyle, false );
+    if ( mLayoutToolsGroupDivider != null ) {
+      mLayoutToolsGroupDivider.setBackgroundColor( ToolbarVisualStyle.color( this, R.color.toolbar_grid_line ) );
+    }
+    if ( mLayoutScale != null ) mLayoutScale.setBackgroundColor( ToolbarVisualStyle.color( this, R.color.toolbar_dock ) );
+    if ( mScaleBar != null ) mScaleBar.setBackgroundColor( ToolbarVisualStyle.color( this, R.color.toolbar_dock ) );
     setToolbarLayoutHeight( mLayoutToolsP, rowHeight );
     setToolbarLayoutHeight( mLayoutToolsL, rowHeight );
     setToolbarLayoutHeight( mLayoutToolsA, rowHeight );
@@ -2721,13 +2733,19 @@ public class DrawingWindow extends ItemDrawer
     mLayoutToolsA.removeAllViews( );
     int slots = getToolbarSlotCount();
     for ( int k = 0; k<slots; ++k ) {
-      mLayoutToolsP.addView( mBtnRecentP[k], makeToolbarButtonParams() );
-      mLayoutToolsL.addView( mBtnRecentL[k], makeToolbarButtonParams() );
-      mLayoutToolsA.addView( mBtnRecentA[k], makeToolbarButtonParams() );
+      styleToolbarSymbolButton( mBtnRecentP[k], false );
+      styleToolbarSymbolButton( mBtnRecentL[k], false );
+      styleToolbarSymbolButton( mBtnRecentA[k], false );
+      mLayoutToolsP.addView( mBtnRecentP[k], makeToolbarSymbolButtonParams() );
+      mLayoutToolsL.addView( mBtnRecentL[k], makeToolbarSymbolButtonParams() );
+      mLayoutToolsA.addView( mBtnRecentA[k], makeToolbarSymbolButtonParams() );
     }
-    mLayoutToolsP.addView( mBtnRecentP[NR_RECENT], makeToolbarButtonParams() );
-    mLayoutToolsL.addView( mBtnRecentL[NR_RECENT], makeToolbarButtonParams() );
-    mLayoutToolsA.addView( mBtnRecentA[NR_RECENT], makeToolbarButtonParams() );
+    styleToolbarCell( mBtnRecentP[NR_RECENT] );
+    styleToolbarCell( mBtnRecentL[NR_RECENT] );
+    styleToolbarCell( mBtnRecentA[NR_RECENT] );
+    mLayoutToolsP.addView( mBtnRecentP[NR_RECENT], makeToolbarSymbolButtonParams() );
+    mLayoutToolsL.addView( mBtnRecentL[NR_RECENT], makeToolbarSymbolButtonParams() );
+    mLayoutToolsA.addView( mBtnRecentA[NR_RECENT], makeToolbarSymbolButtonParams() );
 
     if ( isManualToolbar() ) {
       rebuildManualToolbarRows( rowHeight );
@@ -2743,6 +2761,25 @@ public class DrawingWindow extends ItemDrawer
     }
   }
 
+  private void styleToolbarRow( LinearLayout layout, boolean bottomDivider )
+  {
+    if ( layout == null ) return;
+    layout.setBackgroundColor( ToolbarVisualStyle.color( this, R.color.toolbar_grid_line ) );
+    layout.setPadding( 0, 0, 0, bottomDivider ? ToolbarVisualStyle.gap( this ) : 0 );
+  }
+
+  private void styleToolbarCell( View view )
+  {
+    if ( view != null ) view.setBackground( ToolbarVisualStyle.cell( this, R.color.toolbar_dock ) );
+  }
+
+  private void styleToolbarSymbolButton( ItemButton button, boolean selected )
+  {
+    if ( button != null ) button.setBackground( selected
+      ? ToolbarVisualStyle.symbolCell( this, true )
+      : ToolbarVisualStyle.cell( this, R.color.toolbar_dock ) );
+  }
+
   private void setToolbarLayoutHeight( LinearLayout layout, int rowHeight )
   {
     if ( layout == null ) return;
@@ -2751,10 +2788,18 @@ public class DrawingWindow extends ItemDrawer
     layout.setLayoutParams( lp0 );
   }
 
-  private LinearLayout.LayoutParams makeToolbarButtonParams()
+  private LinearLayout.LayoutParams makeToolbarButtonParams( int index )
   {
-    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams( 0, LinearLayout.LayoutParams.WRAP_CONTENT );
-    lp.setMargins( 0, 0, 0, 0 );
+    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams( 0, LinearLayout.LayoutParams.MATCH_PARENT );
+    lp.setMargins( index > 0 ? ToolbarVisualStyle.gap( this ) : 0, 0, 0, 0 );
+    lp.weight = 16;
+    lp.gravity = 0x10; // LinearLayout.LayoutParams.center_vertical;
+    return lp;
+  }
+
+  private LinearLayout.LayoutParams makeToolbarSymbolButtonParams()
+  {
+    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams( 0, LinearLayout.LayoutParams.MATCH_PARENT );
     lp.weight = 16;
     lp.gravity = 0x10; // LinearLayout.LayoutParams.center_vertical;
     return lp;
@@ -2764,7 +2809,7 @@ public class DrawingWindow extends ItemDrawer
   {
     LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams( 0, LinearLayout.LayoutParams.MATCH_PARENT );
     lp.weight = 16.0f * getToolbarSlotCount() / Math.max( 1, buttons );
-    if ( index > 0 ) lp.setMarginStart( Math.max( 1, Math.round( getResources().getDisplayMetrics().density ) ) );
+    if ( index > 0 ) lp.setMarginStart( ToolbarVisualStyle.gap( this ) );
     return lp;
   }
 
@@ -2779,6 +2824,7 @@ public class DrawingWindow extends ItemDrawer
   private ItemButton makeToolbarSettingsButton( final int category, int description )
   {
     ItemButton button = new ItemButton( this );
+    styleToolbarCell( button );
     button.resetPaintPath( BrushManager.labelPaint, makeToolbarForwardPath(), 2, 2 );
     button.setContentDescription( getString( description ) );
     button.setOnClickListener(
@@ -2814,10 +2860,12 @@ public class DrawingWindow extends ItemDrawer
       }
       layout.removeAllViews();
       layout.setLayoutParams( new LinearLayout.LayoutParams( LinearLayout.LayoutParams.MATCH_PARENT, rowHeight ) );
-      for ( int slot = 0; slot < slots; ++slot ) layout.addView( mBtnManualToolbar[row][slot], makeToolbarButtonParams() );
+      styleToolbarRow( layout, true );
+      for ( int slot = 0; slot < slots; ++slot ) layout.addView( mBtnManualToolbar[row][slot], makeToolbarSymbolButtonParams() );
       ItemButton editor = mBtnManualEditor[row];
+      styleToolbarCell( editor );
       editor.setVisibility( View.VISIBLE );
-      layout.addView( editor, makeToolbarButtonParams() );
+      layout.addView( editor, makeToolbarSymbolButtonParams() );
       layout.setVisibility( View.VISIBLE );
       mLayoutTools.addView( layout, viewIndex );
     }
@@ -2874,17 +2922,21 @@ public class DrawingWindow extends ItemDrawer
       ItemButton button = mBtnManualToolbar[row][slot];
       ToolsetProfile.Slot ref = mToolsetProfile.mRows[row][slot];
       if ( button == null ) continue;
-      button.highlight( false );
+      styleToolbarSymbolButton( button, false );
       if ( ToolsetProfile.isQuickSwitcher( ref ) ) {
+        button.setEnabled( true );
         button.setVisibility( View.VISIBLE );
         if ( button instanceof SymbolPreviewButton ) ( (SymbolPreviewButton)button ).bindQuickSwitcher();
         continue;
       }
       Symbol symbol = ToolsetCatalog.resolve( ref );
       if ( symbol == null ) {
-        button.setVisibility( View.INVISIBLE );
+        button.setEnabled( false );
+        button.setVisibility( View.VISIBLE );
+        button.setContentDescription( "Empty toolbar slot" );
         continue;
       }
+      button.setEnabled( true );
       button.setVisibility( View.VISIBLE );
       bindSymbolPreview( button, ref.mType, symbol );
     }
@@ -3185,6 +3237,7 @@ public class DrawingWindow extends ItemDrawer
     mLayoutToolsA = (LinearLayout) findViewById( R.id.layout_tool_a );
     mLayoutToolsPreset = (LinearLayout) findViewById( R.id.layout_tool_preset );
     mLayoutToolsStyle = (LinearLayout) findViewById( R.id.layout_tool_style );
+    mLayoutToolsGroupDivider = findViewById( R.id.layout_tool_group_divider );
     mLayoutScale  = (LinearLayout) findViewById( R.id.layout_scale  );
     mScaleBar     = (SeekBar)findViewById( R.id.scalebar );
     mLayoutTools.addOnLayoutChangeListener( new View.OnLayoutChangeListener() {
@@ -3390,15 +3443,16 @@ public class DrawingWindow extends ItemDrawer
     }
     mLayoutToolsPreset.addView(
       makeToolbarSettingsButton( TDPrefCat.PREF_TOOL_PRESET, R.string.desc_preset_settings ),
-      makeToolbarButtonParams()
+      makeToolbarButtonParams( slots )
     );
     updateSketchPresetButtons();
   }
 
   private void styleSketchToggle( Button button, boolean active )
   {
-    button.setBackgroundColor( active ? TDColor.SKETCH_TOGGLE_ON : TDColor.SKETCH_TOGGLE_OFF );
-    button.setTextColor( active ? TDColor.SKETCH_TOGGLE_ON_TEXT : TDColor.SKETCH_TOGGLE_OFF_TEXT );
+    button.setBackground( ToolbarVisualStyle.cell( this, active ? R.color.toolbar_accent : R.color.toolbar_dock ) );
+    button.setTextColor( ToolbarVisualStyle.color( this, active ? R.color.toolbar_active_ink : R.color.toolbar_ink ) );
+    button.setTypeface( active ? android.graphics.Typeface.DEFAULT_BOLD : android.graphics.Typeface.DEFAULT );
   }
 
   private void updateSketchPresetButton( Button button, int preset, boolean active )
@@ -3479,7 +3533,7 @@ public class DrawingWindow extends ItemDrawer
     }
     mLayoutToolsStyle.addView(
       makeToolbarSettingsButton( TDPrefCat.PREF_TOOL_STYLE, R.string.desc_style_settings ),
-      makeToolbarButtonParams()
+      makeToolbarButtonParams( slots )
     );
     updateSketchStyleButtons();
   }
@@ -12108,6 +12162,7 @@ public class DrawingWindow extends ItemDrawer
   {
     // TDLog.v("set tools toolbars - visible P " + mCurrentPoint + " L " + mCurrentLine + " A " + mCurrentArea );
     int k = -1;
+    if ( mLayoutToolsGroupDivider != null ) mLayoutToolsGroupDivider.setVisibility( View.VISIBLE );
     // ZOOM_TRANSLATION = ZOOM_TRANSLATION_1;
     mZoomView.setTranslationY( ZOOM_TRANSLATION );
     if ( isManualToolbar() ) {
@@ -12185,6 +12240,7 @@ public class DrawingWindow extends ItemDrawer
       setManualToolbarRowsVisibility( View.GONE );
       mLayoutToolsPreset.setVisibility( View.GONE );
       mLayoutToolsStyle.setVisibility( View.GONE );
+      if ( mLayoutToolsGroupDivider != null ) mLayoutToolsGroupDivider.setVisibility( View.GONE );
       mLayoutScale.setVisibility( View.VISIBLE );
     } else {
       // TDLog.v("set scale bar - invisible " );
@@ -12256,7 +12312,7 @@ public class DrawingWindow extends ItemDrawer
       setHighlight( row, ref.mType, slot );
     } else {
       if ( highlightRow >= 0 && highlightRow < ToolsetProfile.ROW_COUNT && highlightIndex >= 0 && highlightIndex < ToolsetProfile.ROW_CAPACITY ) {
-        mBtnManualToolbar[highlightRow][highlightIndex].highlight( false );
+        styleToolbarSymbolButton( mBtnManualToolbar[highlightRow][highlightIndex], false );
       }
       highlightRow = -1;
       highlightType = SymbolType.UNDEF;
@@ -12516,7 +12572,7 @@ public class DrawingWindow extends ItemDrawer
     if ( isManualToolbar() ) {
       loadToolsetProfile();
       if ( highlightRow >= 0 && highlightRow < ToolsetProfile.ROW_COUNT && highlightIndex >= 0 && highlightIndex < mToolsetProfile.mVisibleSlots ) {
-        mBtnManualToolbar[ highlightRow ][ highlightIndex ].highlight( false );
+        styleToolbarSymbolButton( mBtnManualToolbar[ highlightRow ][ highlightIndex ], false );
       }
       row = normalizeToolbarRow( row );
       if ( ! mToolsetProfile.isOnCanvas( row ) || index < 0 || index >= mToolsetProfile.mVisibleSlots ) {
@@ -12527,20 +12583,20 @@ public class DrawingWindow extends ItemDrawer
         highlightRow = row;
         highlightIndex = index;
         highlightType = type;
-        mBtnManualToolbar[ highlightRow ][ highlightIndex ].highlight( true );
+        styleToolbarSymbolButton( mBtnManualToolbar[ highlightRow ][ highlightIndex ], true );
       }
       return;
     }
     if ( highlightIndex >= 0 && highlightIndex < getToolbarSlotCount() ) { // clear previous highlight
       switch ( highlightType ) { // switch off highlighted symbol
         case SymbolType.POINT:
-          mBtnRecentP[ highlightIndex ].highlight( false );
+          styleToolbarSymbolButton( mBtnRecentP[ highlightIndex ], false );
           break;
         case SymbolType.LINE:
-          mBtnRecentL[ highlightIndex ].highlight( false );
+          styleToolbarSymbolButton( mBtnRecentL[ highlightIndex ], false );
           break;
         case SymbolType.AREA:
-          mBtnRecentA[ highlightIndex ].highlight( false );
+          styleToolbarSymbolButton( mBtnRecentA[ highlightIndex ], false );
           break;
       }
     }
@@ -12554,13 +12610,13 @@ public class DrawingWindow extends ItemDrawer
       highlightType  = type;
       switch ( highlightType ) {
         case SymbolType.POINT:
-          mBtnRecentP[ highlightIndex ].highlight( true );
+          styleToolbarSymbolButton( mBtnRecentP[ highlightIndex ], true );
           break;
         case SymbolType.LINE:
-          mBtnRecentL[ highlightIndex ].highlight( true );
+          styleToolbarSymbolButton( mBtnRecentL[ highlightIndex ], true );
           break;
         case SymbolType.AREA:
-          mBtnRecentA[ highlightIndex ].highlight( true );
+          styleToolbarSymbolButton( mBtnRecentA[ highlightIndex ], true );
           break;
       }
     }

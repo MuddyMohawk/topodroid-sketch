@@ -20,6 +20,7 @@ import static org.junit.Assert.fail;
 
 import android.app.Instrumentation;
 import android.app.UiAutomation;
+import android.content.res.ColorStateList;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -29,6 +30,7 @@ import android.graphics.Canvas;
 import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.GradientDrawable;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Environment;
@@ -63,7 +65,6 @@ import com.topodroid.prefs.TDPrefHelper;
 import com.topodroid.types.PointScale;
 import com.topodroid.ui.ItemButton;
 import com.topodroid.ui.MotionEventWrap;
-import com.topodroid.util.TDColor;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -933,7 +934,8 @@ final class VisualTestSupport
       assertTrue( label + " bar is not a ViewGroup", view instanceof ViewGroup );
       assertTrue( label + " bar is not visible",
         view.getVisibility() == View.VISIBLE && view.getWidth() > 0 && view.getHeight() > 0 );
-      assertEquals( label + " bar divider background", 0xff26272b, getBackgroundColor( view, label + " bar" ) );
+      assertEquals( label + " bar grid background", toolbarColor( R.color.toolbar_grid_line ),
+        getBackgroundColor( view, label + " bar" ) );
       ViewGroup group = (ViewGroup)view;
       assertEquals( "Unexpected " + label + " child count", toggleCount + 1, group.getChildCount() );
       assertTrue( label + " active index " + activeIndex + " is outside toggle count " + toggleCount,
@@ -945,10 +947,10 @@ final class VisualTestSupport
           child.getVisibility() == View.VISIBLE && child.getWidth() > 0 && child.getHeight() > 0 );
         assertTrue( label + " button " + index + " has no text", child instanceof TextView );
         assertEquals( label + " button " + index + " background",
-          active ? TDColor.SKETCH_TOGGLE_ON : TDColor.SKETCH_TOGGLE_OFF,
-          getBackgroundColor( child, label + " button " + index ) );
+          toolbarColor( active ? R.color.toolbar_accent : R.color.toolbar_dock ),
+          getGradientBackgroundColor( child, label + " button " + index ) );
         assertEquals( label + " button " + index + " text color",
-          active ? TDColor.SKETCH_TOGGLE_ON_TEXT : TDColor.SKETCH_TOGGLE_OFF_TEXT,
+          toolbarColor( active ? R.color.toolbar_active_ink : R.color.toolbar_ink ),
           ((TextView)child).getCurrentTextColor() );
       }
       assertToolbarSettingsButton( group.getChildAt( toggleCount ), label );
@@ -959,6 +961,19 @@ final class VisualTestSupport
   {
     assertTrue( label + " background is not a ColorDrawable", view.getBackground() instanceof ColorDrawable );
     return ((ColorDrawable)view.getBackground()).getColor();
+  }
+
+  private int getGradientBackgroundColor( View view, String label )
+  {
+    assertTrue( label + " background is not a GradientDrawable", view.getBackground() instanceof GradientDrawable );
+    ColorStateList colors = ((GradientDrawable)view.getBackground()).getColor();
+    assertNotNull( label + " background has no fill color", colors );
+    return colors.getDefaultColor();
+  }
+
+  private int toolbarColor( int resource )
+  {
+    return InstrumentationRegistry.getInstrumentation().getTargetContext().getResources().getColor( resource );
   }
 
   private void assertButtonBarVisible( int barId, String label, String... expectedLabels )

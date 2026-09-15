@@ -8,7 +8,6 @@ import static org.junit.Assert.assertTrue;
 import android.app.UiAutomation;
 import android.content.Context;
 import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.SystemClock;
@@ -74,10 +73,12 @@ public class ToolbarEditorInstrumentedTest
         assertTrue( labels.contains( "QUICK SWITCHER" ) );
         assertTrue( labels.contains( "Q" ) );
         assertTrue( labels.contains( "✕" ) );
-        assertEquals( Color.WHITE, findTextView( activity.getWindow().getDecorView(), "ENABLED · DRAG ≡ TO REORDER · TAP SLOT TO SELECT · TAP OR DRAG SYMBOLS" ).getCurrentTextColor() );
-        assertEquals( Color.WHITE, findTextView( activity.getWindow().getDecorView(), "DISABLED · TAP LETTER TO ENABLE/DISABLE ROW" ).getCurrentTextColor() );
+        int ink = activity.getResources().getColor( R.color.toolbar_ink );
+        assertEquals( ink, findTextView( activity.getWindow().getDecorView(), "ENABLED · DRAG ≡ TO REORDER · TAP SLOT TO SELECT · TAP OR DRAG SYMBOLS" ).getCurrentTextColor() );
+        assertEquals( ink, findTextView( activity.getWindow().getDecorView(), "DISABLED · TAP LETTER TO ENABLE/DISABLE ROW" ).getCurrentTextColor() );
         assertEquals( 1, searches.size() );
         assertEquals( "Search 101 symbols", searches.get( 0 ).getHint().toString() );
+        assertConsistentGridSpacing( activity );
       } );
       writeScreenshotArtifact();
     }
@@ -267,6 +268,46 @@ public class ToolbarEditorInstrumentedTest
     } finally {
       screenshot.recycle();
     }
+  }
+
+  private static void assertConsistentGridSpacing( ToolbarEditorActivity activity )
+  {
+    View root = activity.getWindow().getDecorView();
+    int gap = activity.getResources().getDimensionPixelSize( R.dimen.toolbar_grid_gap );
+
+    TextView all = findTextView( root, "ALL" );
+    TextView point = findTextView( root, "PT" );
+    assertNotNull( all );
+    assertNotNull( point );
+    assertEquals( "Type-filter grid gap", gap, point.getLeft() - all.getRight() );
+
+    TextView passages = findTextViewContaining( root, "Passages" );
+    TextView speleothems = findTextViewContaining( root, "Speleothems" );
+    assertNotNull( passages );
+    assertNotNull( speleothems );
+    assertEquals( "Category grid gap", gap, speleothems.getLeft() - passages.getRight() );
+
+    View browserSymbol = findByDescription( root, "wall, ln" );
+    assertNotNull( browserSymbol );
+    assertTrue( browserSymbol.getParent() instanceof ViewGroup );
+    ViewGroup browserRow = (ViewGroup)browserSymbol.getParent();
+    assertTrue( "Browser row needs peer symbols", browserRow.getChildCount() > 1 );
+    assertEquals( "Browser-symbol horizontal grid gap", gap,
+      browserRow.getChildAt( 1 ).getLeft() - browserRow.getChildAt( 0 ).getRight() );
+    assertEquals( "Browser-symbol vertical grid gap", gap, browserRow.getPaddingTop() );
+
+    View toolbarSlot = findByDescription( root, "wall, slot 1" );
+    assertNotNull( toolbarSlot );
+    assertTrue( toolbarSlot.getParent() instanceof ViewGroup );
+    ViewGroup toolbarSlots = (ViewGroup)toolbarSlot.getParent();
+    assertTrue( "Toolbar row needs peer slots", toolbarSlots.getChildCount() > 1 );
+    assertEquals( "Toolbar-slot horizontal grid gap", gap,
+      toolbarSlots.getChildAt( 1 ).getLeft() - toolbarSlots.getChildAt( 0 ).getRight() );
+    assertTrue( toolbarSlots.getParent() instanceof View );
+    View toolbarScroller = (View)toolbarSlots.getParent();
+    assertTrue( toolbarScroller.getParent() instanceof ViewGroup );
+    ViewGroup toolbarRow = (ViewGroup)toolbarScroller.getParent();
+    assertEquals( "Toolbar-row vertical grid gap", gap, toolbarRow.getPaddingTop() );
   }
 
   private static void collectText( View view, ArrayList< String > labels, ArrayList< EditText > searches )
