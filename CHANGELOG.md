@@ -2,10 +2,9 @@
 
 Everything TopoDroid Sketch changes relative to vanilla TopoDroid. Future releases get their own section.
 
-## v0.40.8 (July 2026) -- first alpha
+## v0.43.15 (Sep 2026) -- first alpha
 
 Everything since forking from TopoDroid 6.4.27.
-
 
 **Architecture**
 - Changed things so I could work in Android Studio. This was probably unnecessary. I'm a noob. Also to run on Windows, I accidentally wiped my linux drive.
@@ -50,10 +49,17 @@ Everything since forking from TopoDroid 6.4.27.
 - By default, there are three buttons that control line weight, with a setting of `thin`, `standard`, and `thick`
 
 **Recents Toolbar Overhaul**
-- Added a setting for an overhauled toolbar/recents bar. This is on by default under Settings -> Secondary sketch settings -> Toolbar mode
-- The new toolbar replaces the old recents-style functionality with manually selected slots, which are saved on a per-survey basis
-  - To change the tool in a slot, select the slot, tap the >> button the far right, and select the new tool/brush you want from the palette
-- Added an option for multiple toolbar rows. These rows can be locked to a specific toolset (eg line, point, area
+- Overhauled the toolbar from a most-recent model to a specifically selected symbol set model
+- Users can have up to 8 symbol toolbars, with up to 12 symbols per bar
+- Changed the toolset picker to a full-featured toolbar editor
+- Added a quick switcher button that allows for convenient access to rarely-but-not-never-used symbols
+- Added per-survey toolbar profiles
+
+**Symbols**
+- Overhauled all the base symbols (line, point, and profile), basing the new symbol set on the 1978 NSS conventions, with additions from the NPS CAVE standards
+- Added special functionality for symbols, which I should elaborate on but want to push this release out
+- Removed the old symbol packs as unsupported. If you want more symbols let me know
+
 
 **S Pen, Active Key, and Volume Button Support**
 - Added support for the S Pen button for single click, double click, and long click inputs
