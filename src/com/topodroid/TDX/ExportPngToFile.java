@@ -16,8 +16,10 @@ import com.topodroid.util.TDLog;
 import com.topodroid.util.TDsafUri;
 import com.topodroid.prefs.TDSetting;
 
+import java.io.BufferedOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -56,6 +58,7 @@ class ExportPngToFile extends AsyncTask<Void,Void,Boolean>
 
     ParcelFileDescriptor pfd = null;
     FileOutputStream fos = null;
+    OutputStream output = null;
     String file_path = null; // set when writing a plain file (not SAF): deleted on failure
     boolean ok = false;
     Bitmap bitmap = null;
@@ -76,9 +79,11 @@ class ExportPngToFile extends AsyncTask<Void,Void,Boolean>
         fos = TDFile.getFileOutputStream( file_path );
       }
       if ( fos == null ) return false;
-      ok = bitmap.compress( Bitmap.CompressFormat.PNG, 100, fos );
-      fos.flush();
-      return ok;
+      output = new BufferedOutputStream( fos, 256 * 1024 );
+      if ( ! PngFastWriter.write( bitmap, output ) ) return false;
+      output.flush();
+      ok = true;
+      return true;
     } catch ( IOException e ) {
       return false;
     } catch ( OutOfMemoryError e ) {
@@ -91,7 +96,13 @@ class ExportPngToFile extends AsyncTask<Void,Void,Boolean>
       TDLog.e( "png export failed " + e.getMessage() );
       return false;
     } finally {
-      if ( fos != null ) {
+      if ( output != null ) {
+        try {
+          output.close();
+        } catch ( IOException e ) {
+          // ignore close failure
+        }
+      } else if ( fos != null ) {
         try {
           fos.close();
         } catch ( IOException e ) {

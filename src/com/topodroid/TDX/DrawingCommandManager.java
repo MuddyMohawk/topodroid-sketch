@@ -31,7 +31,6 @@ import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.PorterDuff;
 import android.graphics.RectF;
 import android.view.Display;
 
@@ -1684,9 +1683,11 @@ public class DrawingCommandManager
         bitmap = Bitmap.createBitmap( width, height, Bitmap.Config.ARGB_8888 );
         Canvas canvas = new Canvas( bitmap );
         if ( options.transparentBackground ) {
-          canvas.drawColor( 0, PorterDuff.Mode.CLEAR );
+          // A new ARGB bitmap is already cleared to transparent black.
         } else {
           canvas.drawColor( 0xff000000 );
+          // Allows the PNG writer to omit the redundant alpha channel.
+          bitmap.setHasAlpha( false );
         }
 
         Matrix mm = new Matrix();
