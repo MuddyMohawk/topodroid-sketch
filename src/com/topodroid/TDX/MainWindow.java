@@ -1526,42 +1526,19 @@ public class MainWindow extends Activity
    */
   private String importFile( Intent intent )
   {
-    String filename = null;       // import filename
     Uri uri = intent.getData();   // import uri - may NullPointerException
+    String filename = TDsafUri.getDocumentName( uri );
     String mimetype = TDsafUri.getDocumentType( uri );
-    if ( mimetype == null ) {
-      // String path = TDsafUri.getDocumentPath(this, uri); // 2025-11-26
-      // if (path == null) {
-        // filename = FilenameUtils.getName(uri.toString());
-        filename = uri.getLastPathSegment();
-        int ros = filename.indexOf(":"); // drop the "content" header
-        if ( ros >= 0 ) filename = filename.substring( ros+1 ); 
-          TDLog.v("MAIN import: path NULL, pathname " + filename );
-        // if ( filename != null ) { // always true
-          int pos = filename.lastIndexOf("/");
-          filename = filename.substring( pos+1 );
-        // }
-        // TDLog.v( "URI to import: " + uri.toString() + " null mime, null path, filename <" + filename + ">" );
-      // } else { // 2025-11-26
-      //   // filename = (new File(path)).getName(); // FILE to get the survey name
-      //   int pos = path.lastIndexOf('/');
-      //   filename = ( pos >= 0 )? path.substring(pos+1) : path;
-      //   int ros = filename.indexOf(":"); // drop the "content" header
-      //   if ( ros >= 0 ) filename = filename.substring( ros+1 ); 
-      //   TDLog.v("MAIN import: path " + path + " filename " + filename );
-      //   // TDLog.v( "URI to import: " + uri.toString() + " null mime, filename <" + filename + ">" );
-      // }
-    } else { // mime not null
-      filename = uri.getLastPathSegment();
-      // TDLog.v( "MAIN import: uri " + uri.toString() + " mime " + mimetype + " filename <" + filename + ">" );
+    if ( filename != null ) {
       int ros = filename.indexOf(":"); // drop the "content" header
       if ( ros >= 0 ) filename = filename.substring( ros+1 ); 
+      int slash = filename.lastIndexOf("/");
+      if ( slash >= 0 ) filename = filename.substring( slash+1 );
       int pos   = filename.lastIndexOf("."); 
-      int qos_1 = filename.lastIndexOf("/") + 1;
       String ext  = (pos >= 0 )? filename.substring( pos ).toLowerCase( Locale.getDefault() ) : ""; // extension with leading '.'
-      String name = TDString.spacesToUnderscore( (pos > qos_1 )? filename.substring( qos_1, pos ) : filename.substring( qos_1 ) );
+      String name = TDString.spacesToUnderscore( (pos > 0 )? filename.substring( 0, pos ) : filename );
       TDLog.v( "MAIN import URI: filename " + filename + " mime " + mimetype + " name <" + name + "> ext <" + ext + ">" );
-      if ( mimetype.equals("application/zip") ) {
+      if ( "application/zip".equals( mimetype ) ) {
         ParcelFileDescriptor pfd = TDsafUri.docReadFileDescriptor( uri );
         FileInputStream fis = TDsafUri.docFileInputStream( pfd );
         // if ( fis.markSupported() ) fis.mark();
@@ -1625,6 +1602,9 @@ public class MainWindow extends Activity
           }
         }
       }
+    } else {
+      TDLog.e("MAIN import: null document name" );
+      TDToast.makeBad( String.format( getResources().getString( R.string.unsupported_extension ), "" ) );
     }
     return filename;
   }
