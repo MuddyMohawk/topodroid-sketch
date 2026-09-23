@@ -26,7 +26,9 @@ sketch_effect 1
     lineTo 2.7 2.7
     lineTo 1.7 2.7
     lineTo 1.7 1
-    addCircle 5.9 0.5 0.5
   endstamp
+  gap_stamp
+    addCircle 5.9 0.5 0.5
+  endgap_stamp
 endsketch_effect
 endsymbol

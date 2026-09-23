@@ -591,6 +591,38 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
   }
 
   @Test
+  public void driplineCentersCeilingLedgeHachureOnDashAndDotInGap() throws Exception
+  {
+    String dripline = readRawSymbolEntry( "symbols_topodroid_sketch/line/dripline" );
+    String ceilingLedge = readRawSymbolEntry( "symbols_topodroid_sketch/line/chimney" );
+
+    assertTrue( "Dripline must retain the Ceiling Ledge dash length with room for a dot",
+                dripline.contains( "\ndash 4.2 3.4\n" ) );
+    assertTrue( "Dripline must use the same one-line-width carrier as Ceiling Ledge",
+                dripline.contains( "\n  carrier 0 1\n" ) );
+    String[] ceilingLedgeHachure = {
+      "moveTo 1.7 0", "lineTo 2.7 0", "lineTo 2.7 -1.7",
+      "lineTo 1.7 -1.7", "lineTo 1.7 0"
+    };
+    for ( String command : ceilingLedgeHachure ) {
+      assertTrue( "Ceiling Ledge hachure command is missing: " + command,
+                  ceilingLedge.contains( command ) );
+    }
+    String[] driplineHachure = {
+      "moveTo 1.7 1", "lineTo 2.7 1", "lineTo 2.7 2.7",
+      "lineTo 1.7 2.7", "lineTo 1.7 1"
+    };
+    for ( String command : driplineHachure ) {
+      assertTrue( "Dripline must retain the Ceiling Ledge hachure geometry: " + command,
+                  dripline.contains( command ) );
+    }
+    assertTrue( "Dripline hachure must be isolated in the dash stamp",
+                dripline.contains( "\n  stamp\n" ) && dripline.contains( "\n  endstamp\n  gap_stamp\n" ) );
+    assertTrue( "Dripline dot must be isolated in the gap stamp",
+                dripline.contains( "\n    addCircle 5.9 0.5 0.5\n  endgap_stamp\n" ) );
+  }
+
+  @Test
   public void topodroidSketchSymbolContactSheet_rendersProofSymbols() throws Exception
   {
     Bitmap bitmap = Bitmap.createBitmap( WIDTH, HEIGHT, Bitmap.Config.ARGB_8888 );

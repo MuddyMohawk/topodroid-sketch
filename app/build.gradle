@@ -156,8 +156,9 @@ android {
 
     lint {
         // Translations (res/values-bg, -cn, -de, -es, -hu, -it, -pt, -ru) lag behind
-        // strings added by the fork; without this, lintVitalRelease fails the release build.
-        disable 'MissingTranslation'
+        // strings added by the fork and retain entries removed from the default locale.
+        // These checks otherwise prevent lintVitalRelease from packaging a release.
+        disable 'MissingTranslation', 'ExtraTranslation'
     }
 }
 
