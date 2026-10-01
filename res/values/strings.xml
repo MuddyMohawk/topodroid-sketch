@@ -782,6 +782,7 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
     <!-- UNUSED string name="accuracy_high">Good accuracy</string -->
     <string name="accuracy_unreliable">Unreliable sensors</string>
     <string name="accuracy_amd" translatable="false">A %1$.1f&#x37; M %2$.1f&#x37; D %3$.1f&#xb0;</string>
+    <string name="backsight_should_be">Backsight should be %1$s</string>
 
     <string name="empty_clipboard">Empty clipboard</string>
     <string name="cannot_rename">Cannot rename survey</string>

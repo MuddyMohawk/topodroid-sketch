@@ -63,8 +63,15 @@
     android:text="@string/shot_info"
     />
 
+  <TextView android:id="@+id/shot_backsight_warning"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textSize="@dimen/textsizesmall"
+    android:visibility="gone"
+    />
+
   <TextView android:id="@+id/shot_time"
-    android:layout_below="@id/shot_extra"
+    android:layout_below="@id/shot_backsight_warning"
     android:layout_width="match_parent"
     android:layout_height="wrap_content" 
     android:textSize="@dimen/textsizesmall"

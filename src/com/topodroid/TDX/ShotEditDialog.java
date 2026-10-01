@@ -15,7 +15,7 @@ import com.topodroid.util.TDLog;
 import com.topodroid.util.TDUtil;
 import com.topodroid.util.TDString;
 import com.topodroid.util.TDStatus;
-// import com.topodroid.util.TDColor;
+import com.topodroid.util.TDColor;
 import com.topodroid.ui.MyKeyboard;
 import com.topodroid.ui.MyCheckBox;
 import com.topodroid.ui.MyStateBox;
@@ -77,6 +77,7 @@ class ShotEditDialog extends MyDialog
   private EditText mETclino;    // clino | distance
 
   private TextView mTVextra;    // Magn Acc Dip
+  private TextView mTVbacksightWarning;
   private TextView mTVshotTime;
 
   private EditText mETfrom; // stations
@@ -291,6 +292,7 @@ class ShotEditDialog extends MyDialog
     mETclino.setText( shot_clino );
 
     mTVextra.setText( shot_extra );
+    updateBacksightWarning();
     if ( shot_from.length() > 0 || shot_to.length() > 0 ) {
       mETfrom.setText( shot_from );
       mETto.setText( shot_to );
@@ -378,6 +380,13 @@ class ShotEditDialog extends MyDialog
 
 // -------------------------------------------------------------------
 
+  private void updateBacksightWarning()
+  {
+    String warning = mParent.getBlockBacksightWarning( mBlk );
+    mTVbacksightWarning.setText( warning );
+    mTVbacksightWarning.setVisibility( warning.isEmpty() ? View.GONE : View.VISIBLE );
+  }
+
   private void setCBxSplay( int type )
   {
     if ( mCBxSplay == null ) return;
@@ -430,6 +439,8 @@ class ShotEditDialog extends MyDialog
     mKLclino    = mETclino   .getKeyListener();
 
     mTVextra   = (TextView) findViewById(R.id.shot_extra );
+    mTVbacksightWarning = (TextView) findViewById( R.id.shot_backsight_warning );
+    mTVbacksightWarning.setTextColor( TDColor.FIXED_ORANGE );
     // mETname = (EditText) findViewById(R.id.shot_name );
     mETfrom    = (EditText) findViewById(R.id.shot_from );
     mETto      = (EditText) findViewById(R.id.shot_to );
@@ -668,6 +679,7 @@ class ShotEditDialog extends MyDialog
       // secondary leg shot have empty FROM, TO, ignore EXTEND, no STRETCH, survey FLAG, extra LEG_TYPE, no COMMENT
       mBlk.setTypeSecLeg();
       mParent.updateShotNameAndFlags( "", "", ExtendType.EXTEND_IGNORE, 0, 0, LegType.EXTRA, "", mBlk, false );
+      updateBacksightWarning();
       return true;
       // shot_from = "";
       // shot_to   = "";
@@ -681,6 +693,7 @@ class ShotEditDialog extends MyDialog
         shot_from = mBlk.mFrom;
         shot_to   = mBlk.mTo;
       }
+      updateBacksightWarning();
       return true;
       // leg_next  = true;
       // all_splay = false;
@@ -848,6 +861,7 @@ class ShotEditDialog extends MyDialog
     //   mParent.renumberShotsAfter( mBlk );
     // }
 
+    updateBacksightWarning();
     return true;
   }
 

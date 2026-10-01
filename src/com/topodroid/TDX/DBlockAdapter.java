@@ -847,8 +847,8 @@ class DBlockAdapter extends ArrayAdapter< DBlock >
       } else {
         tvFrom.setTextColor( ( mParent.isCurrentStationName( b.mFrom ) )? TDColor.LIGHT_GREEN : col );
         tvTo.setTextColor(   ( mParent.isCurrentStationName( b.mTo   ) )? TDColor.LIGHT_GREEN : col );
-        tvLength.setTextColor( col );
       }
+      tvLength.setTextColor( mParent.isBlockBacksightBad( b ) ? TDColor.BLACK : col );
 
       if (b.mMultiSelected ) {
         b.setBackgroundColor( TDColor.GRID );
@@ -873,7 +873,9 @@ class DBlockAdapter extends ArrayAdapter< DBlock >
         }
       }
 
-      if ( b.isCommented() ) {
+      if ( mParent.isBlockBacksightBad( b ) ) {
+        tvLength.setBackgroundColor( TDColor.DARK_ORANGE );
+      } else if ( b.isCommented() ) {
         tvLength.setBackgroundColor( TDColor.VERYDARK_GRAY );
       } else if ( b.isMainLeg() && b.mLength < TDSetting.mMinLegLength ) {
         tvLength.setBackgroundColor( TDColor.BROWN );

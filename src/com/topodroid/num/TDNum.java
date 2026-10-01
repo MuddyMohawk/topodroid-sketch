@@ -18,6 +18,7 @@ import com.topodroid.prefs.TDSetting;
 
 import com.topodroid.TDX.TDInstance;
 import com.topodroid.TDX.DBlock;
+import com.topodroid.TDX.ShotSiblingCheck;
 import com.topodroid.TDX.StationPolicy;
 import com.topodroid.TDX.SurveyInfo;
 import com.topodroid.TDX.TDandroid;
@@ -945,24 +946,7 @@ public class TDNum
   private boolean computeNum( List< DBlock > data, String start, String path_fmt, boolean midline_only )
   {
     if ( TDInstance.datamode == SurveyInfo.DATAMODE_DIVING ) { // preprocess: convert diving-mode data to normal form
-      HashMap< String, Float > depths = new HashMap< String, Float >();
-      for ( DBlock blk : data ) { // prepare stations depths
-	if ( blk.mFrom != null && blk.mFrom.length() > 0 && blk.mTo != null && blk.mTo.length() > 0 ) {
-          if ( depths.isEmpty() ) {
-            depths.put( blk.mFrom, 0.0f );
-            // TDLog.v("NUM depth of " + blk.mFrom + " = 0 " ); 
-            depths.put( blk.mTo, Float.valueOf( blk.mDepth ) );
-            // TDLog.v("NUM depth of " + blk.mTo + " = " + blk.mDepth );
-          } else {
-            // TDLog.v( blk.mFrom + " depth " + blk.mDepth );
-            // depths.putIfAbsent( blk.mFrom, new Float( blk.mDepth ) );
-            if ( ! depths.containsKey(blk.mTo) ) { 
-              depths.put( blk.mTo, Float.valueOf( blk.mDepth ) );
-              // TDLog.v("NUM depth of " + blk.mTo + " = " + blk.mDepth );
-            }
-          }
-        }
-      }
+      HashMap< String, Float > depths = ShotSiblingCheck.stationDepths( data );
       // boolean depth_error = false;
       // String error = TDString.EMPTY;
       for ( DBlock blk : data ) { // set dblock clino
@@ -1051,21 +1035,10 @@ public class TDNum
       if ( ts0.sibling != null ) { 
         // TDLog.v( "check sibling shots agreement " + ts0.from + " " + ts0.to );
         float dmax = 0.0f;
-        float cc = TDMath.cosd( blk0.mClino );
-        float sc = TDMath.sind( blk0.mClino );
-        float cb = TDMath.cosd( blk0.mBearing + mDecl ); 
-        float sb = TDMath.sind( blk0.mBearing + mDecl ); 
-        TDVector v1 = new TDVector( blk0.mLength * cc * sb, blk0.mLength * cc * cb, blk0.mLength * sc );
         ts1 = ts0.sibling;
         while ( ts1 != null ) {
           DBlock blk1 = ts1.getFirstBlock();
-          cc = TDMath.cosd( blk1.mClino );
-          sc = TDMath.sind( blk1.mClino );
-          cb = TDMath.cosd( blk1.mBearing + mDecl ); 
-          sb = TDMath.sind( blk1.mBearing + mDecl ); 
-          TDVector v2 = new TDVector( blk1.mLength * cc * sb, blk1.mLength * cc * cb, blk1.mLength * sc );
-          float d = ( ( ts1.backshot == -1 )? v1.plus(v2) : v1.minus(v2) ).length();
-          d = d/blk0.mLength + d/blk1.mLength; 
+          float d = ShotSiblingCheck.relativeDifference( blk0, blk1, ts1.backshot == -1, mDecl );
           if ( d > dmax ) dmax = d;
           ts1 = ts1.sibling;
         }

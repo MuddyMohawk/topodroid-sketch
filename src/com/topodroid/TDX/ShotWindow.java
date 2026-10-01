@@ -48,6 +48,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.Collections;
 // import java.util.Stack;
 import java.util.Locale;
 
@@ -436,6 +438,37 @@ public class ShotWindow extends Activity
 
   private List< DBlock > mMyBlocks = null;
   private List< PhotoInfo > mMyPhotos = null;
+  private volatile Map< Long, ShotSiblingCheck.ExpectedBacksight > mBadBacksights = Collections.emptyMap();
+
+  private void updateBacksightChecks( List< DBlock > blocks )
+  {
+    mBadBacksights = ShotSiblingCheck.badBacksights( blocks,
+      mApp_mData.getSurveyDeclination( TDInstance.sid ), TDSetting.mSiblingThrD,
+      StationPolicy.doMagAnomaly(), TDInstance.isDivingMode() );
+  }
+
+  private void refreshBacksightChecks()
+  {
+    if ( mApp_mData != null && TDInstance.sid >= 0 ) {
+      updateBacksightChecks( mApp_mData.selectAllShots( TDInstance.sid, TDStatus.NORMAL ) );
+    } else {
+      mBadBacksights = Collections.emptyMap();
+    }
+  }
+
+  boolean isBlockBacksightBad( DBlock block )
+  {
+    return block != null && mBadBacksights.containsKey( block.mId );
+  }
+
+  String getBlockBacksightWarning( DBlock block )
+  {
+    refreshBacksightChecks();
+    ShotSiblingCheck.ExpectedBacksight expected = block == null ? null : mBadBacksights.get( block.mId );
+    return expected == null ? "" : getString( R.string.backsight_should_be,
+      expected.format( TDSetting.mUnitLength, TDSetting.mUnitLengthStr,
+                       TDSetting.mUnitAngle, TDSetting.mUnitAngleStr ) );
+  }
     
   /** update the display 
    * @return 0: shot list not refreshed, 1: list refreshed but display not updated, 2 list refreshed and display updated
@@ -447,6 +480,7 @@ public class ShotWindow extends Activity
     // highlightBlocks( null );
     if ( mApp_mData != null && TDInstance.sid >= 0 ) {
       mMyBlocks = mApp_mData.selectAllShots( TDInstance.sid, TDStatus.NORMAL );
+      updateBacksightChecks( mMyBlocks );
       mSurveyAccuracy = new SurveyAccuracy( mMyBlocks ); 
       // mNrDevices = mApp_mData.getCountDevices( TDInstance.sid );
       // if ( mMyBlocks.size() > 4 ) SurveyAccuracy.setBlocks( mMyBlocks );
@@ -768,6 +802,7 @@ public class ShotWindow extends Activity
   {
     // mApp.setHighlighted( null ); // FIXME_HIGHLIGHT
     mDataAdapter.clearMultiSelect( );
+    refreshShotViews();
     mListView.setAdapter( mButtonView1.mAdapter );
     mListView.invalidate();
     onMultiselect = false;
@@ -2314,6 +2349,7 @@ public class ShotWindow extends Activity
     blk.mBearing = b;
     blk.mClino   = c;
     mDataAdapter.updateBlockView( blk.mId );
+    refreshShotViews();
   }
 
   /** update the (depth) data of a shot 
@@ -2340,6 +2376,7 @@ public class ShotWindow extends Activity
     blk.mBearing = b;
     blk.mDepth   = p;
     mDataAdapter.updateBlockView( blk.mId );
+    refreshShotViews();
   }
 
   /** update the shot stations and the flags
@@ -2429,6 +2466,7 @@ public class ShotWindow extends Activity
       // FIXME if ( leg == LegType.EXTRA ) blk3.setBlockTypeFromLegType( DBlock.BLOCK_SEC_LEG );
       mDataAdapter.updateBlockView( blk3.mId );
     }
+    refreshShotViews();
   }
 
   // FIXME_HIGHLIGHT
@@ -2506,6 +2544,7 @@ public class ShotWindow extends Activity
     String sts = checkXSections( blk, from, to );
     if ( sts == null ) {
       updateShotBlockName( blk, from, to );
+      refreshShotViews();
       // blk.setBlockName( from, to, blk.isBackLeg() ); 
     } else {
       Resources res = getResources();
@@ -2517,6 +2556,7 @@ public class ShotWindow extends Activity
           @Override
           public void onClick( DialogInterface dialog, int btn ) {
             updateShotBlockName( blk, from, to );
+            refreshShotViews();
             // blk.setBlockName( from, to, blk.isBackLeg() ); 
           } },
         null
@@ -2729,6 +2769,7 @@ public class ShotWindow extends Activity
     // updateDisplay();
     mDataAdapter.updateSelectBlocksView(); // REPLACED updateDisplay
     mDataAdapter.clearMultiSelect();
+    refreshShotViews();
   }
 
   /** bedding: 
@@ -2902,6 +2943,7 @@ public class ShotWindow extends Activity
       }
       mDataAdapter.updateBlockView( b.mId );
     }
+    refreshShotViews();
   }
 
   // ------------------------------------------------------------------------
@@ -3535,6 +3577,7 @@ public class ShotWindow extends Activity
    */
   void refreshShotViews()
   {
+    refreshBacksightChecks();
     int cnt = mList.getChildCount();
     // TDLog.v("refresh shot child views " + cnt );
     for ( int i = 0; i < cnt; ++i ) { // refresh view colors
