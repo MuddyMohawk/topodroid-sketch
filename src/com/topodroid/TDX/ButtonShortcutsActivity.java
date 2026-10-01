@@ -223,9 +223,18 @@ public class ButtonShortcutsActivity extends Activity
   {
     for ( int row = 0; row < 4; ++row ) for ( int gesture = 0; gesture < 3; ++gesture ) refreshCell( mBindings[row][gesture] );
     mNotes.removeAllViews();
-    if ( rowFilled( 0 ) ) addNote( R.string.button_shortcuts_note_pen );
+    if ( rowFilled( 0 ) ) addNote( TDSetting.isHeldNavigationAction( mBindings[0][0].value() )
+      || TDSetting.isHeldNavigationAction( mBindings[0][2].value() ) ? R.string.button_shortcuts_note_pen_navigation : R.string.button_shortcuts_note_pen );
     if ( rowFilled( 2 ) || rowFilled( 3 ) ) addNote( R.string.button_shortcuts_note_volume );
     if ( rowFilled( 1 ) ) addNote( R.string.button_shortcuts_note_active );
+    for ( int row = 0; row < 4; ++row ) {
+      if ( TDSetting.isHeldNavigationAction( mBindings[row][0].value() ) ) {
+        addNote( getString( R.string.button_shortcuts_note_press_navigation, getString( ButtonShortcutBinding.BUTTON_NAMES[row] ) ) );
+      }
+    }
+    if ( TDSetting.isHeldNavigationAction( mBindings[3][0].value() ) || TDSetting.isHeldNavigationAction( mBindings[3][2].value() ) ) {
+      addNote( R.string.button_shortcuts_note_navigation_recovery );
+    }
   }
 
   private boolean rowFilled( int row )
@@ -270,12 +279,17 @@ public class ButtonShortcutsActivity extends Activity
 
   private void addNote( int text )
   {
+    addNote( getString( text ) );
+  }
+
+  private void addNote( String text )
+  {
     LinearLayout note = horizontal(); note.setGravity( Gravity.TOP ); note.setPadding( 0, dp( 8 ), 0, 0 );
     TextView info = ToolbarVisualStyle.label( this, "i", 10, color( R.color.toolbar_dim ) );
     info.setTypeface( Typeface.SERIF, Typeface.ITALIC ); info.setGravity( Gravity.CENTER );
     info.setBackground( ToolbarVisualStyle.rounded( this, Color.TRANSPARENT, color( R.color.toolbar_dim ), 1, 8 ) );
     LinearLayout.LayoutParams infoParams = new LinearLayout.LayoutParams( dp( 16 ), dp( 16 ) ); infoParams.topMargin = dp( 1 ); note.addView( info, infoParams );
-    TextView message = label( text, 13, R.color.toolbar_dim );
+    TextView message = ToolbarVisualStyle.label( this, text, 13, color( R.color.toolbar_dim ) );
     LinearLayout.LayoutParams params = new LinearLayout.LayoutParams( 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1 ); params.setMarginStart( dp( 8 ) ); note.addView( message, params );
     mNotes.addView( note );
   }
@@ -343,7 +357,9 @@ public class ButtonShortcutsActivity extends Activity
     TextView headerText = (TextView)header.getChildAt( 0 ); headerText.setTypeface( Typeface.MONOSPACE );
     header.setPadding( inset(), dp( 12 ), inset(), dp( 8 ) ); panel.addView( header );
     ScrollView scroll = new ScrollView( this ); LinearLayout options = vertical(); options.setPadding( inset(), 0, inset(), 0 );
-    for ( ButtonShortcutBinding.Action action : ButtonShortcutBinding.ACTIONS ) options.addView( pickerOption( binding, action, picker ) );
+    for ( ButtonShortcutBinding.Action action : ButtonShortcutBinding.ACTIONS ) {
+      if ( action.availableFor( binding.gesture ) ) options.addView( pickerOption( binding, action, picker ) );
+    }
     scroll.addView( options ); panel.addView( scroll, new LinearLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, 1 ) );
     LinearLayout footer = horizontal(); footer.setGravity( Gravity.END ); footer.setPadding( inset(), dp( 6 ), inset(), inset() );
     TextView cancel = action( getString( R.string.button_shortcuts_cancel ), R.color.toolbar_dim );

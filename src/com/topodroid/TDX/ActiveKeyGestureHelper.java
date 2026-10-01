@@ -37,11 +37,20 @@ public class ActiveKeyGestureHelper
     boolean hasDoublePressBinding();
   }
 
+  /** Navigation bindings start while down, and always end on release or cancellation. */
+  public interface HeldActionListener
+  {
+    boolean onHeldActionStart( int trigger );
+    void onHeldActionEnd();
+  }
+
   private final Handler mHandler = new Handler( Looper.getMainLooper() );
   private final int mLongPressTimeout = ViewConfiguration.getLongPressTimeout();
   private final int mDoubleTapTimeout = ViewConfiguration.getDoubleTapTimeout();
   private final TriggerListener mListener;
   private final DoublePressBindingProvider mDoublePressProvider;
+  private final HeldActionListener mHeldListener;
+  private boolean mHeldAction = false;
 
   private boolean mButtonDown = false;
   private boolean mLongPressTriggered = false;
@@ -55,7 +64,7 @@ public class ActiveKeyGestureHelper
       if ( ! mButtonDown ) return;
       mLongPressTriggered = true;
       cancelPendingSinglePress();
-      dispatchTrigger( TRIGGER_LONG_PRESS );
+      if ( ! startHeldAction( TRIGGER_LONG_PRESS ) ) dispatchTrigger( TRIGGER_LONG_PRESS );
     }
   };
 
@@ -80,9 +89,30 @@ public class ActiveKeyGestureHelper
 
   public ActiveKeyGestureHelper( TriggerListener listener, DoublePressBindingProvider provider )
   {
+    this( listener, provider, null );
+  }
+
+  public ActiveKeyGestureHelper( TriggerListener listener, DoublePressBindingProvider provider, HeldActionListener heldListener )
+  {
     mListener = listener;
     mDoublePressProvider = provider;
+    mHeldListener = heldListener;
   }
+
+  private boolean startHeldAction( int trigger )
+  {
+    mHeldAction = mHeldListener != null && mHeldListener.onHeldActionStart( trigger );
+    return mHeldAction;
+  }
+
+  private void endHeldAction()
+  {
+    if ( ! mHeldAction ) return;
+    mHeldAction = false;
+    mHeldListener.onHeldActionEnd();
+  }
+
+  public boolean isButtonDown() { return mButtonDown; }
 
   private void dispatchTrigger( int trigger )
   {
@@ -110,6 +140,7 @@ public class ActiveKeyGestureHelper
 
   public void cancel()
   {
+    endHeldAction();
     cancelLongPress();
     cancelPendingSinglePress();
     mButtonDown = false;
@@ -137,6 +168,10 @@ public class ActiveKeyGestureHelper
     mButtonDown = true;
     mLongPressTriggered = false;
     cancelLongPress();
+    if ( startHeldAction( TRIGGER_SINGLE_PRESS ) ) {
+      cancelPendingSinglePress();
+      return;
+    }
     mHandler.postDelayed( mLongPressRunnable, mLongPressTimeout );
   }
 
@@ -145,6 +180,11 @@ public class ActiveKeyGestureHelper
     if ( ! mButtonDown ) return;
     mButtonDown = false;
     cancelLongPress();
+    if ( mHeldAction ) {
+      endHeldAction();
+      mLongPressTriggered = false;
+      return;
+    }
     if ( mLongPressTriggered ) {
       mLongPressTriggered = false;
       return;

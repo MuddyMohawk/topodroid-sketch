@@ -10,7 +10,7 @@ import android.view.View;
 /** Small stroke icons, gesture glyphs and device pictograms with the mockup's viewports. */
 final class ButtonShortcutIcon extends View
 {
-  static final int PAN = 7;
+  static final int PAN = 8;
   static final int GESTURE_PRESS = 10;
   static final int BUTTON_PEN = 20;
   static final int FINGERS_TWO = 30;
@@ -65,6 +65,9 @@ final class ButtonShortcutIcon extends View
         mPaint.setStrokeWidth( 3.8f ); canvas.drawLine( 4, 18, 20, 18, mPaint ); return;
       case 5: line( 15, 5, 8, 12, 15, 19 ); break;
       case 0: line( 6, 6, 18, 18 ); break;
+      case 7:
+        canvas.drawCircle( 9, 10, 5, mPaint ); line( 13, 14, 19, 20 );
+        line( 19, 3, 19, 13 ); line( 16, 6, 19, 3, 22, 6 ); line( 16, 10, 19, 13, 22, 10 ); break;
       case PAN:
         line( 12, 3, 12, 21 ); line( 3, 12, 21, 12 ); line( 9, 6, 12, 3, 15, 6 ); line( 9, 18, 12, 21, 15, 18 );
         line( 6, 9, 3, 12, 6, 15 ); line( 18, 9, 21, 12, 18, 15 ); break;

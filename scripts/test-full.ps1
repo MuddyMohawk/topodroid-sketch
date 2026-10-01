@@ -28,7 +28,7 @@ $FullTests = @(
   },
   @{
     Name = "Stylus input and toolbar editor regressions"
-    Class = "com.topodroid.TDX.StylusOnlyInputInstrumentedTest,com.topodroid.TDX.ToolbarEditorInstrumentedTest"
+    Class = "com.topodroid.TDX.StylusOnlyInputInstrumentedTest,com.topodroid.TDX.HeldNavigationInstrumentedTest,com.topodroid.TDX.ToolbarEditorInstrumentedTest"
     Estimate = 150
     Timeout = 480
     IdleTimeout = 180

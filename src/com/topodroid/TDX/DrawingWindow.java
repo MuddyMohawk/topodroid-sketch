@@ -1070,6 +1070,14 @@ public class DrawingWindow extends ItemDrawer
 
   // ----------------------------------------------------------------
   private Handler saveHandler = new Handler();
+  private final HeldNavigationController mHeldNavigation = new HeldNavigationController();
+  private final HeldNavigationController.Canvas mHeldCanvas = new HeldNavigationController.Canvas() {
+    @Override public void pan( float dx, float dy ) {
+      mOffset.x += dx / mZoom; mOffset.y += dy / mZoom;
+      mDrawingSurface.setTransform( DrawingWindow.this, mOffset.x, mOffset.y, mZoom, mLandscape );
+    }
+    @Override public void zoom( float factor, float x, float y ) { scaleCanvas( factor, x, y ); }
+  };
   private final SPenGestureHelper mSPenGestureHelper = new SPenGestureHelper(
     new SPenGestureHelper.TriggerListener() {
       @Override
@@ -1077,8 +1085,24 @@ public class DrawingWindow extends ItemDrawer
       {
         handleSPenTrigger( trigger );
       }
+    }, new ActiveKeyGestureHelper.HeldActionListener() {
+      @Override public boolean onHeldActionStart( int trigger ) {
+        int action = SPenGestureHelper.getConfiguredAction( trigger );
+        return TDSetting.isHeldNavigationAction( action ) && beginHeldAction( 3, action );
+      }
+      @Override public void onHeldActionEnd() { endHeldAction( 3 ); }
     }
   );
+
+  @Override public boolean beginHeldAction( int source, int action )
+  {
+    if ( mDrawingSurface == null || ! TDSetting.isHeldNavigationAction( action ) ) return false;
+    if ( mTouchActive ) cancelCanvasGesture();
+    mHeldNavigation.begin( source, action, mTouchActive );
+    return true;
+  }
+
+  @Override public void endHeldAction( int source ) { mHeldNavigation.end( source ); }
 
   private final Runnable saveRunnable = new Runnable() {
     @Override 
@@ -1159,7 +1183,21 @@ public class DrawingWindow extends ItemDrawer
   @Override
   public boolean onGenericMotion( View view, MotionEvent rawEvent )
   {
-    return ( view == mDrawingSurface ) && mSPenGestureHelper.onGenericMotion( rawEvent, mTouchActive );
+    if ( view != mDrawingSurface ) return false;
+    boolean handled = mSPenGestureHelper.onGenericMotion( rawEvent, mTouchActive );
+    reservePenNavigationContact();
+    boolean navigated = mHeldNavigation.onGenericMotion( rawEvent, mTouchActive,
+      mDrawingSurface.getResources().getDisplayMetrics().density, mHeldCanvas );
+    if ( navigated ) mDrawingSurface.requestRenderBurst( DrawingSurface.GESTURE_BURST_MS );
+    return handled || navigated;
+  }
+
+  private void reservePenNavigationContact()
+  {
+    if ( mTouchActive && mSPenGestureHelper.awaitingNavigation() && ! mHeldNavigation.consumingContact() ) {
+      cancelCanvasGesture();
+      mHeldNavigation.reserveContact();
+    }
   }
 
   // -------------------------------------------------------------------
@@ -4163,6 +4201,7 @@ public class DrawingWindow extends ItemDrawer
     TDLog.v( "Drawing Activity onPause " );
     ActionKeyBindingManager.unregisterHost( this );
     mSPenGestureHelper.cancel();
+    mHeldNavigation.cancel();
     doPause();
     super.onPause();
     // TDLog.Log( TDLog.LOG_PLOT, "drawing activity on pause done");
@@ -4225,6 +4264,11 @@ public class DrawingWindow extends ItemDrawer
   public void onWindowFocusChanged( boolean has_focus )
   {
     super.onWindowFocusChanged( has_focus );
+    if ( ! has_focus ) {
+      ActionKeyBindingManager.cancelGestures( this );
+      mSPenGestureHelper.cancel();
+      mHeldNavigation.cancel();
+    }
     if ( has_focus && mDrawingSurface != null ) mDrawingSurface.requestRenderBurst();
   }
 
@@ -5646,6 +5690,19 @@ public class DrawingWindow extends ItemDrawer
     dismissPopups();
     if ( rawEvent.getActionMasked() == MotionEvent.ACTION_DOWN ) checkZoomBtnsCtrl();
 
+    mSPenGestureHelper.onTouch( rawEvent );
+    reservePenNavigationContact();
+    if ( rawEvent.getActionMasked() == MotionEvent.ACTION_CANCEL ) {
+      ActionKeyBindingManager.cancelGestures( this );
+      mHeldNavigation.cancel();
+    }
+    if ( mHeldNavigation.onTouch( rawEvent, mSPenGestureHelper.awaitingNavigation(),
+        mDrawingSurface.getResources().getDisplayMetrics().density, mHeldCanvas ) ) {
+      int kind = rawEvent.getActionMasked();
+      mTouchActive = kind != MotionEvent.ACTION_UP && kind != MotionEvent.ACTION_CANCEL;
+      return true;
+    }
+
     MotionEventWrap event = MotionEventWrap.wrap(rawEvent);
     // TDLog.Log( TDLog.LOG_INPUT, "Drawing Activity onTouch() " );
     // dumpEvent( event );
@@ -5698,25 +5755,7 @@ public class DrawingWindow extends ItemDrawer
     } else if (action == MotionEvent.ACTION_UP) { // ----------------------------------- UP
       return onTouchUp( x_canvas, y_canvas, x_scene, y_scene );
     } else if ( action == MotionEvent.ACTION_CANCEL ) {
-      if ( mMode == MODE_ERASE ) {
-        finishErasing();
-      }
-      clearPendingSketchStroke();
-      mGesturePreferences = null;
-      mDrawingSurface.setLiveItem( null );
-      mPointerDown = false;
-      HBXP_PointDown = false;
-      mTouchMode = MODE_MOVE;
-      mRotateAzimuth = false;
-      mShiftMove = false;
-      applyPendingSymbolSelection();
-      applyPendingSketchPresetSelection();
-      applyPendingSketchStyleSelection();
-      finishStationSectionGizmoDrag( false );
-      mAffineGizmoDrag = null;
-      mDrawingSurface.resetPreviewPath();
-      updateSketchPresetButtons();
-      updateSketchStyleButtons();
+      cancelCanvasGesture();
       return true;
     } else {
       TDLog.e("on touch - unhandled action " + action );
@@ -5725,6 +5764,26 @@ public class DrawingWindow extends ItemDrawer
   }
 
   boolean HBXP_PointDown = false; // HBXP
+  private void cancelCanvasGesture()
+  {
+    if ( mMode == MODE_ERASE ) finishErasing();
+    clearPendingSketchStroke();
+    mGesturePreferences = null;
+    mDrawingSurface.setLiveItem( null );
+    mPointerDown = false;
+    HBXP_PointDown = false;
+    mTouchMode = MODE_MOVE;
+    mRotateAzimuth = false;
+    mShiftMove = false;
+    applyPendingSymbolSelection();
+    applyPendingSketchPresetSelection();
+    applyPendingSketchStyleSelection();
+    finishStationSectionGizmoDrag( false );
+    mAffineGizmoDrag = null;
+    mDrawingSurface.resetPreviewPath();
+    updateSketchPresetButtons();
+    updateSketchStyleButtons();
+  }
   /** react to a touch-up event
    * @param xc   canvas X coord 
    * @param yc   canvas Y coord

@@ -14,4 +14,7 @@ package com.topodroid.TDX;
 public interface ActionBindingHost
 {
   boolean handleActionBindingAction( int action );
+
+  default boolean beginHeldAction( int source, int action ) { return false; }
+  default void endHeldAction( int source ) { }
 }

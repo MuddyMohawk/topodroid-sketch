@@ -640,6 +640,8 @@ public class TDSetting
   // Value 4 (the retired palette/tool-type action) stays unused; do not renumber persisted actions.
   public static final int SPEN_ACTION_BACK = 5;
   public static final int SPEN_ACTION_TOGGLE_ERASE = 6;
+  public static final int SPEN_ACTION_HOLD_ZOOM = 7;
+  public static final int SPEN_ACTION_HOLD_PAN = 8;
   public static int mSPenSingleClickAction = SPEN_ACTION_UNDO;
   public static int mSPenLongClickAction   = SPEN_ACTION_TOGGLE_PRESET;
   public static int mSPenDoubleClickAction = SPEN_ACTION_BACK;
@@ -3564,6 +3566,11 @@ public class TDSetting
     return ( value < 1 ) ? 1 : value;
   }
 
+  public static boolean isHeldNavigationAction( int action )
+  {
+    return action == SPEN_ACTION_HOLD_ZOOM || action == SPEN_ACTION_HOLD_PAN;
+  }
+
   private static int normalizeSPenAction( int action )
   {
     switch ( action ) {
@@ -3572,6 +3579,8 @@ public class TDSetting
       case SPEN_ACTION_TOGGLE_PRESET:
       case SPEN_ACTION_BACK:
       case SPEN_ACTION_TOGGLE_ERASE:
+      case SPEN_ACTION_HOLD_ZOOM:
+      case SPEN_ACTION_HOLD_PAN:
         return action;
       default:
         return SPEN_ACTION_NONE;

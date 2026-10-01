@@ -1,226 +1,121 @@
 /* @file SPenGestureHelper.java
- *
  * @author MuddyMohawk
- * @date apr 2026
- *
- * @brief Shared hover-button recognizer for passive S Pen actions
- * --------------------------------------------------------
- *  Copyright This software is distributed under GPL-3.0 or later
- *  See the file COPYING.
- * --------------------------------------------------------
- */
+ * Copyright This software is distributed under GPL-3.0 or later.
+ * See the file COPYING.
+ * Shared S Pen button recognizer. Ordinary shortcuts remain hover gestures;
+ * held navigation follows the button across hover/contact transitions. */
 package com.topodroid.TDX;
 
 import com.topodroid.prefs.TDSetting;
-
 import android.os.Handler;
+import android.os.Looper;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
 
 public class SPenGestureHelper
 {
-  public static final int TRIGGER_SINGLE_CLICK = 1;
-  public static final int TRIGGER_LONG_CLICK   = 2;
-  public static final int TRIGGER_DOUBLE_CLICK = 3;
-
+  public static final int TRIGGER_SINGLE_CLICK = ActiveKeyGestureHelper.TRIGGER_SINGLE_PRESS;
+  public static final int TRIGGER_LONG_CLICK = ActiveKeyGestureHelper.TRIGGER_LONG_PRESS;
+  public static final int TRIGGER_DOUBLE_CLICK = ActiveKeyGestureHelper.TRIGGER_DOUBLE_PRESS;
   private static final int SPEN_BUTTON_MASK = MotionEvent.BUTTON_STYLUS_PRIMARY | MotionEvent.BUTTON_STYLUS_SECONDARY;
 
-  public interface TriggerListener
-  {
-    void onSPenTrigger( int trigger );
-  }
+  public interface TriggerListener { void onSPenTrigger( int trigger ); }
 
-  private final Handler mHandler = new Handler();
-  private final int mLongPressTimeout = ViewConfiguration.getLongPressTimeout();
-  private final int mDoubleTapTimeout = ViewConfiguration.getDoubleTapTimeout();
-  private final TriggerListener mListener;
-
-  private boolean mButtonDown = false;
-  private boolean mLongClickTriggered = false;
-  private boolean mPendingSingleClick = false;
-  private long mPendingSingleClickTime = 0L;
-  private int mLastHoverButtons = 0;
-
-  private final Runnable mLongClickRunnable = new Runnable() {
-    @Override
-    public void run()
-    {
-      if ( ! mButtonDown ) return;
-      mLongClickTriggered = true;
-      cancelPendingSingleClick();
-      dispatchTrigger( TRIGGER_LONG_CLICK );
-    }
+  private final Handler mHandler = new Handler( Looper.getMainLooper() );
+  private final ActiveKeyGestureHelper mGesture;
+  private final Runnable mHoverExit = new Runnable() {
+    @Override public void run() { mGesture.cancel(); }
   };
 
-  private final Runnable mSingleClickRunnable = new Runnable() {
-    @Override
-    public void run()
-    {
-      flushPendingSingleClick();
-    }
-  };
+  public SPenGestureHelper( TriggerListener listener ) { this( listener, null ); }
 
-  public SPenGestureHelper( TriggerListener listener )
+  public SPenGestureHelper( TriggerListener listener, ActiveKeyGestureHelper.HeldActionListener heldListener )
   {
-    mListener = listener;
+    mGesture = new ActiveKeyGestureHelper(
+      trigger -> { if ( listener != null ) listener.onSPenTrigger( trigger ); },
+      () -> TDSetting.mSPenDoubleClickAction != TDSetting.SPEN_ACTION_NONE,
+      new ActiveKeyGestureHelper.HeldActionListener() {
+        @Override public boolean onHeldActionStart( int trigger ) {
+          if ( ! TDSetting.isHeldNavigationAction( getConfiguredAction( trigger ) ) ) return false;
+          if ( heldListener != null ) heldListener.onHeldActionStart( trigger );
+          return true;
+        }
+        @Override public void onHeldActionEnd() {
+          if ( heldListener != null ) heldListener.onHeldActionEnd();
+        }
+      } );
   }
 
   public static int getConfiguredAction( int trigger )
   {
     switch ( trigger ) {
       case TRIGGER_SINGLE_CLICK: return TDSetting.mSPenSingleClickAction;
-      case TRIGGER_LONG_CLICK:   return TDSetting.mSPenLongClickAction;
+      case TRIGGER_LONG_CLICK: return TDSetting.mSPenLongClickAction;
       case TRIGGER_DOUBLE_CLICK: return TDSetting.mSPenDoubleClickAction;
-      default:                   return TDSetting.SPEN_ACTION_NONE;
+      default: return TDSetting.SPEN_ACTION_NONE;
     }
   }
 
-  private void dispatchTrigger( int trigger )
+  private static boolean hasNavigationBinding()
   {
-    if ( mListener != null ) mListener.onSPenTrigger( trigger );
+    return TDSetting.isHeldNavigationAction( TDSetting.mSPenSingleClickAction )
+        || TDSetting.isHeldNavigationAction( TDSetting.mSPenLongClickAction );
   }
 
-  private static boolean isActionButtonPressed( int buttons )
-  {
-    return ( buttons & SPEN_BUTTON_MASK ) != 0;
-  }
+  boolean awaitingNavigation() { return hasNavigationBinding() && mGesture.isButtonDown(); }
 
   private static boolean isStylusToolEvent( MotionEvent event )
   {
-    int np = event.getPointerCount();
-    for ( int i = 0; i < np; ++i ) {
-      int toolType = event.getToolType( i );
-      if ( toolType == MotionEvent.TOOL_TYPE_STYLUS || toolType == MotionEvent.TOOL_TYPE_ERASER ) {
-        return true;
-      }
+    for ( int i = 0; i < event.getPointerCount(); ++i ) {
+      int tool = event.getToolType( i );
+      if ( tool == MotionEvent.TOOL_TYPE_STYLUS || tool == MotionEvent.TOOL_TYPE_ERASER ) return true;
     }
     return false;
   }
 
-  private void cancelLongClick()
+  private void updateButtonState( MotionEvent event )
   {
-    mHandler.removeCallbacks( mLongClickRunnable );
-  }
-
-  private void cancelPendingSingleClick()
-  {
-    mHandler.removeCallbacks( mSingleClickRunnable );
-    mPendingSingleClick = false;
-    mPendingSingleClickTime = 0L;
-  }
-
-  private void flushPendingSingleClick()
-  {
-    if ( ! mPendingSingleClick ) return;
-    cancelPendingSingleClick();
-    dispatchTrigger( TRIGGER_SINGLE_CLICK );
-  }
-
-  private void cancelGesture()
-  {
-    cancelLongClick();
-    cancelPendingSingleClick();
-    mButtonDown = false;
-    mLongClickTriggered = false;
-    mLastHoverButtons = 0;
+    if ( (event.getButtonState() & SPEN_BUTTON_MASK) != 0 ) mGesture.onKeyDown( event.getEventTime() );
+    else mGesture.onKeyUp( event.getEventTime() );
   }
 
   public void cancel()
   {
-    cancelGesture();
+    mHandler.removeCallbacks( mHoverExit );
+    mGesture.cancel();
   }
 
-  private void startButtonGesture( long eventTime )
+  /** Contact events are already filtered by the stylus-only input guard. */
+  void onTouch( MotionEvent event )
   {
-    if ( mPendingSingleClick && eventTime - mPendingSingleClickTime > mDoubleTapTimeout ) {
-      flushPendingSingleClick();
-    }
-    if ( mButtonDown ) return;
-    mButtonDown = true;
-    mLongClickTriggered = false;
-    cancelLongClick();
-    mHandler.postDelayed( mLongClickRunnable, mLongPressTimeout );
+    if ( ! isStylusToolEvent( event ) || ! hasNavigationBinding() ) return;
+    mHandler.removeCallbacks( mHoverExit );
+    if ( event.getActionMasked() == MotionEvent.ACTION_CANCEL ) cancel();
+    else updateButtonState( event );
   }
 
-  private void scheduleSingleClick( long eventTime )
+  public boolean onGenericMotion( MotionEvent event, boolean touchActive )
   {
-    if ( TDSetting.mSPenDoubleClickAction == TDSetting.SPEN_ACTION_NONE ) {
-      dispatchTrigger( TRIGGER_SINGLE_CLICK );
-      return;
-    }
-    cancelPendingSingleClick();
-    mPendingSingleClick = true;
-    mPendingSingleClickTime = eventTime;
-    mHandler.postDelayed( mSingleClickRunnable, mDoubleTapTimeout );
-  }
-
-  private void finishButtonGesture( long eventTime )
-  {
-    if ( ! mButtonDown ) return;
-    mButtonDown = false;
-    cancelLongClick();
-    if ( mLongClickTriggered ) {
-      mLongClickTriggered = false;
-      return;
-    }
-    if ( mPendingSingleClick ) {
-      if ( eventTime - mPendingSingleClickTime <= mDoubleTapTimeout ) {
-        cancelPendingSingleClick();
-        dispatchTrigger( TRIGGER_DOUBLE_CLICK );
-      } else {
-        flushPendingSingleClick();
-        scheduleSingleClick( eventTime );
-      }
-      return;
-    }
-    scheduleSingleClick( eventTime );
-  }
-
-  private boolean updateButtonState( int buttons, long eventTime )
-  {
-    boolean pressed = isActionButtonPressed( buttons );
-    if ( pressed ) {
-      if ( ! mButtonDown ) {
-        startButtonGesture( eventTime );
-        return true;
-      }
-    } else if ( mButtonDown ) {
-      finishButtonGesture( eventTime );
-      return true;
-    }
-    return false;
-  }
-
-  public boolean onGenericMotion( MotionEvent rawEvent, boolean touchActive )
-  {
-    if ( ! isStylusToolEvent( rawEvent ) || touchActive ) return false;
-
-    int action = rawEvent.getAction() & MotionEvent.ACTION_MASK;
-    int buttons = rawEvent.getButtonState() & SPEN_BUTTON_MASK;
-    boolean handled = false;
-
-    switch ( action ) {
+    if ( ! isStylusToolEvent( event ) || (touchActive && ! hasNavigationBinding()) ) return false;
+    switch ( event.getActionMasked() ) {
       case MotionEvent.ACTION_BUTTON_PRESS:
       case MotionEvent.ACTION_BUTTON_RELEASE:
-        handled = updateButtonState( buttons, rawEvent.getEventTime() );
-        break;
       case MotionEvent.ACTION_HOVER_ENTER:
       case MotionEvent.ACTION_HOVER_MOVE:
-        if ( isActionButtonPressed( mLastHoverButtons ) != isActionButtonPressed( buttons ) ) {
-          handled = updateButtonState( buttons, rawEvent.getEventTime() );
-        }
-        break;
+        mHandler.removeCallbacks( mHoverExit );
+        boolean wasDown = mGesture.isButtonDown();
+        updateButtonState( event );
+        return wasDown != mGesture.isButtonDown();
       case MotionEvent.ACTION_HOVER_EXIT:
-        if ( mButtonDown ) {
-          cancelGesture();
-          handled = true;
-        }
-        break;
-      default:
-        break;
+        if ( ! mGesture.isButtonDown() ) return false;
+        if ( hasNavigationBinding() ) {
+          // Android sends hover-exit just before contact. Allow that transition,
+          // but cancel promptly if the pen actually leaves proximity.
+          mHandler.removeCallbacks( mHoverExit );
+          mHandler.postDelayed( mHoverExit, ViewConfiguration.getTapTimeout() );
+        } else cancel();
+        return true;
+      default: return false;
     }
-
-    mLastHoverButtons = buttons;
-    return handled;
   }
 }

@@ -194,11 +194,42 @@ public class ButtonShortcutsInstrumentedTest
         assertTrue( panel.findViewWithTag( "action:0" ).getContentDescription().toString().contains( "Clear all three shortcuts" ) );
         assertNull( "Retired tool-type action must not be offered", panel.findViewWithTag( "action:4" ) );
         int selected = 0;
-        for ( int value : new int[] { 0, 1, 2, 3, 5, 6 } ) {
+        for ( int value : new int[] { 0, 1, 2, 3, 5, 6, 7, 8 } ) {
           View option = panel.findViewWithTag( "action:" + value ); assertNotNull( option );
           if ( option.isSelected() ) ++selected;
         }
         assertEquals( 1, selected );
+      } );
+    }
+  }
+
+  @Test public void heldNavigationIsOfferedForPressAndHoldOnlyAndSurvivesReload()
+  {
+    try ( ActivityScenario<ButtonShortcutsActivity> scenario = ActivityScenario.launch( ButtonShortcutsActivity.class ) ) {
+      for ( int row = 0; row < 4; ++row ) {
+        final int base = row * 3;
+        scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( KEYS[base] ).performClick() ); choose( 7 );
+        assertEquals( "7", prefs().getString( KEYS[base], "" ) );
+        scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( KEYS[base + 1] ).performClick() ); choose( 8 );
+        assertEquals( "8", prefs().getString( KEYS[base + 1], "" ) );
+        scenario.onActivity( activity -> {
+          View root = activity.getWindow().getDecorView();
+          String note = activity.getString( R.string.button_shortcuts_note_press_navigation, activity.getString( ButtonShortcutBinding.BUTTON_NAMES[base / 3] ) );
+          assertNotNull( findText( root, note ) );
+          root.findViewWithTag( KEYS[base + 2] ).performClick();
+          View panel = picker( activity ).getWindow().getDecorView();
+          assertNull( panel.findViewWithTag( "action:7" ) ); assertNull( panel.findViewWithTag( "action:8" ) );
+          picker( activity ).dismiss();
+        } );
+      }
+      main( () -> TDSetting.loadSecondaryPreferences( new TDPrefHelper( context() ) ) );
+      scenario.recreate();
+      scenario.onActivity( activity -> {
+        assertNotNull( text( activity.getWindow().getDecorView(), R.string.button_shortcuts_note_pen_navigation ) );
+        for ( int row = 0; row < 4; ++row ) {
+          assertEquals( 7, runtimeValues()[row * 3] ); assertEquals( 8, runtimeValues()[row * 3 + 1] );
+          assertTrue( activity.getWindow().getDecorView().findViewWithTag( KEYS[row * 3] ).getContentDescription().toString().endsWith( ": Hold to zoom" ) );
+        }
       } );
     }
   }
@@ -315,9 +346,12 @@ public class ButtonShortcutsInstrumentedTest
     catch ( Exception e ) { throw new AssertionError( e ); }
   }
   private TextView text( View root, int resource ) {
-    if ( root instanceof TextView && ( (TextView)root ).getText().toString().equals( context().getString( resource ) ) ) return (TextView)root;
+    return findText( root, context().getString( resource ) );
+  }
+  private TextView findText( View root, String value ) {
+    if ( root instanceof TextView && ( (TextView)root ).getText().toString().equals( value ) ) return (TextView)root;
     if ( root instanceof ViewGroup ) for ( int i = 0; i < ( (ViewGroup)root ).getChildCount(); ++i ) {
-      TextView found = text( ( (ViewGroup)root ).getChildAt( i ), resource ); if ( found != null ) return found;
+      TextView found = findText( ( (ViewGroup)root ).getChildAt( i ), value ); if ( found != null ) return found;
     }
     return null;
   }

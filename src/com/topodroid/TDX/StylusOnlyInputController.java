@@ -1,5 +1,7 @@
 package com.topodroid.TDX;
 
+import com.topodroid.prefs.TDSetting;
+
 import android.app.Activity;
 import android.app.Application;
 import android.app.Dialog;
@@ -216,6 +218,7 @@ public final class StylusOnlyInputController
   private static KeyEvent escapeDown;
   private static Object escapeOwner;
   private static StylusKeyDispatch escapeTarget;
+  private static boolean escapeForwarded;
   private static boolean consumeEscapeUp;
   interface StylusKeyDispatch { boolean dispatch( KeyEvent event ); }
 
@@ -249,6 +252,12 @@ public final class StylusOnlyInputController
         escapeOwner = owner;
         escapeTarget = target;
         handler.postDelayed( recover, Math.max( 0, ESCAPE_HOLD_MS - ( SystemClock.uptimeMillis() - event.getEventTime() ) ) );
+        // Navigation needs the down edge now; retain the independent recovery timer.
+        if ( TDSetting.isHeldNavigationAction( TDSetting.mVolumeDownSinglePressAction )
+            || TDSetting.isHeldNavigationAction( TDSetting.mVolumeDownLongPressAction ) ) {
+          escapeForwarded = true;
+          target.dispatch( event );
+        }
       }
       return true;
     }
@@ -256,13 +265,20 @@ public final class StylusOnlyInputController
       KeyEvent down = escapeDown;
       StylusKeyDispatch dispatch = escapeTarget;
       boolean sameOwner = escapeOwner == owner;
+      boolean forwarded = escapeForwarded;
       if ( down != null && sameOwner && ! event.isCanceled()
           && event.getEventTime() - down.getEventTime() >= ESCAPE_HOLD_MS ) {
         recover.run();
         consumeEscapeUp = false;
         return true;
       }
+      escapeForwarded = false;
       cancelRecovery();
+      if ( forwarded ) {
+        if ( sameOwner ) dispatch.dispatch( event );
+        else ActionKeyBindingManager.cancelVolumeDownGesture();
+        return true;
+      }
       if ( down != null && sameOwner && ! event.isCanceled()
           && event.getEventTime() - down.getEventTime() < ViewConfiguration.getLongPressTimeout() ) {
         dispatch.dispatch( down );
@@ -275,6 +291,8 @@ public final class StylusOnlyInputController
 
   private static void cancelRecovery()
   {
+    if ( escapeForwarded ) ActionKeyBindingManager.cancelVolumeDownGesture();
+    escapeForwarded = false;
     handler.removeCallbacks( recover );
     escapeDown = null;
     escapeOwner = null;

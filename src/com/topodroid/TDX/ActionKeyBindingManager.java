@@ -57,7 +57,7 @@ public class ActionKeyBindingManager
       {
         return TDSetting.mActiveKeyDoublePressAction != TDSetting.SPEN_ACTION_NONE;
       }
-    }
+    }, heldListener( KEY_ID_ACTIVE )
   );
 
   private final ActiveKeyGestureHelper mVolumeUpHelper = new ActiveKeyGestureHelper(
@@ -74,7 +74,7 @@ public class ActionKeyBindingManager
       {
         return TDSetting.mVolumeUpDoublePressAction != TDSetting.SPEN_ACTION_NONE;
       }
-    }
+    }, heldListener( KEY_ID_VOLUME_UP )
   );
 
   private final ActiveKeyGestureHelper mVolumeDownHelper = new ActiveKeyGestureHelper(
@@ -91,7 +91,7 @@ public class ActionKeyBindingManager
       {
         return TDSetting.mVolumeDownDoublePressAction != TDSetting.SPEN_ACTION_NONE;
       }
-    }
+    }, heldListener( KEY_ID_VOLUME_DOWN )
   );
 
   private ActionBindingHost mHost = null;
@@ -102,6 +102,24 @@ public class ActionKeyBindingManager
   private long mLastEdgeTime = 0L;
 
   private ActionKeyBindingManager() {}
+
+  private ActiveKeyGestureHelper.HeldActionListener heldListener( final int keyId )
+  {
+    return new ActiveKeyGestureHelper.HeldActionListener() {
+      @Override public boolean onHeldActionStart( int trigger )
+      {
+        int action = configuredAction( keyId, trigger );
+        // A Press navigation binding owns the entire button gesture, even outside sketches.
+        if ( ! TDSetting.isHeldNavigationAction( action ) ) return false;
+        if ( mHost != null ) mHost.beginHeldAction( keyId, action );
+        return true;
+      }
+      @Override public void onHeldActionEnd()
+      {
+        if ( mHost != null ) mHost.endHeldAction( keyId );
+      }
+    };
+  }
 
   public static void registerHost( ActionBindingHost host )
   {
@@ -114,6 +132,20 @@ public class ActionKeyBindingManager
   }
 
   static void cancelVolumeDownGesture() { mInstance.mVolumeDownHelper.cancel(); }
+
+  static void cancelGestures( ActionBindingHost host )
+  {
+    if ( mInstance.mHost == host ) mInstance.cancelGestures();
+  }
+
+  private void cancelGestures()
+  {
+    mGestureHelper.cancel();
+    mVolumeUpHelper.cancel();
+    mVolumeDownHelper.cancel();
+    mPreferredSource = SOURCE_NONE;
+    mLastEdgeSource = SOURCE_NONE;
+  }
 
   public static boolean onKeyDown( int code, KeyEvent event )
   {
@@ -133,9 +165,7 @@ public class ActionKeyBindingManager
   private synchronized void doRegisterHost( ActionBindingHost host )
   {
     if ( mHost != host ) {
-      mGestureHelper.cancel();
-      mVolumeUpHelper.cancel();
-      mVolumeDownHelper.cancel();
+      cancelGestures();
     }
     mHost = host;
   }
@@ -143,10 +173,8 @@ public class ActionKeyBindingManager
   private synchronized void doUnregisterHost( ActionBindingHost host )
   {
     if ( mHost == host ) {
+      cancelGestures();
       mHost = null;
-      mGestureHelper.cancel();
-      mVolumeUpHelper.cancel();
-      mVolumeDownHelper.cancel();
     }
   }
 
@@ -183,7 +211,7 @@ public class ActionKeyBindingManager
     mPreferredSourceUntil = when + SOURCE_PRIORITY_WINDOW;
   }
 
-  private void dispatchTrigger( int keyId, int trigger )
+  private static int configuredAction( int keyId, int trigger )
   {
     int action = TDSetting.SPEN_ACTION_NONE;
     switch ( keyId ) {
@@ -214,7 +242,13 @@ public class ActionKeyBindingManager
       default:
         break;
     }
-    if ( action == TDSetting.SPEN_ACTION_NONE ) return;
+    return action;
+  }
+
+  private void dispatchTrigger( int keyId, int trigger )
+  {
+    int action = configuredAction( keyId, trigger );
+    if ( action == TDSetting.SPEN_ACTION_NONE || TDSetting.isHeldNavigationAction( action ) ) return;
 
     ActionBindingHost host;
     synchronized ( this ) {

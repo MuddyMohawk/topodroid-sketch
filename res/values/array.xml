@@ -118,6 +118,8 @@
      <item name="toggle_preset">toggle preset</item>
      <item name="back">back</item>
      <item name="toggle_erase">toggle erase/sketch</item>
+     <item name="hold_zoom">@string/button_shortcuts_action_zoom</item>
+     <item name="hold_pan">@string/button_shortcuts_action_pan</item>
   </string-array>
   <string-array name="spenActionsValue" translatable="false">
      <item name="none">0</item>
@@ -126,6 +128,8 @@
      <item name="toggle_preset">3</item>
      <item name="back">5</item>
      <item name="toggle_erase">6</item>
+     <item name="hold_zoom">7</item>
+     <item name="hold_pan">8</item>
   </string-array>
   
   <string-array name="canvasLevels">
