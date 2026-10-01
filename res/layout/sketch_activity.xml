@@ -63,11 +63,6 @@
       />
     </LinearLayout>
 
-    <View android:id="@+id/zoomView"
-      android:layout_height="wrap_content"
-      android:layout_width="wrap_content"
-      android:layout_gravity="center"
-      />
 
   </RelativeLayout>
 

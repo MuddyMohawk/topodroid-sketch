@@ -109,8 +109,6 @@ import android.widget.PopupWindow;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.ZoomButtonsController;
-import android.widget.ZoomButtonsController.OnZoomListener;
 import android.widget.ListView;
 import android.widget.ArrayAdapter;
 import android.widget.AdapterView;
@@ -150,7 +148,6 @@ public class DrawingWindow extends ItemDrawer
                                     , OnItemClickListener
                                     , OnItemLongClickListener
                                     , OnItemSelectedListener
-                                    , OnZoomListener
                                     // , ILabelAdder
                                     , ILister
                                     , IZoomer
@@ -161,9 +158,6 @@ public class DrawingWindow extends ItemDrawer
                                     , IAudioInserter
                                     , ActionBindingHost
 {
-  public static final int ZOOM_TRANSLATION_1 = -50; // was -42
-  // public static final int ZOOM_TRANSLATION_3 = -200;
-  private static int ZOOM_TRANSLATION   = ZOOM_TRANSLATION_1;
  
   private static final int[] izons_ok = {
                         R.drawable.iz_edit_ok, // 0
@@ -597,19 +591,12 @@ public class DrawingWindow extends ItemDrawer
   // ZOOM
   static final float ZOOM_INC = 1.4f;
   static final float ZOOM_DEC = 1.0f/ZOOM_INC;
-  private ZoomButtonsController mZoomBtnsCtrl = null;
-  private boolean mZoomBtnsCtrlOn = false;
  
   // FIXED_ZOOM
   // private int mFixedZoom = 0; // 0= variable, 1= 1:100, 2= 1:200
   // private static final float[] gZoom = { 1.0f, 0.10f, 0.20f, 0.30f, 0.40f, 0.50f };
 
-  // FIXME_ZOOM_CTRL ZoomControls mZoomCtrl = null;
-  // ZoomButton mZoomOut;
-  // ZoomButton mZoomIn;
   private float oldDist;  // zoom pointer-spacing
-  private View mZoomView;
-  private float mZoomTranslate = 48; // pixels
   private LinearLayout mLayoutTools;
   private LinearLayout mLayoutToolsP;
   private LinearLayout mLayoutToolsL;
@@ -1183,28 +1170,6 @@ public class DrawingWindow extends ItemDrawer
   // -------------------------------------------------------------------
   // ZOOM CONTROLS
 
-  /** react to a change of visibility of zoom -controls
-   * @param visible  whether controls should become visible
-   */
-  @Override
-  public void onVisibilityChanged(boolean visible)
-  {
-    if ( mDrawingSurface.isFixedZoom() ) return;
-    if ( mZoomBtnsCtrlOn && mZoomBtnsCtrl != null ) {
-      mZoomBtnsCtrl.setVisible( visible || ( StylusOnlyInputController.zoomControlMode() > 1 ) );
-    }
-  }
-
-  /** react to the user change of zoom
-   * @param zoomin   whether to zoom-in (increase the zoom)
-   */
-  @Override
-  public void onZoom( boolean zoomin )
-  {
-    if ( zoomin ) changeZoom( ZOOM_INC );
-    else changeZoom( ZOOM_DEC );
-  }
-
   private void adjustOffset( float old_zoom, float new_zoom ) 
   {
     mOffset.x -= mDisplayCenter.x*(1/old_zoom-1/new_zoom);
@@ -1214,21 +1179,27 @@ public class DrawingWindow extends ItemDrawer
   /** change the zoom
    * @param f  zoom scale factor (current zoom is multiplied by f)
    */
-  private void changeZoom( float f ) 
+  private void changeZoom( float f )
+  {
+    if ( f < 0.05f || f > 4.0f ) return;
+    scaleCanvas( f, mDisplayCenter.x, mDisplayCenter.y );
+  }
+
+  void scaleCanvas( float f, float focusX, float focusY )
   {
     // TDLog.v("CHANGE ZOOM fixed-zoom " + mDrawingSurface.getFixedZoom() );
     if ( mDrawingSurface.isFixedZoom() ) return;
-    if ( f < 0.05f || f > 4.0f ) return;
     float zoom = mZoom;
-    mZoom     *= f;
+    float newZoom = mZoom * f;
+    if ( newZoom <= 0 || Float.isNaN( newZoom ) || Float.isInfinite( newZoom ) ) return;
+    mZoom = newZoom;
     // TDLog.v( "zoom " + mZoom );
     // mOffset.x -= mDisplayCenter.x*(1/zoom-1/mZoom);
     // mOffset.y -= mDisplayCenter.y*(1/zoom-1/mZoom);
-    adjustOffset( zoom, mZoom );
+    mOffset.x += focusX * ( 1 / mZoom - 1 / zoom );
+    mOffset.y += focusY * ( 1 / mZoom - 1 / zoom );
     // TDLog.v( "change zoom " + mOffset.x + " " + mOffset.y + " " + mZoom );
     mDrawingSurface.setTransform( this, mOffset.x, mOffset.y, mZoom, mLandscape );
-    // mZoomCtrl.hide();
-    // if ( mZoomBtnsCtrlOn ) mZoomBtnsCtrl.setVisible( false );
   }
 
   /** @return the value of the fixed-zoom (0 = zoom not fixed)
@@ -1259,6 +1230,7 @@ public class DrawingWindow extends ItemDrawer
       mDrawingSurface.setTransform( this, mOffset.x, mOffset.y, mZoom, mLandscape );
       // updateDisplay();
     }
+    checkZoomBtnsCtrl();
   }
 
   /** increase zoom
@@ -1594,6 +1566,7 @@ public class DrawingWindow extends ItemDrawer
   @Override
   public void onConfigurationChanged( Configuration new_cfg )
   {
+    StylusOnlyInputController.cancelSketchPinchZoom( this );
     super.onConfigurationChanged( new_cfg );
     // TDLog.v( "PLOT config changed " + mOffset.x + " " + mOffset.y + " " + mZoom + " orientation " + new_cfg.orientation );
     TDLocale.resetTheLocale();
@@ -2535,43 +2508,6 @@ public class DrawingWindow extends ItemDrawer
     }
   } 
 
-  /** switch the ZOOM controls
-   * @param ctrl      type of controls
-   * @note this method is a callback to let other objects tell the activity to use zooms or not
-   */
-  private void switchZoomCtrl( int ctrl )
-  {
-    // TDLog.v( "DEBUG switchZoomCtrl " + ctrl + " ctrl is " + ((mZoomBtnsCtrl == null )? "null" : "not null") );
-    // FIXED_ZOOM 
-    if ( mDrawingSurface.isFixedZoom() ) return;
-
-    if ( mZoomBtnsCtrl == null ) return;
-    mZoomBtnsCtrlOn = (ctrl > 0);
-    switch ( ctrl ) {
-      case 0:
-        mZoomBtnsCtrl.setOnZoomListener( null );
-        mZoomBtnsCtrl.setVisible( false );
-        mZoomBtnsCtrl.setZoomInEnabled( false );
-        mZoomBtnsCtrl.setZoomOutEnabled( false );
-        mZoomView.setVisibility( View.GONE );
-        break;
-      case 1:
-        mZoomView.setVisibility( View.VISIBLE );
-        mZoomBtnsCtrl.setOnZoomListener( this );
-        mZoomBtnsCtrl.setVisible( false );
-        mZoomBtnsCtrl.setZoomInEnabled( true );
-        mZoomBtnsCtrl.setZoomOutEnabled( true );
-        break;
-      case 2:
-        mZoomView.setVisibility( View.VISIBLE );
-        mZoomBtnsCtrl.setOnZoomListener( this );
-        mZoomBtnsCtrl.setVisible( true );
-        mZoomBtnsCtrl.setZoomInEnabled( true );
-        mZoomBtnsCtrl.setZoomOutEnabled( true );
-        break;
-    }
-  }
-
   /** prepare the buttons of the top bars
    */
   private void makeButtons( )
@@ -3102,8 +3038,6 @@ public class DrawingWindow extends ItemDrawer
 
     audioCheck = TDandroid.checkMicrophone( mActivity );
     // TDLog.v( "Microphone perm : " + audioCheck );
-
-    mZoomBtnsCtrlOn = (StylusOnlyInputController.zoomControlMode() > 1);  // do before setting content
     mPointScale = PointScale.SCALE_M;
 
     // mIsNotMultitouch = ! TDandroid.checkMultitouch( this );
@@ -3122,27 +3056,13 @@ public class DrawingWindow extends ItemDrawer
     mDrawingSurface.makePreviewPath( DrawingPath.DRAWING_PATH_LINE, DrawingWindow.getPreviewPaint() );
     mDrawingSurface.setOnTouchListener(this);
     mDrawingSurface.setOnGenericMotionListener(this);
+    StylusOnlyInputController.setSketchPinchZoom( this, mDrawingSurface, this::scaleCanvas );
     // mDrawingSurface.setOnLongClickListener(this);
     // mDrawingSurface.setBuiltInZoomControls(true);
-
-    mZoomView = (View) findViewById(R.id.zoomView );
-    // if ( TDSetting.mTripleToolbar ) {
-    //   ZOOM_TRANSLATION = ZOOM_TRANSLATION_3;
-    // } else {
-    //   ZOOM_TRANSLATION = ZOOM_TRANSLATION_1;
-    // }
-    mZoomView.setTranslationY( ZOOM_TRANSLATION );
-
-    mZoomBtnsCtrl = com.topodroid.TDX.StylusOnlyInputController.createZoomControls( mZoomView );
-    // FIXME_ZOOM_CTRL mZoomCtrl = (ZoomControls) mZoomBtnsCtrl.getZoomControls();
-    // ViewGroup vg = mZoomBtnsCtrl.getContainer();
-    // switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
 
     mListView = (MyHorizontalListView) findViewById(R.id.listview);
     mListView.setEmptyPlaceholder(true);
     mButtonSize = TopoDroidApp.setListViewHeight( getApplicationContext(), mListView );
-
-    mZoomTranslate = mButtonSize;
 
     mMenuImage = (Button) findViewById( R.id.handle );
     mMenuImage.setOnClickListener( this );
@@ -3507,7 +3427,7 @@ public class DrawingWindow extends ItemDrawer
   /** Activation is distinct from repainting the toolbar or applying a recalled choice. */
   private void restoreSymbolPreferences()
   {
-    if ( mRestoringSymbolPreferences || mDrawingSurface == null || mZoomView == null
+    if ( mRestoringSymbolPreferences || mDrawingSurface == null || mListView == null
       || mLayoutToolsPreset == null || mLayoutToolsStyle == null ) return;
     Symbol symbol = selectedSketchSymbol();
     if ( symbol == null || mSid < 0 ) return;
@@ -4322,7 +4242,7 @@ public class DrawingWindow extends ItemDrawer
     String mode = mApp_mData.getValue( "DISTOX_PLOT_MODE" );
     DrawingCommandManager.setDisplayMode( DisplayMode.parseString( mode ) );
     // mLastLinePath = null; // necessary ??? these two were at the end
-    switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
+    refreshStylusOnlyUi();
 
     if ( ! mTh2Edit ) { // TH2EDIT
       PlotInfo info = mApp_mData.getPlotInfo( mSid, mName );
@@ -4343,7 +4263,6 @@ public class DrawingWindow extends ItemDrawer
    */
   private void doPause() // saveInstanceToData
   {
-    switchZoomCtrl( 0 );
     mDrawingSurface.setDrawing( false );
     if ( mPid >= 0 ) {
       try {
@@ -5582,17 +5501,9 @@ public class DrawingWindow extends ItemDrawer
     }
   }
 
-  /** make the zoom controls visible (if enabled)
+  /** Refresh title zoom controls after a zoom availability change.
    */
-  public void checkZoomBtnsCtrl()
-  {
-    // if ( mZoomBtnsCtrl == null ) return; // not necessary
-    // FIXED_ZOOM 
-    if ( mDrawingSurface.isFixedZoom() ) return;
-    if ( StylusOnlyInputController.zoomControlMode() == 2 && ! mZoomBtnsCtrl.isVisible() ) {
-      mZoomBtnsCtrl.setVisible( true );
-    }
-  }
+  public void checkZoomBtnsCtrl() { refreshStylusOnlyUi(); }
 
   // /** add a line to the drawing
   //  * @param lp1  line to add
@@ -5738,7 +5649,7 @@ public class DrawingWindow extends ItemDrawer
     // dirty-driven renders and idle waits
     mDrawingSurface.requestRenderBurst( DrawingSurface.GESTURE_BURST_MS );
     dismissPopups();
-    checkZoomBtnsCtrl();
+    if ( rawEvent.getActionMasked() == MotionEvent.ACTION_DOWN ) checkZoomBtnsCtrl();
 
     MotionEventWrap event = MotionEventWrap.wrap(rawEvent);
     // TDLog.Log( TDLog.LOG_INPUT, "Drawing Activity onTouch() " );
@@ -6447,14 +6358,10 @@ public class DrawingWindow extends ItemDrawer
     // TDLog.Log( TDLog.LOG_PLOT, "DOWN at X " + xc + " [" +TopoDroidApp.mBorderInnerLeft + " " + TopoDroidApp.mBorderInnerRight + "] Y " 
     // TDLog.v( "DOWN at X " + xc + " [" +TopoDroidApp.mBorderInnerLeft + " " + TopoDroidApp.mBorderInnerRight + "] Y " + yc + " [" + TopoDroidApp.mBorderTop + " " + TopoDroidApp.mBorderBottom + "]" );
 
-    // float bottom = TopoDroidApp.mBorderBottom - mZoomTranslate;
-    // if ( mMode == MODE_DRAW ) bottom += ZOOM_TRANSLATION;
 
     if ( yc > TopoDroidApp.mBorderBottom ) {
-      if ( ( ! mDrawingSurface.isFixedZoom() ) && mZoomBtnsCtrlOn && xc > TopoDroidApp.mBorderInnerLeft && xc < TopoDroidApp.mBorderInnerRight ) {
+      if ( ( ! mDrawingSurface.isFixedZoom() ) && ( TDSetting.mZoomCtrl > 0 || StylusOnlyInputController.isEnabled() ) && xc > TopoDroidApp.mBorderInnerLeft && xc < TopoDroidApp.mBorderInnerRight ) {
         mTouchMode = MODE_ZOOM;
-        mZoomBtnsCtrl.setVisible( true );
-        // mZoomCtrl.show( );
       } else if ( TDSetting.mSideDrag && ( xc > TopoDroidApp.mBorderRight || xc < TopoDroidApp.mBorderLeft ) ) {
         mTouchMode = MODE_ZOOM;
       }
@@ -8225,13 +8132,6 @@ public class DrawingWindow extends ItemDrawer
         applyPendingSketchStyleSelection();
       }
 
-      if ( mMode == MODE_DRAW ) {  // this has annoying glitches 
-        mZoomView.setTranslationY( 0 );
-        // mZoomBtnsCtrl = new ZoomButtonsController( mZoomView );
-      } else if ( mode == MODE_DRAW ) {
-        mZoomView.setTranslationY( ZOOM_TRANSLATION );
-        // mZoomBtnsCtrl = new ZoomButtonsController( mZoomView );
-      }
 
       if ( mMode == MODE_PLACE_SECTION && mode != MODE_PLACE_SECTION ) {
         mPendingSectionPlacementPoint = null;
@@ -10506,8 +10406,6 @@ public class DrawingWindow extends ItemDrawer
     }
     menu_adapter.add( res.getString( menus[10] ) ); // OPTIONS
     menu_adapter.add( res.getString( menus[11] ) ); // HELP
-    menu_adapter.add( res.getString( StylusOnlyInputController.isEnabled()
-        ? R.string.menu_stylus_only_disable : R.string.menu_stylus_only_enable ) );
     mMenu.setAdapter( menu_adapter );
     mMenu.invalidate();
   }
@@ -10515,8 +10413,8 @@ public class DrawingWindow extends ItemDrawer
   /** Refresh controls that follow the session's input mode. */
   void refreshStylusOnlyUi()
   {
-    if ( mMenu != null ) setMenuAdapter( getResources(), mType );
-    if ( mZoomBtnsCtrl != null ) switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
+    StylusOnlyInputController.setSketchZoomControls( this, this::zoomIn, this::zoomOut,
+        mDrawingSurface != null && ! mDrawingSurface.isFixedZoom() );
   }
 
   private void closeMenu()
@@ -10618,11 +10516,6 @@ public class DrawingWindow extends ItemDrawer
    */
   private void handleMenu( int pos )
   {
-    if ( pos == mMenu.getAdapter().getCount() - 1 ) {
-      closeMenu();
-      StylusOnlyInputController.setEnabled( ! StylusOnlyInputController.isEnabled() );
-      return;
-    }
     closeMenu();
     int p = 0;
     if ( p++ == pos ) {
@@ -12402,8 +12295,6 @@ public class DrawingWindow extends ItemDrawer
     int k = -1;
     if ( mLayoutToolsTopDivider != null ) mLayoutToolsTopDivider.setVisibility( View.VISIBLE );
     if ( mLayoutToolsGroupDivider != null ) mLayoutToolsGroupDivider.setVisibility( View.VISIBLE );
-    // ZOOM_TRANSLATION = ZOOM_TRANSLATION_1;
-    mZoomView.setTranslationY( ZOOM_TRANSLATION );
     if ( isManualToolbar() ) {
       mLayoutToolsP.setVisibility( View.GONE );
       mLayoutToolsL.setVisibility( View.GONE );

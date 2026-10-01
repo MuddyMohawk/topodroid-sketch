@@ -41,11 +41,15 @@ public class StylusPreferenceInstrumentedTest
       SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences( context );
       assertFalse( StylusOnlyInputController.isEnabled() );
       assertFalse( prefs.getBoolean( StylusOnlyInputController.PREFERENCE, true ) );
+      assertEquals( prefs.getBoolean( StylusOnlyInputController.PINCH_PREFERENCE, false ),
+          StylusOnlyInputController.isPinchAllowed() );
       String old = prefs.getString( "DISTOX_STYLUS_SIZE", null );
       try {
         prefs.edit().putString( "DISTOX_STYLUS_SIZE", "100" ).commit();
         TDSetting.loadSecondaryPreferences( new TDPrefHelper( context ) );
         assertFalse( StylusOnlyInputController.isEnabled() );
+        assertEquals( prefs.getBoolean( StylusOnlyInputController.PINCH_PREFERENCE, false ),
+            StylusOnlyInputController.isPinchAllowed() );
         assertEquals( "100", prefs.getString( "DISTOX_STYLUS_SIZE", null ) );
       } finally {
         if ( old == null ) prefs.edit().remove( "DISTOX_STYLUS_SIZE" ).commit();
@@ -54,27 +58,32 @@ public class StylusPreferenceInstrumentedTest
     } );
   }
 
-  @Test public void settingsImportAndExportNeverContainOrEnableEitherStylusPreference()
+  @Test public void settingsRoundTripPinchChoiceWithoutEnablingProtectionOrRetiredThreshold()
   {
     InstrumentationRegistry.getInstrumentation().runOnMainSync( () -> {
       Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
       SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences( context );
       File imported = TDFile.getSettingsFile(), exported = new File( context.getCacheDir(), "stylus-settings-export-test.txt" );
       byte[] saved = null;
+      boolean savedPinch = StylusOnlyInputController.isPinchAllowed();
       try {
         if ( imported.exists() ) saved = read( imported );
         write( imported, ( "TopoDroid settings\nF DISTOX_STYLUS_SIZE 100\nB "
-            + StylusOnlyInputController.PREFERENCE + " true\n" ).getBytes( "UTF-8" ) );
+            + StylusOnlyInputController.PREFERENCE + " true\nB "
+            + StylusOnlyInputController.PINCH_PREFERENCE + " true\n" ).getBytes( "UTF-8" ) );
         assertTrue( TDSetting.importSettings( context, null, prefs, -1 ) );
         assertFalse( StylusOnlyInputController.isEnabled() );
+        assertTrue( StylusOnlyInputController.isPinchAllowed() );
         StylusOnlyInputController.setEnabled( true );
         assertTrue( TDSetting.exportSettings( context, Uri.fromFile( exported ), prefs, -1 ) );
         String text = new String( read( exported ), "UTF-8" );
         assertFalse( text.contains( "DISTOX_STYLUS_SIZE" ) );
         assertFalse( text.contains( StylusOnlyInputController.PREFERENCE ) );
+        assertTrue( text.contains( "B " + StylusOnlyInputController.PINCH_PREFERENCE + " true" ) );
       } catch ( IOException e ) { throw new AssertionError( e ); }
       finally {
         StylusOnlyInputController.setEnabled( false );
+        StylusOnlyInputController.setAllowPinch( savedPinch );
         try { if ( saved != null ) write( imported, saved ); else imported.delete(); }
         catch ( IOException e ) { throw new AssertionError( e ); }
         exported.delete();
@@ -85,7 +94,7 @@ public class StylusPreferenceInstrumentedTest
   @Test public void replacementIsBasicAndBothModesAreExcludedFromSettingsInterchange()
   {
     boolean found = false;
-    for ( TDPrefKey key : TDPrefKey.mMain ) {
+    for ( TDPrefKey key : TDPrefKey.mPlot ) {
       if ( StylusOnlyInputController.PREFERENCE.equals( key.key ) ) {
         found = true;
         assertEquals( 0, key.level );
@@ -93,6 +102,15 @@ public class StylusPreferenceInstrumentedTest
       }
     }
     assertTrue( found );
+    for ( TDPrefKey key : TDPrefKey.mMain ) assertNotEquals( StylusOnlyInputController.PREFERENCE, key.key );
+    assertEquals( "DISTOX_ZOOM_CTRL", TDPrefKey.mPlot[1].key );
+    assertEquals( "DISTOX_TOOLBAR_SLOTS", TDPrefKey.mPlot[6].key );
+    assertEquals( StylusOnlyInputController.PREFERENCE, TDPrefKey.mPlot[9].key );
+    assertEquals( StylusOnlyInputController.PINCH_PREFERENCE, TDPrefKey.mPlot[10].key );
+    assertEquals( "DISTOX_TOOL_POINT", TDPrefKey.mPlot[11].key );
+    assertEquals( "DISTOX_PLOT_SCREEN", TDPrefKey.mPlot[15].key );
+    assertEquals( 0, TDPrefKey.mPlot[10].level );
+    assertEquals( "false", TDPrefKey.mPlot[10].dflt );
     assertFalse( TDPrefKey.checkKeyGroup( "DISTOX_STYLUS_SIZE", -1 ) );
     assertFalse( TDPrefKey.checkKeyGroup( StylusOnlyInputController.PREFERENCE, -1 ) );
     assertEquals( "DISTOX_BACKUP_NUMBER", TDPrefKey.mGeekPlot[2].key );

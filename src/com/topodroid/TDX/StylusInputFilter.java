@@ -12,6 +12,8 @@ final class StylusInputFilter
   private MotionEvent lastDelivered;
   private boolean awaitingDown;
 
+  boolean hasActivePen() { return penId >= 0; }
+
   static boolean isPen( MotionEvent event, int index )
   {
     int tool = event.getToolType( index );

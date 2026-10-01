@@ -155,8 +155,7 @@ class TDPrefKey
     new TDPrefKey( B,       NON, "DISTOX_DEVICE_PREF",     R.string.pref_cat_device      ),
     new TDPrefKey( N,       NON, "DISTOX_CAVE3D_PREF",     R.string.pref_cat_cave3d      ),
     new TDPrefKey( A,       NON, "DISTOX_GEEK_PREF",       R.string.pref_cat_geek        ),
-    new TDPrefKey( E,       NON, "DISTOX_EXPORT_SETTINGS", R.string.pref_export_settings ),
-    new TDPrefKey( B, BOOL, UI, "DISTOX_STYLUS_ONLY_INPUT", R.string.pref_stylus_only_title, R.string.pref_stylus_only_summary, FALSE )
+    new TDPrefKey( E,       NON, "DISTOX_EXPORT_SETTINGS", R.string.pref_export_settings )
   };
 
   /** survey settings
@@ -206,6 +205,8 @@ class TDPrefKey
     new TDPrefKey( D, LONG, UI,  "DISTOX_TOOLBAR_SLOTS",  R.string.pref_toolbarSlots_title,  R.string.pref_toolbarSlots_summary,  "8" ),
     new TDPrefKey( D, LONG, UI,  "DISTOX_TOOLBAR_ROWS",   R.string.pref_toolbarRows_title,   R.string.pref_toolbarRows_summary,   TDString.TWO ),
     new TDPrefKey( B, BOOL, GEN, "DISTOX_PLOT_CACHE",     R.string.pref_plot_cache_title,    R.string.pref_plot_cache_summary,    TRUE ),
+    new TDPrefKey( B, BOOL, UI, "DISTOX_STYLUS_ONLY_INPUT", R.string.pref_stylus_only_title, R.string.pref_stylus_only_summary, FALSE ),
+    new TDPrefKey( B, BOOL, UI, "DISTOX_STYLUS_ALLOW_PINCH", R.string.pref_stylus_pinch_title, R.string.pref_stylus_pinch_summary, FALSE ),
     new TDPrefKey( B,       NON, "DISTOX_TOOL_POINT",     R.string.pref_tool_point_title  ),
     new TDPrefKey( N,       NON, "DISTOX_TOOL_LINE",      R.string.pref_tool_line_title   ),
     new TDPrefKey( B,       NON, "DISTOX_TOOL_PRESET",   R.string.pref_tool_preset_title ),

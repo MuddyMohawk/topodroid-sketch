@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <item name="stylus_input_indicator" type="id" />
+  <item name="stylus_zoom_in" type="id" />
+  <item name="stylus_zoom_out" type="id" />
+</resources>

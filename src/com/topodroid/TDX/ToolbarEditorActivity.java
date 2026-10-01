@@ -197,6 +197,7 @@ public class ToolbarEditorActivity extends Activity
     back.setOnClickListener( new View.OnClickListener() { @Override public void onClick( View view ) { requestExit(); } } );
     bar.addView( back, new LinearLayout.LayoutParams( dp( 34 ), ViewGroup.LayoutParams.MATCH_PARENT ) );
     TextView title = label( "Toolbars", 17, INK );
+    title.setId( R.id.title_text );
     title.setTypeface( Typeface.DEFAULT_BOLD );
     bar.addView( title, new LinearLayout.LayoutParams( 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f ) );
     mSaved = label( "Saved", 12, DIM );

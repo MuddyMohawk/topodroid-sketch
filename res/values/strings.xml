@@ -2824,10 +2824,12 @@ READ THE HELP BEFORE ATTEMPTING A FIRMWARE UPLOAD
   <string name="pref_remember_symbol_preset_title">Remember drawing preset per symbol</string>
   <string name="pref_remember_symbol_preset_summary">Remember each symbol\'s drawing preset in this survey. Turning this off pauses recall and learning.</string>
   <string name="pref_stylus_only_title">Stylus-only input</string>
-  <string name="pref_stylus_only_summary">Block non-pen input on app screens. Hold Volume Down for 5 seconds to turn off. A full app restart also turns off. Android’s keyboard and system screens are outside this protection.</string>
-  <string name="menu_stylus_only_enable">Enable stylus-only input</string>
-  <string name="menu_stylus_only_disable">Disable stylus-only input</string>
-  <string name="stylus_only_badge">Pen only</string>
+  <string name="pref_stylus_only_summary">Block non-pen input on app screens. Hold Volume Down for 5 seconds or perform a full app restart to turn off</string>
+  <string name="pref_stylus_pinch_title">Allow pinch to zoom</string>
+  <string name="pref_stylus_pinch_summary">Allow two-finger zoom on the sketch canvas in stylus-only mode. Other finger input stays blocked.</string>
+  <string name="stylus_only_badge">stylus input only</string>
   <string name="stylus_only_enabled">Pen only: hold Volume Down for 5 seconds to disable. A full app restart also disables it.</string>
   <string name="stylus_only_disabled">Stylus-only input disabled</string>
+  <string name="stylus_zoom_in">Zoom in</string>
+  <string name="stylus_zoom_out">Zoom out</string>
 </resources>

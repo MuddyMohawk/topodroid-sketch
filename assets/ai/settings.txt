@@ -7,7 +7,6 @@ Numerical types can be followed by by the interval of allowed values in square b
 Enums are followed by the list of possible values and meanings in curly brackets. 
 --- SETTINGS LIST ---
 MAIN {
-DISTOX_STYLUS_ONLY_INPUT: B, Bool, "Stylus-only input", "Block non-pen pointer input on app screens for this session. Hold Volume Down for five seconds or fully restart the app to disable. Android keyboard and system screens are outside this protection."
 DISTOX_TEXT_SIZE: B, Int[1,], "Text size", "Size of text entries in listings. The default is 20sp, Minimum 10sp"
 DISTOX_SIZE_BUTTONS: B, Enum{0, 1, 3, 4, 5}, "Button size", "Size of top-bar buttons of the app windows"
 DISTOX_LOCALE: N, Enum{ "", "en", "es", "it", "ru", "de", "pt", "bg", "cn", "hu"}, "Language", "TopoDroid language: one of the supported translation of the app strings. The defaull is the empty string. Allowed values are 2-char country ISO codes."
@@ -222,6 +221,8 @@ DISTOX_FINE_LOCATION: E, Int[0,600], "Fine location time", "Time of fine locatio
 DISTOX_GEOPOINT_APP: N, Enum{0 no auxsiliary app, 1 Mobile Topographer, 2 PX Recorder, 4 GPS Position, 8 GPSTest, 16 GPS Logger}, "GNSS auxiliary app", "Choose the external auxiliary app used to import locations. The auxiliary app must be installed."
 }
 SKETCH {
+DISTOX_STYLUS_ONLY_INPUT: B, Bool, "Stylus-only input", "Block non-pen input on app screens. Hold Volume Down for 5 seconds or perform a full app restart to turn off"
+DISTOX_STYLUS_ALLOW_PINCH: B, Bool, "Allow pinch to zoom", "Allow two-finger zoom on the sketch canvas in stylus-only mode. Other finger input stays blocked."
 DISTOX_FIXED_ORIGIN: B, Bool, "Fixed sketch origin", "The sketch origin is very important because it says how the sketch drawing places on the centerline. The sketch origin is defined in the 'New Sketch' dialog. Each sketch can have its own origin. Usually TopoDroid propose the last station because one skatches the part of the cave that has been measured last. With this option enabled the initial station is proposed as origin for all the sketches. Default false"
 DISTOX_SHARED_XSECTIONS: B, Bool, "Shared cross-sections", "This setting controls whether cross-sections are shared between plan view and profile view. Default false"
 DISTOX_SLANT_XSECTION: T, Bool, "Slant cross-section", "Enable slanted cross-sections instead of only vertical or horizontal"

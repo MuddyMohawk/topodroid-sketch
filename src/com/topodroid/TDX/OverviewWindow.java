@@ -198,7 +198,7 @@ public class OverviewWindow extends ItemDrawer
     public void onVisibilityChanged(boolean visible)
     {
       if ( mZoomBtnsCtrlOn && mZoomBtnsCtrl != null ) {
-        mZoomBtnsCtrl.setVisible( visible || ( StylusOnlyInputController.zoomControlMode() > 1 ) );
+        mZoomBtnsCtrl.setVisible( visible || ( TDSetting.mZoomCtrl > 1 ) );
       }
     }
 
@@ -401,7 +401,7 @@ public class OverviewWindow extends ItemDrawer
 
 
     // this method is a callback to let other objects tell the activity to use zooms or not
-    void refreshStylusOnlyUi() { switchZoomCtrl( StylusOnlyInputController.zoomControlMode() ); }
+
 
     private void switchZoomCtrl( int ctrl )
     {
@@ -482,7 +482,7 @@ public class OverviewWindow extends ItemDrawer
       mZoomView = (View) findViewById(R.id.zoomView );
       mZoomBtnsCtrl = com.topodroid.TDX.StylusOnlyInputController.createZoomControls( mZoomView );
 
-      switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
+      switchZoomCtrl( TDSetting.mZoomCtrl );
 
       mListView = (MyHorizontalListView) findViewById(R.id.listview);
       mListView.setEmptyPlaceholder( true );
@@ -586,7 +586,7 @@ public class OverviewWindow extends ItemDrawer
     // mOffset.y = info.yoffset;
     // mZoom     = info.zoom;
     mOverviewSurface.setDrawing( true );
-    switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
+    switchZoomCtrl( TDSetting.mZoomCtrl );
   }
 
   /** implement the actions of a "pause"
@@ -1464,7 +1464,7 @@ public class OverviewWindow extends ItemDrawer
 
   public void checkZoomBtnsCtrl()
   {
-    if ( StylusOnlyInputController.zoomControlMode() == 2 && ! mZoomBtnsCtrl.isVisible() ) {
+    if ( TDSetting.mZoomCtrl == 2 && ! mZoomBtnsCtrl.isVisible() ) {
       mZoomBtnsCtrl.setVisible( true );
     }
   }

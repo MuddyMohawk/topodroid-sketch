@@ -131,7 +131,7 @@ public class PlotReloadWindow extends ItemDrawer
   public void onVisibilityChanged(boolean visible)
   {
     if ( mZoomBtnsCtrlOn && mZoomBtnsCtrl != null ) {
-      mZoomBtnsCtrl.setVisible( visible || ( StylusOnlyInputController.zoomControlMode() > 1 ) );
+      mZoomBtnsCtrl.setVisible( visible || ( TDSetting.mZoomCtrl > 1 ) );
     }
   }
 
@@ -230,7 +230,7 @@ public class PlotReloadWindow extends ItemDrawer
   public float zoom() { return mZoom; }
 
   // this method is a callback to let other objects tell the activity to use zooms or not
-  void refreshStylusOnlyUi() { switchZoomCtrl( StylusOnlyInputController.zoomControlMode() ); }
+
 
   private void switchZoomCtrl( int ctrl )
   {
@@ -292,7 +292,7 @@ public class PlotReloadWindow extends ItemDrawer
     mZoomView = (View) findViewById(R.id.zoomView );
     mZoomBtnsCtrl = com.topodroid.TDX.StylusOnlyInputController.createZoomControls( mZoomView );
 
-    switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
+    switchZoomCtrl( TDSetting.mZoomCtrl );
 
     mListView = (MyHorizontalListView) findViewById(R.id.listview);
     mListView.setEmptyPlaceholder( true );
@@ -370,7 +370,7 @@ public class PlotReloadWindow extends ItemDrawer
     // mOffset.y = info.yoffset;
     // mZoom     = info.zoom;
     mReloadSurface.setDrawing( true );
-    switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
+    switchZoomCtrl( TDSetting.mZoomCtrl );
   }
 
   private void doPause()
@@ -754,7 +754,7 @@ public class PlotReloadWindow extends ItemDrawer
 
   public void checkZoomBtnsCtrl()
   {
-    if ( StylusOnlyInputController.zoomControlMode() == 2 && ! mZoomBtnsCtrl.isVisible() ) {
+    if ( TDSetting.mZoomCtrl == 2 && ! mZoomBtnsCtrl.isVisible() ) {
       mZoomBtnsCtrl.setVisible( true );
     }
   }

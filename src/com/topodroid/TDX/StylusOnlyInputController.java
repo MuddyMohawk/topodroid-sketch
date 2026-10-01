@@ -11,7 +11,6 @@ import android.os.SystemClock;
 import android.os.Vibrator;
 import android.preference.PreferenceManager;
 import android.view.ActionMode;
-import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.KeyboardShortcutGroup;
 import android.view.Menu;
@@ -26,7 +25,6 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.FrameLayout;
 import android.widget.PopupWindow;
-import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ZoomButtonsController;
 
@@ -38,12 +36,13 @@ import java.util.List;
 public final class StylusOnlyInputController
 {
   public static final String PREFERENCE = "DISTOX_STYLUS_ONLY_INPUT";
+  public static final String PINCH_PREFERENCE = "DISTOX_STYLUS_ALLOW_PINCH";
   static final long ESCAPE_HOLD_MS = 5000;
   private static final Handler handler = new Handler( Looper.getMainLooper() );
   private static final ArrayList<WeakReference<Guard>> guards = new ArrayList<>();
-  private static final ArrayList<WeakReference<ProtectedZoomController>> zooms = new ArrayList<>();
   private static Context appContext;
   private static boolean enabled;
+  private static boolean allowPinch;
   private static int dispatchDepth;
   private static WeakReference<Activity> foreground = new WeakReference<>( null );
 
@@ -52,13 +51,14 @@ public final class StylusOnlyInputController
   private StylusOnlyInputController() { }
 
   public static boolean isEnabled() { return enabled; }
+  public static boolean isPinchAllowed() { return allowPinch; }
 
-  public static int zoomControlMode() { return enabled ? 2 : com.topodroid.prefs.TDSetting.mZoomCtrl; }
 
   public static void initialize( Application app )
   {
     appContext = app.getApplicationContext();
     enabled = false;
+    allowPinch = PreferenceManager.getDefaultSharedPreferences( app ).getBoolean( PINCH_PREFERENCE, false );
     PreferenceManager.getDefaultSharedPreferences( app ).edit().putBoolean( PREFERENCE, false ).apply();
     app.registerActivityLifecycleCallbacks( new Application.ActivityLifecycleCallbacks() {
       @Override public void onActivityCreated( Activity activity, Bundle state ) { guardWindow( activity.getWindow() ); }
@@ -67,7 +67,10 @@ public final class StylusOnlyInputController
         foreground = new WeakReference<>( activity );
         refreshActivity( activity );
       }
-      @Override public void onActivityPaused( Activity activity ) { cancelRecovery(); }
+      @Override public void onActivityPaused( Activity activity ) {
+        cancelRecovery();
+        cancelSketchPinchZoom( activity );
+      }
       @Override public void onActivityStopped( Activity activity ) { }
       @Override public void onActivitySaveInstanceState( Activity activity, Bundle state ) { }
       @Override public void onActivityDestroyed( Activity activity ) {
@@ -90,7 +93,6 @@ public final class StylusOnlyInputController
     PreferenceManager.getDefaultSharedPreferences( appContext ).edit().putBoolean( PREFERENCE, value ).apply();
     ActionKeyBindingManager.cancelVolumeDownGesture();
     for ( Guard guard : liveGuards() ) guard.refresh();
-    refreshZooms();
     refreshActivity( foreground.get() );
     com.topodroid.prefs.TDPrefActivity.reloadPreferences();
     Toast.makeText( appContext, value ? R.string.stylus_only_enabled : R.string.stylus_only_disabled,
@@ -101,8 +103,19 @@ public final class StylusOnlyInputController
   {
     if ( activity instanceof DrawingWindow ) ( (DrawingWindow)activity ).refreshStylusOnlyUi();
     if ( activity instanceof SketchWindow ) ( (SketchWindow)activity ).refreshStylusOnlyUi();
-    if ( activity instanceof OverviewWindow ) ( (OverviewWindow)activity ).refreshStylusOnlyUi();
-    if ( activity instanceof PlotReloadWindow ) ( (PlotReloadWindow)activity ).refreshStylusOnlyUi();
+  }
+
+  public static void setAllowPinch( final boolean value )
+  {
+    if ( dispatchDepth > 0 || Looper.myLooper() != Looper.getMainLooper() ) {
+      handler.post( () -> setAllowPinch( value ) );
+      return;
+    }
+    if ( allowPinch == value ) return;
+    for ( Guard guard : liveGuards() ) guard.cancel();
+    allowPinch = value;
+    PreferenceManager.getDefaultSharedPreferences( appContext ).edit().putBoolean( PINCH_PREFERENCE, value ).apply();
+    com.topodroid.prefs.TDPrefActivity.reloadPreferences();
   }
 
   private static ArrayList<Guard> liveGuards()
@@ -154,17 +167,34 @@ public final class StylusOnlyInputController
 
   public static ZoomButtonsController createZoomControls( View owner )
   {
-    ProtectedZoomController zoom = new ProtectedZoomController( owner );
-    zooms.add( new WeakReference<>( zoom ) );
-    return zoom;
+    return new ProtectedZoomController( owner );
   }
 
-  private static void refreshZooms()
+  /** Register sketch zoom actions in the existing activity title bar. */
+  public static void setSketchZoomControls( Activity activity, Runnable in, Runnable out, boolean available )
   {
-    for ( int i = zooms.size() - 1; i >= 0; --i ) {
-      ProtectedZoomController zoom = zooms.get( i ).get();
-      if ( zoom == null ) zooms.remove( i );
-      else zoom.refresh();
+    guardWindow( activity.getWindow() );
+    ProtectedWindowCallback guard = (ProtectedWindowCallback)activity.getWindow().getCallback();
+    guard.refresh();
+    if ( guard.titleBar != null ) guard.titleBar.setZoomActions( in, out, available );
+  }
+
+  static void setSketchPinchZoom( Activity activity, View canvas, StylusPinchZoom.Zoom zoom )
+  {
+    guardWindow( activity.getWindow() );
+    ProtectedWindowCallback guard = (ProtectedWindowCallback)activity.getWindow().getCallback();
+    if ( guard.pinch == null || ! guard.pinch.owns( canvas ) ) {
+      if ( guard.pinch != null ) guard.pinch.cancel();
+      guard.pinch = new StylusPinchZoom( canvas, zoom );
+    }
+  }
+
+  static void cancelSketchPinchZoom( Activity activity )
+  {
+    Window.Callback callback = activity.getWindow().getCallback();
+    if ( callback instanceof ProtectedWindowCallback ) {
+      StylusPinchZoom pinch = ( (ProtectedWindowCallback)callback ).pinch;
+      if ( pinch != null ) pinch.cancel();
     }
   }
 
@@ -277,13 +307,8 @@ public final class StylusOnlyInputController
 
   private static final class ProtectedZoomController extends ZoomButtonsController
   {
-    private final View owner;
-    private boolean requestedVisible;
-    private boolean requestedAutoDismiss = true;
-    private boolean refreshing;
     ProtectedZoomController( View view ) {
       super( view );
-      owner = view;
       View controls = getZoomControls();
       ViewGroup container = getContainer();
       ViewGroup.LayoutParams params = controls.getLayoutParams();
@@ -291,27 +316,6 @@ public final class StylusOnlyInputController
       ProtectedLayout guard = new ProtectedLayout( view.getContext() );
       guard.addView( controls );
       container.addView( guard, params );
-      owner.addOnAttachStateChangeListener( new View.OnAttachStateChangeListener() {
-        @Override public void onViewAttachedToWindow( View v ) { handler.post( () -> refresh() ); }
-        @Override public void onViewDetachedFromWindow( View v ) { hide(); }
-      } );
-    }
-    private void hide() { super.setVisible( false ); }
-    @Override public void setVisible( boolean visible ) {
-      if ( ! refreshing ) requestedVisible = visible;
-      refresh();
-    }
-    @Override public void setAutoDismissed( boolean autoDismiss ) {
-      requestedAutoDismiss = autoDismiss;
-      super.setAutoDismissed( enabled ? false : autoDismiss );
-    }
-    void refresh() {
-      if ( refreshing ) return;
-      refreshing = true;
-      try {
-        super.setAutoDismissed( enabled ? false : requestedAutoDismiss );
-        super.setVisible( owner.isShown() && owner.hasWindowFocus() && ( enabled || requestedVisible ) );
-      } finally { refreshing = false; }
     }
   }
 
@@ -320,53 +324,39 @@ public final class StylusOnlyInputController
     private final WeakReference<Window> window;
     private final Window.Callback delegate;
     private final StylusInputFilter filter = new StylusInputFilter();
-    private TextView badge;
-    private View content;
-    private int contentTopPadding;
+    private StylusTitleBar titleBar;
+    private StylusPinchZoom pinch;
     ProtectedWindowCallback( Window value ) { window = new WeakReference<>( value ); delegate = value.getCallback(); }
-    @Override public boolean dispatchTouchEvent( MotionEvent event ) { return dispatchTouch( filter, event, delegate::dispatchTouchEvent ); }
+    @Override public boolean dispatchTouchEvent( MotionEvent event ) {
+      ++ dispatchDepth;
+      try {
+        if ( pinch != null ) {
+          if ( enabled && allowPinch ) pinch.touch( event, filter.hasActivePen() );
+          else pinch.cancel();
+        }
+        return filter.touch( event, enabled, delegate::dispatchTouchEvent );
+      } finally { -- dispatchDepth; }
+    }
     @Override public boolean dispatchGenericMotionEvent( MotionEvent event ) { return dispatchGeneric( filter, event, delegate::dispatchGenericMotionEvent ); }
     @Override public boolean dispatchTrackballEvent( MotionEvent event ) { return enabled || delegate.dispatchTrackballEvent( event ); }
     @Override public boolean dispatchKeyEvent( KeyEvent event ) { return key( this, event, delegate::dispatchKeyEvent ); }
     @Override public boolean dispatchKeyShortcutEvent( KeyEvent event ) { return delegate.dispatchKeyShortcutEvent( event ); }
-    @Override public void cancel() { filter.cancel( delegate::dispatchTouchEvent ); }
+    @Override public void cancel() {
+      if ( pinch != null ) pinch.cancel();
+      filter.cancel( delegate::dispatchTouchEvent );
+    }
     @Override public void refresh() {
       Window value = window.get();
       if ( value == null ) return;
-      View currentContent = value.findViewById( android.R.id.content );
-      if ( currentContent != content ) {
-        content = currentContent;
-        if ( content != null ) contentTopPadding = content.getPaddingTop();
-      }
-      if ( badge == null && value.getDecorView() instanceof FrameLayout ) {
-        FrameLayout decor = (FrameLayout)value.getDecorView();
-        badge = new TextView( decor.getContext() );
-        badge.setText( R.string.stylus_only_badge );
-        badge.setTextColor( 0xffffdd66 );
-        badge.setBackgroundColor( 0xdd202020 );
-        badge.setTextSize( 12 );
-        int padding = (int)( 6 * decor.getResources().getDisplayMetrics().density );
-        badge.setPadding( padding, padding / 2, padding, padding / 2 );
-        badge.setClickable( false );
-        badge.setFocusable( false );
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END );
-        params.setMargins( padding, padding, padding, padding );
-        decor.addView( badge, params );
-      }
-      if ( badge != null ) badge.setVisibility( enabled ? View.VISIBLE : View.GONE );
-      // Reserve a narrow band so the indicator never covers a toolbar or dialog choice.
-      if ( content != null && badge != null ) {
-        int band = badge.getLineHeight() + badge.getPaddingTop() + badge.getPaddingBottom()
-            + (int)( 12 * badge.getResources().getDisplayMetrics().density );
-        content.setPadding( content.getPaddingLeft(), contentTopPadding + ( enabled ? band : 0 ),
-            content.getPaddingRight(), content.getPaddingBottom() );
+      // Dialogs retain their own layout; session state lives in the activity title row.
+      if ( delegate instanceof Activity ) {
+        if ( titleBar == null || ! titleBar.isAttached( value ) ) titleBar = StylusTitleBar.install( value );
+        if ( titleBar != null ) titleBar.refresh();
       }
     }
     @Override public void onWindowFocusChanged( boolean focus ) {
       if ( ! focus ) { cancel(); cancelRecovery(); }
       delegate.onWindowFocusChanged( focus );
-      refreshZooms();
     }
     @Override public void onAttachedToWindow() { delegate.onAttachedToWindow(); refresh(); }
     @Override public void onDetachedFromWindow() { cancel(); cancelRecovery(); delegate.onDetachedFromWindow(); }

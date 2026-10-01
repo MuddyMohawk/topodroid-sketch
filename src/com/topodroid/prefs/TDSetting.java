@@ -1268,6 +1268,7 @@ public class TDSetting
     mToolbarSlots  = normalizeToolbarSlots( tryInt( prefs, key[6].key, key[6].dflt ) ); // DISTOX_TOOLBAR_SLOTS
     mToolbarRows   = normalizeToolbarRows( tryInt( prefs, key[7].key, key[7].dflt ) ); // DISTOX_TOOLBAR_ROWS
     mPlotCache     = prefs.getBoolean( key[8].key, bool(key[8].dflt) ); // DISTOX_PLOT_CACHE
+    com.topodroid.TDX.StylusOnlyInputController.setAllowPinch( prefs.getBoolean( key[10].key, bool(key[10].dflt) ) );
     // TDLog.v("SETTING load plot done");
 
     key = TDPrefKey.mCalib;
@@ -1832,9 +1833,7 @@ public class TDSetting
     //   // TopoDroidApp.setCWD( tryStringValue( hlp, k, v, "TopoDroid" ), hlp.getString( "DISTOX_CBD", TDPath.getBaseDir() ) );
     //   TopoDroidApp.setCWD( tryStringValue( hlp, k, v, "TopoDroid" ) /* , TDPath.getCurrentBaseDir() */ );
     // } else 
-    if ( com.topodroid.TDX.StylusOnlyInputController.PREFERENCE.equals( k ) ) {
-      com.topodroid.TDX.StylusOnlyInputController.setEnabled( Boolean.parseBoolean( v ) );
-    } else if ( k.equals( key[ 0 ].key ) ) {             // DISTOX_EXTRA_BUTTONS (choice)
+    if ( k.equals( key[ 0 ].key ) ) {             // DISTOX_EXTRA_BUTTONS (choice)
       int level = tryIntValue( hlp, k, v, key[0].dflt );
       setActivityBooleans( hlp.getSharedPrefs(), level );
     } else if ( k.equals( key[ 1 ].key ) ) {              // DISTOX_TEXT_SIZE
@@ -1976,7 +1975,11 @@ public class TDSetting
     //   mTripleToolbar = tryBooleanValue( hlp, k, v, bool(key[1].dflt) );
     //   TopoDroidApp.setToolsToolbars();
     // } else 
-    if ( k.equals( key[ 0 ].key ) ) { // DISTOX_SIDE_DRAG (bool)
+    if ( com.topodroid.TDX.StylusOnlyInputController.PREFERENCE.equals( k ) ) {
+      com.topodroid.TDX.StylusOnlyInputController.setEnabled( Boolean.parseBoolean( v ) );
+    } else if ( com.topodroid.TDX.StylusOnlyInputController.PINCH_PREFERENCE.equals( k ) ) {
+      com.topodroid.TDX.StylusOnlyInputController.setAllowPinch( Boolean.parseBoolean( v ) );
+    } else if ( k.equals( key[ 0 ].key ) ) { // DISTOX_SIDE_DRAG (bool)
       mSideDrag = tryBooleanValue( hlp, k, v, bool(key[0].dflt) );
     } else if ( k.equals( key[ 1 ].key ) ) { // DISTOX_ZOOM_CTRL (choice)
       // setZoomControls( tryBooleanValue( hlp, k, bool(key[1]) ) );
@@ -5139,6 +5142,10 @@ B DISTOX_SAP5_BIT16_BUG true
               break;
             case "DISTOX_SIDE_DRAG":
               mSideDrag = Boolean.parseBoolean( value ); setPreference( editor, kay, mSideDrag );
+              break;
+            case "DISTOX_STYLUS_ALLOW_PINCH":
+              com.topodroid.TDX.StylusOnlyInputController.setAllowPinch( Boolean.parseBoolean( value ) );
+              setPreference( editor, kay, Boolean.parseBoolean( value ) );
               break;
             case "DISTOX_SPEN_SINGLE_CLICK":
               mSPenSingleClickAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mSPenSingleClickAction );

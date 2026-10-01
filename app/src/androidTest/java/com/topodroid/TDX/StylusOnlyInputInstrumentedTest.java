@@ -52,14 +52,19 @@ import java.util.concurrent.atomic.AtomicReference;
 @RunWith( AndroidJUnit4.class )
 public class StylusOnlyInputInstrumentedTest
 {
-  @Before @After public void resetMode() { main( () -> StylusOnlyInputController.setEnabled( false ) ); }
+  @Before @After public void resetMode() {
+    main( () -> {
+      StylusOnlyInputController.setEnabled( false );
+      StylusOnlyInputController.setAllowPinch( false );
+    } );
+  }
 
   private static void main( Runnable action ) { InstrumentationRegistry.getInstrumentation().runOnMainSync( action ); }
   private static Context context() { return InstrumentationRegistry.getInstrumentation().getTargetContext(); }
   private static ActivityScenario<TDPrefActivity> launch()
   {
     Intent intent = new Intent( context(), TDPrefActivity.class );
-    intent.putExtra( TDPrefCat.PREF_CATEGORY, TDPrefCat.PREF_CATEGORY_ALL );
+    intent.putExtra( TDPrefCat.PREF_CATEGORY, TDPrefCat.PREF_CATEGORY_PLOT );
     return ActivityScenario.launch( intent );
   }
 
@@ -103,15 +108,66 @@ public class StylusOnlyInputInstrumentedTest
 
   private static CheckBox settingCheck( TDPrefActivity activity )
   {
-    TextView title = findText( activity.getWindow().getDecorView(), activity.getString( R.string.pref_stylus_only_title ) );
+    return settingCheck( activity, R.string.pref_stylus_only_title );
+  }
+
+  private static CheckBox settingCheck( TDPrefActivity activity, int titleResource )
+  {
+    TextView title = findText( activity.getWindow().getDecorView(), activity.getString( titleResource ) );
     assertNotNull( title );
     return ( (View)title.getParent() ).findViewById( R.id.checkbox );
   }
 
-  @Test public void settingsToggleBadgeAndBackgroundStateStaySynchronized()
+  private static View preferenceRow( View view, ViewGroup list )
+  {
+    while ( view.getParent() != list ) view = (View)view.getParent();
+    return view;
+  }
+
+  @Test public void adjacentInputSettingsPrecedeSubmenusAndPinchChoiceIsPenOperable()
   {
     try ( ActivityScenario<TDPrefActivity> scenario = launch() ) {
       scenario.onActivity( activity -> {
+        View root = activity.getWindow().getDecorView();
+        ViewGroup list = activity.findViewById( R.id.layout );
+        View stylus = preferenceRow( findText( root, activity.getString( R.string.pref_stylus_only_title ) ), list );
+        View pinch = preferenceRow( findText( root, activity.getString( R.string.pref_stylus_pinch_title ) ), list );
+        View points = preferenceRow( findText( root, activity.getString( R.string.pref_tool_point_title ) ), list );
+        assertEquals( list.indexOfChild( stylus ) + 1, list.indexOfChild( pinch ) );
+        assertTrue( list.indexOfChild( pinch ) < list.indexOfChild( points ) );
+        assertFalse( settingCheck( activity, R.string.pref_stylus_pinch_title ).isChecked() );
+        StylusOnlyInputController.setEnabled( true );
+        View check = settingCheck( activity, R.string.pref_stylus_pinch_title );
+        check.requestRectangleOnScreen( new android.graphics.Rect( 0, 0, check.getWidth(), check.getHeight() ), true );
+      } );
+      InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+      scenario.onActivity( activity -> {
+        tap( activity.getWindow(), settingCheck( activity, R.string.pref_stylus_pinch_title ), MotionEvent.TOOL_TYPE_FINGER );
+        assertFalse( StylusOnlyInputController.isPinchAllowed() );
+        tap( activity.getWindow(), settingCheck( activity, R.string.pref_stylus_pinch_title ), MotionEvent.TOOL_TYPE_STYLUS );
+      } );
+      InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+      scenario.onActivity( activity -> {
+        assertTrue( StylusOnlyInputController.isPinchAllowed() );
+        assertTrue( settingCheck( activity, R.string.pref_stylus_pinch_title ).isChecked() );
+        assertTrue( PreferenceManager.getDefaultSharedPreferences( activity ).getBoolean( StylusOnlyInputController.PINCH_PREFERENCE, false ) );
+      } );
+      scenario.recreate();
+      scenario.onActivity( activity -> {
+        assertTrue( StylusOnlyInputController.isEnabled() );
+        assertTrue( settingCheck( activity, R.string.pref_stylus_pinch_title ).isChecked() );
+      } );
+    }
+  }
+
+  @Test public void settingsToggleBadgeAndBackgroundStateStaySynchronized()
+  {
+    AtomicInteger headerHeight = new AtomicInteger();
+    AtomicInteger contentPadding = new AtomicInteger();
+    try ( ActivityScenario<TDPrefActivity> scenario = launch() ) {
+      scenario.onActivity( activity -> {
+        headerHeight.set( ( (View)activity.findViewById( R.id.title_text ).getParent() ).getHeight() );
+        contentPadding.set( activity.findViewById( android.R.id.content ).getPaddingTop() );
         CheckBox checkbox = settingCheck( activity );
         assertFalse( checkbox.isChecked() );
         checkbox.requestRectangleOnScreen( new android.graphics.Rect( 0, 0, checkbox.getWidth(), checkbox.getHeight() ), true );
@@ -122,15 +178,19 @@ public class StylusOnlyInputInstrumentedTest
       scenario.onActivity( activity -> {
         assertTrue( StylusOnlyInputController.isEnabled() );
         assertTrue( settingCheck( activity ).isChecked() );
-        TextView badge = findText( activity.getWindow().getDecorView(), "Pen only" );
+        TextView badge = findText( activity.getWindow().getDecorView(), "stylus input only" );
         assertNotNull( badge ); assertTrue( badge.isShown() );
         assertFalse( badge.isClickable() ); assertFalse( badge.isFocusable() );
+        assertEquals( headerHeight.get(), ( (View)badge.getParent() ).getHeight() );
+        assertEquals( contentPadding.get(), activity.findViewById( android.R.id.content ).getPaddingTop() );
+        assertEquals( ( (ViewGroup)badge.getParent() ).getChildCount() - 3,
+            ( (ViewGroup)badge.getParent() ).indexOfChild( badge ) );
         settingCheck( activity ).requestRectangleOnScreen( new android.graphics.Rect( 0, 0,
             settingCheck( activity ).getWidth(), settingCheck( activity ).getHeight() ), true );
       } );
       InstrumentationRegistry.getInstrumentation().waitForIdleSync();
       UiDevice device = UiDevice.getInstance( InstrumentationRegistry.getInstrumentation() );
-      assertTrue( device.wait( Until.hasObject( By.text( "Pen only" ) ), 3000 ) );
+      assertTrue( device.wait( Until.hasObject( By.text( "stylus input only" ) ), 3000 ) );
       device.takeScreenshot(
           new java.io.File( context().getExternalFilesDir( null ), "stylus-settings.png" ) );
       scenario.moveToState( androidx.lifecycle.Lifecycle.State.STARTED );
@@ -144,9 +204,69 @@ public class StylusOnlyInputInstrumentedTest
       InstrumentationRegistry.getInstrumentation().waitForIdleSync();
       scenario.onActivity( activity -> {
         assertFalse( StylusOnlyInputController.isEnabled() ); assertFalse( settingCheck( activity ).isChecked() );
-        assertFalse( findText( activity.getWindow().getDecorView(), "Pen only" ).isShown() );
+        assertFalse( findText( activity.getWindow().getDecorView(), "stylus input only" ).isShown() );
       } );
     }
+  }
+
+  @Test public void nativeTitleKeepsHeightAndZoomButtonsAcceptOnlyPen()
+  {
+    int savedZoom = TDSetting.mZoomCtrl;
+    String savedBase = TDInstance.cbd;
+    TDInstance.cbd = context().getCacheDir().getAbsolutePath(); // This screen only lists the isolated cache.
+    AtomicInteger zoom = new AtomicInteger();
+    AtomicInteger titleHeight = new AtomicInteger();
+    AtomicInteger contentTop = new AtomicInteger();
+    try ( ActivityScenario<CWDActivity> scenario = ActivityScenario.launch( CWDActivity.class ) ) {
+      scenario.onActivity( activity -> {
+        TDSetting.mZoomCtrl = 0;
+        TextView title = activity.findViewById( android.R.id.title );
+        assertNotNull( title );
+        titleHeight.set( ( (View)title.getParent() ).getHeight() );
+        contentTop.set( activity.findViewById( android.R.id.content ).getTop() );
+        StylusOnlyInputController.setSketchZoomControls( activity, () -> zoom.incrementAndGet(),
+            () -> zoom.decrementAndGet(), true );
+        assertEquals( View.GONE, activity.findViewById( R.id.stylus_zoom_in ).getVisibility() );
+        StylusOnlyInputController.setEnabled( true );
+        activity.setTitle( "Test sketch title" );
+      } );
+      InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+      UiDevice.getInstance( InstrumentationRegistry.getInstrumentation() ).takeScreenshot(
+          new java.io.File( context().getExternalFilesDir( null ), "stylus-title-zoom.png" ) );
+      scenario.onActivity( activity -> {
+        TextView title = activity.findViewById( android.R.id.title );
+        View indicator = activity.findViewById( R.id.stylus_input_indicator );
+        View in = activity.findViewById( R.id.stylus_zoom_in );
+        View out = activity.findViewById( R.id.stylus_zoom_out );
+        assertEquals( "Test sketch title", title.getText().toString() );
+        assertTrue( indicator.isShown() ); assertTrue( in.isShown() ); assertTrue( out.isShown() );
+        assertEquals( titleHeight.get(), ( (View)title.getParent() ).getHeight() );
+        assertEquals( contentTop.get(), activity.findViewById( android.R.id.content ).getTop() );
+        assertEquals( title.getParent(), indicator.getParent() );
+        assertTrue( title.getRight() <= indicator.getLeft() );
+        assertTrue( indicator.getRight() <= out.getLeft() );
+        assertTrue( "Zoom size " + in.getWidth() + "x" + in.getHeight(), in.getWidth() > 0 && in.getHeight() > 0 );
+        tap( activity.getWindow(), in, MotionEvent.TOOL_TYPE_FINGER );
+        assertEquals( 0, zoom.get() );
+        tap( activity.getWindow(), in, MotionEvent.TOOL_TYPE_STYLUS );
+      } );
+      InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+      scenario.onActivity( activity -> {
+        assertEquals( 1, zoom.get() );
+        tap( activity.getWindow(), activity.findViewById( R.id.stylus_zoom_out ), MotionEvent.TOOL_TYPE_ERASER );
+      } );
+      InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+      scenario.onActivity( activity -> {
+        View in = activity.findViewById( R.id.stylus_zoom_in );
+        View out = activity.findViewById( R.id.stylus_zoom_out );
+        assertEquals( 0, zoom.get() );
+        StylusOnlyInputController.setSketchZoomControls( activity, () -> zoom.incrementAndGet(),
+            () -> zoom.decrementAndGet(), false );
+        assertFalse( in.isEnabled() ); assertFalse( out.isEnabled() );
+        StylusOnlyInputController.setEnabled( false );
+        assertEquals( View.GONE, in.getVisibility() ); assertEquals( View.GONE, out.getVisibility() );
+      } );
+    } finally { TDSetting.mZoomCtrl = savedZoom; TDInstance.cbd = savedBase; }
   }
 
   @Test public void builtInKeyboardRejectsFingerAndAcceptsPen()
@@ -299,7 +419,9 @@ public class StylusOnlyInputInstrumentedTest
           @Override public void onVisibilityChanged( boolean visible ) { }
           @Override public void onZoom( boolean in ) { zoomClicks.incrementAndGet(); }
         } );
-        controls.setVisible( false ); zoom.set( controls );
+        controls.setVisible( false );
+        assertFalse( controls.isVisible() ); // Protection must not resurrect hidden floating controls.
+        controls.setVisible( true ); zoom.set( controls );
       } );
       InstrumentationRegistry.getInstrumentation().waitForIdleSync();
       for ( int tool : new int[] { MotionEvent.TOOL_TYPE_FINGER, MotionEvent.TOOL_TYPE_STYLUS } ) {

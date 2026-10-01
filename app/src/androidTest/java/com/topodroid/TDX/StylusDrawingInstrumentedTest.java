@@ -3,7 +3,10 @@ package com.topodroid.TDX;
 import static org.junit.Assert.*;
 
 import android.graphics.Paint;
+import android.graphics.PointF;
+import android.content.Context;
 import android.view.MotionEvent;
+import android.view.WindowManager;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.topodroid.types.SymbolType;
@@ -19,10 +22,51 @@ public class StylusDrawingInstrumentedTest
   private static class BareDrawing extends DrawingWindow {
     @Override public void checkZoomBtnsCtrl() { }
     @Override public void setTheTitle() { }
+    @Override public WindowManager getWindowManager() { return windowManager(); }
   }
   private static class BareSketch extends SketchWindow {
     @Override public void checkZoomBtnsCtrl() { }
     @Override public void setTheTitle() { }
+    @Override public WindowManager getWindowManager() { return windowManager(); }
+  }
+
+  private static WindowManager windowManager() {
+    return (WindowManager)InstrumentationRegistry.getInstrumentation().getTargetContext().getSystemService( Context.WINDOW_SERVICE );
+  }
+
+  @Test public void canvasScalingAnchorsPinchInBothDrawingViewsAndRespectsFixedZoom()
+  {
+    InstrumentationRegistry.getInstrumentation().runOnMainSync( () -> {
+      try {
+        Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        BareDrawing drawing = new BareDrawing();
+        DrawingSurface surface = new DrawingSurface( context, null );
+        set( surface, "commandManager", new DrawingCommandManager( 0, "pinch-scale-test" ) );
+        set( drawing, "mDrawingSurface", surface ); set( drawing, "mZoom", 1f );
+        set( drawing, "mOffset", new PointF( 0, 0 ) );
+        drawing.scaleCanvas( 2, 100, 200 );
+        assertEquals( 2f, (Float)get( drawing, "mZoom" ), 0.001f );
+        PointF offset = (PointF)get( drawing, "mOffset" );
+        assertEquals( -50, offset.x, 0.001f ); assertEquals( -100, offset.y, 0.001f );
+        drawing.scaleCanvas( 8, 100, 200 ); // Fast expansion must not lose a zoom sample.
+        assertEquals( 16f, (Float)get( drawing, "mZoom" ), 0.001f );
+        assertEquals( -93.75f, offset.x, 0.001f ); assertEquals( -187.5f, offset.y, 0.001f );
+        surface.setFixedZoom( 1 ); drawing.scaleCanvas( 2, 100, 200 );
+        assertEquals( 16f, (Float)get( drawing, "mZoom" ), 0.001f );
+        BareSketch sketch = new BareSketch();
+        SketchSurface legacy = new SketchSurface( context, null );
+        set( legacy, "commandManager", new SketchCommandManager( false ) );
+        set( sketch, "mSketchSurface", legacy ); set( sketch, "mOffset", new Point2D( 0, 0 ) );
+        legacy.setTransform( sketch, 0, 0, 1 );
+        sketch.scaleCanvas( 2, 100, 200 );
+        assertEquals( 2f, legacy.getZoom(), 0.001f );
+        Point2D sketchOffset = (Point2D)get( sketch, "mOffset" );
+        assertEquals( -50, sketchOffset.x, 0.001f ); assertEquals( -100, sketchOffset.y, 0.001f );
+        sketch.scaleCanvas( 8, 100, 200 );
+        assertEquals( 16f, legacy.getZoom(), 0.001f );
+        assertEquals( -93.75f, sketchOffset.x, 0.001f ); assertEquals( -187.5f, sketchOffset.y, 0.001f );
+      } catch ( ReflectiveOperationException e ) { throw new AssertionError( e ); }
+    } );
   }
 
   private static Field field( Object target, String name ) throws ReflectiveOperationException
