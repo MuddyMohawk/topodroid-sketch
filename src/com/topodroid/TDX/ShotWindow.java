@@ -68,7 +68,10 @@ import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 
 import android.view.View;
-// import android.view.ViewGroup;
+import android.view.ViewGroup;
+import android.view.Gravity;
+import android.text.TextUtils;
+import android.util.TypedValue;
 import android.view.View.OnClickListener;
 import android.view.View.OnLongClickListener;
 import android.view.KeyEvent;
@@ -83,6 +86,8 @@ import android.widget.Toast;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.AbsListView;
 import android.widget.AbsListView.OnScrollListener;
 
@@ -311,6 +316,7 @@ public class ShotWindow extends Activity
   private Button     mMenuImage;
   private boolean onMenu = false;
   private boolean onMultiselect = false;
+  private TextView mSelectedLength;
   private final SPenGestureHelper mSPenGestureHelper = new SPenGestureHelper(
     new SPenGestureHelper.TriggerListener() {
       @Override
@@ -524,6 +530,61 @@ public class ShotWindow extends Activity
       setTitleColor( StationPolicy.mTitleColor );
     }
     mActivity.setTitle( sb.toString() );
+    updateSelectedLength();
+  }
+
+  /** Add the selection total at the end of the existing survey title row. */
+  private void installSelectedLengthTitle()
+  {
+    TextView title = getWindow().findViewById( android.R.id.title );
+    if ( title == null || !( title.getParent() instanceof ViewGroup ) ) return;
+    ViewGroup parent = (ViewGroup)title.getParent();
+    LinearLayout row;
+    if ( parent instanceof LinearLayout && parent.findViewById( R.id.stylus_input_indicator ) != null ) {
+      row = (LinearLayout)parent;
+    } else {
+      int index = parent.indexOfChild( title );
+      ViewGroup.LayoutParams params = title.getLayoutParams();
+      parent.removeView( title );
+      row = new LinearLayout( this );
+      row.setOrientation( LinearLayout.HORIZONTAL );
+      row.setGravity( Gravity.CENTER_VERTICAL );
+      parent.addView( row, index, params );
+      title.setGravity( Gravity.CENTER_VERTICAL );
+      row.addView( title, new LinearLayout.LayoutParams( 0, ViewGroup.LayoutParams.MATCH_PARENT, 1 ) );
+    }
+    title.setSingleLine( true );
+    title.setEllipsize( TextUtils.TruncateAt.END );
+    mSelectedLength = new TextView( this );
+    mSelectedLength.setId( R.id.selected_shot_length );
+    mSelectedLength.setTextSize( TypedValue.COMPLEX_UNIT_PX, title.getTextSize() );
+    mSelectedLength.setTypeface( title.getTypeface() );
+    mSelectedLength.setGravity( Gravity.CENTER_VERTICAL | Gravity.END );
+    mSelectedLength.setSingleLine( true );
+    int padding = (int)( 6 * getResources().getDisplayMetrics().density );
+    mSelectedLength.setPadding( padding, 0, padding, 0 );
+    mSelectedLength.setVisibility( View.GONE );
+    mSelectedLength.setAccessibilityLiveRegion( View.ACCESSIBILITY_LIVE_REGION_POLITE );
+    row.addView( mSelectedLength, new LinearLayout.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT,
+        ViewGroup.LayoutParams.MATCH_PARENT ) );
+  }
+
+  private void updateSelectedLength()
+  {
+    if ( mSelectedLength == null ) return;
+    if ( !mDataAdapter.isMultiSelect() ) {
+      mSelectedLength.setText( "" );
+      mSelectedLength.setContentDescription( null );
+      mSelectedLength.setVisibility( View.GONE );
+      return;
+    }
+    double length = 0;
+    for ( DBlock block : mDataAdapter.getMultiSelect() ) length += block.mLength;
+    String total = String.format( Locale.US, "%.2f %s", length * TDSetting.mUnitLength, TDSetting.mUnitLengthStr );
+    mSelectedLength.setText( total );
+    mSelectedLength.setTextColor( getTitleColor() );
+    mSelectedLength.setContentDescription( getString( R.string.selected_shot_length_description, total ) );
+    mSelectedLength.setVisibility( View.VISIBLE );
   }
 
   /** @return true if the "current station" name is the specified name
@@ -1431,6 +1492,7 @@ public class ShotWindow extends Activity
     TDandroid.setScreenOrientation( this );
 
     setContentView( R.layout.shot_activity );
+    installSelectedLengthTitle();
     mApp = (TopoDroidApp) getApplication();
     mApp_mData = TopoDroidApp.mData;
     TopoDroidApp.mShotWindow = this; // FIXME
@@ -2768,8 +2830,7 @@ public class ShotWindow extends Activity
     mApp_mData.updateShotsName( blks, TDInstance.sid );
     // updateDisplay();
     mDataAdapter.updateSelectBlocksView(); // REPLACED updateDisplay
-    mDataAdapter.clearMultiSelect();
-    refreshShotViews();
+    clearMultiSelect();
   }
 
   /** bedding: 

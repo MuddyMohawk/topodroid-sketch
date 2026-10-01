@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <item name="selected_shot_length" type="id" />
+  <string name="selected_shot_length_description">Selected shot length: %1$s</string>
+</resources>
