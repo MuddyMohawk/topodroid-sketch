@@ -119,6 +119,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - switch between line weights
   - open/close larger toolbar?
   - switch hatchure direction of the previous line
+  - Toggle between active device (multi-device survey)
 - Pie in the sky: Advanced GPS/gnss tools. RTK when.
 - Inventory/Rope Audit/Vandalism tracking tools
 - In-app symbol editor v2

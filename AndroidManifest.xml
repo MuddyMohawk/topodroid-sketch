@@ -265,6 +265,11 @@
           </intent-filter>
         </activity>
 
+        <activity android:name=".ButtonShortcutsActivity"
+          android:theme="@style/Theme.ToolsetEditor"
+          android:exported="false"
+          />
+
         <activity android:name=".ToolbarEditorActivity"
           android:theme="@style/Theme.ToolsetEditor"
           android:configChanges="orientation|screenSize"

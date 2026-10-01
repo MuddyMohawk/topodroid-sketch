@@ -931,10 +931,7 @@ public class ToolbarEditorActivity extends Activity
 
   private LinearLayout zoneHeading( String text, int color )
   {
-    LinearLayout row = horizontal(); row.setGravity( Gravity.CENTER_VERTICAL ); row.setPadding( editorInset(), 0, editorInset(), 0 );
-    TextView label = label( text, 12, color ); label.setTypeface( Typeface.MONOSPACE, Typeface.BOLD ); row.addView( label );
-    View line = new View( this ); line.setBackgroundColor( LINE ); LinearLayout.LayoutParams params = new LinearLayout.LayoutParams( 0, 1, 1.0f ); params.setMarginStart( dp( 8 ) ); row.addView( line, params );
-    return row;
+    return ToolbarVisualStyle.zoneHeading( this, text, color );
   }
 
   private TextView rowTag( String text, int color, boolean spare )
@@ -947,17 +944,17 @@ public class ToolbarEditorActivity extends Activity
 
   private TextView chip( String text )
   {
-    TextView chip = label( text, 14, DIM ); chip.setGravity( Gravity.CENTER ); chip.setMinHeight( dp( 38 ) ); chip.setPadding( dp( 10 ), dp( 6 ), dp( 10 ), dp( 6 ) ); return chip;
+    return ToolbarVisualStyle.chip( this, text );
   }
 
   private TextView action( String text, int color )
   {
-    TextView view = label( text, 13, color ); view.setGravity( Gravity.CENTER ); view.setPadding( dp( 7 ), 0, dp( 7 ), 0 ); view.setClickable( true ); view.setFocusable( true ); return view;
+    return ToolbarVisualStyle.action( this, text, color );
   }
 
   private TextView label( String text, int sp, int color )
   {
-    TextView view = new TextView( this ); view.setText( text ); view.setTextSize( sp ); view.setTextColor( color ); view.setGravity( Gravity.CENTER_VERTICAL ); return view;
+    return ToolbarVisualStyle.label( this, text, sp, color );
   }
 
   private LinearLayout horizontal() { LinearLayout layout = new LinearLayout( this ); layout.setOrientation( LinearLayout.HORIZONTAL ); return layout; }
@@ -992,7 +989,7 @@ public class ToolbarEditorActivity extends Activity
 
   private GradientDrawable rounded( int fill, int stroke, int strokeWidthDp, int radiusDp )
   {
-    GradientDrawable drawable = new GradientDrawable(); drawable.setColor( fill ); drawable.setCornerRadius( dp( radiusDp ) ); if ( strokeWidthDp > 0 ) drawable.setStroke( dp( strokeWidthDp ), stroke ); return drawable;
+    return ToolbarVisualStyle.rounded( this, fill, stroke, strokeWidthDp, radiusDp );
   }
 
   private String categoryIcon( String category )

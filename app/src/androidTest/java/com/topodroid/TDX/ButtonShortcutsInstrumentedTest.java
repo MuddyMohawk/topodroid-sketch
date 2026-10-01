@@ -1,0 +1,319 @@
+package com.topodroid.TDX;
+
+import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.action.ViewActions.click;
+import static androidx.test.espresso.action.ViewActions.scrollTo;
+import static androidx.test.espresso.matcher.RootMatchers.isDialog;
+import static androidx.test.espresso.matcher.ViewMatchers.withTagValue;
+import static androidx.test.espresso.matcher.ViewMatchers.withText;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.*;
+
+import android.app.Activity;
+import android.app.Dialog;
+import android.app.Instrumentation.ActivityMonitor;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.drawable.GradientDrawable;
+import android.preference.PreferenceManager;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ScrollView;
+import android.widget.TextView;
+
+import androidx.test.core.app.ActivityScenario;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.uiautomator.UiDevice;
+import androidx.test.uiautomator.By;
+import androidx.test.uiautomator.UiObject2;
+import androidx.test.uiautomator.Until;
+
+import com.topodroid.prefs.TDPrefActivity;
+import com.topodroid.prefs.TDPrefCat;
+import com.topodroid.prefs.TDPrefHelper;
+import com.topodroid.prefs.TDSetting;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
+import java.lang.reflect.Field;
+import java.util.HashMap;
+import java.util.Map;
+
+@RunWith( AndroidJUnit4.class )
+public class ButtonShortcutsInstrumentedTest
+{
+  // Independent oracle: storage order in this test is single, long, double.
+  private static final String[] KEYS = {
+    "DISTOX_SPEN_SINGLE_CLICK", "DISTOX_SPEN_LONG_CLICK", "DISTOX_SPEN_DOUBLE_CLICK",
+    "DISTOX_ACTIVE_KEY_SINGLE_PRESS", "DISTOX_ACTIVE_KEY_LONG_PRESS", "DISTOX_ACTIVE_KEY_DOUBLE_PRESS",
+    "DISTOX_VOLUME_UP_SINGLE_PRESS", "DISTOX_VOLUME_UP_LONG_PRESS", "DISTOX_VOLUME_UP_DOUBLE_PRESS",
+    "DISTOX_VOLUME_DOWN_SINGLE_PRESS", "DISTOX_VOLUME_DOWN_LONG_PRESS", "DISTOX_VOLUME_DOWN_DOUBLE_PRESS"
+  };
+  private static final int[] DEFAULTS = { 1, 3, 5, 6, 3, 5, 0, 0, 0, 0, 0, 0 };
+  private final Map<String, String> mSaved = new HashMap<>();
+  private int[] mRuntime;
+  private int mLevel;
+
+  private Context context() { return InstrumentationRegistry.getInstrumentation().getTargetContext(); }
+  private SharedPreferences prefs() { return PreferenceManager.getDefaultSharedPreferences( context() ); }
+  private void main( Runnable run ) { InstrumentationRegistry.getInstrumentation().runOnMainSync( run ); }
+  private UiDevice device() { return UiDevice.getInstance( InstrumentationRegistry.getInstrumentation() ); }
+
+  @Before public void defaults()
+  {
+    TDInstance.setContext( context().getApplicationContext() );
+    mRuntime = runtimeValues();
+    for ( int level = 0; level <= TDLevel.DEBUG; ++level ) if ( TDLevel.atLevel( level ) ) mLevel = level;
+    for ( String key : KEYS ) mSaved.put( key, prefs().getString( key, null ) );
+    main( () -> {
+      StylusOnlyInputController.setEnabled( false ); TDLevel.setLevel( context(), TDLevel.TESTER );
+      for ( int i = 0; i < KEYS.length; ++i ) save( KEYS[i], DEFAULTS[i] );
+    } );
+  }
+
+  @After public void restore()
+  {
+    main( () -> {
+      for ( int i = 0; i < KEYS.length; ++i ) save( KEYS[i], mRuntime[i] );
+      SharedPreferences.Editor editor = prefs().edit();
+      for ( String key : KEYS ) {
+        if ( mSaved.get( key ) == null ) editor.remove( key ); else editor.putString( key, mSaved.get( key ) );
+      }
+      editor.commit(); TDLevel.setLevel( context(), mLevel ); StylusOnlyInputController.setEnabled( false );
+    } );
+  }
+
+  private void save( String key, int value )
+  {
+    TDSetting.updatePreference( new TDPrefHelper( context() ), TDPrefCat.PREF_CATEGORY_SPEN, key, Integer.toString( value ) );
+  }
+
+  @Test public void defaultGridHasCorrectGestureOrderAndAnnouncements()
+  {
+    try ( ActivityScenario<ButtonShortcutsActivity> scenario = ActivityScenario.launch( ButtonShortcutsActivity.class ) ) {
+      scenario.onActivity( activity -> {
+        View root = activity.getWindow().getDecorView();
+        for ( int i = 0; i < KEYS.length; ++i ) {
+          View cell = root.findViewWithTag( KEYS[i] ); assertNotNull( cell ); assertTrue( cell.isClickable() ); assertTrue( cell.isFocusable() );
+          assertTrue( cell.getBackground() instanceof GradientDrawable );
+          if ( DEFAULTS[i] == 0 ) assertEquals( 0, ( (ViewGroup)cell ).getChildCount() );
+        }
+        assertEquals( "S Pen button double-press: Back", root.findViewWithTag( KEYS[2] ).getContentDescription().toString() );
+        assertEquals( "S Pen button hold: Next line preset", root.findViewWithTag( KEYS[1] ).getContentDescription().toString() );
+        assertEquals( "Active Key press: Eraser on/off", root.findViewWithTag( KEYS[3] ).getContentDescription().toString() );
+        assertTrue( root.findViewWithTag( KEYS[0] ).getLeft() < root.findViewWithTag( KEYS[2] ).getLeft() );
+        assertTrue( root.findViewWithTag( KEYS[2] ).getLeft() < root.findViewWithTag( KEYS[1] ).getLeft() );
+      } );
+    }
+  }
+
+  @Test public void choosingActionsUpdatesEveryMatchingRuntimeFieldAndPersistedKey()
+  {
+    try ( ActivityScenario<ButtonShortcutsActivity> scenario = ActivityScenario.launch( ButtonShortcutsActivity.class ) ) {
+      for ( int i = 0; i < KEYS.length; ++i ) {
+        final String key = KEYS[i]; final int index = i;
+        scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( key ).performClick() );
+        choose( 2 );
+        assertEquals( key, "2", prefs().getString( key, "" ) );
+        assertEquals( 2, runtimeValues()[index] );
+        for ( int j = 0; j < KEYS.length; ++j ) assertEquals( j <= i ? 2 : DEFAULTS[j], runtimeValues()[j] );
+        scenario.onActivity( activity -> assertTrue( activity.getWindow().getDecorView().findViewWithTag( key ).getContentDescription().toString().endsWith( ": Redo" ) ) );
+      }
+      scenario.recreate();
+      scenario.onActivity( activity -> {
+        assertNull( picker( activity ) );
+        for ( String key : KEYS ) assertTrue( activity.getWindow().getDecorView().findViewWithTag( key ).getContentDescription().toString().endsWith( ": Redo" ) );
+      } );
+    }
+  }
+
+  @Test public void nothingClearsCellAndNotesTrackEachButtonGroup()
+  {
+    try ( ActivityScenario<ButtonShortcutsActivity> scenario = ActivityScenario.launch( ButtonShortcutsActivity.class ) ) {
+      scenario.onActivity( activity -> assertNull( text( activity.getWindow().getDecorView(), R.string.button_shortcuts_note_volume ) ) );
+      scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( KEYS[9] ).performClick() ); choose( 1 );
+      scenario.onActivity( activity -> assertNotNull( text( activity.getWindow().getDecorView(), R.string.button_shortcuts_note_volume ) ) );
+      scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( KEYS[9] ).performClick() ); choose( 0 );
+      assertEquals( "0", prefs().getString( KEYS[9], "" ) );
+      scenario.onActivity( activity -> {
+        assertEquals( 0, ( (ViewGroup)activity.getWindow().getDecorView().findViewWithTag( KEYS[9] ) ).getChildCount() );
+        assertNull( text( activity.getWindow().getDecorView(), R.string.button_shortcuts_note_volume ) );
+      } );
+      for ( int i = 0; i < 6; ++i ) {
+        final String key = KEYS[i]; scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( key ).performClick() ); choose( 0 );
+      }
+      scenario.onActivity( activity -> {
+        assertNull( text( activity.getWindow().getDecorView(), R.string.button_shortcuts_note_pen ) );
+        assertNull( text( activity.getWindow().getDecorView(), R.string.button_shortcuts_note_active ) );
+      } );
+    }
+  }
+
+  @Test public void cancelScrimBackAndCurrentChoiceNeverChangeTheBinding()
+  {
+    try ( ActivityScenario<ButtonShortcutsActivity> scenario = ActivityScenario.launch( ButtonShortcutsActivity.class ) ) {
+      scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( KEYS[0] ).performClick() );
+      onView( withText( R.string.button_shortcuts_cancel ) ).inRoot( isDialog() ).perform( click() );
+      scenario.onActivity( activity -> assertNull( picker( activity ) ) );
+      scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( KEYS[0] ).performClick() );
+      device().pressBack(); InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+      scenario.onActivity( activity -> assertNull( picker( activity ) ) );
+      scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( KEYS[0] ).performClick() );
+      device().waitForIdle();
+      int[] scrim = new int[2];
+      scenario.onActivity( activity -> {
+        int[] location = new int[2]; picker( activity ).getWindow().getDecorView().getLocationOnScreen( location );
+        scrim[0] = device().getDisplayWidth() / 2; scrim[1] = Math.max( 1, location[1] / 2 );
+      } );
+      device().click( scrim[0], scrim[1] ); device().waitForIdle();
+      scenario.onActivity( activity -> assertNull( picker( activity ) ) );
+      scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( KEYS[0] ).performClick() ); choose( 1 );
+      assertEquals( "1", prefs().getString( KEYS[0], "" ) ); assertEquals( 1, TDSetting.mSPenSingleClickAction );
+      scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( KEYS[0] ).performClick() );
+      scenario.recreate(); scenario.onActivity( activity -> assertNull( picker( activity ) ) );
+      assertEquals( "1", prefs().getString( KEYS[0], "" ) );
+    }
+  }
+
+  @Test public void placeholdersAreInertAndPickerExposesSelectionAndAcceptedCopy()
+  {
+    try ( ActivityScenario<ButtonShortcutsActivity> scenario = ActivityScenario.launch( ButtonShortcutsActivity.class ) ) {
+      scenario.onActivity( activity -> {
+        View root = activity.getWindow().getDecorView();
+        assertInert( text( root, R.string.button_shortcuts_scope_data ) ); assertInert( text( root, R.string.button_shortcuts_scope_sketch ) );
+        assertInert( description( root, activity.getString( R.string.button_shortcuts_touch_later ) ) );
+        assertInert( description( root, activity.getString( R.string.button_shortcuts_timing_later ) ) );
+        root.findViewWithTag( KEYS[9] ).performClick();
+        View panel = picker( activity ).getWindow().getDecorView();
+        assertTrue( panel.findViewWithTag( "action:0" ).isSelected() );
+        assertTrue( panel.findViewWithTag( "action:0" ).getContentDescription().toString().contains( "Clear all three shortcuts" ) );
+        assertTrue( panel.findViewWithTag( "action:4" ).getContentDescription().toString().startsWith( "Next tool type, Cycles between point, line and area tools." ) );
+        int selected = 0;
+        for ( int value = 0; value <= 6; ++value ) if ( panel.findViewWithTag( "action:" + value ).isSelected() ) ++selected;
+        assertEquals( 1, selected );
+      } );
+    }
+  }
+
+  @Test public void deviceEntryAndSettingsSearchLaunchTheNewActivity()
+  {
+    Intent intent = new Intent( context(), TDPrefActivity.class ); intent.putExtra( TDPrefCat.PREF_CATEGORY, TDPrefCat.PREF_CATEGORY_DEVICE );
+    try ( ActivityScenario<TDPrefActivity> scenario = ActivityScenario.launch( intent ) ) {
+      ActivityMonitor monitor = InstrumentationRegistry.getInstrumentation().addMonitor( ButtonShortcutsActivity.class.getName(), null, false );
+      try {
+        scenario.onActivity( activity -> {
+          View entry = text( activity.getWindow().getDecorView(), R.string.pref_action_key_bindings_title ); assertNotNull( entry );
+          while ( ! entry.hasOnClickListeners() && entry.getParent() instanceof View ) entry = (View)entry.getParent();
+          assertTrue( entry.hasOnClickListeners() ); entry.performClick();
+        } );
+        Activity opened = InstrumentationRegistry.getInstrumentation().waitForMonitorWithTimeout( monitor, 5000 ); assertNotNull( opened );
+        main( opened::finish ); InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+        InstrumentationRegistry.getInstrumentation().removeMonitor( monitor );
+        monitor = InstrumentationRegistry.getInstrumentation().addMonitor( ButtonShortcutsActivity.class.getName(), null, false );
+        scenario.onActivity( activity -> activity.findViewById( R.id.layout ).performLongClick() );
+        UiObject2 search = device().wait( Until.findObject( By.res( context().getPackageName(), "name" ) ), 3000 );
+        assertNotNull( search ); search.setText( "hovering" );
+        device().findObject( By.res( context().getPackageName(), "btn_search" ) ).click();
+        UiObject2 results = device().wait( Until.findObject( By.res( context().getPackageName(), "result" )
+          .hasDescendant( By.text( context().getString( R.string.title_settings_spen ) ) ) ), 3000 );
+        assertNotNull( "Button shortcuts must appear in the search results list", results );
+        results.findObject( By.text( context().getString( R.string.title_settings_spen ) ) ).click();
+        Activity searched = InstrumentationRegistry.getInstrumentation().waitForMonitorWithTimeout( monitor, 5000 ); assertNotNull( searched );
+        main( searched::finish );
+      } finally { InstrumentationRegistry.getInstrumentation().removeMonitor( monitor ); }
+    }
+  }
+
+  @Test public void defaultMainAndPickerMatchGoldens() throws Exception
+  {
+    VisualTestSupport support = new VisualTestSupport( "button_shortcuts" );
+    try {
+      support.prepareForPhysicalCompatCase(); support.launchMainWindow();
+      main( () -> { for ( int i = 0; i < KEYS.length; ++i ) save( KEYS[i], DEFAULTS[i] ); } );
+      try ( ActivityScenario<ButtonShortcutsActivity> scenario = ActivityScenario.launch( ButtonShortcutsActivity.class ) ) {
+        device().waitForIdle(); support.captureAndAssertScreen( "button_shortcuts_main.png" );
+        scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( KEYS[0] ).performClick() );
+        device().waitForIdle(); support.captureAndAssertScreen( "button_shortcuts_picker.png" );
+      }
+    } finally { support.finish(); }
+  }
+
+  @Test public void contentAndPickerFitTheCurrentWindowWithoutHorizontalScrolling() throws Exception
+  {
+    VisualTestSupport captures = new VisualTestSupport( "button_shortcuts_layout" );
+    String size = context().getResources().getConfiguration().screenWidthDp + "dp";
+    try ( ActivityScenario<ButtonShortcutsActivity> scenario = ActivityScenario.launch( ButtonShortcutsActivity.class ) ) {
+      device().waitForIdle(); captures.captureScreen( "main-" + size + ".png" );
+      scenario.onActivity( activity -> {
+        View root = activity.findViewById( android.R.id.content ); assertFitsWidth( root, root.getWidth() );
+        if ( activity.getResources().getConfiguration().fontScale == 1.0f ) {
+          assertEquals( "Double-press header must fit on one line", 1, text( root, R.string.button_shortcuts_col_double ).getLineCount() );
+        }
+        activity.getWindow().getDecorView().findViewWithTag( KEYS[0] ).performClick();
+      } );
+      device().waitForIdle();
+      captures.captureScreen( "picker-" + size + ".png" );
+      scenario.onActivity( activity -> {
+        View root = picker( activity ).getWindow().getDecorView(); assertFitsWidth( root, root.getWidth() );
+        assertTrue( root.getHeight() <= activity.getWindow().getDecorView().getHeight() );
+        TextView cancel = text( root, R.string.button_shortcuts_cancel );
+        assertTrue( cancel.getGlobalVisibleRect( new android.graphics.Rect() ) );
+        ScrollView scroll = findScroll( root ); assertNotNull( scroll ); assertTrue( scroll.getHeight() > 0 );
+      } );
+      choose( 0 );
+    } finally { captures.finish(); }
+  }
+
+  private void choose( int value ) {
+    device().waitForIdle();
+    onView( withTagValue( is( (Object)( "action:" + value ) ) ) ).inRoot( isDialog() ).perform( scrollTo(), click() );
+    device().waitForIdle();
+  }
+  private Dialog picker( ButtonShortcutsActivity activity ) {
+    try { Field field = ButtonShortcutsActivity.class.getDeclaredField( "mPicker" ); field.setAccessible( true ); return (Dialog)field.get( activity ); }
+    catch ( Exception e ) { throw new AssertionError( e ); }
+  }
+  private TextView text( View root, int resource ) {
+    if ( root instanceof TextView && ( (TextView)root ).getText().toString().equals( context().getString( resource ) ) ) return (TextView)root;
+    if ( root instanceof ViewGroup ) for ( int i = 0; i < ( (ViewGroup)root ).getChildCount(); ++i ) {
+      TextView found = text( ( (ViewGroup)root ).getChildAt( i ), resource ); if ( found != null ) return found;
+    }
+    return null;
+  }
+  private View description( View root, String description ) {
+    if ( description.contentEquals( root.getContentDescription() == null ? "" : root.getContentDescription() ) ) return root;
+    if ( root instanceof ViewGroup ) for ( int i = 0; i < ( (ViewGroup)root ).getChildCount(); ++i ) {
+      View found = description( ( (ViewGroup)root ).getChildAt( i ), description ); if ( found != null ) return found;
+    }
+    return null;
+  }
+  private void assertInert( View view ) {
+    assertNotNull( view ); assertFalse( view.isClickable() ); assertFalse( view.isFocusable() ); assertFalse( view.isLongClickable() );
+    if ( view instanceof ViewGroup ) for ( int i = 0; i < ( (ViewGroup)view ).getChildCount(); ++i ) assertInert( ( (ViewGroup)view ).getChildAt( i ) );
+  }
+  private void assertFitsWidth( View view, int windowWidth ) {
+    assertTrue( "View wider than window: " + view, view.getWidth() <= windowWidth );
+    if ( view instanceof ViewGroup ) for ( int i = 0; i < ( (ViewGroup)view ).getChildCount(); ++i ) {
+      View child = ( (ViewGroup)view ).getChildAt( i );
+      assertTrue( "Child overflows parent: " + child, child.getRight() <= view.getWidth() ); assertFitsWidth( child, windowWidth );
+    }
+  }
+  private ScrollView findScroll( View view ) {
+    if ( view instanceof ScrollView ) return (ScrollView)view;
+    if ( view instanceof ViewGroup ) for ( int i = 0; i < ( (ViewGroup)view ).getChildCount(); ++i ) {
+      ScrollView found = findScroll( ( (ViewGroup)view ).getChildAt( i ) ); if ( found != null ) return found;
+    }
+    return null;
+  }
+  private int[] runtimeValues() {
+    return new int[] { TDSetting.mSPenSingleClickAction, TDSetting.mSPenLongClickAction, TDSetting.mSPenDoubleClickAction,
+      TDSetting.mActiveKeySinglePressAction, TDSetting.mActiveKeyLongPressAction, TDSetting.mActiveKeyDoublePressAction,
+      TDSetting.mVolumeUpSinglePressAction, TDSetting.mVolumeUpLongPressAction, TDSetting.mVolumeUpDoublePressAction,
+      TDSetting.mVolumeDownSinglePressAction, TDSetting.mVolumeDownLongPressAction, TDSetting.mVolumeDownDoublePressAction };
+  }
+}

@@ -40,6 +40,7 @@
     <color name="toolbar_quick">#C98AE0</color>
     <color name="toolbar_quick_ink">#24102C</color>
     <color name="toolbar_danger">#E2786E</color>
+    <color name="button_shortcuts_pictogram_outline">#7C8A93</color>
 
 <!-- MATERIAL
     <color name="colorPrimary">#66a8dd</color>

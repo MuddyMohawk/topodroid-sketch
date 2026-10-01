@@ -1184,6 +1184,7 @@ class TDPrefKey
     for ( TDPrefKey[] keyset : mKeySet ) {
       if ( keyset == null ) continue;
       for ( TDPrefKey k : keyset ) {
+        if ( k.summary < 0 ) continue; // Forward rows have no searchable description resource.
         Matcher m = p.matcher( TDInstance.getResourceString( k.summary ).toUpperCase(Locale.US) );
         if ( m.find() ) {
           // TDLog.v("matched category " + cat + " titles " + section.length );

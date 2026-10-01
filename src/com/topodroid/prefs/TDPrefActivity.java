@@ -419,6 +419,10 @@ public class TDPrefActivity extends Activity
 
   boolean loadCategory( int cat )
   {
+    if ( cat == TDPrefCat.PREF_CATEGORY_SPEN ) {
+      startActivity( new Intent( this, com.topodroid.TDX.ButtonShortcutsActivity.class ) );
+      return true;
+    }
     mPrefCategory = cat;
     if ( ! loadPreferences() ) return false;
     setTheTitle();
@@ -625,7 +629,14 @@ public class TDPrefActivity extends Activity
         linkPreference( TDPrefKey.styleScreenKey( style ), TDPrefCat.styleCategory( style ) );
       }
     } else if (mPrefCategory == TDPrefCat.PREF_CATEGORY_DEVICE ) {
-      linkPreference( "DISTOX_SPEN_PREF",           TDPrefCat.PREF_CATEGORY_SPEN );
+      TDPref shortcuts = findPreference( "DISTOX_SPEN_PREF" );
+      if ( shortcuts != null && shortcuts.getView() != null ) {
+        shortcuts.getView().setOnClickListener( new OnClickListener() {
+          @Override public void onClick( View view ) {
+            startActivity( new Intent( TDPrefActivity.this, com.topodroid.TDX.ButtonShortcutsActivity.class ) );
+          }
+        } );
+      }
       linkPreference( "DISTOX_CALIB_PREF",          TDPrefCat.PREF_CATEGORY_CALIB );
     } else if (mPrefCategory == TDPrefCat.PREF_CATEGORY_CAVE3D ) {
       linkPreference( "DISTOX_DEM3D_PREF",          TDPrefCat.PREF_DEM3D );

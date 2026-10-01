@@ -20,6 +20,20 @@ $Runner = "androidx.test.runner.AndroidJUnitRunner"
 $Instrumentation = "$TestPackage/$Runner"
 $FullTests = @(
   @{
+    Name = "Button shortcuts and settings navigation"
+    Class = "com.topodroid.TDX.ButtonShortcutsInstrumentedTest"
+    Estimate = 60
+    Timeout = 240
+    IdleTimeout = 120
+  },
+  @{
+    Name = "Stylus input and toolbar editor regressions"
+    Class = "com.topodroid.TDX.StylusOnlyInputInstrumentedTest,com.topodroid.TDX.ToolbarEditorInstrumentedTest"
+    Estimate = 150
+    Timeout = 480
+    IdleTimeout = 180
+  },
+  @{
     Name = "Visual golden sketch screen"
     Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#createSurvey_addShots_createSketch_drawPresetsAndLineWeights_matchesGolden"
     Estimate = 150
