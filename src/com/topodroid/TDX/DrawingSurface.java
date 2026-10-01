@@ -1368,6 +1368,13 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
     requestSceneRender();
   }
 
+  boolean reverseLastLine()
+  {
+    if ( commandManager == null || ! commandManager.reverseLastLine() ) return false;
+    requestSceneRender();
+    return true;
+  }
+
   boolean hasMoreRedo()
   { return commandManager!= null && commandManager.hasMoreRedo(); }
 

@@ -207,7 +207,7 @@ public class ButtonShortcutsInstrumentedTest
         assertTrue( panel.findViewWithTag( "action:0" ).getContentDescription().toString().contains( "Clear all three shortcuts" ) );
         assertNull( "Retired tool-type action must not be offered", panel.findViewWithTag( "action:4" ) );
         int selected = 0;
-        for ( int value : new int[] { 0, 1, 2, 3, 5, 6, 7, 8, 9 } ) {
+        for ( int value : new int[] { 0, 1, 2, 3, 5, 6, 7, 8, 9, 10 } ) {
           View option = panel.findViewWithTag( "action:" + value ); assertNotNull( option );
           if ( option.isSelected() ) ++selected;
         }
@@ -321,6 +321,22 @@ public class ButtonShortcutsInstrumentedTest
         for ( int row = 0; row < 4; ++row ) {
           assertEquals( 9, runtimeValues()[row * 3] ); assertEquals( 9, runtimeValues()[row * 3 + 1] );
         }
+      } );
+    }
+  }
+
+  @Test public void reverseLastLineIsAvailableForEveryButtonGestureAndSurvivesReload()
+  {
+    try ( ActivityScenario<ButtonShortcutsActivity> scenario = ActivityScenario.launch( ButtonShortcutsActivity.class ) ) {
+      for ( String key : KEYS ) {
+        scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( key ).performClick() ); choose( 10 );
+        assertEquals( "10", prefs().getString( key, "" ) );
+        scenario.onActivity( activity -> assertTrue( activity.getWindow().getDecorView().findViewWithTag( key )
+          .getContentDescription().toString().endsWith( ": Reverse last line" ) ) );
+      }
+      main( () -> TDSetting.loadSecondaryPreferences( new TDPrefHelper( context() ) ) ); scenario.recreate();
+      scenario.onActivity( activity -> {
+        for ( int action : runtimeValues() ) assertEquals( 10, action );
       } );
     }
   }

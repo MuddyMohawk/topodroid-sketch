@@ -121,6 +121,7 @@
      <item name="hold_zoom">@string/button_shortcuts_action_zoom</item>
      <item name="hold_pan">@string/button_shortcuts_action_pan</item>
      <item name="hold_erase">@string/button_shortcuts_action_hold_erase</item>
+     <item name="reverse_last_line">@string/button_shortcuts_action_reverse_line</item>
   </string-array>
   <string-array name="spenActionsValue" translatable="false">
      <item name="none">0</item>
@@ -132,6 +133,7 @@
      <item name="hold_zoom">7</item>
      <item name="hold_pan">8</item>
      <item name="hold_erase">9</item>
+     <item name="reverse_last_line">10</item>
   </string-array>
   
   <string-array name="canvasLevels">

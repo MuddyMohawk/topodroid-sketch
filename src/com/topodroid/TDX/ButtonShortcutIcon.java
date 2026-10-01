@@ -11,9 +11,9 @@ import android.view.View;
 final class ButtonShortcutIcon extends View
 {
   static final int PAN = 8;
-  static final int GESTURE_PRESS = 10;
-  static final int BUTTON_PEN = 20;
-  static final int FINGERS_TWO = 30;
+  static final int GESTURE_PRESS = 100;
+  static final int BUTTON_PEN = 200;
+  static final int FINGERS_TWO = 300;
   private final int mIcon;
   private final int mInk;
   private final Paint mPaint = new Paint( Paint.ANTI_ALIAS_FLAG );
@@ -52,6 +52,10 @@ final class ButtonShortcutIcon extends View
       case 2:
         line( 15, 14, 20, 9, 15, 4 );
         mPath.moveTo( 20, 9 ); mPath.lineTo( 9, 9 ); mRect.set( 4, 9, 14, 19 ); mPath.arcTo( mRect, -90, -180 ); mPath.lineTo( 13, 19 );
+        break;
+      case 10:
+        line( 4, 8, 20, 8 ); line( 16, 4, 20, 8, 16, 12 );
+        line( 20, 16, 4, 16 ); line( 8, 12, 4, 16, 8, 20 );
         break;
       case 6:
       case 9:

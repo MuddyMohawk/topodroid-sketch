@@ -237,6 +237,24 @@ public class Scrap
    */
   boolean hasMoreUndo() { return  mCurrentStack.size() > 0; }
 
+  /** Flip the most recently added line still present in this scrap. */
+  boolean reverseLastLine()
+  {
+    synchronized( TDPath.mCommandsLock ) {
+      for ( int i = mCurrentStack.size() - 1; i >= 0; --i ) {
+        ICanvasCommand command = mCurrentStack.get( i );
+        if ( command.commandType() != 0 || ! ( command instanceof DrawingLinePath ) ) continue;
+        DrawingLinePath line = (DrawingLinePath)command;
+        ReverseLineCommand reverse = new ReverseLineCommand( line );
+        reverse.redo();
+        mRedoStack.clear();
+        mCurrentStack.add( reverse );
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** perform an undo
    */
   void undo ()
@@ -297,6 +315,8 @@ public class Scrap
         mSelection.removePath( retrace.mPath );
         retrace.undo();
         mSelection.insertPath( retrace.mPath );
+      } else if ( cmd_type == 3 ) {
+        synchronized( TDPath.mCommandsLock ) { ((ReverseLineCommand)cmd).undo(); }
       }
     }
     mTextOverlayDirty = true;
@@ -3231,6 +3251,11 @@ public class Scrap
         mSelection.removePath( retrace.mPath );
         retrace.redo();
         mSelection.insertPath( retrace.mPath );
+      } else if ( cmd_type == 3 ) {
+        synchronized( TDPath.mCommandsLock ) {
+          ((ReverseLineCommand)cmd).redo();
+          mCurrentStack.add( cmd );
+        }
       }
     }
     mTextOverlayDirty = true;

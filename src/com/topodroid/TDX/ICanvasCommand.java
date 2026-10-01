@@ -21,7 +21,7 @@ public interface ICanvasCommand
 {
     /** @return the type of the command
      */
-    int  commandType(); // command type: 0 DrawingPath, 1 EraseCommand, 3 RetraceCommand
+    int  commandType(); // 0 DrawingPath, 1 EraseCommand, 2 RetraceCommand, 3 ReverseLineCommand
 
     void draw(Canvas canvas, RectF bbox );
     void draw(Canvas canvas, Matrix mat, RectF bbox );

@@ -2024,6 +2024,8 @@ public class DrawingCommandManager
 
   public void undo () { mCurrentScrap.undo(); }
 
+  boolean reverseLastLine() { return mCurrentScrap.reverseLastLine(); }
+
   /** try to continue an area
    * @param ap   area path
    * @param lp1  first point

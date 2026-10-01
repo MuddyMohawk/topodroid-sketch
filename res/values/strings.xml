@@ -1724,6 +1724,9 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="button_shortcuts_none_other">This press does nothing.</string>
   <string name="button_shortcuts_action_undo">Undo</string>
   <string name="button_shortcuts_action_redo">Redo</string>
+  <string name="button_shortcuts_action_reverse_line">Reverse last line</string>
+  <string name="button_shortcuts_short_reverse_line">Reverse</string>
+  <string name="button_shortcuts_desc_reverse_line">Reverses the last line drawn, including its side markings. Keeps your current tool and mode.</string>
   <string name="button_shortcuts_action_eraser">Eraser on/off</string>
   <string name="button_shortcuts_action_preset">Next line preset</string>
   <string name="button_shortcuts_action_zoom">Hold to zoom</string>

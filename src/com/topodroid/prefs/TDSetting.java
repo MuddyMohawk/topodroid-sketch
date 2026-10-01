@@ -643,6 +643,7 @@ public class TDSetting
   public static final int SPEN_ACTION_HOLD_ZOOM = 7;
   public static final int SPEN_ACTION_HOLD_PAN = 8;
   public static final int SPEN_ACTION_HOLD_ERASE = 9;
+  public static final int SPEN_ACTION_REVERSE_LAST_LINE = 10;
   // -1 follows Android's system timing; custom values are milliseconds.
   public static int mButtonHoldMs = -1;
   public static int mButtonDoubleMs = -1;
@@ -3616,6 +3617,7 @@ public class TDSetting
       case SPEN_ACTION_HOLD_ZOOM:
       case SPEN_ACTION_HOLD_PAN:
       case SPEN_ACTION_HOLD_ERASE:
+      case SPEN_ACTION_REVERSE_LAST_LINE:
         return action;
       default:
         return SPEN_ACTION_NONE;

@@ -1190,6 +1190,10 @@ public class DrawingWindow extends ItemDrawer
           mDrawingSurface.redo();
         }
         break;
+      case TDSetting.SPEN_ACTION_REVERSE_LAST_LINE:
+        if ( mDrawingSurface != null && ! mTouchActive && ! mHeldCanvasActions.active()
+            && mDrawingSurface.reverseLastLine() ) modified();
+        break;
       case TDSetting.SPEN_ACTION_TOGGLE_PRESET:
         if ( mMode == MODE_DRAW ) {
           int preset = getDisplayedSketchPreset();
