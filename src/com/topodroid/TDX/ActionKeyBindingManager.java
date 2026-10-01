@@ -109,8 +109,8 @@ public class ActionKeyBindingManager
       @Override public boolean onHeldActionStart( int trigger )
       {
         int action = configuredAction( keyId, trigger );
-        // A Press navigation binding owns the entire button gesture, even outside sketches.
-        if ( ! TDSetting.isHeldNavigationAction( action ) ) return false;
+        // An action that runs while held owns the entire gesture, even outside sketches.
+        if ( ! TDSetting.isHeldAction( action ) ) return false;
         if ( mHost != null ) mHost.beginHeldAction( keyId, action );
         return true;
       }
@@ -248,7 +248,7 @@ public class ActionKeyBindingManager
   private void dispatchTrigger( int keyId, int trigger )
   {
     int action = configuredAction( keyId, trigger );
-    if ( action == TDSetting.SPEN_ACTION_NONE || TDSetting.isHeldNavigationAction( action ) ) return;
+    if ( action == TDSetting.SPEN_ACTION_NONE || TDSetting.isHeldAction( action ) ) return;
 
     ActionBindingHost host;
     synchronized ( this ) {

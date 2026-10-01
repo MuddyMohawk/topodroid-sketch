@@ -251,9 +251,9 @@ public final class StylusOnlyInputController
         escapeOwner = owner;
         escapeTarget = target;
         handler.postDelayed( recover, Math.max( 0, ESCAPE_HOLD_MS - ( SystemClock.uptimeMillis() - event.getEventTime() ) ) );
-        // Navigation needs the down edge now; retain the independent recovery timer.
-        if ( TDSetting.isHeldNavigationAction( TDSetting.mVolumeDownSinglePressAction )
-            || TDSetting.isHeldNavigationAction( TDSetting.mVolumeDownLongPressAction ) ) {
+        // Held canvas actions need the down edge now; retain the recovery timer.
+        if ( TDSetting.isHeldAction( TDSetting.mVolumeDownSinglePressAction )
+            || TDSetting.isHeldAction( TDSetting.mVolumeDownLongPressAction ) ) {
           escapeForwarded = true;
           target.dispatch( event );
         }
@@ -345,6 +345,11 @@ public final class StylusOnlyInputController
     private StylusPinchZoom pinch;
     ProtectedWindowCallback( Window value ) { window = new WeakReference<>( value ); delegate = value.getCallback(); }
     @Override public boolean dispatchTouchEvent( MotionEvent event ) {
+      MotionEvent contact = SPenGestureHelper.normalizeHeldContact( event );
+      if ( contact != null ) {
+        try { return dispatchTouchEvent( contact ); }
+        finally { contact.recycle(); }
+      }
       ++ dispatchDepth;
       try {
         if ( pinch != null ) {
@@ -354,7 +359,14 @@ public final class StylusOnlyInputController
         return filter.touch( event, enabled, delegate::dispatchTouchEvent );
       } finally { -- dispatchDepth; }
     }
-    @Override public boolean dispatchGenericMotionEvent( MotionEvent event ) { return dispatchGeneric( filter, event, delegate::dispatchGenericMotionEvent ); }
+    @Override public boolean dispatchGenericMotionEvent( MotionEvent event ) {
+      MotionEvent contact = SPenGestureHelper.normalizeHeldContact( event );
+      if ( contact != null ) {
+        try { return dispatchTouchEvent( contact ); }
+        finally { contact.recycle(); }
+      }
+      return dispatchGeneric( filter, event, delegate::dispatchGenericMotionEvent );
+    }
     @Override public boolean dispatchTrackballEvent( MotionEvent event ) { return enabled || delegate.dispatchTrackballEvent( event ); }
     @Override public boolean dispatchKeyEvent( KeyEvent event ) { return key( this, event, delegate::dispatchKeyEvent ); }
     @Override public boolean dispatchKeyShortcutEvent( KeyEvent event ) { return delegate.dispatchKeyShortcutEvent( event ); }

@@ -3,7 +3,7 @@
  * Copyright This software is distributed under GPL-3.0 or later.
  * See the file COPYING.
  * Shared S Pen button recognizer. Ordinary shortcuts remain hover gestures;
- * held navigation follows the button across hover/contact transitions. */
+ * held canvas actions follow the button across hover/contact transitions. */
 package com.topodroid.TDX;
 
 import com.topodroid.prefs.TDSetting;
@@ -35,7 +35,7 @@ public class SPenGestureHelper
       () -> TDSetting.mSPenDoubleClickAction != TDSetting.SPEN_ACTION_NONE,
       new ActiveKeyGestureHelper.HeldActionListener() {
         @Override public boolean onHeldActionStart( int trigger ) {
-          if ( ! TDSetting.isHeldNavigationAction( getConfiguredAction( trigger ) ) ) return false;
+          if ( ! TDSetting.isHeldAction( getConfiguredAction( trigger ) ) ) return false;
           if ( heldListener != null ) heldListener.onHeldActionStart( trigger );
           return true;
         }
@@ -55,13 +55,13 @@ public class SPenGestureHelper
     }
   }
 
-  private static boolean hasNavigationBinding()
+  private static boolean hasHeldBinding()
   {
-    return TDSetting.isHeldNavigationAction( TDSetting.mSPenSingleClickAction )
-        || TDSetting.isHeldNavigationAction( TDSetting.mSPenLongClickAction );
+    return TDSetting.isHeldAction( TDSetting.mSPenSingleClickAction )
+        || TDSetting.isHeldAction( TDSetting.mSPenLongClickAction );
   }
 
-  boolean awaitingNavigation() { return hasNavigationBinding() && mGesture.isButtonDown(); }
+  boolean awaitingHeldAction() { return hasHeldBinding() && mGesture.isButtonDown(); }
 
   private static boolean isStylusToolEvent( MotionEvent event )
   {
@@ -70,6 +70,26 @@ public class SPenGestureHelper
       if ( tool == MotionEvent.TOOL_TYPE_STYLUS || tool == MotionEvent.TOOL_TYPE_ERASER ) return true;
     }
     return false;
+  }
+
+  /** Samsung uses separate contact actions while the pen button is held.
+   * Convert before window dispatch/filtering so they reach the canvas as touch,
+   * preserving genuine hover and leaving ordinary button shortcuts unchanged.
+   */
+  static MotionEvent normalizeHeldContact( MotionEvent event )
+  {
+    if ( ! hasHeldBinding() || ! isStylusToolEvent( event ) ) return null;
+    int action;
+    switch ( event.getActionMasked() ) {
+      case 211: action = MotionEvent.ACTION_DOWN; break; // Samsung ACTION_PEN_DOWN
+      case 212: action = MotionEvent.ACTION_UP; break; // Samsung ACTION_PEN_UP
+      case 213: action = MotionEvent.ACTION_MOVE; break; // Samsung ACTION_PEN_MOVE
+      case 214: action = MotionEvent.ACTION_CANCEL; break; // Samsung ACTION_PEN_CANCEL
+      default: return null;
+    }
+    MotionEvent contact = MotionEvent.obtain( event );
+    contact.setAction( action );
+    return contact;
   }
 
   private void updateButtonState( MotionEvent event )
@@ -87,7 +107,7 @@ public class SPenGestureHelper
   /** Contact events are already filtered by the stylus-only input guard. */
   void onTouch( MotionEvent event )
   {
-    if ( ! isStylusToolEvent( event ) || ! hasNavigationBinding() ) return;
+    if ( ! isStylusToolEvent( event ) || ! hasHeldBinding() ) return;
     mHandler.removeCallbacks( mHoverExit );
     if ( event.getActionMasked() == MotionEvent.ACTION_CANCEL ) cancel();
     else updateButtonState( event );
@@ -95,7 +115,7 @@ public class SPenGestureHelper
 
   public boolean onGenericMotion( MotionEvent event, boolean touchActive )
   {
-    if ( ! isStylusToolEvent( event ) || (touchActive && ! hasNavigationBinding()) ) return false;
+    if ( ! isStylusToolEvent( event ) || (touchActive && ! hasHeldBinding()) ) return false;
     switch ( event.getActionMasked() ) {
       case MotionEvent.ACTION_BUTTON_PRESS:
       case MotionEvent.ACTION_BUTTON_RELEASE:
@@ -107,7 +127,7 @@ public class SPenGestureHelper
         return wasDown != mGesture.isButtonDown();
       case MotionEvent.ACTION_HOVER_EXIT:
         if ( ! mGesture.isButtonDown() ) return false;
-        if ( hasNavigationBinding() ) {
+        if ( hasHeldBinding() ) {
           // Android sends hover-exit just before contact. Allow that transition,
           // but cancel promptly if the pen actually leaves proximity.
           mHandler.removeCallbacks( mHoverExit );

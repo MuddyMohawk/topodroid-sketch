@@ -207,7 +207,7 @@ public class ButtonShortcutsInstrumentedTest
         assertTrue( panel.findViewWithTag( "action:0" ).getContentDescription().toString().contains( "Clear all three shortcuts" ) );
         assertNull( "Retired tool-type action must not be offered", panel.findViewWithTag( "action:4" ) );
         int selected = 0;
-        for ( int value : new int[] { 0, 1, 2, 3, 5, 6, 7, 8 } ) {
+        for ( int value : new int[] { 0, 1, 2, 3, 5, 6, 7, 8, 9 } ) {
           View option = panel.findViewWithTag( "action:" + value ); assertNotNull( option );
           if ( option.isSelected() ) ++selected;
         }
@@ -283,7 +283,7 @@ public class ButtonShortcutsInstrumentedTest
           assertNotNull( findText( root, note ) );
           root.findViewWithTag( KEYS[base + 2] ).performClick();
           View panel = picker( activity ).getWindow().getDecorView();
-          assertNull( panel.findViewWithTag( "action:7" ) ); assertNull( panel.findViewWithTag( "action:8" ) );
+          assertNull( panel.findViewWithTag( "action:7" ) ); assertNull( panel.findViewWithTag( "action:8" ) ); assertNull( panel.findViewWithTag( "action:9" ) );
           picker( activity ).dismiss();
         } );
       }
@@ -294,6 +294,32 @@ public class ButtonShortcutsInstrumentedTest
         for ( int row = 0; row < 4; ++row ) {
           assertEquals( 7, runtimeValues()[row * 3] ); assertEquals( 8, runtimeValues()[row * 3 + 1] );
           assertTrue( activity.getWindow().getDecorView().findViewWithTag( KEYS[row * 3] ).getContentDescription().toString().endsWith( ": Hold to zoom" ) );
+        }
+      } );
+    }
+  }
+
+  @Test public void holdEraseIsAvailableForPressAndHoldOnAllButtonsAndSurvivesReload()
+  {
+    try ( ActivityScenario<ButtonShortcutsActivity> scenario = ActivityScenario.launch( ButtonShortcutsActivity.class ) ) {
+      for ( int row = 0; row < 4; ++row ) {
+        final int base = row * 3;
+        scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( KEYS[base] ).performClick() ); choose( 9 );
+        scenario.onActivity( activity -> activity.getWindow().getDecorView().findViewWithTag( KEYS[base + 1] ).performClick() ); choose( 9 );
+        assertEquals( "9", prefs().getString( KEYS[base], "" ) ); assertEquals( "9", prefs().getString( KEYS[base + 1], "" ) );
+        scenario.onActivity( activity -> {
+          View root = activity.getWindow().getDecorView();
+          assertTrue( root.findViewWithTag( KEYS[base] ).getContentDescription().toString().endsWith( ": Hold to erase" ) );
+          root.findViewWithTag( KEYS[base + 2] ).performClick();
+          assertNull( picker( activity ).getWindow().getDecorView().findViewWithTag( "action:9" ) );
+          picker( activity ).dismiss();
+        } );
+      }
+      main( () -> TDSetting.loadSecondaryPreferences( new TDPrefHelper( context() ) ) ); scenario.recreate();
+      scenario.onActivity( activity -> {
+        assertNotNull( text( activity.getWindow().getDecorView(), R.string.button_shortcuts_note_pen_navigation ) );
+        for ( int row = 0; row < 4; ++row ) {
+          assertEquals( 9, runtimeValues()[row * 3] ); assertEquals( 9, runtimeValues()[row * 3 + 1] );
         }
       } );
     }

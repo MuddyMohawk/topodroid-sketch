@@ -1070,14 +1070,31 @@ public class DrawingWindow extends ItemDrawer
 
   // ----------------------------------------------------------------
   private Handler saveHandler = new Handler();
-  private final HeldNavigationController mHeldNavigation = new HeldNavigationController();
-  private final HeldNavigationController.Canvas mHeldCanvas = new HeldNavigationController.Canvas() {
+  private final HeldCanvasActionController.Canvas mHeldCanvas = new HeldCanvasActionController.Canvas() {
     @Override public void pan( float dx, float dy ) {
       mOffset.x += dx / mZoom; mOffset.y += dy / mZoom;
       mDrawingSurface.setTransform( DrawingWindow.this, mOffset.x, mOffset.y, mZoom, mLandscape );
     }
     @Override public void zoom( float factor, float x, float y ) { scaleCanvas( factor, x, y ); }
+    @Override public void startErase( float x, float y ) {
+      // Selection points can become invalid when erasing trims or removes their item.
+      if ( mHasSelected || mHotPath != null ) {
+        clearSelected( false );
+        mHotPath = null;
+        mHotItemType = -1;
+        if ( mButton3 != null ) { setButton3PrevNext(); setButton3Item( null ); }
+        setTheTitle();
+      }
+      mTouchMode = MODE_MOVE;
+      startErasing( x / mZoom - mOffset.x, y / mZoom - mOffset.y, x, y );
+    }
+    @Override public void erase( float x, float y ) {
+      mDrawingSurface.setEraser( x, y, mEraseSize );
+      doEraseAt( x / mZoom - mOffset.x, y / mZoom - mOffset.y );
+    }
+    @Override public void finishErase() { finishErasing(); }
   };
+  private final HeldCanvasActionController mHeldCanvasActions = new HeldCanvasActionController( mHeldCanvas );
   private final SPenGestureHelper mSPenGestureHelper = new SPenGestureHelper(
     new SPenGestureHelper.TriggerListener() {
       @Override
@@ -1088,7 +1105,7 @@ public class DrawingWindow extends ItemDrawer
     }, new ActiveKeyGestureHelper.HeldActionListener() {
       @Override public boolean onHeldActionStart( int trigger ) {
         int action = SPenGestureHelper.getConfiguredAction( trigger );
-        return TDSetting.isHeldNavigationAction( action ) && beginHeldAction( 3, action );
+        return TDSetting.isHeldAction( action ) && beginHeldAction( 3, action );
       }
       @Override public void onHeldActionEnd() { endHeldAction( 3 ); }
     }
@@ -1096,13 +1113,24 @@ public class DrawingWindow extends ItemDrawer
 
   @Override public boolean beginHeldAction( int source, int action )
   {
-    if ( mDrawingSurface == null || ! TDSetting.isHeldNavigationAction( action ) ) return false;
-    if ( mTouchActive ) cancelCanvasGesture();
-    mHeldNavigation.begin( source, action, mTouchActive );
+    if ( mDrawingSurface == null || ! TDSetting.isHeldAction( action ) ) return false;
+    if ( mTouchActive && ! mHeldCanvasActions.consumingContact() ) cancelCanvasGesture();
+    mHeldCanvasActions.begin( source, action, mTouchActive );
+    setTheTitle();
     return true;
   }
 
-  @Override public void endHeldAction( int source ) { mHeldNavigation.end( source ); }
+  @Override public void endHeldAction( int source )
+  {
+    mHeldCanvasActions.end( source );
+    if ( mDrawingSurface != null ) setTheTitle();
+  }
+
+  private void cancelHeldCanvasActions()
+  {
+    mHeldCanvasActions.cancel();
+    if ( mDrawingSurface != null ) setTheTitle();
+  }
 
   private final Runnable saveRunnable = new Runnable() {
     @Override 
@@ -1185,18 +1213,18 @@ public class DrawingWindow extends ItemDrawer
   {
     if ( view != mDrawingSurface ) return false;
     boolean handled = mSPenGestureHelper.onGenericMotion( rawEvent, mTouchActive );
-    reservePenNavigationContact();
-    boolean navigated = mHeldNavigation.onGenericMotion( rawEvent, mTouchActive,
-      mDrawingSurface.getResources().getDisplayMetrics().density, mHeldCanvas );
+    reservePenHeldContact();
+    boolean navigated = mHeldCanvasActions.onGenericMotion( rawEvent, mTouchActive,
+      mDrawingSurface.getResources().getDisplayMetrics().density );
     if ( navigated ) mDrawingSurface.requestRenderBurst( DrawingSurface.GESTURE_BURST_MS );
     return handled || navigated;
   }
 
-  private void reservePenNavigationContact()
+  private void reservePenHeldContact()
   {
-    if ( mTouchActive && mSPenGestureHelper.awaitingNavigation() && ! mHeldNavigation.consumingContact() ) {
+    if ( mTouchActive && mSPenGestureHelper.awaitingHeldAction() && ! mHeldCanvasActions.consumingContact() ) {
       cancelCanvasGesture();
-      mHeldNavigation.reserveContact();
+      mHeldCanvasActions.reserveContact();
     }
   }
 
@@ -1626,7 +1654,9 @@ public class DrawingWindow extends ItemDrawer
     // sb.append(" ");
  
     Resources res = getResources();
-    if ( mMode == MODE_DRAW ) { 
+    if ( mHeldCanvasActions.erasing() ) {
+      sb.append( res.getString( R.string.title_erase ) );
+    } else if ( mMode == MODE_DRAW ) {
       if ( mSymbol == SymbolType.POINT ) {
         sb.append( String.format( res.getString(R.string.title_draw_point), BrushManager.getPointName( mCurrentPoint ) ) );
       } else if ( mSymbol == SymbolType.LINE ) {
@@ -4201,7 +4231,7 @@ public class DrawingWindow extends ItemDrawer
     TDLog.v( "Drawing Activity onPause " );
     ActionKeyBindingManager.unregisterHost( this );
     mSPenGestureHelper.cancel();
-    mHeldNavigation.cancel();
+    cancelHeldCanvasActions();
     doPause();
     super.onPause();
     // TDLog.Log( TDLog.LOG_PLOT, "drawing activity on pause done");
@@ -4267,7 +4297,7 @@ public class DrawingWindow extends ItemDrawer
     if ( ! has_focus ) {
       ActionKeyBindingManager.cancelGestures( this );
       mSPenGestureHelper.cancel();
-      mHeldNavigation.cancel();
+      cancelHeldCanvasActions();
     }
     if ( has_focus && mDrawingSurface != null ) mDrawingSurface.requestRenderBurst();
   }
@@ -5670,8 +5700,8 @@ public class DrawingWindow extends ItemDrawer
     if ( mEraseCommand != null && mEraseCommand.size() > 0 ) {
       mEraseCommand.completeCommand();
       mDrawingSurface.addEraseCommand( mEraseCommand );
-      mEraseCommand = null;
     }
+    mEraseCommand = null;
   }
 
   /** react to a touch event
@@ -5691,13 +5721,13 @@ public class DrawingWindow extends ItemDrawer
     if ( rawEvent.getActionMasked() == MotionEvent.ACTION_DOWN ) checkZoomBtnsCtrl();
 
     mSPenGestureHelper.onTouch( rawEvent );
-    reservePenNavigationContact();
+    reservePenHeldContact();
     if ( rawEvent.getActionMasked() == MotionEvent.ACTION_CANCEL ) {
       ActionKeyBindingManager.cancelGestures( this );
-      mHeldNavigation.cancel();
+      cancelHeldCanvasActions();
     }
-    if ( mHeldNavigation.onTouch( rawEvent, mSPenGestureHelper.awaitingNavigation(),
-        mDrawingSurface.getResources().getDisplayMetrics().density, mHeldCanvas ) ) {
+    if ( mHeldCanvasActions.onTouch( rawEvent, mSPenGestureHelper.awaitingHeldAction(),
+        mDrawingSurface.getResources().getDisplayMetrics().density ) ) {
       int kind = rawEvent.getActionMasked();
       mTouchActive = kind != MotionEvent.ACTION_UP && kind != MotionEvent.ACTION_CANCEL;
       return true;

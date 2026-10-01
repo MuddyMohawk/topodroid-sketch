@@ -1699,8 +1699,8 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="button_shortcuts_sketch_mark">sketch</string>
   <string name="button_shortcuts_legend">= only works in sketch windows. Elsewhere only Back works.</string>
   <string name="button_shortcuts_note_pen">The S Pen button only counts while the pen is hovering over the screen.</string>
-  <string name="button_shortcuts_note_pen_navigation">For Hold to zoom and Hold to pan, keep the S Pen button down while moving over or dragging on the screen. Other S Pen shortcuts use hover presses.</string>
-  <string name="button_shortcuts_note_press_navigation">%1$s: navigation on Press starts immediately and takes priority over Double-press and Hold until you release the button.</string>
+  <string name="button_shortcuts_note_pen_navigation">Hold to zoom, Hold to pan, and Hold to erase follow the S Pen button during hover and contact. Erasing requires touching the screen. Other S Pen shortcuts use hover presses.</string>
+  <string name="button_shortcuts_note_press_navigation">%1$s: actions that run while held start immediately on Press and take priority over Double-press and Hold until you release the button.</string>
   <string name="button_shortcuts_note_navigation_recovery">In stylus-only mode, holding Volume down for 5 seconds still turns stylus-only mode off.</string>
   <string name="button_shortcuts_note_volume">A volume key with a shortcut no longer changes the volume while TopoDroid is open.</string>
   <string name="button_shortcuts_note_active">The Active Key only works if it is assigned to TopoDroid Sketch in Samsung\'s Active Key settings.</string>
@@ -1711,7 +1711,10 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="button_shortcuts_timing_hold_desc">How long to press a button before its Hold action starts. Applies to all four buttons.</string>
   <string name="button_shortcuts_timing_double_desc">How long to wait for a second press. A longer gap also delays ordinary Press actions when Double-press is assigned.</string>
   <string name="button_shortcuts_timing_transition_desc">How long to keep S Pen navigation active between hover and touching the screen. Increase this if navigation stops during the transition. A longer gap also takes longer to cancel when the pen leaves the screen.</string>
-  <string name="button_shortcuts_timing_note">Changes apply to the next press. Navigation assigned to Press always starts immediately.</string>
+  <string name="button_shortcuts_timing_note">Changes apply to the next press. Actions that run while held start immediately when assigned to Press.</string>
+  <string name="button_shortcuts_action_hold_erase">Hold to erase</string>
+  <string name="button_shortcuts_short_hold_erase">Hold erase</string>
+  <string name="button_shortcuts_desc_hold_erase">Use the eraser while the button is held. Release to return to the previous tool and mode.</string>
   <string name="button_shortcuts_timing_ms">%1$d ms</string>
   <string name="button_shortcuts_timing_range">%1$d–%2$d ms</string>
   <string name="button_shortcuts_timing_reset">Use system default</string>

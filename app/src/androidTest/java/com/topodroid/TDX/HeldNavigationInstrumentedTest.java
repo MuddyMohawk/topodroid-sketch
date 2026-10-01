@@ -53,12 +53,14 @@ public class HeldNavigationInstrumentedTest
   };
   private final int[] saved = new int[SETTINGS.length];
   private boolean savedStylusOnly;
+  private int savedWithLevels;
   private BareDrawing drawing;
   private ActiveKeyGestureHelper keyHelper;
   @Before public void setup() {
     main(() -> {
       TDInstance.setContext(context().getApplicationContext());
       savedStylusOnly = StylusOnlyInputController.isEnabled();
+      savedWithLevels = TDSetting.mWithLevels; TDSetting.mWithLevels = 0;
       for (int i = 0; i < SETTINGS.length; ++i) {
         Field f = TDSetting.class.getField(SETTINGS[i]); saved[i] = f.getInt(null); f.setInt(null, i < 12 ? 0 : -1);
       }
@@ -69,9 +71,11 @@ public class HeldNavigationInstrumentedTest
       if (drawing != null) {
         ActionKeyBindingManager.unregisterHost(drawing);
         ((SPenGestureHelper)get(drawing, "mSPenGestureHelper")).cancel();
+        navigation().cancel();
       }
       if (keyHelper != null) keyHelper.cancel();
       StylusOnlyInputController.setEnabled(savedStylusOnly);
+      TDSetting.mWithLevels = savedWithLevels;
       for (int i = 0; i < SETTINGS.length; ++i) TDSetting.class.getField(SETTINGS[i]).setInt(null, saved[i]);
     });
   }
@@ -119,7 +123,219 @@ public class HeldNavigationInstrumentedTest
     assertTrue(StylusOnlyInputController.key(recoveryOwner, e, event -> event.getAction() == KeyEvent.ACTION_DOWN
       ? ActionKeyBindingManager.onKeyDown(event.getKeyCode(), event) : ActionKeyBindingManager.onKeyUp(event.getKeyCode(), event)));
   }
-  private HeldNavigationController navigation() throws Exception { return (HeldNavigationController)get(drawing, "mHeldNavigation"); }
+  private HeldCanvasActionController navigation() throws Exception { return (HeldCanvasActionController)get(drawing, "mHeldCanvasActions"); }
+
+  private DrawingSurface eraseCanvas(int mode) throws Exception {
+    canvas(); set(drawing, "mMode", mode); set(drawing, "mEraseSize", 10f);
+    set(drawing, "mTh2Edit", true); // Disable disk saves; all mutations below stay in memory.
+    return (DrawingSurface)get(drawing, "mDrawingSurface");
+  }
+  private DrawingCommandManager commands() throws Exception {
+    return (DrawingCommandManager)get(get(drawing, "mDrawingSurface"), "commandManager");
+  }
+  private void pointRow(DrawingSurface surface) {
+    for (int x = 100; x <= 190; x += 30) surface.addDrawingPath(new DrawingPointPath(0, x, 200, 0, 0));
+  }
+
+  @Test public void heldEraseUsesNormalUndoWithPenAndFingerAndPreservesEveryPreviousMode() {
+    main(() -> {
+      DrawingSurface surface = eraseCanvas(DrawingWindow.MODE_DRAW);
+      TDSetting.mVolumeUpSinglePressAction = TDSetting.SPEN_ACTION_HOLD_ERASE;
+      TDSetting.mVolumeUpLongPressAction = TDSetting.SPEN_ACTION_TOGGLE_ERASE;
+      TDSetting.mVolumeUpDoublePressAction = TDSetting.SPEN_ACTION_BACK;
+      ActionKeyBindingManager.registerHost(drawing);
+      Object brush = get(drawing, "mCurrentBrush");
+      DrawingPointPath pending = new DrawingPointPath(0, 400, 400, 0, 0);
+      set(drawing, "mPendingSectionPlacementPoint", pending);
+      for (int mode : new int[]{DrawingWindow.MODE_DRAW, DrawingWindow.MODE_MOVE, DrawingWindow.MODE_EDIT,
+          DrawingWindow.MODE_SHIFT, DrawingWindow.MODE_ERASE, DrawingWindow.MODE_PLACE_SECTION,
+          DrawingWindow.MODE_SPLIT_SKETCH, DrawingWindow.MODE_SPLIT_SCRAP}) {
+        for (int tool : new int[]{MotionEvent.TOOL_TYPE_STYLUS, MotionEvent.TOOL_TYPE_FINGER}) {
+          set(drawing, "mMode", mode);
+          set(surface, "commandManager", new DrawingCommandManager(0, "held-erase-test")); pointRow(surface);
+          if (mode == DrawingWindow.MODE_SHIFT) {
+            DrawingPath selectedPath = commands().getCommands().get(0);
+            SelectionSet selected = (SelectionSet)get(get(commands(), "mCurrentScrap"), "mSelected");
+            SelectionPoint point = new SelectionPoint(selectedPath, null, null);
+            selected.addPoint(point); selected.mHotItem = point;
+            set(drawing, "mHasSelected", true); set(drawing, "mHotPath", selectedPath);
+          }
+          key(KeyEvent.KEYCODE_VOLUME_UP, true); assertTrue(navigation().erasing());
+          touch(MotionEvent.ACTION_DOWN, tool, 0, 100, 200);
+          touch(MotionEvent.ACTION_MOVE, tool, 0, 190, 200);
+          assertEquals(0, commands().getCommands().size());
+          key(KeyEvent.KEYCODE_VOLUME_UP, false);
+          assertFalse(navigation().active()); assertNull(get(drawing, "mEraseCommand"));
+          touch(MotionEvent.ACTION_MOVE, tool, 0, 400, 400); touch(MotionEvent.ACTION_UP, tool, 0, 400, 400);
+          assertEquals(mode, get(drawing, "mMode")); assertEquals(SymbolType.LINE, get(drawing, "mSymbol"));
+          assertSame(brush, get(drawing, "mCurrentBrush")); assertSame(pending, get(drawing, "mPendingSectionPlacementPoint"));
+          assertFalse(surface.hasSelected()); assertNull(get(drawing, "mHotPath"));
+          assertNull(get(drawing, "mCurrentLinePath")); assertEquals(0, commands().getCommands().size());
+          surface.undo(); assertEquals("Erasing remains one undoable command", 4, commands().getCommands().size());
+        }
+      }
+    });
+  }
+
+  @Test public void penHoldEraseUsesDelayDiscardsPreviewAndEndsOnReleaseDuringContact() {
+    main(() -> {
+      DrawingSurface surface = eraseCanvas(DrawingWindow.MODE_DRAW); pointRow(surface);
+      TDSetting.mSPenLongClickAction = TDSetting.SPEN_ACTION_HOLD_ERASE; TDSetting.mButtonHoldMs = 100;
+      DrawingLinePath preview = new DrawingLinePath(0, 0); preview.addStartPoint(50, 50);
+      set(drawing, "mCurrentLinePath", preview); set(drawing, "mTouchActive", true);
+      surface.setLiveItem(new DrawingPointPath(0, 60, 60, 0, 0));
+      touch(MotionEvent.ACTION_MOVE, MotionEvent.TOOL_TYPE_STYLUS, MotionEvent.BUTTON_STYLUS_PRIMARY, 100, 200);
+      assertFalse(navigation().active()); assertNull(get(drawing, "mCurrentLinePath")); assertNull(get(surface, "mLiveItem"));
+      assertEquals(4, commands().getCommands().size());
+    });
+    SystemClock.sleep(200);
+    main(() -> {
+      assertTrue(navigation().erasing());
+      touch(MotionEvent.ACTION_MOVE, MotionEvent.TOOL_TYPE_STYLUS, MotionEvent.BUTTON_STYLUS_PRIMARY, 100, 200);
+      touch(MotionEvent.ACTION_MOVE, MotionEvent.TOOL_TYPE_STYLUS, MotionEvent.BUTTON_STYLUS_PRIMARY, 190, 200);
+      touch(MotionEvent.ACTION_MOVE, MotionEvent.TOOL_TYPE_STYLUS, 0, 400, 400);
+      assertFalse(navigation().active()); assertNull(get(drawing, "mEraseCommand"));
+      touch(MotionEvent.ACTION_UP, MotionEvent.TOOL_TYPE_STYLUS, 0, 400, 400);
+      assertEquals(DrawingWindow.MODE_DRAW, get(drawing, "mMode")); assertNull(get(drawing, "mCurrentLinePath"));
+      ((DrawingSurface)get(drawing, "mDrawingSurface")).undo(); assertEquals(4, commands().getCommands().size());
+    });
+  }
+
+  @Test public void samsungButtonContactErasesThroughWindowInBothInputModes() {
+    try (ActivityScenario<ButtonShortcutsActivity> scenario = ActivityScenario.launch(ButtonShortcutsActivity.class)) {
+      final View[] view = new View[1];
+      scenario.onActivity(activity -> {
+        try {
+          DrawingSurface surface = eraseCanvas(DrawingWindow.MODE_DRAW);
+          TDSetting.mSPenSingleClickAction = TDSetting.SPEN_ACTION_HOLD_ERASE;
+          view[0] = new View(activity); view[0].setClickable(true);
+          view[0].setOnGenericMotionListener((v, e) -> drawing.onGenericMotion(surface, e));
+          view[0].setOnTouchListener((v, e) -> drawing.onTouch(surface, e));
+          activity.setContentView(view[0]);
+        } catch (Exception e) { throw new AssertionError(e); }
+      });
+      InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+      for (boolean penOnly : new boolean[]{false, true}) {
+        for (boolean generic : new boolean[]{false, true}) {
+          for (boolean alreadyTouching : new boolean[]{false, true}) {
+            scenario.onActivity(activity -> {
+              try {
+                StylusOnlyInputController.setEnabled(penOnly);
+                DrawingSurface surface = (DrawingSurface)get(drawing, "mDrawingSurface");
+                set(surface, "commandManager", new DrawingCommandManager(0, "samsung-held-erase-test"));
+                int[] origin = new int[2]; view[0].getLocationInWindow(origin);
+                float x = view[0].getWidth() / 2f, y = view[0].getHeight() / 2f;
+                surface.addDrawingPath(new DrawingPointPath(0, x, y, 0, 0));
+                surface.addDrawingPath(new DrawingPointPath(0, x + 30, y, 0, 0));
+                if (alreadyTouching) {
+                  dispatchWindowPen(activity, MotionEvent.ACTION_DOWN, 0, origin[0] + x, origin[1] + y, false);
+                }
+                dispatchWindowPen(activity, MotionEvent.ACTION_BUTTON_PRESS, MotionEvent.BUTTON_STYLUS_PRIMARY,
+                  origin[0] + x, origin[1] + y, true);
+                assertTrue(navigation().erasing());
+                dispatchWindowPen(activity, MotionEvent.ACTION_HOVER_MOVE, MotionEvent.BUTTON_STYLUS_PRIMARY,
+                  origin[0] + x + 30, origin[1] + y, true);
+                assertEquals("Hover must not erase", 2, commands().getCommands().size());
+                // Samsung's button-held contact actions are 211/down, 213/move and 212/up.
+                dispatchWindowPen(activity, alreadyTouching ? 213 : 211, MotionEvent.BUTTON_STYLUS_PRIMARY,
+                  origin[0] + x, origin[1] + y, generic);
+                dispatchWindowPen(activity, 213, MotionEvent.BUTTON_STYLUS_PRIMARY,
+                  origin[0] + x + 30, origin[1] + y, generic);
+                assertEquals("Contact drag must erase; stylus-only=" + penOnly + ", generic=" + generic
+                  + ", alreadyTouching=" + alreadyTouching, 0, commands().getCommands().size());
+                dispatchWindowPen(activity, 212, MotionEvent.BUTTON_STYLUS_PRIMARY,
+                  origin[0] + x + 30, origin[1] + y, generic);
+                dispatchWindowPen(activity, MotionEvent.ACTION_BUTTON_RELEASE, 0,
+                  origin[0] + x + 30, origin[1] + y, true);
+                assertFalse(navigation().active()); assertNull(get(drawing, "mEraseCommand"));
+                assertEquals(DrawingWindow.MODE_DRAW, get(drawing, "mMode"));
+                surface.undo(); assertEquals("The drag remains one undoable command", 2, commands().getCommands().size());
+              } catch (Exception e) { throw new AssertionError(e); }
+            });
+          }
+        }
+      }
+    }
+  }
+
+  private static void dispatchWindowPen(android.app.Activity activity, int action, int buttons,
+      float x, float y, boolean generic) {
+    MotionEvent e = event(action, MotionEvent.TOOL_TYPE_STYLUS, buttons, x, y);
+    try {
+      if (generic) activity.getWindow().getCallback().dispatchGenericMotionEvent(e);
+      else activity.getWindow().getCallback().dispatchTouchEvent(e);
+      assertEquals("Dispatch must not mutate the incoming event", action, e.getActionMasked());
+    } finally { e.recycle(); }
+  }
+
+  @Test public void heldEraseFinishesOnCancelFocusLossAndHostChangeWithoutChangingMode() {
+    main(() -> {
+      DrawingSurface surface = eraseCanvas(DrawingWindow.MODE_EDIT);
+      TDSetting.mVolumeUpSinglePressAction = TDSetting.SPEN_ACTION_HOLD_ERASE;
+      for (int reason = 0; reason < 3; ++reason) {
+        set(surface, "commandManager", new DrawingCommandManager(0, "held-erase-cancel-test")); pointRow(surface);
+        ActionKeyBindingManager.registerHost(drawing); key(KeyEvent.KEYCODE_VOLUME_UP, true);
+        touch(MotionEvent.ACTION_DOWN, MotionEvent.TOOL_TYPE_STYLUS, 0, 100, 200);
+        if (reason == 0) touch(MotionEvent.ACTION_CANCEL, MotionEvent.TOOL_TYPE_STYLUS, 0, 100, 200);
+        else if (reason == 1) drawing.onWindowFocusChanged(false);
+        else ActionKeyBindingManager.registerHost(action -> true);
+        assertFalse(navigation().active()); assertNull(get(drawing, "mEraseCommand"));
+        touch(MotionEvent.ACTION_UP, MotionEvent.TOOL_TYPE_STYLUS, 0, 400, 400);
+        assertEquals(DrawingWindow.MODE_EDIT, get(drawing, "mMode"));
+        surface.undo(); assertEquals(4, commands().getCommands().size());
+      }
+      ActionKeyBindingManager.registerHost(drawing);
+    });
+  }
+
+  @Test public void heldEraseFinishesOnlyAfterLastEraseSourceAndCanYieldToPan() {
+    main(() -> {
+      DrawingSurface surface = eraseCanvas(DrawingWindow.MODE_MOVE); pointRow(surface);
+      drawing.beginHeldAction(0, TDSetting.SPEN_ACTION_HOLD_ERASE);
+      touch(MotionEvent.ACTION_DOWN, MotionEvent.TOOL_TYPE_STYLUS, 0, 100, 200);
+      drawing.beginHeldAction(1, TDSetting.SPEN_ACTION_HOLD_ERASE); drawing.endHeldAction(0);
+      assertTrue(navigation().erasing()); assertNotNull(get(drawing, "mEraseCommand"));
+      touch(MotionEvent.ACTION_MOVE, MotionEvent.TOOL_TYPE_STYLUS, 0, 130, 200);
+      drawing.beginHeldAction(2, TDSetting.SPEN_ACTION_HOLD_PAN);
+      assertFalse(navigation().erasing()); assertNull(get(drawing, "mEraseCommand"));
+      assertEquals(2, commands().getCommands().size());
+      surface.undo(); assertEquals(4, commands().getCommands().size());
+      surface.redo(); assertEquals(2, commands().getCommands().size());
+      touch(MotionEvent.ACTION_MOVE, MotionEvent.TOOL_TYPE_STYLUS, 0, 160, 200);
+      touch(MotionEvent.ACTION_MOVE, MotionEvent.TOOL_TYPE_STYLUS, 0, 170, 200);
+      assertEquals(10f, ((PointF)get(drawing, "mOffset")).x, .001f);
+      drawing.endHeldAction(2); assertTrue(navigation().erasing());
+      touch(MotionEvent.ACTION_MOVE, MotionEvent.TOOL_TYPE_STYLUS, 0, 200, 200);
+      drawing.endHeldAction(1); assertFalse(navigation().active());
+      touch(MotionEvent.ACTION_UP, MotionEvent.TOOL_TYPE_STYLUS, 0, 200, 200);
+      assertEquals(DrawingWindow.MODE_MOVE, get(drawing, "mMode"));
+      assertEquals(1, commands().getCommands().size());
+      surface.undo(); assertEquals(2, commands().getCommands().size());
+      surface.redo(); assertEquals(1, commands().getCommands().size());
+    });
+  }
+
+  @Test public void stylusOnlyRecoveryKeyAllowsImmediateEraseAndRetainsFiveSecondEscape() {
+    main(() -> {
+      DrawingSurface surface = eraseCanvas(DrawingWindow.MODE_DRAW); pointRow(surface);
+      TDSetting.mVolumeDownSinglePressAction = TDSetting.SPEN_ACTION_HOLD_ERASE;
+      StylusOnlyInputController.setEnabled(true); ActionKeyBindingManager.registerHost(drawing);
+      long t = SystemClock.uptimeMillis(); recoveryKey(true, t, t); assertTrue(navigation().erasing());
+      StylusInputFilter filter = new StylusInputFilter();
+      StylusInputFilter.Dispatch dispatch = e -> drawing.onTouch(surface, e);
+      for (int action : new int[]{MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE, MotionEvent.ACTION_UP}) {
+        MotionEvent finger = event(action, MotionEvent.TOOL_TYPE_FINGER, 0, 100, 200);
+        filter.touch(finger, true, dispatch); finger.recycle();
+      }
+      assertEquals("Finger input stays blocked in stylus-only mode", 4, commands().getCommands().size());
+      touch(MotionEvent.ACTION_DOWN, MotionEvent.TOOL_TYPE_STYLUS, 0, 100, 200);
+      recoveryKey(false, t, t + StylusOnlyInputController.ESCAPE_HOLD_MS);
+      assertFalse(StylusOnlyInputController.isEnabled()); assertFalse(navigation().active());
+      assertNull(get(drawing, "mEraseCommand")); assertEquals(DrawingWindow.MODE_DRAW, get(drawing, "mMode"));
+      touch(MotionEvent.ACTION_UP, MotionEvent.TOOL_TYPE_STYLUS, 0, 100, 200);
+      surface.undo(); assertEquals(4, commands().getCommands().size());
+    });
+  }
 
   @Test public void pressPanMovesCanvasWithPenOrFingerAndReleaseKeepsToolWithoutCommitting() {
     main(() -> {

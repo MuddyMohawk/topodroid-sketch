@@ -57,13 +57,14 @@ final class ButtonShortcutBinding
     }
 
     boolean sketchOnly() { return value != TDSetting.SPEN_ACTION_NONE && value != TDSetting.SPEN_ACTION_BACK; }
-    boolean availableFor( int gesture ) { return gesture != 1 || ! TDSetting.isHeldNavigationAction( value ); }
+    boolean availableFor( int gesture ) { return gesture != 1 || ! TDSetting.isHeldAction( value ); }
   }
 
   static final Action[] ACTIONS = {
     new Action( TDSetting.SPEN_ACTION_UNDO, R.string.button_shortcuts_action_undo, R.string.button_shortcuts_action_undo, R.string.button_shortcuts_desc_undo ),
     new Action( TDSetting.SPEN_ACTION_REDO, R.string.button_shortcuts_action_redo, R.string.button_shortcuts_action_redo, R.string.button_shortcuts_desc_redo ),
     new Action( TDSetting.SPEN_ACTION_TOGGLE_ERASE, R.string.button_shortcuts_action_eraser, R.string.button_shortcuts_short_eraser, R.string.button_shortcuts_desc_eraser ),
+    new Action( TDSetting.SPEN_ACTION_HOLD_ERASE, R.string.button_shortcuts_action_hold_erase, R.string.button_shortcuts_short_hold_erase, R.string.button_shortcuts_desc_hold_erase ),
     new Action( TDSetting.SPEN_ACTION_TOGGLE_PRESET, R.string.button_shortcuts_action_preset, R.string.button_shortcuts_short_preset, R.string.button_shortcuts_desc_preset ),
     new Action( TDSetting.SPEN_ACTION_HOLD_ZOOM, R.string.button_shortcuts_action_zoom, R.string.button_shortcuts_short_zoom, R.string.button_shortcuts_desc_zoom ),
     new Action( TDSetting.SPEN_ACTION_HOLD_PAN, R.string.button_shortcuts_action_pan, R.string.button_shortcuts_short_pan, R.string.button_shortcuts_desc_pan ),

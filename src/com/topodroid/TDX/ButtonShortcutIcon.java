@@ -54,10 +54,12 @@ final class ButtonShortcutIcon extends View
         mPath.moveTo( 20, 9 ); mPath.lineTo( 9, 9 ); mRect.set( 4, 9, 14, 19 ); mPath.arcTo( mRect, -90, -180 ); mPath.lineTo( 13, 19 );
         break;
       case 6:
+      case 9:
         mPath.moveTo( 4, 16.5f ); mPath.lineTo( 13.5f, 7 );
         mPath.cubicTo( 14.27f, 6.23f, 15.53f, 6.23f, 16.3f, 7 ); mPath.lineTo( 19, 9.7f );
         mPath.cubicTo( 19.77f, 10.47f, 19.77f, 11.73f, 19, 12.5f ); mPath.lineTo( 12, 19.5f ); mPath.lineTo( 7, 19.5f ); mPath.close();
         line( 9.5f, 11, 15, 16.5f ); line( 13, 19.5f, 20, 19.5f );
+        if ( mIcon == 9 ) line( 3, 3, 9, 3 );
         break;
       case 3:
         mPaint.setStrokeWidth( 1.2f ); canvas.drawLine( 4, 6, 20, 6, mPaint );

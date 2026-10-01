@@ -36,7 +36,7 @@ public class ActiveKeyGestureHelper
     boolean hasDoublePressBinding();
   }
 
-  /** Navigation bindings start while down, and always end on release or cancellation. */
+  /** Held actions start while down, and always end on release or cancellation. */
   public interface HeldActionListener
   {
     boolean onHeldActionStart( int trigger );

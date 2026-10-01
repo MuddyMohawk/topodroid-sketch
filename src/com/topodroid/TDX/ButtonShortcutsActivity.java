@@ -237,16 +237,16 @@ public class ButtonShortcutsActivity extends Activity
     for ( int row = 0; row < 4; ++row ) for ( int gesture = 0; gesture < 3; ++gesture ) refreshCell( mBindings[row][gesture] );
     refreshTiming();
     mNotes.removeAllViews();
-    if ( rowFilled( 0 ) ) addNote( TDSetting.isHeldNavigationAction( mBindings[0][0].value() )
-      || TDSetting.isHeldNavigationAction( mBindings[0][2].value() ) ? R.string.button_shortcuts_note_pen_navigation : R.string.button_shortcuts_note_pen );
+    if ( rowFilled( 0 ) ) addNote( TDSetting.isHeldAction( mBindings[0][0].value() )
+      || TDSetting.isHeldAction( mBindings[0][2].value() ) ? R.string.button_shortcuts_note_pen_navigation : R.string.button_shortcuts_note_pen );
     if ( rowFilled( 2 ) || rowFilled( 3 ) ) addNote( R.string.button_shortcuts_note_volume );
     if ( rowFilled( 1 ) ) addNote( R.string.button_shortcuts_note_active );
     for ( int row = 0; row < 4; ++row ) {
-      if ( TDSetting.isHeldNavigationAction( mBindings[row][0].value() ) ) {
+      if ( TDSetting.isHeldAction( mBindings[row][0].value() ) ) {
         addNote( getString( R.string.button_shortcuts_note_press_navigation, getString( ButtonShortcutBinding.BUTTON_NAMES[row] ) ) );
       }
     }
-    if ( TDSetting.isHeldNavigationAction( mBindings[3][0].value() ) || TDSetting.isHeldNavigationAction( mBindings[3][2].value() ) ) {
+    if ( TDSetting.isHeldAction( mBindings[3][0].value() ) || TDSetting.isHeldAction( mBindings[3][2].value() ) ) {
       addNote( R.string.button_shortcuts_note_navigation_recovery );
     }
   }

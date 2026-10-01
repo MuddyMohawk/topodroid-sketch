@@ -642,6 +642,7 @@ public class TDSetting
   public static final int SPEN_ACTION_TOGGLE_ERASE = 6;
   public static final int SPEN_ACTION_HOLD_ZOOM = 7;
   public static final int SPEN_ACTION_HOLD_PAN = 8;
+  public static final int SPEN_ACTION_HOLD_ERASE = 9;
   // -1 follows Android's system timing; custom values are milliseconds.
   public static int mButtonHoldMs = -1;
   public static int mButtonDoubleMs = -1;
@@ -3599,6 +3600,11 @@ public class TDSetting
     return action == SPEN_ACTION_HOLD_ZOOM || action == SPEN_ACTION_HOLD_PAN;
   }
 
+  public static boolean isHeldAction( int action )
+  {
+    return isHeldNavigationAction( action ) || action == SPEN_ACTION_HOLD_ERASE;
+  }
+
   private static int normalizeSPenAction( int action )
   {
     switch ( action ) {
@@ -3609,6 +3615,7 @@ public class TDSetting
       case SPEN_ACTION_TOGGLE_ERASE:
       case SPEN_ACTION_HOLD_ZOOM:
       case SPEN_ACTION_HOLD_PAN:
+      case SPEN_ACTION_HOLD_ERASE:
         return action;
       default:
         return SPEN_ACTION_NONE;
