@@ -1085,7 +1085,10 @@ class TDPrefKey
     new TDPrefKey( B, UI, "DISTOX_VOLUME_UP_DOUBLE_PRESS",   R.string.pref_volume_up_double_press_title,   R.string.pref_volume_up_double_press_summary,   TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
     new TDPrefKey( B, UI, "DISTOX_VOLUME_DOWN_SINGLE_PRESS", R.string.pref_volume_down_single_press_title, R.string.pref_volume_down_single_press_summary, TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
     new TDPrefKey( B, UI, "DISTOX_VOLUME_DOWN_LONG_PRESS",   R.string.pref_volume_down_long_press_title,   R.string.pref_volume_down_long_press_summary,   TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
-    new TDPrefKey( B, UI, "DISTOX_VOLUME_DOWN_DOUBLE_PRESS", R.string.pref_volume_down_double_press_title, R.string.pref_volume_down_double_press_summary, TDString.ZERO, R.array.spenActions, R.array.spenActionsValue )
+    new TDPrefKey( B, UI, "DISTOX_VOLUME_DOWN_DOUBLE_PRESS", R.string.pref_volume_down_double_press_title, R.string.pref_volume_down_double_press_summary, TDString.ZERO, R.array.spenActions, R.array.spenActionsValue ),
+    new TDPrefKey( B, LONG, UI, "DISTOX_BUTTON_HOLD_MS", R.string.button_shortcuts_timing_hold, R.string.button_shortcuts_timing_hold_desc, "-1" ),
+    new TDPrefKey( B, LONG, UI, "DISTOX_BUTTON_DOUBLE_MS", R.string.button_shortcuts_timing_double, R.string.button_shortcuts_timing_double_desc, "-1" ),
+    new TDPrefKey( B, LONG, UI, "DISTOX_SPEN_TRANSITION_MS", R.string.button_shortcuts_timing_transition, R.string.button_shortcuts_timing_transition_desc, "-1" )
   };
 
   // the order must follow category index in TDPrefCat

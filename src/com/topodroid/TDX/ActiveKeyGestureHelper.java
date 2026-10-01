@@ -16,7 +16,6 @@ import com.topodroid.prefs.TDSetting;
 
 import android.os.Handler;
 import android.os.Looper;
-import android.view.ViewConfiguration;
 
 public class ActiveKeyGestureHelper
 {
@@ -45,8 +44,8 @@ public class ActiveKeyGestureHelper
   }
 
   private final Handler mHandler = new Handler( Looper.getMainLooper() );
-  private final int mLongPressTimeout = ViewConfiguration.getLongPressTimeout();
-  private final int mDoubleTapTimeout = ViewConfiguration.getDoubleTapTimeout();
+  private int mLongPressTimeout = TDSetting.getButtonHoldMs();
+  private int mDoubleTapTimeout = TDSetting.getButtonDoubleMs();
   private final TriggerListener mListener;
   private final DoublePressBindingProvider mDoublePressProvider;
   private final HeldActionListener mHeldListener;
@@ -165,6 +164,9 @@ public class ActiveKeyGestureHelper
       flushPendingSinglePress();
     }
     if ( mButtonDown ) return;
+    // Sample each new gesture, retaining the first press's pending double window.
+    mLongPressTimeout = TDSetting.getButtonHoldMs();
+    if ( ! mPendingSinglePress ) mDoubleTapTimeout = TDSetting.getButtonDoubleMs();
     mButtonDown = true;
     mLongPressTriggered = false;
     cancelLongPress();

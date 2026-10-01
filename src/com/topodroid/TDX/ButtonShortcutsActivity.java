@@ -6,6 +6,7 @@ import com.topodroid.prefs.TDSetting;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
@@ -22,6 +23,7 @@ import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.util.Locale;
@@ -35,6 +37,15 @@ public class ButtonShortcutsActivity extends Activity
   private ScrollView mScroll;
   private LinearLayout mNotes;
   private Dialog mPicker;
+  private Dialog mTimingPicker;
+  private final View[] mTimingRows = new View[3];
+  private final TextView[] mTimingValues = new TextView[3];
+  private static final String[] TIMING_KEYS = { "DISTOX_BUTTON_HOLD_MS", "DISTOX_BUTTON_DOUBLE_MS", "DISTOX_SPEN_TRANSITION_MS" };
+  private static final int[] TIMING_NAMES = { R.string.button_shortcuts_timing_hold, R.string.button_shortcuts_timing_double, R.string.button_shortcuts_timing_transition };
+  private static final int[] TIMING_DESCRIPTIONS = { R.string.button_shortcuts_timing_hold_desc, R.string.button_shortcuts_timing_double_desc, R.string.button_shortcuts_timing_transition_desc };
+  private static final int[] TIMING_MIN = { 50, 50, 0 };
+  private static final int[] TIMING_MAX = { 2000, 1000, 1000 };
+  private static final int TIMING_STEP = 25;
   private ButtonShortcutBinding mEditing;
   private boolean mCompact;
 
@@ -56,6 +67,7 @@ public class ButtonShortcutsActivity extends Activity
       if ( compact != mCompact ) {
         mCompact = compact;
         if ( mPicker != null ) mPicker.dismiss();
+        if ( mTimingPicker != null ) mTimingPicker.dismiss();
         buildBody();
       }
     } );
@@ -70,6 +82,7 @@ public class ButtonShortcutsActivity extends Activity
   @Override protected void onDestroy()
   {
     if ( mPicker != null ) mPicker.dismiss();
+    if ( mTimingPicker != null ) mTimingPicker.dismiss();
     super.onDestroy();
   }
 
@@ -134,7 +147,7 @@ public class ButtonShortcutsActivity extends Activity
     mNotes = vertical(); mNotes.setPadding( inset(), 0, inset(), 0 ); body.addView( mNotes );
     addHeading( body, R.string.button_shortcuts_zone_touch, true );
     body.addView( buildTouchGrid() );
-    addHeading( body, R.string.button_shortcuts_zone_timing, true );
+    addHeading( body, R.string.button_shortcuts_zone_timing, false );
     body.addView( buildTiming() );
     mScroll.addView( body );
     mRoot.addView( mScroll, new LinearLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, 0, 1 ) );
@@ -222,6 +235,7 @@ public class ButtonShortcutsActivity extends Activity
   private void refreshBindings()
   {
     for ( int row = 0; row < 4; ++row ) for ( int gesture = 0; gesture < 3; ++gesture ) refreshCell( mBindings[row][gesture] );
+    refreshTiming();
     mNotes.removeAllViews();
     if ( rowFilled( 0 ) ) addNote( TDSetting.isHeldNavigationAction( mBindings[0][0].value() )
       || TDSetting.isHeldNavigationAction( mBindings[0][2].value() ) ? R.string.button_shortcuts_note_pen_navigation : R.string.button_shortcuts_note_pen );
@@ -319,16 +333,109 @@ public class ButtonShortcutsActivity extends Activity
 
   private View buildTiming()
   {
-    LinearLayout timing = vertical(); timing.setPadding( inset(), 0, inset(), 0 ); timing.setAlpha( .4f );
-    int[] names = { R.string.button_shortcuts_timing_hold, R.string.button_shortcuts_timing_double };
-    for ( int name : names ) {
+    LinearLayout timing = vertical(); timing.setPadding( inset(), dp( 4 ), inset(), 0 );
+    for ( int i = 0; i < TIMING_KEYS.length; ++i ) {
+      final int index = i;
       LinearLayout row = horizontal(); row.setGravity( Gravity.CENTER_VERTICAL );
-      row.addView( label( name, 14, R.color.toolbar_ink ), new LinearLayout.LayoutParams( 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1 ) );
-      TextView value = label( R.string.button_shortcuts_timing_default, 12, R.color.toolbar_dim ); value.setTypeface( Typeface.MONOSPACE ); row.addView( value );
-      timing.addView( row, match( dp( 45 ) ) );
-      View divider = new View( this ); divider.setBackgroundColor( color( R.color.toolbar_grid_line ) ); timing.addView( divider, match( gap() ) );
+      row.setPadding( dp( 10 ), dp( 8 ), dp( 10 ), dp( 8 ) ); row.setMinimumHeight( dp( 56 ) );
+      row.setBackground( ToolbarVisualStyle.cell( this, R.color.toolbar_cell ) );
+      row.addView( label( TIMING_NAMES[i], 14, R.color.toolbar_ink ), new LinearLayout.LayoutParams( 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1 ) );
+      TextView value = label( R.string.button_shortcuts_timing_default, 12, R.color.toolbar_dim );
+      value.setGravity( Gravity.END ); mTimingValues[i] = value;
+      row.addView( value, new LinearLayout.LayoutParams( 0, ViewGroup.LayoutParams.WRAP_CONTENT, 1 ) );
+      TextView arrow = ToolbarVisualStyle.label( this, "›", 22, color( R.color.toolbar_accent ) );
+      arrow.setGravity( Gravity.END ); row.addView( arrow, new LinearLayout.LayoutParams( dp( 24 ), ViewGroup.LayoutParams.WRAP_CONTENT ) );
+      row.setTag( TIMING_KEYS[i] ); row.setClickable( true ); row.setFocusable( true );
+      row.setOnClickListener( view -> showTimingPicker( index ) ); mTimingRows[i] = row;
+      row.setImportantForAccessibility( View.IMPORTANT_FOR_ACCESSIBILITY_YES );
+      for ( int j = 0; j < row.getChildCount(); ++j ) row.getChildAt( j ).setImportantForAccessibility( View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS );
+      LinearLayout.LayoutParams params = match( ViewGroup.LayoutParams.WRAP_CONTENT ); params.bottomMargin = gap(); timing.addView( row, params );
     }
-    describePlaceholder( timing, R.string.button_shortcuts_timing_later ); return timing;
+    TextView note = label( R.string.button_shortcuts_timing_note, 12, R.color.toolbar_dim );
+    note.setPadding( 0, dp( 6 ), 0, 0 ); timing.addView( note ); return timing;
+  }
+
+  private int rawTiming( int index )
+  {
+    return index == 0 ? TDSetting.mButtonHoldMs : index == 1 ? TDSetting.mButtonDoubleMs : TDSetting.mSPenTransitionMs;
+  }
+
+  private int effectiveTiming( int index )
+  {
+    return index == 0 ? TDSetting.getButtonHoldMs() : index == 1 ? TDSetting.getButtonDoubleMs() : TDSetting.getSPenTransitionMs();
+  }
+
+  private String timingValue( int index )
+  {
+    String millis = getString( R.string.button_shortcuts_timing_ms, effectiveTiming( index ) );
+    return rawTiming( index ) < 0 ? getString( R.string.button_shortcuts_timing_default ) + "\n" + millis : millis;
+  }
+
+  private void refreshTiming()
+  {
+    for ( int i = 0; i < TIMING_KEYS.length; ++i ) {
+      mTimingValues[i].setText( timingValue( i ) );
+      mTimingRows[i].setContentDescription( getString( R.string.button_shortcuts_timing_edit,
+        getString( TIMING_NAMES[i] ), timingValue( i ).replace( '\n', ' ' ) ) );
+    }
+  }
+
+  private void saveTiming( int index, int value )
+  {
+    TDSetting.updatePreference( new TDPrefHelper( this ), TDPrefCat.PREF_CATEGORY_SPEN, TIMING_KEYS[index], Integer.toString( value ) );
+    refreshTiming();
+  }
+
+  private void showTimingPicker( int index )
+  {
+    if ( mPicker != null || mTimingPicker != null ) return;
+    Dialog picker = new Dialog( this ); picker.requestWindowFeature( Window.FEATURE_NO_TITLE );
+    ScrollView scroll = new ScrollView( this );
+    LinearLayout panel = vertical(); panel.setPadding( inset(), inset(), inset(), inset() );
+    panel.setBackgroundColor( color( R.color.toolbar_surface ) ); scroll.addView( panel );
+    TextView heading = label( TIMING_NAMES[index], 17, R.color.toolbar_ink ); heading.setTypeface( Typeface.DEFAULT_BOLD ); panel.addView( heading );
+    TextView description = label( TIMING_DESCRIPTIONS[index], 14, R.color.toolbar_dim );
+    description.setPadding( 0, dp( 8 ), 0, dp( 16 ) ); panel.addView( description );
+    TextView value = ToolbarVisualStyle.label( this, timingValue( index ), 18, color( R.color.toolbar_ink ) );
+    value.setGravity( Gravity.CENTER ); value.setTag( "timing:value" ); panel.addView( value );
+    SeekBar slider = new SeekBar( this ); slider.setTag( "timing:slider" );
+    slider.setContentDescription( getString( TIMING_NAMES[index] ) );
+    slider.setMax( (TIMING_MAX[index] - TIMING_MIN[index]) / TIMING_STEP );
+    slider.setProgress( Math.round( (effectiveTiming( index ) - TIMING_MIN[index]) / (float)TIMING_STEP ) );
+    slider.setProgressTintList( ColorStateList.valueOf( color( R.color.toolbar_accent ) ) );
+    slider.setThumbTintList( ColorStateList.valueOf( color( R.color.toolbar_accent ) ) );
+    panel.addView( slider, match( dp( 56 ) ) );
+    TextView range = ToolbarVisualStyle.label( this, getString( R.string.button_shortcuts_timing_range, TIMING_MIN[index], TIMING_MAX[index] ), 12, color( R.color.toolbar_dim ) );
+    range.setGravity( Gravity.CENTER ); panel.addView( range );
+    slider.setOnSeekBarChangeListener( new SeekBar.OnSeekBarChangeListener() {
+      @Override public void onProgressChanged( SeekBar bar, int progress, boolean fromUser ) {
+        if ( fromUser ) {
+          saveTiming( index, TIMING_MIN[index] + progress * TIMING_STEP );
+          value.setText( timingValue( index ) );
+        }
+      }
+      @Override public void onStartTrackingTouch( SeekBar bar ) { }
+      @Override public void onStopTrackingTouch( SeekBar bar ) { }
+    } );
+    LinearLayout footer = horizontal(); footer.setGravity( Gravity.CENTER_VERTICAL ); footer.setPadding( 0, dp( 16 ), 0, 0 );
+    TextView reset = action( getString( R.string.button_shortcuts_timing_reset ), R.color.toolbar_accent );
+    reset.setTag( "timing:default" ); reset.setGravity( Gravity.START | Gravity.CENTER_VERTICAL );
+    reset.setOnClickListener( view -> {
+      saveTiming( index, -1 );
+      slider.setProgress( Math.round( (effectiveTiming( index ) - TIMING_MIN[index]) / (float)TIMING_STEP ) );
+      value.setText( timingValue( index ) );
+    } );
+    footer.addView( reset, new LinearLayout.LayoutParams( 0, dp( 48 ), 1 ) );
+    TextView done = action( getString( R.string.button_shortcuts_done ), R.color.toolbar_accent );
+    done.setPadding( dp( 18 ), 0, dp( 18 ), 0 ); done.setOnClickListener( view -> picker.dismiss() );
+    footer.addView( done, new LinearLayout.LayoutParams( ViewGroup.LayoutParams.WRAP_CONTENT, dp( 48 ) ) ); panel.addView( footer );
+    picker.setContentView( scroll ); picker.setCanceledOnTouchOutside( true );
+    picker.setOnDismissListener( dialog -> { mTimingPicker = null; refreshTiming(); } );
+    Window window = picker.getWindow(); window.setBackgroundDrawable( new ColorDrawable( Color.TRANSPARENT ) );
+    window.addFlags( WindowManager.LayoutParams.FLAG_DIM_BEHIND ); window.setDimAmount( .5f ); window.setGravity( Gravity.BOTTOM );
+    window.getDecorView().setSystemUiVisibility( TDSetting.mUiVisibility );
+    mTimingPicker = StylusOnlyInputController.guardDialog( picker ); picker.show();
+    window.setLayout( ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT );
   }
 
   private void describePlaceholder( ViewGroup section, int description )
@@ -340,7 +447,7 @@ public class ButtonShortcutsActivity extends Activity
 
   private void showPicker( ButtonShortcutBinding binding )
   {
-    if ( mPicker != null ) return;
+    if ( mPicker != null || mTimingPicker != null ) return;
     mEditing = binding; refreshCell( binding );
     Dialog picker = new Dialog( this ); picker.requestWindowFeature( Window.FEATURE_NO_TITLE );
     LinearLayout panel = new LinearLayout( this ) {

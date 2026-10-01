@@ -642,6 +642,19 @@ public class TDSetting
   public static final int SPEN_ACTION_TOGGLE_ERASE = 6;
   public static final int SPEN_ACTION_HOLD_ZOOM = 7;
   public static final int SPEN_ACTION_HOLD_PAN = 8;
+  // -1 follows Android's system timing; custom values are milliseconds.
+  public static int mButtonHoldMs = -1;
+  public static int mButtonDoubleMs = -1;
+  public static int mSPenTransitionMs = -1;
+
+  public static int normalizeButtonTiming( int value, int minimum, int maximum )
+  {
+    return value < 0 ? -1 : Math.max( minimum, Math.min( maximum, value ) );
+  }
+
+  public static int getButtonHoldMs() { return mButtonHoldMs < 0 ? android.view.ViewConfiguration.getLongPressTimeout() : mButtonHoldMs; }
+  public static int getButtonDoubleMs() { return mButtonDoubleMs < 0 ? android.view.ViewConfiguration.getDoubleTapTimeout() : mButtonDoubleMs; }
+  public static int getSPenTransitionMs() { return mSPenTransitionMs < 0 ? android.view.ViewConfiguration.getTapTimeout() : mSPenTransitionMs; }
   public static int mSPenSingleClickAction = SPEN_ACTION_UNDO;
   public static int mSPenLongClickAction   = SPEN_ACTION_TOGGLE_PRESET;
   public static int mSPenDoubleClickAction = SPEN_ACTION_BACK;
@@ -1317,6 +1330,9 @@ public class TDSetting
     mVolumeDownSinglePressAction = normalizeSPenAction( tryInt( prefs, key[ 9].key, key[ 9].dflt ) );
     mVolumeDownLongPressAction   = normalizeSPenAction( tryInt( prefs, key[10].key, key[10].dflt ) );
     mVolumeDownDoublePressAction = normalizeSPenAction( tryInt( prefs, key[11].key, key[11].dflt ) );
+    mButtonHoldMs = normalizeButtonTiming( tryInt( prefs, key[12].key, key[12].dflt ), 50, 2000 );
+    mButtonDoubleMs = normalizeButtonTiming( tryInt( prefs, key[13].key, key[13].dflt ), 50, 1000 );
+    mSPenTransitionMs = normalizeButtonTiming( tryInt( prefs, key[14].key, key[14].dflt ), 0, 1000 );
 
     key = TDPrefKey.mGeekDevice;
     mUnnamedDevice  = prefs.getBoolean( key[ 1].key, bool(key[ 1].dflt)  ); // DISTOX_UNNAMED_DEVICE BT_NONAME
@@ -2185,6 +2201,18 @@ public class TDSetting
       action = tryIntValue( hlp, k, v, key[11].dflt );
       mVolumeDownDoublePressAction = normalizeSPenAction( action );
       if ( mVolumeDownDoublePressAction != action ) ret = Integer.toString( mVolumeDownDoublePressAction );
+    } else if ( k.equals( key[12].key ) ) {
+      int value = tryIntValue( hlp, k, v, key[12].dflt );
+      mButtonHoldMs = normalizeButtonTiming( value, 50, 2000 );
+      if ( value != mButtonHoldMs ) ret = Integer.toString( mButtonHoldMs );
+    } else if ( k.equals( key[13].key ) ) {
+      int value = tryIntValue( hlp, k, v, key[13].dflt );
+      mButtonDoubleMs = normalizeButtonTiming( value, 50, 1000 );
+      if ( value != mButtonDoubleMs ) ret = Integer.toString( mButtonDoubleMs );
+    } else if ( k.equals( key[14].key ) ) {
+      int value = tryIntValue( hlp, k, v, key[14].dflt );
+      mSPenTransitionMs = normalizeButtonTiming( value, 0, 1000 );
+      if ( value != mSPenTransitionMs ) ret = Integer.toString( mSPenTransitionMs );
     } else {
       TDLog.e("missing SPEN key: " + k );
     }
@@ -4878,6 +4906,9 @@ B DISTOX_SAP5_BIT16_BUG true
       k="DISTOX_VOLUME_DOWN_SINGLE_PRESS"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mVolumeDownSinglePressAction );
       k="DISTOX_VOLUME_DOWN_LONG_PRESS";   if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mVolumeDownLongPressAction );
       k="DISTOX_VOLUME_DOWN_DOUBLE_PRESS"; if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mVolumeDownDoublePressAction );
+      k="DISTOX_BUTTON_HOLD_MS";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mButtonHoldMs );
+      k="DISTOX_BUTTON_DOUBLE_MS";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mButtonDoubleMs );
+      k="DISTOX_SPEN_TRANSITION_MS";   if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n", k, mSPenTransitionMs );
       k="DISTOX_SLANT_XSECTION";        if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mSlantXSection) );
       k="DISTOX_OBLIQUE_PROJECTED";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mObliqueMax );
       k="DISTOX_DRAWING_UNIT";          if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mUnitIcons );
@@ -5193,6 +5224,15 @@ B DISTOX_SAP5_BIT16_BUG true
               break;
             case "DISTOX_SPEN_LONG_CLICK_HOLD_ERASE":
               // Legacy S Pen erase-hold setting: kept as a no-op so older imports remain readable.
+              break;
+            case "DISTOX_BUTTON_HOLD_MS":
+              mButtonHoldMs = normalizeButtonTiming( Integer.parseInt( value ), 50, 2000 ); setPreference( editor, kay, mButtonHoldMs );
+              break;
+            case "DISTOX_BUTTON_DOUBLE_MS":
+              mButtonDoubleMs = normalizeButtonTiming( Integer.parseInt( value ), 50, 1000 ); setPreference( editor, kay, mButtonDoubleMs );
+              break;
+            case "DISTOX_SPEN_TRANSITION_MS":
+              mSPenTransitionMs = normalizeButtonTiming( Integer.parseInt( value ), 0, 1000 ); setPreference( editor, kay, mSPenTransitionMs );
               break;
             // case "DISTOX_BACKUPS_CLEAR":
             //   mBackupsClear = Boolean.parseBoolean( value ); setPreference( editor, kay, mBackupsClear ); // CLEAR_BACKUPS

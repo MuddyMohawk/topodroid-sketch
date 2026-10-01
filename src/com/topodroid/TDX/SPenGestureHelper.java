@@ -10,7 +10,6 @@ import com.topodroid.prefs.TDSetting;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.MotionEvent;
-import android.view.ViewConfiguration;
 
 public class SPenGestureHelper
 {
@@ -112,7 +111,7 @@ public class SPenGestureHelper
           // Android sends hover-exit just before contact. Allow that transition,
           // but cancel promptly if the pen actually leaves proximity.
           mHandler.removeCallbacks( mHoverExit );
-          mHandler.postDelayed( mHoverExit, ViewConfiguration.getTapTimeout() );
+          mHandler.postDelayed( mHoverExit, TDSetting.getSPenTransitionMs() );
         } else cancel();
         return true;
       default: return false;

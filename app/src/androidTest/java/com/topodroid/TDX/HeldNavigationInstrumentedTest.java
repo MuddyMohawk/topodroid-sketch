@@ -48,9 +48,10 @@ public class HeldNavigationInstrumentedTest
     "mSPenSingleClickAction", "mSPenLongClickAction", "mSPenDoubleClickAction",
     "mActiveKeySinglePressAction", "mActiveKeyLongPressAction", "mActiveKeyDoublePressAction",
     "mVolumeUpSinglePressAction", "mVolumeUpLongPressAction", "mVolumeUpDoublePressAction",
-    "mVolumeDownSinglePressAction", "mVolumeDownLongPressAction", "mVolumeDownDoublePressAction"
+    "mVolumeDownSinglePressAction", "mVolumeDownLongPressAction", "mVolumeDownDoublePressAction",
+    "mButtonHoldMs", "mButtonDoubleMs", "mSPenTransitionMs"
   };
-  private final int[] saved = new int[12];
+  private final int[] saved = new int[SETTINGS.length];
   private boolean savedStylusOnly;
   private BareDrawing drawing;
   private ActiveKeyGestureHelper keyHelper;
@@ -59,7 +60,7 @@ public class HeldNavigationInstrumentedTest
       TDInstance.setContext(context().getApplicationContext());
       savedStylusOnly = StylusOnlyInputController.isEnabled();
       for (int i = 0; i < SETTINGS.length; ++i) {
-        Field f = TDSetting.class.getField(SETTINGS[i]); saved[i] = f.getInt(null); f.setInt(null, 0);
+        Field f = TDSetting.class.getField(SETTINGS[i]); saved[i] = f.getInt(null); f.setInt(null, i < 12 ? 0 : -1);
       }
     });
   }
@@ -358,6 +359,58 @@ public class HeldNavigationInstrumentedTest
       ActionKeyBindingManager.onBroadcastIntent(report); key(ActionKeyBindingManager.KEYCODE_PTT, false);
       assertFalse(navigation().active());
     });
+  }
+
+  @Test public void customHoldAndDoubleTimingsApplyToExistingRecognizerOnNextGesture() {
+    List<Integer> triggers = new ArrayList<>();
+    main(() -> {
+      keyHelper = new ActiveKeyGestureHelper(triggers::add, () -> true);
+      TDSetting.mButtonHoldMs = 150;
+      keyHelper.onKeyDown(SystemClock.uptimeMillis());
+      TDSetting.mButtonHoldMs = 2000; // An in-flight hold retains its starting delay.
+      assertTrue(triggers.isEmpty());
+    });
+    SystemClock.sleep(300);
+    main(() -> {
+      assertEquals(java.util.Arrays.asList(2), triggers);
+      keyHelper.onKeyUp(SystemClock.uptimeMillis());
+      TDSetting.mButtonDoubleMs = 150;
+      keyHelper.onKeyDown(SystemClock.uptimeMillis()); keyHelper.onKeyUp(SystemClock.uptimeMillis());
+      TDSetting.mButtonDoubleMs = 1000; // The pending first press keeps its original window.
+      assertEquals(java.util.Arrays.asList(2), triggers);
+    });
+    SystemClock.sleep(300);
+    main(() -> {
+      assertEquals(java.util.Arrays.asList(2, 1), triggers);
+      long t = SystemClock.uptimeMillis();
+      keyHelper.onKeyDown(t); keyHelper.onKeyUp(t + 10);
+      keyHelper.onKeyDown(t + 650); keyHelper.onKeyUp(t + 660);
+      assertEquals(java.util.Arrays.asList(2, 1, 3), triggers);
+    });
+  }
+
+  @Test public void customPenTransitionGapKeepsImmediateZoomAcrossDelayedContactAndStillCancels() {
+    main(() -> {
+      canvas(); TDSetting.mSPenSingleClickAction = TDSetting.SPEN_ACTION_HOLD_ZOOM;
+      TDSetting.mButtonHoldMs = 2000; TDSetting.mButtonDoubleMs = 1000; TDSetting.mSPenTransitionMs = 500;
+      hover(MotionEvent.ACTION_BUTTON_PRESS, MotionEvent.BUTTON_STYLUS_PRIMARY);
+      assertTrue("Press navigation remains immediate with long custom delays", navigation().active());
+      hover(MotionEvent.ACTION_HOVER_EXIT, MotionEvent.BUTTON_STYLUS_PRIMARY);
+    });
+    SystemClock.sleep(180); // Longer than Android's normal hover-to-touch allowance.
+    main(() -> {
+      assertTrue(navigation().active());
+      float distance = 160 * context().getResources().getDisplayMetrics().density;
+      touch(MotionEvent.ACTION_DOWN, MotionEvent.TOOL_TYPE_STYLUS, MotionEvent.BUTTON_STYLUS_PRIMARY, 100, 700);
+      touch(MotionEvent.ACTION_MOVE, MotionEvent.TOOL_TYPE_STYLUS, MotionEvent.BUTTON_STYLUS_PRIMARY, 100, 700 - distance);
+      assertEquals(2f, drawing.zoom(), .001f);
+      touch(MotionEvent.ACTION_UP, MotionEvent.TOOL_TYPE_STYLUS, MotionEvent.BUTTON_STYLUS_PRIMARY, 100, 700 - distance);
+      hover(MotionEvent.ACTION_BUTTON_RELEASE, 0); assertFalse(navigation().active());
+      hover(MotionEvent.ACTION_BUTTON_PRESS, MotionEvent.BUTTON_STYLUS_PRIMARY);
+      hover(MotionEvent.ACTION_HOVER_EXIT, MotionEvent.BUTTON_STYLUS_PRIMARY);
+    });
+    SystemClock.sleep(650);
+    main(() -> { assertFalse(navigation().active()); assertFalse((Boolean)get(drawing, "mModified")); });
   }
 
   @Test public void ordinaryPressDoubleAndLongTriggersStillDispatchOnce() {

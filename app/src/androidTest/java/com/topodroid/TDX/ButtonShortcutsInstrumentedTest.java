@@ -20,6 +20,8 @@ import android.preference.PreferenceManager;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
+import android.view.KeyEvent;
 import android.widget.TextView;
 
 import androidx.test.core.app.ActivityScenario;
@@ -55,8 +57,10 @@ public class ButtonShortcutsInstrumentedTest
     "DISTOX_VOLUME_DOWN_SINGLE_PRESS", "DISTOX_VOLUME_DOWN_LONG_PRESS", "DISTOX_VOLUME_DOWN_DOUBLE_PRESS"
   };
   private static final int[] DEFAULTS = { 1, 3, 5, 6, 3, 5, 0, 0, 0, 0, 0, 0 };
+  private static final String[] TIMING_KEYS = { "DISTOX_BUTTON_HOLD_MS", "DISTOX_BUTTON_DOUBLE_MS", "DISTOX_SPEN_TRANSITION_MS" };
   private final Map<String, String> mSaved = new HashMap<>();
   private int[] mRuntime;
+  private int[] mTiming;
   private int mLevel;
 
   private Context context() { return InstrumentationRegistry.getInstrumentation().getTargetContext(); }
@@ -68,11 +72,14 @@ public class ButtonShortcutsInstrumentedTest
   {
     TDInstance.setContext( context().getApplicationContext() );
     mRuntime = runtimeValues();
+    mTiming = timingValues();
     for ( int level = 0; level <= TDLevel.DEBUG; ++level ) if ( TDLevel.atLevel( level ) ) mLevel = level;
     for ( String key : KEYS ) mSaved.put( key, prefs().getString( key, null ) );
+    for ( String key : TIMING_KEYS ) mSaved.put( key, prefs().getString( key, null ) );
     main( () -> {
       StylusOnlyInputController.setEnabled( false ); TDLevel.setLevel( context(), TDLevel.TESTER );
       for ( int i = 0; i < KEYS.length; ++i ) save( KEYS[i], DEFAULTS[i] );
+      for ( String key : TIMING_KEYS ) save( key, -1 );
     } );
   }
 
@@ -80,8 +87,12 @@ public class ButtonShortcutsInstrumentedTest
   {
     main( () -> {
       for ( int i = 0; i < KEYS.length; ++i ) save( KEYS[i], mRuntime[i] );
+      for ( int i = 0; i < TIMING_KEYS.length; ++i ) save( TIMING_KEYS[i], mTiming[i] );
       SharedPreferences.Editor editor = prefs().edit();
       for ( String key : KEYS ) {
+        if ( mSaved.get( key ) == null ) editor.remove( key ); else editor.putString( key, mSaved.get( key ) );
+      }
+      for ( String key : TIMING_KEYS ) {
         if ( mSaved.get( key ) == null ) editor.remove( key ); else editor.putString( key, mSaved.get( key ) );
       }
       editor.commit(); TDLevel.setLevel( context(), mLevel ); StylusOnlyInputController.setEnabled( false );
@@ -187,7 +198,9 @@ public class ButtonShortcutsInstrumentedTest
         View root = activity.getWindow().getDecorView();
         assertInert( text( root, R.string.button_shortcuts_scope_data ) ); assertInert( text( root, R.string.button_shortcuts_scope_sketch ) );
         assertInert( description( root, activity.getString( R.string.button_shortcuts_touch_later ) ) );
-        assertInert( description( root, activity.getString( R.string.button_shortcuts_timing_later ) ) );
+        for ( String key : TIMING_KEYS ) {
+          assertTrue( root.findViewWithTag( key ).isClickable() ); assertTrue( root.findViewWithTag( key ).isFocusable() );
+        }
         root.findViewWithTag( KEYS[9] ).performClick();
         View panel = picker( activity ).getWindow().getDecorView();
         assertTrue( panel.findViewWithTag( "action:0" ).isSelected() );
@@ -201,6 +214,58 @@ public class ButtonShortcutsInstrumentedTest
         assertEquals( 1, selected );
       } );
     }
+  }
+
+  @Test public void timingSlidersSaveReloadClampAndResetToSystemDefaults() throws Exception
+  {
+    int[] minimum = { 50, 50, 0 }, maximum = { 2000, 1000, 1000 }, chosen = new int[3];
+    VisualTestSupport captures = new VisualTestSupport( "button_shortcuts_timing" );
+    try ( ActivityScenario<ButtonShortcutsActivity> scenario = ActivityScenario.launch( ButtonShortcutsActivity.class ) ) {
+      for ( int i = 0; i < TIMING_KEYS.length; ++i ) {
+        final int index = i;
+        scenario.onActivity( activity -> {
+          View row = activity.getWindow().getDecorView().findViewWithTag( TIMING_KEYS[index] );
+          assertTrue( row.getContentDescription().toString().contains( "System default" ) ); row.performClick();
+          View panel = timingPicker( activity ).getWindow().getDecorView();
+          SeekBar slider = panel.findViewWithTag( "timing:slider" );
+          slider.setProgress( 0 ); slider.requestFocus();
+          assertTrue( slider.dispatchKeyEvent( new KeyEvent( KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT ) ) );
+          slider.dispatchKeyEvent( new KeyEvent( KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_RIGHT ) );
+          chosen[index] = minimum[index] + slider.getProgress() * 25;
+          assertEquals( chosen[index], timingValues()[index] );
+          assertEquals( Integer.toString( chosen[index] ), prefs().getString( TIMING_KEYS[index], "" ) );
+          assertTrue( ( (TextView)panel.findViewWithTag( "timing:value" ) ).getText().toString().contains( chosen[index] + " ms" ) );
+        } );
+        if ( i == 2 ) { device().waitForIdle(); captures.captureScreen( "timing-slider.png" ); }
+        scenario.onActivity( activity -> timingPicker( activity ).dismiss() );
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+      }
+      main( () -> TDSetting.loadSecondaryPreferences( new TDPrefHelper( context() ) ) );
+      assertArrayEquals( chosen, timingValues() ); scenario.recreate();
+      for ( int i = 0; i < TIMING_KEYS.length; ++i ) {
+        final int index = i;
+        scenario.onActivity( activity -> {
+          View row = activity.getWindow().getDecorView().findViewWithTag( TIMING_KEYS[index] );
+          assertTrue( row.getContentDescription().toString().contains( chosen[index] + " ms" ) );
+          save( TIMING_KEYS[index], 5000 ); assertEquals( maximum[index], timingValues()[index] );
+          assertEquals( Integer.toString( maximum[index] ), prefs().getString( TIMING_KEYS[index], "" ) );
+          save( TIMING_KEYS[index], 1 ); assertEquals( Math.max( 1, minimum[index] ), timingValues()[index] );
+          row.performClick();
+          timingPicker( activity ).getWindow().getDecorView().findViewWithTag( "timing:default" ).performClick();
+          assertEquals( TIMING_KEYS[index], -1, timingValues()[index] ); assertEquals( "-1", prefs().getString( TIMING_KEYS[index], "" ) );
+          assertTrue( row.getContentDescription().toString().contains( "System default" ) );
+          timingPicker( activity ).dismiss();
+        } );
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+      }
+      main( () -> TDSetting.loadSecondaryPreferences( new TDPrefHelper( context() ) ) );
+      assertArrayEquals( new int[] { -1, -1, -1 }, timingValues() );
+      assertEquals( android.view.ViewConfiguration.getLongPressTimeout(), TDSetting.getButtonHoldMs() );
+      assertEquals( android.view.ViewConfiguration.getDoubleTapTimeout(), TDSetting.getButtonDoubleMs() );
+      assertEquals( android.view.ViewConfiguration.getTapTimeout(), TDSetting.getSPenTransitionMs() );
+      scenario.onActivity( activity -> findScroll( activity.getWindow().getDecorView() ).fullScroll( View.FOCUS_DOWN ) );
+      device().waitForIdle(); captures.captureScreen( "timing-defaults.png" );
+    } finally { captures.finish(); }
   }
 
   @Test public void heldNavigationIsOfferedForPressAndHoldOnlyAndSurvivesReload()
@@ -345,6 +410,11 @@ public class ButtonShortcutsInstrumentedTest
     try { Field field = ButtonShortcutsActivity.class.getDeclaredField( "mPicker" ); field.setAccessible( true ); return (Dialog)field.get( activity ); }
     catch ( Exception e ) { throw new AssertionError( e ); }
   }
+  private Dialog timingPicker( ButtonShortcutsActivity activity ) {
+    try { Field field = ButtonShortcutsActivity.class.getDeclaredField( "mTimingPicker" ); field.setAccessible( true ); return (Dialog)field.get( activity ); }
+    catch ( Exception e ) { throw new AssertionError( e ); }
+  }
+  private int[] timingValues() { return new int[] { TDSetting.mButtonHoldMs, TDSetting.mButtonDoubleMs, TDSetting.mSPenTransitionMs }; }
   private TextView text( View root, int resource ) {
     return findText( root, context().getString( resource ) );
   }
