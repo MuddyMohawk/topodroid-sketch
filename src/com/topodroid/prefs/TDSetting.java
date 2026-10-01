@@ -637,7 +637,7 @@ public class TDSetting
   public static final int SPEN_ACTION_UNDO = 1;
   public static final int SPEN_ACTION_REDO = 2;
   public static final int SPEN_ACTION_TOGGLE_PRESET = 3;
-  public static final int SPEN_ACTION_TOGGLE_PALETTE = 4;
+  // Value 4 (the retired palette/tool-type action) stays unused; do not renumber persisted actions.
   public static final int SPEN_ACTION_BACK = 5;
   public static final int SPEN_ACTION_TOGGLE_ERASE = 6;
   public static int mSPenSingleClickAction = SPEN_ACTION_UNDO;
@@ -3570,7 +3570,6 @@ public class TDSetting
       case SPEN_ACTION_UNDO:
       case SPEN_ACTION_REDO:
       case SPEN_ACTION_TOGGLE_PRESET:
-      case SPEN_ACTION_TOGGLE_PALETTE:
       case SPEN_ACTION_BACK:
       case SPEN_ACTION_TOGGLE_ERASE:
         return action;

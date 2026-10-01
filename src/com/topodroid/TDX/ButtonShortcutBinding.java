@@ -64,7 +64,6 @@ final class ButtonShortcutBinding
     new Action( TDSetting.SPEN_ACTION_REDO, R.string.button_shortcuts_action_redo, R.string.button_shortcuts_action_redo, R.string.button_shortcuts_desc_redo ),
     new Action( TDSetting.SPEN_ACTION_TOGGLE_ERASE, R.string.button_shortcuts_action_eraser, R.string.button_shortcuts_short_eraser, R.string.button_shortcuts_desc_eraser ),
     new Action( TDSetting.SPEN_ACTION_TOGGLE_PRESET, R.string.button_shortcuts_action_preset, R.string.button_shortcuts_short_preset, R.string.button_shortcuts_desc_preset ),
-    new Action( TDSetting.SPEN_ACTION_TOGGLE_PALETTE, R.string.button_shortcuts_action_tool, R.string.button_shortcuts_short_tool, R.string.button_shortcuts_desc_tool ),
     new Action( TDSetting.SPEN_ACTION_BACK, R.string.button_shortcuts_action_back, R.string.button_shortcuts_action_back, R.string.button_shortcuts_desc_back ),
     new Action( TDSetting.SPEN_ACTION_NONE, R.string.button_shortcuts_action_none, 0, 0 )
   };

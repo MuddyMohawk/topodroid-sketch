@@ -1712,17 +1712,14 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="button_shortcuts_action_redo">Redo</string>
   <string name="button_shortcuts_action_eraser">Eraser on/off</string>
   <string name="button_shortcuts_action_preset">Next line preset</string>
-  <string name="button_shortcuts_action_tool">Next tool type</string>
   <string name="button_shortcuts_action_back">Back</string>
   <string name="button_shortcuts_action_none">Nothing</string>
   <string name="button_shortcuts_short_eraser">Eraser</string>
   <string name="button_shortcuts_short_preset">Preset</string>
-  <string name="button_shortcuts_short_tool">Tool type</string>
   <string name="button_shortcuts_desc_undo">Removes your last stroke or edit. Repeat to keep stepping back.</string>
   <string name="button_shortcuts_desc_redo">Puts back the last thing you undid.</string>
   <string name="button_shortcuts_desc_eraser">Switches between erasing and drawing without using the toolbar.</string>
   <string name="button_shortcuts_desc_preset">Steps to the next line drawing preset (drawing style and point spacing). Only while drawing.</string>
-  <string name="button_shortcuts_desc_tool">Cycles between point, line and area tools. Only while drawing.</string>
   <string name="button_shortcuts_desc_back">Same as the system Back button: closes a dialog or leaves the screen.</string>
   <string name="button_shortcuts_cell_description">%1$s %2$s: %3$s</string>
   <string name="button_shortcuts_not_set">not set</string>

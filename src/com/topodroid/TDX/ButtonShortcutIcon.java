@@ -63,7 +63,6 @@ final class ButtonShortcutIcon extends View
         mPaint.setStrokeWidth( 1.2f ); canvas.drawLine( 4, 6, 20, 6, mPaint );
         mPaint.setStrokeWidth( 2.4f ); canvas.drawLine( 4, 12, 20, 12, mPaint );
         mPaint.setStrokeWidth( 3.8f ); canvas.drawLine( 4, 18, 20, 18, mPaint ); return;
-      case 4: line( 4, 8, 18, 8 ); line( 15, 5, 18, 8, 15, 11 ); line( 20, 16, 6, 16 ); line( 9, 13, 6, 16, 9, 19 ); break;
       case 5: line( 15, 5, 8, 12, 15, 19 ); break;
       case 0: line( 6, 6, 18, 18 ); break;
       case PAN:

@@ -1144,11 +1144,6 @@ public class DrawingWindow extends ItemDrawer
           requestSketchPresetSelection( TDSetting.getNextSketchPreset( preset ) );
         }
         break;
-      case TDSetting.SPEN_ACTION_TOGGLE_PALETTE:
-        if ( mMode == MODE_DRAW ) {
-          rotateRecentToolset();
-        }
-        break;
       case TDSetting.SPEN_ACTION_BACK:
         performImmediateBackAction();
         break;

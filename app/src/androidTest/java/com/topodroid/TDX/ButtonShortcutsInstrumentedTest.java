@@ -192,11 +192,47 @@ public class ButtonShortcutsInstrumentedTest
         View panel = picker( activity ).getWindow().getDecorView();
         assertTrue( panel.findViewWithTag( "action:0" ).isSelected() );
         assertTrue( panel.findViewWithTag( "action:0" ).getContentDescription().toString().contains( "Clear all three shortcuts" ) );
-        assertTrue( panel.findViewWithTag( "action:4" ).getContentDescription().toString().startsWith( "Next tool type, Cycles between point, line and area tools." ) );
+        assertNull( "Retired tool-type action must not be offered", panel.findViewWithTag( "action:4" ) );
         int selected = 0;
-        for ( int value = 0; value <= 6; ++value ) if ( panel.findViewWithTag( "action:" + value ).isSelected() ) ++selected;
+        for ( int value : new int[] { 0, 1, 2, 3, 5, 6 } ) {
+          View option = panel.findViewWithTag( "action:" + value ); assertNotNull( option );
+          if ( option.isSelected() ) ++selected;
+        }
         assertEquals( 1, selected );
       } );
+    }
+  }
+
+  @Test public void retiredToolTypeAssignmentsReadAsNothingAndCanBeReassigned()
+  {
+    main( () -> {
+      SharedPreferences.Editor editor = prefs().edit();
+      for ( String key : KEYS ) editor.putString( key, "4" );
+      editor.commit();
+      TDSetting.loadSecondaryPreferences( new TDPrefHelper( context() ) );
+    } );
+    for ( int value : runtimeValues() ) assertEquals( 0, value );
+    try ( ActivityScenario<ButtonShortcutsActivity> scenario = ActivityScenario.launch( ButtonShortcutsActivity.class ) ) {
+      scenario.onActivity( activity -> {
+        View root = activity.getWindow().getDecorView();
+        for ( String key : KEYS ) {
+          View cell = root.findViewWithTag( key );
+          assertEquals( 0, ( (ViewGroup)cell ).getChildCount() );
+          assertTrue( cell.getContentDescription().toString().endsWith( ": not set" ) );
+          assertEquals( "Reading retired assignments must not migrate saved preferences", "4", prefs().getString( key, "" ) );
+        }
+        assertNull( text( root, R.string.button_shortcuts_note_volume ) );
+        root.findViewWithTag( KEYS[0] ).performClick();
+        View panel = picker( activity ).getWindow().getDecorView();
+        assertNull( panel.findViewWithTag( "action:4" ) );
+        assertTrue( panel.findViewWithTag( "action:0" ).isSelected() );
+      } );
+      choose( 5 );
+      assertEquals( "5", prefs().getString( KEYS[0], "" ) );
+      assertEquals( 5, TDSetting.mSPenSingleClickAction );
+      main( () -> save( KEYS[9], 4 ) );
+      assertEquals( "0", prefs().getString( KEYS[9], "" ) );
+      assertEquals( 0, TDSetting.mVolumeDownSinglePressAction );
     }
   }
 
