@@ -1,0 +1,20 @@
+encoding utf-8
+symbol line
+name wall
+name-bg стена
+name-cn 洞壁
+name-de Wand
+name-es Pared
+name-hu fal
+name-it parete
+name-pt parede
+name-ru стена
+th_name wall
+group wall
+sketch_picker_category passages
+sketch_search_terms passage boundary outline
+color 0xffffff 0xff
+width 2
+level 31
+roundtrip 1
+endsymbol

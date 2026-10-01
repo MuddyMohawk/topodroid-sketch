@@ -1557,31 +1557,14 @@ public class MainWindow extends Activity
           TDsafUri.closeFileDescriptor( pfd2 );
           if ( ret > 0 ) { // Archiver.ERR_OK_WITH_COLOR_RESET
             TDToast.makeWarn( R.string.archive_reset_color );
+          } else if ( ret < 0 ) {
+            TDLog.e( "ZIP import: archive extraction failed " + ret );
+            showArchiveError( ret );
+            return null;
           }
         } else {
           TDLog.e("ZIP import: failed manifest error " + manifest_ok );
-          int bad = -1;
-          switch ( -manifest_ok ) {
-            case  1: bad = R.string.bad_manifest_zip;      break;
-            case  2: bad = R.string.bad_manifest_td;       break;
-            case  3: bad = R.string.bad_manifest_db_old;   break;
-            case  4: bad = R.string.bad_manifest_db_new;   break;
-            // case  5: bad = R.string.bad_manifest_name;     break;
-            case  6: bad = R.string.bad_manifest_present;  break;
-            case  7: bad = R.string.bad_manifest_db;       break;
-            case  8: bad = R.string.bad_manifest_sql;      break;
-            case  9: bad = R.string.bad_manifest_number;   break;
-            case 10: bad = R.string.bad_manifest_manifest; break;
-            case 11: bad = R.string.bad_manifest_file;     break;
-            case 12: bad = R.string.bad_manifest_error;    break;
-            case 13: bad = R.string.bad_manifest_missing;  break;
-            case 14: bad = R.string.bad_manifest_other;    break;
-            default:
-              TDToast.makeBad( String.format( getResources().getString( R.string.bad_manifest ), (-manifest_ok) ) );
-          }
-          if ( bad > 0 ) {
-            TDToast.makeBad( bad );
-          }
+          showArchiveError( manifest_ok );
           return null;
         }
       } else {
@@ -1607,6 +1590,29 @@ public class MainWindow extends Activity
       TDToast.makeBad( String.format( getResources().getString( R.string.unsupported_extension ), "" ) );
     }
     return filename;
+  }
+
+  private void showArchiveError( int result )
+  {
+    int bad = -1;
+    switch ( -result ) {
+      case  1: bad = R.string.bad_manifest_zip;      break;
+      case  2: bad = R.string.bad_manifest_td;       break;
+      case  3: bad = R.string.bad_manifest_db_old;   break;
+      case  4: bad = R.string.bad_manifest_db_new;   break;
+      case  6: bad = R.string.bad_manifest_present;  break;
+      case  7: bad = R.string.bad_manifest_db;       break;
+      case  8: bad = R.string.bad_manifest_sql;      break;
+      case  9: bad = R.string.bad_manifest_number;   break;
+      case 10: bad = R.string.bad_manifest_manifest; break;
+      case 11: bad = R.string.bad_manifest_file;     break;
+      case 12: bad = R.string.bad_manifest_error;    break;
+      case 13: bad = R.string.bad_manifest_missing;  break;
+      case 14: bad = R.string.bad_manifest_other;    break;
+      default:
+        TDToast.makeBad( String.format( getResources().getString( R.string.bad_manifest ), (-result) ) );
+    }
+    if ( bad > 0 ) TDToast.makeBad( bad );
   }
 
   /** handle a HW key press

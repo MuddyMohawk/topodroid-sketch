@@ -356,7 +356,8 @@ public class DrawingTh
             lnType = BrushManager.getLineIndexByThName( thname );
             if ( lnType < 0 ) {
               missingSymbols.append(" L").append( thname );
-              lnType = 0; // SymbolLineLibrary.mLineUserIndex; // FIXME
+              lnType = BrushManager.getLineUserIndex();
+              if ( lnType < 0 ) lnType = BrushManager.getDefaultLineIndex();
               // continue;
             }
             // TODO insert new line-path

@@ -1,0 +1,20 @@
+encoding utf-8
+symbol line
+name section
+name-bg сечение
+name-cn 剖面
+name-de Sektion
+name-es Sección
+name-hu metszet
+name-it sezione
+name-pt corte
+name-ru сечение
+th_name section
+sketch_picker_category text-marks
+sketch_search_terms cross section cut
+color 0xcccccc 0xbf
+width 0.25
+dash 3 6
+level 1
+roundtrip 3
+endsymbol

@@ -34,11 +34,10 @@ public class SymbolLineLibrary extends SymbolLibrary
   SymbolLineLibrary( Resources res )
   {
     super( "l_" );
-    mLineUserIndex    =  0;
+    mLineUserIndex    = -1;
     mLineWallIndex    = -1;
     mLineSlopeIndex   = -1;
     mLineSectionIndex = -1;
-    loadSystemLines( res );
     loadUserLines();
     initIndices();
   }
@@ -91,39 +90,6 @@ public class SymbolLineLibrary extends SymbolLibrary
 
   // ========================================================================
 
-  private void loadSystemLines( Resources res )
-  {
-    if ( mSymbols.size() > 0 ) return;                                  //  th_name   group fname
-    // String user = res.getString ( R.string.p_user );
-    SymbolLine symbol = new SymbolLine( res.getString( R.string.thl_user ), USER, null, USER, 0xffffffff, 1, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SHP );
-    symbol.setPickerCategory( ToolsetCategory.TEXT_MARKS );
-    symbol.setSearchTerms( "freehand custom line" );
-    addSymbol( symbol );
-
-    // String wall = res.getString ( R.string.p_wall );
-    symbol = new SymbolLine( res.getString( R.string.thl_wall ), WALL, WALL, WALL, 0xffffffff, 2, DrawingLevel.LEVEL_WALL, Symbol.W2D_WALLS_SHP );
-    symbol.setPickerCategory( ToolsetCategory.PASSAGES );
-    symbol.setSearchTerms( "passage boundary outline" );
-    addSymbol( symbol );
-
-    // dash intervals in line-width units: 3 and 6 line-widths (0.75 / 1.5 scene units at width 0.25)
-    float[] x = new float[2];
-    x[0] = 3.0f;
-    x[1] = 6.0f;
-    // String section = res.getString ( R.string.p_section );
-    symbol = new SymbolLine( res.getString( R.string.thl_section ), SECTION, null, SECTION, 0xbfcccccc, 0.25f, x, DrawingLevel.LEVEL_USER, Symbol.W2D_DETAIL_SHP );
-    symbol.setPickerCategory( ToolsetCategory.TEXT_MARKS );
-    symbol.setSearchTerms( "cross section cut" );
-    addSymbol( symbol );
-
-    // mSymbolNr = mSymbols.size();
-    if ( TopoDroidApp.mData != null ) {
-      TopoDroidApp.mData.setSymbolEnabled( "l_" +    USER, true );
-      TopoDroidApp.mData.setSymbolEnabled( "l_" +    WALL, true );
-      TopoDroidApp.mData.setSymbolEnabled( "l_" + SECTION, true );
-    }
-  }
-
   void loadUserLines()
   {
     String locale = "name-" + TDLocale.getLocaleCode(); // TopoDroidApp.mLocale.toString().substring(0,2);
@@ -133,20 +99,22 @@ public class SymbolLineLibrary extends SymbolLibrary
 
     File dir = TDFile.getPrivateDir( TDPath.getSymbolLineDirname() );
     if ( dir.exists() ) {
+      for ( String name : RequiredLineSymbols.names() ) loadRequiredLine( dir, name, locale, "UTF-8" );
       int systemNr = mSymbols.size();
       File[] files = dir.listFiles();
       if ( files == null ) return;
       for ( File file : files ) {
         String fname = file.getName();
-
-        // if ( fname.equals(USER) || fname.equals(WALL) || fname.equals(SECTION) ) continue;
+        if ( RequiredLineSymbols.isRequired( fname ) ) continue;
 
         SymbolLine symbol = new SymbolLine( file.getPath(), fname, locale, iso );
         if ( symbol.isThName( null ) ) {
           TDLog.e( "Line Symbol with null ThName: " + fname );
           continue;
         }
-        if ( ! hasSymbolByThName( symbol.getThName() ) ) {
+        if ( RequiredLineSymbols.isRequired( symbol.getThName() ) ) {
+          TDLog.e( "Required line symbol " + symbol.getThName() + " must use its reserved filename" );
+        } else if ( ! hasSymbolByThName( symbol.getThName() ) ) {
           addSymbol( symbol );
           String thname = symbol.getThName();
           String name = mPrefix + thname;
@@ -169,6 +137,41 @@ public class SymbolLineLibrary extends SymbolLibrary
     } else {
       if ( ! dir.mkdirs( ) ) TDLog.e( "mkdir error" );
     }
+  }
+
+  /** Load required workflow lines first, recovering an invalid or missing file from the packaged symbol set. */
+  private void loadRequiredLine( File dir, String fname, String locale, String iso )
+  {
+    File file = new File( dir, fname );
+    SymbolLine symbol = readRequiredLine( file, fname, locale, iso );
+    if ( symbol == null ) {
+      TopoDroidApp.installRequiredLineSymbol( fname, true );
+      symbol = readRequiredLine( file, fname, locale, iso );
+    }
+    if ( symbol == null ) {
+      TDLog.e( "Cannot load required line symbol " + fname );
+      return;
+    }
+
+    addSymbol( symbol );
+    symbol.setEnabled( true );
+    if ( TopoDroidApp.mData != null ) TopoDroidApp.mData.setSymbolEnabled( mPrefix + fname, true );
+  }
+
+  private SymbolLine readRequiredLine( File file, String fname, String locale, String iso )
+  {
+    if ( ! file.exists() || ! file.isFile() ) return null;
+    SymbolLine symbol = new SymbolLine( file.getPath(), fname, locale, iso );
+    if ( ! fname.equals( Symbol.deprefix_u( symbol.getThName() ) ) ) {
+      TDLog.e( "Required line file " + fname + " has the wrong th_name" );
+      return null;
+    }
+    String error = RequiredLineSymbols.semanticError( symbol );
+    if ( error != null ) {
+      TDLog.e( "Required line file " + fname + ": " + error );
+      return null;
+    }
+    return symbol;
   }
 
   /* LOAD_MISSING - APP_SAVE SYMBOLS

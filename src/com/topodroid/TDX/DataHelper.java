@@ -2076,12 +2076,11 @@ public class DataHelper extends DataSetObservable
 
   public void updateShotComment( long id, long sid, String comment )
   {
-    // if ( myDB == null ) return;
+    if ( myDB == null ) return;
     if ( comment == null ) comment = TDString.EMPTY;
-    StringWriter sw = new StringWriter();
-    PrintWriter pw = new PrintWriter( sw );
-    pw.format( Locale.US, "UPDATE shots SET comment=\"%s\" WHERE surveyId=%d AND id=%d", comment, sid, id );
-    doExecShotSQL( id, sw );
+    ContentValues cv = new ContentValues();
+    cv.put( "comment", comment );
+    doUpdate( SHOT_TABLE, cv, sid, id, "shot comment" );
   }
 
   // void updateShotStatus( long id, long sid, long status )
@@ -6936,14 +6935,15 @@ public class DataHelper extends DataSetObservable
    // 12 FIXEDS   { "id", "station", "longitude", "latitude", "altitude", "altimetric", "comment", "status",
    //               "cs_name", "cs_longitude", "cs_latitude", "cs_altitude" }
 
-   void dumpToFile( String filename, long sid )
+   boolean dumpToFile( String filename, long sid )
    {
      // TDLog.v( "dump DB to file " + filename + " survey ID " + sid );
      // String where = "surveyId=" + Long.toString(sid);
      if ( myDB == null ) {
        TDLog.e("dump DB to file: null DB ");
-       return;
+       return false;
      }
+     boolean success = false;
      try {
        TDPath.checkPath( filename );
        FileWriter fw = TDFile.getFileWriter( filename ); // DistoX-SAF
@@ -7247,14 +7247,17 @@ public class DataHelper extends DataSetObservable
        if ( /* cursor != null && */ !cursor.isClosed()) cursor.close();
 
        // TDLog.v("dump file close");
-       fw.flush();
-       fw.close();
+       pw.flush();
+       if ( pw.checkError() ) throw new IOException( "survey database dump write failed" );
+       pw.close();
+       success = ! pw.checkError();
      } catch ( FileNotFoundException e ) {// DistoX-SAF
        TDLog.e("dump file not found " + e.getMessage() );
      } catch ( IOException e ) {// FIXME
        TDLog.e("dump i/o error " + e.getMessage() );
      }
      // TDLog.v("dump file done");
+     return success;
    }
 
    static boolean mColorReset = false; // whether custom colors have been reset on survey load
@@ -7283,6 +7286,7 @@ public class DataHelper extends DataSetObservable
        BufferedReader br = new BufferedReader( fr );
        // first line is survey
        line = br.readLine();
+       if ( line == null ) return -1L;
        TDLog.v( "DB load: " + line );
        String[] vals = line.split(" ", 4); 
        // if ( vals.length != 4 ) { TODO } // FIXME
@@ -7542,23 +7546,26 @@ public class DataHelper extends DataSetObservable
                double m_to_units = 1;
                double m_to_vunits = 1;
                String cs = TDString.unescape( scanline1.stringValue( ) );
-               if ( cs.length() > 0 ) {
-                 cs_lng = scanline1.doubleValue( 0.0 );
-                 cs_lat = scanline1.doubleValue( 0.0 );
-                 cs_h_geo = scanline1.doubleValue( 0.0 );
-	         long source_type = ( db_version > 27 )? scanline1.longValue( 0 ) : 0; // source_type
-	         if ( db_version > 34 ) cs_n_dec = scanline1.longValue( 8 ); // nr. of decimals
+               // These serialized fields are present even when the coordinate-system
+               // name is empty. Keep consuming them so accuracy and unit metadata do
+               // not shift or disappear for an ordinary WGS84-only fixed point.
+               cs_lng = scanline1.doubleValue( 0.0 );
+               cs_lat = scanline1.doubleValue( 0.0 );
+               cs_h_geo = scanline1.doubleValue( 0.0 );
+	       long source_type = ( db_version > 27 )? scanline1.longValue( 0 ) : 0; // source_type
+	       if ( db_version > 34 ) cs_n_dec = scanline1.longValue( 8 ); // nr. of decimals
 
-	         if ( db_version > 46 ) conv = scanline1.doubleValue( 0.0 ); // convergence
+	       if ( db_version > 46 ) conv = scanline1.doubleValue( 0.0 ); // convergence
+               if ( cs.length() > 0 ) {
                  TDLog.v("CS " + cs + " lng " + cs_lng + " lat " + cs_lat + " source_type " + source_type + " conv " + conv );
-	         if ( db_version > 47 ) {
-                   accur   = scanline1.doubleValue( -1 );
-                   accur_v = scanline1.doubleValue( -1 );
-                 }
-	         if ( db_version > 48 ) {
-                   m_to_units = scanline1.doubleValue( 1 );
-                   m_to_vunits = scanline1.doubleValue( 1 );
-                 }
+               }
+	       if ( db_version > 47 ) {
+                 accur   = scanline1.doubleValue( -1 );
+                 accur_v = scanline1.doubleValue( -1 );
+               }
+	       if ( db_version > 48 ) {
+                 m_to_units = scanline1.doubleValue( 1 );
+                 m_to_vunits = scanline1.doubleValue( 1 );
                }
                // use id == -1L to force DB get a new id
                // if ( insertFixed( sid, -1L, station, lng, lat, h_ell, h_geo, comment, status, source, cs, cs_lng, cs_lat, cs_h_geo, cs_n_dec ) < 0 ) {
@@ -7598,10 +7605,14 @@ public class DataHelper extends DataSetObservable
        TDLog.e( e.getMessage() );
      } catch ( IOException e ) {
        TDLog.e( e.getMessage() );
+     } catch ( RuntimeException e ) {
+       TDLog.e( "DB load malformed survey: " + e.getMessage() );
      }
      // TDLog.v( "DB success: " + success + " SID " + sid );
 
-     return (success ? sid : -sid );
+     if ( success ) return sid;
+     if ( sid > 0 ) doDeleteSurvey( sid );
+     return ( sid > 0 ) ? -sid : -1L;
    }
 
    // ----------------------------------------------------------------------

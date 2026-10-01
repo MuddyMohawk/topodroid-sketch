@@ -2423,8 +2423,7 @@ public class TDExporter
     if ( comment == null ) {
       pw.format("%c%s", sep, newline );
     } else {
-      // pw.format("%c%s%s", sep, TDString.escapeSeparator(sep, comment), newline ); // \,
-      pw.format("%c\"%s\"%s", sep, comment, newline ); // " " HBc
+      pw.format("%c%s%s", sep, DelimitedText.field( comment, sep ), newline );
     }
   }
 
@@ -2455,12 +2454,14 @@ public class TDExporter
       for ( RawDBlock b : list ) {
 	// String f = ( b.mFrom == null )? "" : b.mFrom;
 	// String t = ( b.mTo   == null )? "" : b.mTo;
-        pw.format(Locale.US, "%d%c%s%c%s%c", b.mId, sep, b.mFrom, sep, b.mTo, sep );
+        pw.format(Locale.US, "%d%c%s%c%s%c", b.mId, sep,
+                  DelimitedText.field( b.mFrom, sep ), sep, DelimitedText.field( b.mTo, sep ), sep );
         pw.format(Locale.US, "%.3f%c%.2f%c%.2f%c%.2f%c%.2f%c%.2f%c%.2f%c",
 	  b.mLength, sep, b.mBearing, sep, b.mClino, sep, b.mRoll, sep, b.mAcceleration, sep, b.mMagnetic, sep, b.mDip, sep );
         String address = b.mAddress;
         if ( TDString.isNullOrEmpty( address ) ) address = "-";
-        pw.format(Locale.US, "%d%c%d%c%s%c", b.mTime, sep, b.getShotType(), sep, address, sep );
+        pw.format(Locale.US, "%d%c%d%c%s%c", b.mTime, sep, b.getShotType(), sep,
+                  DelimitedText.field( address, sep ), sep );
         pw.format(Locale.US, "%d%c%d%c%d%c%d%c", b.mExtend, sep, b.mFlag, sep, b.mLeg, sep, b.mStatus, sep );  // NOTE mLeg is not mBlockType
         pw.format(Locale.US, "%d%c%d%c%d%c%d%c%d%s%d%c", MemoryData.longToSignedInt1( b.mRawMx ), sep, 
                                                          MemoryData.longToSignedInt1( b.mRawMy ), sep,
@@ -2474,8 +2475,10 @@ public class TDExporter
                                                          MemoryData.longToSignedInt2( b.mRawGx ), sep,
                                                          MemoryData.longToSignedInt2( b.mRawGy ), sep,
                                                          MemoryData.longToSignedInt2( b.mRawGz ), sep );
-        pw.format(Locale.US, "%s%s", TDString.escapeSeparator(sep, b.mComment), newline );
+        pw.format(Locale.US, "%s%s", DelimitedText.field( b.mComment, sep ), newline );
       }
+      pw.flush();
+      if ( pw.checkError() ) return 0;
       bw.flush();
       bw.close();
       return 1;
@@ -2549,8 +2552,10 @@ public class TDExporter
             if ( ! splays ) {
               splays = true;
             }
-            pw.format(Locale.US, "-%c%s@%s%c%.2f%c%.1f%c%.1f%c",
-                      sep, to, info.name, sep, item.mLength * ul, sep, item.mBearing * ua, sep, item.mClino * ua, sep );
+            pw.format(Locale.US, "%s%c%s%c%.2f%c%.1f%c%.1f%c",
+                      DelimitedText.field( "-", sep ), sep,
+                      DelimitedText.field( to + "@" + info.name, sep ), sep,
+                      item.mLength * ul, sep, item.mBearing * ua, sep, item.mClino * ua, sep );
             extend = item.getIntExtend();
             if ( extend <= 1 ) pw.format("%d", extend );
             writeCsvFlag( pw, false, false, item.isCommented(), item.mComment, sep, newline );
@@ -2575,8 +2580,10 @@ public class TDExporter
             if ( ! splays ) {
               splays = true;
             }
-            pw.format(Locale.US, "%s@%s%c-%c%.2f%c%.1f%c%.1f%c",
-                      from, info.name, sep, sep, item.mLength * ul, sep, item.mBearing * ua, sep, item.mClino * ua, sep );
+            pw.format(Locale.US, "%s%c%s%c%.2f%c%.1f%c%.1f%c",
+                      DelimitedText.field( from + "@" + info.name, sep ), sep,
+                      DelimitedText.field( "-", sep ), sep,
+                      item.mLength * ul, sep, item.mBearing * ua, sep, item.mClino * ua, sep );
             extend = item.getIntExtend();
             if ( extend <= 1 ) pw.format("%d", extend );
             writeCsvFlag( pw, false, false, item.isCommented(), item.mComment, sep, newline );
@@ -2584,6 +2591,12 @@ public class TDExporter
             //   pw.format(",\"%s\"\n", item.mComment );
             // }
           } else {
+            if ( ref_item != null && SurveyShotPairing.isNamedBacksightPair(
+                   ref_item.mFrom, ref_item.mTo, from, to, item.isBackLeg() ) ) {
+              leg.add( item.mLength, SurveyShotPairing.forwardBearing( item.mBearing ),
+                       SurveyShotPairing.forwardClino( item.mClino ) );
+              continue;
+            }
             if ( leg.mCnt > 0 && ref_item != null ) {
               writeCsvLeg( pw, leg, ul, ua, leg_extend, sep );
               writeCsvFlag( pw, duplicate, surface, ref_item.isCommented(), ref_item.mComment, sep, newline );
@@ -2598,7 +2611,8 @@ public class TDExporter
             if ( item.isDuplicate() ) duplicate = true;
             if ( item.isSurface() )   surface = true;
             leg_extend = item.getIntExtend();
-            pw.format("%s@%s%c%s@%s", from, info.name, sep, to, info.name );
+            pw.format("%s%c%s", DelimitedText.field( from + "@" + info.name, sep ), sep,
+                      DelimitedText.field( to + "@" + info.name, sep ) );
             leg.set( item.mLength, item.mBearing, item.mClino );
           }
         }
@@ -2616,7 +2630,8 @@ public class TDExporter
         pw.format(Locale.US, "%s", newline);
         pw.format(Locale.US, "# station%c comment%c flag%c%s", sep, sep, sep, newline );
         for ( StationInfo station : stations ) {
-          pw.format(Locale.US, "%s%c \"%s\"%c", station.mName, sep, station.mComment, sep );
+          pw.format(Locale.US, "%s%c%s%c", DelimitedText.field( station.mName, sep ), sep,
+                    DelimitedText.field( station.mComment, sep ), sep );
           if ( station.mFlag.isFixed() ) {
             pw.format("F");
           } else if ( station.mFlag.isPainted() ) {
@@ -2632,10 +2647,12 @@ public class TDExporter
         pw.format(Locale.US, "%s", newline);
         pw.format(Locale.US, "# station%c lon%c lat%c h_geo%c accuracy%c V_accuracy%c comment%c CRS%s", sep, sep, sep, sep, sep, sep, sep, newline );
         for ( FixedInfo fix : fixed ) {
-          pw.format(Locale.US, "%s%c %.6f%c %.6f%c %.0f%c %.1f%c %.1f%c", fix.name, sep, fix.lng, sep, fix.lat, sep, fix.h_geo, sep, fix.accuracy, sep, fix.accuracy_v, sep );
-          pw.format(Locale.US, "\"%s\"%c", fix.comment, sep );
+          pw.format(Locale.US, "%s%c %.6f%c %.6f%c %.0f%c %.1f%c %.1f%c",
+                    DelimitedText.field( fix.name, sep ), sep, fix.lng, sep, fix.lat, sep,
+                    fix.h_geo, sep, fix.accuracy, sep, fix.accuracy_v, sep );
+          pw.format(Locale.US, "%s%c", DelimitedText.field( fix.comment, sep ), sep );
           if ( fix.hasCSCoords() ) {
-            pw.format(" \"%s\"%c", fix.csName(), sep );
+            pw.format("%s%c", DelimitedText.field( fix.csName(), sep ), sep );
             pw.format(Locale.US, "%.0f%c %.0f%c %.0f", fix.cs_lng*fix.mToUnits, sep, fix.cs_lat*fix.mToUnits, sep, fix.cs_h_geo*fix.mToVUnits );
           }
           pw.format(Locale.US, "%s", newline);
@@ -2643,6 +2660,8 @@ public class TDExporter
       }
       // HBx CSV extend
 
+      pw.flush();
+      if ( pw.checkError() ) return 0;
       bw.flush();
       bw.close();
       return 1;
@@ -3038,6 +3057,12 @@ public class TDExporter
 	      printSplayToDat( pw, prefix, from, from + "ss" + ii, item, false ); // not reverse
 	    }
           } else {
+            if ( ref_item != null && SurveyShotPairing.isNamedBacksightPair(
+                   ref_item.mFrom, ref_item.mTo, from, to, item.isBackLeg() ) ) {
+              leg.add( item.mLength, SurveyShotPairing.forwardBearing( item.mBearing ),
+                       SurveyShotPairing.forwardClino( item.mClino ) );
+              continue;
+            }
             if ( leg.mCnt > 0 && ref_item != null ) {
               lrud = computeLRUD( ref_item, list, true );
               writeDatFromTo( pw, prefix, ref_item.mFrom, ref_item.mTo );
@@ -3056,6 +3081,8 @@ public class TDExporter
       }
       pw.format( "\f\r\n" );
 
+      pw.flush();
+      if ( pw.checkError() ) return 0;
       bw.flush();
       bw.close();
       return 1;

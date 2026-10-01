@@ -2,6 +2,7 @@ package com.topodroid.TDX;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.app.Instrumentation;
@@ -28,6 +29,7 @@ import org.junit.runner.RunWith;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -146,6 +148,12 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
                 entries.contains( "symbols_topodroid_sketch/line/ceiling-meander" ) );
     assertTrue( "Missing paired-rail floor-channel line in default raw pack",
                 entries.contains( "symbols_topodroid_sketch/line/floor-meander" ) );
+    assertTrue( "Missing file-backed user line in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/line/user" ) );
+    assertTrue( "Missing file-backed wall line in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/line/wall" ) );
+    assertTrue( "Missing file-backed section line in default raw pack",
+                entries.contains( "symbols_topodroid_sketch/line/section" ) );
     assertEquals( "Crossbar Line should occur exactly once in the default raw pack", 1, crossbarLineCount );
     assertEquals( "Dashed Crossbar Line should occur exactly once in the default raw pack", 1, dashedCrossbarLineCount );
     assertEquals( "Dogtooth Spar line should occur exactly once in the default raw pack", 1, dogtoothSparLineCount );
@@ -564,6 +572,98 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     assertNotNull( "Reverse Fault line symbol must retain its repeat effect", reverseFaultSymbol.mLineEffect );
     assertEquals( "Reverse Fault parser must honor Joint's 12.0 line-width repeat", 12.0f,
                   advanceField.getFloat( reverseFaultSymbol.mLineEffect ), 0.001f );
+  }
+
+  @Test
+  public void requiredWorkflowLines_loadFromEditableFilesWithStableSemantics()
+  {
+    int userIndex = BrushManager.getLineUserIndex();
+    int wallIndex = BrushManager.getLineWallIndex();
+    int sectionIndex = BrushManager.getLineSectionIndex();
+    assertTrue( "Missing required user line", userIndex >= 0 );
+    assertTrue( "Missing required wall line", wallIndex >= 0 );
+    assertTrue( "Missing required section line", sectionIndex >= 0 );
+
+    SymbolLineLibrary library = BrushManager.getLineLib();
+    SymbolLine user = (SymbolLine)library.getSymbolByIndex( userIndex );
+    SymbolLine wall = (SymbolLine)library.getSymbolByIndex( wallIndex );
+    SymbolLine section = (SymbolLine)library.getSymbolByIndex( sectionIndex );
+
+    assertEquals( 0xffffffff, user.getPaint().getColor() );
+    assertEquals( "User line full identifier must remain archive-compatible", SymbolLibrary.USER, user.getFullThName() );
+    assertEquals( 1.0f, user.getWidth(), 0.001f );
+    assertEquals( 0xffffffff, wall.getPaint().getColor() );
+    assertEquals( 2.0f, wall.getWidth(), 0.001f );
+    assertEquals( SymbolLibrary.WALL, wall.getGroup() );
+    assertEquals( DrawingLevel.LEVEL_WALL, wall.mLevel );
+    assertEquals( Symbol.W2D_WALLS_SHP, wall.mRoundTrip );
+    assertEquals( 0xbfcccccc, section.getPaint().getColor() );
+    assertEquals( 0.25f, section.getWidth(), 0.001f );
+    assertNotNull( section.getDashBase() );
+    assertEquals( 3.0f, section.getDashBase()[0], 0.001f );
+    assertEquals( 6.0f, section.getDashBase()[1], 0.001f );
+    assertEquals( DrawingLevel.LEVEL_USER, section.mLevel );
+    assertEquals( Symbol.W2D_DETAIL_SHP, section.mRoundTrip );
+
+    assertTrue( "User line should be backed by an editable file",
+                TDPath.getLineFile( Symbol.deprefix_u( SymbolLibrary.USER ) ).isFile() );
+    assertTrue( "Wall line should be backed by an editable file", TDPath.getLineFile( SymbolLibrary.WALL ).isFile() );
+    assertTrue( "Section line should be backed by an editable file", TDPath.getLineFile( SymbolLibrary.SECTION ).isFile() );
+
+    SymbolLine germanWall = new SymbolLine( TDPath.getLineFile( SymbolLibrary.WALL ).getPath(),
+                                             SymbolLibrary.WALL, "name-de", "UTF-8" );
+    SymbolLine spanishSection = new SymbolLine( TDPath.getLineFile( SymbolLibrary.SECTION ).getPath(),
+                                                SymbolLibrary.SECTION, "name-es", "UTF-8" );
+    assertEquals( "Wand", germanWall.getName() );
+    assertEquals( "Sección", spanishSection.getName() );
+  }
+
+  @Test
+  public void requiredWallAppearance_canBeEditedButItsRoleCannotChange() throws Exception
+  {
+    int wallIndex = BrushManager.getLineWallIndex();
+    SymbolLine wall = (SymbolLine)BrushManager.getLineLib().getSymbolByIndex( wallIndex );
+    EnableSymbol enabledWall = new EnableSymbol( mContext, com.topodroid.types.SymbolType.LINE, wallIndex, wall );
+    assertTrue( "Wall line should be editable", SymbolEditorDocument.isEditable( enabledWall ) );
+
+    SymbolEditorDocument document = SymbolEditorDocument.create( enabledWall );
+    assertNotNull( document );
+    String original = document.readText();
+    String recolored = original.replace( "color 0xffffff 0xff", "color 0x3a7bd5 0xff" );
+    assertTrue( "Wall fixture color line was not found", ! original.equals( recolored ) );
+    assertNull( "Wall appearance edit should save", document.saveText( recolored ) );
+
+    BrushManager.reloadLineLibrary( mContext.getResources() );
+    SymbolLine edited = (SymbolLine)BrushManager.getLineLib().getSymbolByIndex( BrushManager.getLineWallIndex() );
+    assertEquals( 0xff3a7bd5, edited.getPaint().getColor() );
+
+    SymbolEditorDocument editedDocument = SymbolEditorDocument.create(
+      new EnableSymbol( mContext, com.topodroid.types.SymbolType.LINE,
+                        BrushManager.getLineWallIndex(), edited ) );
+    assertNotNull( "Wall editor should remain available after reload", editedDocument );
+    String invalidRole = editedDocument.readText().replace( "group wall", "group user" );
+    assertNotNull( "Wall semantic role must remain protected", editedDocument.saveText( invalidRole ) );
+
+    assertNull( "Wall fixture should restore", editedDocument.saveText( original ) );
+    BrushManager.reloadLineLibrary( mContext.getResources() );
+  }
+
+  @Test
+  public void requiredLineSeed_addsMissingFilesWithoutOverwritingAppearanceEdits() throws Exception
+  {
+    File userFile = TDPath.getLineFile( Symbol.deprefix_u( SymbolLibrary.USER ) );
+    File wallFile = TDPath.getLineFile( SymbolLibrary.WALL );
+    String wallOriginal = new String( readFileBytes( wallFile ), StandardCharsets.UTF_8 );
+    String wallCustom = wallOriginal.replace( "color 0xffffff 0xff", "color 0x2468ac 0xff" );
+    assertTrue( "Wall fixture color line was not found", ! wallOriginal.equals( wallCustom ) );
+    saveBytes( wallCustom.getBytes( StandardCharsets.UTF_8 ), wallFile );
+    assertTrue( "Could not remove user line fixture", userFile.delete() );
+
+    TopoDroidApp.installRequiredLineSymbols( false );
+
+    assertTrue( "Missing required user line was not seeded", userFile.isFile() );
+    assertEquals( "Existing wall appearance edit was overwritten", wallCustom,
+                  new String( readFileBytes( wallFile ), StandardCharsets.UTF_8 ) );
   }
 
   @Test
@@ -1042,6 +1142,20 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     ByteArrayOutputStream output = new ByteArrayOutputStream();
     assertTrue( "Failed to encode TopoDroid Sketch symbol contact sheet", bitmap.compress( Bitmap.CompressFormat.PNG, 100, output ) );
     return output.toByteArray();
+  }
+
+  private static byte[] readFileBytes( File file ) throws Exception
+  {
+    FileInputStream input = new FileInputStream( file );
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    try {
+      byte[] buffer = new byte[4096];
+      int read;
+      while ( (read = input.read( buffer )) >= 0 ) output.write( buffer, 0, read );
+      return output.toByteArray();
+    } finally {
+      input.close();
+    }
   }
 
   private static void saveBytes( byte[] bytes, File file ) throws Exception

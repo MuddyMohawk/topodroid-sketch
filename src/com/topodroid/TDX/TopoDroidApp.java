@@ -1294,6 +1294,10 @@ public class TopoDroidApp extends Application
     if ( symbol_version == null || ! TDVersion.SYMBOL_VERSION.equals( symbol_version ) || ! hasInstalledSymbolFiles() ) {
       installSymbols( true );
     }
+    // These files define required workflow roles but are deliberately not tied
+    // to a symbol-version bump. Seed only missing files so existing appearance
+    // edits and all other locally edited symbols remain untouched.
+    installRequiredLineSymbols( false );
 
     TDPrefHelper prefHlp = new TDPrefHelper( thisApp );
 
@@ -2239,7 +2243,22 @@ public class TopoDroidApp extends Application
   static void installSymbols( int res, boolean overwrite )
   {
     InputStream is = TDInstance.getResources().openRawResource( res );
-    symbolsUncompress( is, overwrite );
+    symbolsUncompress( is, overwrite, null );
+  }
+
+  /** Seed all required file-backed line symbols without touching unrelated files. */
+  static void installRequiredLineSymbols( boolean overwrite )
+  {
+    InputStream is = TDInstance.getResources().openRawResource( R.raw.symbols_topodroid_sketch );
+    symbolsUncompress( is, overwrite, RequiredLineSymbols.names() );
+  }
+
+  /** Restore one invalid or missing required line symbol from the packaged set. */
+  static void installRequiredLineSymbol( String name, boolean overwrite )
+  {
+    if ( ! RequiredLineSymbols.isRequired( name ) ) return;
+    InputStream is = TDInstance.getResources().openRawResource( R.raw.symbols_topodroid_sketch );
+    symbolsUncompress( is, overwrite, new String[] { Symbol.deprefix_u( name ) } );
   }
 
   /** factory-reset files and saved state to the canonical Sketch drawing tools */
@@ -2267,7 +2286,7 @@ public class TopoDroidApp extends Application
    * @note the output symbols files are in the private "point", "line", and "area" folders, 
    *       their names are taken from the zip entries
    */
-  static private void symbolsUncompress( InputStream fis, boolean overwrite )
+  static private void symbolsUncompress( InputStream fis, boolean overwrite, String[] onlyLineNames )
   {
     // TDLog.v("APP uncompressing symbols - overwrite " + overwrite );
     // TDPath.symbolsCheckDirs();
@@ -2288,11 +2307,20 @@ public class TopoDroidApp extends Application
           pos  = filepath.indexOf('/');
           String type = filepath.substring( 0, pos );
           filepath = filepath.substring( pos+1 );
+          boolean selected = onlyLineNames == null;
+          if ( ! selected && "line".equals( type ) ) {
+            for ( String name : onlyLineNames ) {
+              if ( name.equals( filepath ) ) {
+                selected = true;
+                break;
+              }
+            }
+          }
           
           // String pathname = TDPath.getSymbolFile( filepath );
           // File file = TDFile.getPrivateFile( type, filepath );
           // TDLog.v("APP uncompress symbol " + type + " " + filepath );
-          if ( overwrite || ! TDFile.existPrivateFile( type, filepath ) ) {
+          if ( selected && ( overwrite || ! TDFile.existPrivateFile( type, filepath ) ) ) {
             // APP_SAVE SYMBOLS LOAD_MISSING
             // if ( file.exists() ) {
             //   if ( ! file.renameTo( TDFile.getFile( TDPath.getSymbolSaveFile( filepath ) ) ) ) TDLog.e("File rename error");

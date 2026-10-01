@@ -22,8 +22,12 @@ public class VisualGoldenInstrumentedTest
   private static final String SURVEY_ZIP     = "visual_zip_case";
   private static final String SURVEY_PNG     = "visual_png_case";
   private static final String SURVEY_COMPASS = "visual_compass_case";
+  private static final String SURVEY_CSV     = "visual_csv_case";
+  private static final String SURVEY_COMPASS_BACK = "visual_compass_back_case";
   private static final String PLOT_NAME      = "1";
   private static final String PNG_EXPORT_FILENAME = "visual_png_export.png";
+  private static final String PNG_HALF_TRANSPARENT = "visual_png_half_transparent.png";
+  private static final String PNG_FULL_OPAQUE = "visual_png_full_opaque.png";
 
   private VisualTestSupport mSupport;
 
@@ -46,7 +50,7 @@ public class VisualGoldenInstrumentedTest
   public void createSurvey_addShots_createSketch_drawPresetsAndLineWeights_matchesGolden() throws Exception
   {
     mSupport.prepareForCase(
-      VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS )
+      VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS, SURVEY_CSV )
     );
     mSupport.launchMainWindow();
     createCanonicalSurveyAndOpenSketch( SURVEY_SKETCH );
@@ -61,11 +65,13 @@ public class VisualGoldenInstrumentedTest
   public void exportZip_includesSurveyCore_and_importRoundTripsThroughPicker() throws Exception
   {
     mSupport.prepareForCase(
-      VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS )
+      VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS, SURVEY_CSV )
     );
     mSupport.launchMainWindow();
     createCanonicalSurveyAndOpenSketch( SURVEY_ZIP );
     drawCanonicalSketch();
+    mSupport.addArchiveContractMetadata();
+    VisualTestSupport.SurveyArchiveSnapshot archiveSnapshot = mSupport.captureSurveyArchiveSnapshot();
     mSupport.setCanonicalToolbarState();
     mSupport.reportStep( "zip sketch drawn" );
 
@@ -96,6 +102,7 @@ public class VisualGoldenInstrumentedTest
 
     mSupport.openSurveyFromMainList( SURVEY_ZIP );
     mSupport.openExistingPlanPlot( PLOT_NAME );
+    mSupport.assertSurveyArchiveSnapshotEquals( archiveSnapshot );
     mSupport.setCanonicalToolbarState();
     mSupport.reportStep( "zip plot reopened" );
     mSupport.captureAndAssertScreen( "zip_roundtrip_screen.png" );
@@ -105,7 +112,7 @@ public class VisualGoldenInstrumentedTest
   public void exportPng_matchesGolden() throws Exception
   {
     mSupport.prepareForCase(
-      VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS )
+      VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS, SURVEY_CSV )
     );
     mSupport.launchMainWindow();
     createCanonicalSurveyAndOpenSketch( SURVEY_PNG );
@@ -128,10 +135,33 @@ public class VisualGoldenInstrumentedTest
   }
 
   @Test
+  public void exportPng_scaleAndTransparencyOptionsAffectEncodedImage() throws Exception
+  {
+    mSupport.prepareForCase( VisualTestSupport.allSurveyNames( SURVEY_PNG ) );
+    mSupport.launchMainWindow();
+    createCanonicalSurveyAndOpenSketch( SURVEY_PNG );
+    drawCanonicalSketch();
+
+    exportPngWithContractOptions( PNG_HALF_TRANSPARENT, "0.5", true );
+    File halfTransparent = mSupport.waitForFile(
+      mSupport.getPngExportFile( SURVEY_PNG, PNG_HALF_TRANSPARENT ),
+      VisualTestSupport.FILE_TIMEOUT_MS
+    );
+
+    exportPngWithContractOptions( PNG_FULL_OPAQUE, "1.0", false );
+    File fullOpaque = mSupport.waitForFile(
+      mSupport.getPngExportFile( SURVEY_PNG, PNG_FULL_OPAQUE ),
+      VisualTestSupport.FILE_TIMEOUT_MS
+    );
+
+    mSupport.assertPngScaleAndTransparencyContract( halfTransparent, fullOpaque );
+  }
+
+  @Test
   public void exportCompass_matchesFixture() throws Exception
   {
     mSupport.prepareForCase(
-      VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS )
+      VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS, SURVEY_CSV )
     );
     mSupport.launchMainWindow();
     createCanonicalSurveyWithShots( SURVEY_COMPASS );
@@ -150,10 +180,72 @@ public class VisualGoldenInstrumentedTest
     mSupport.assertTextFileMatchesGolden( datFile, "export_compass.dat", VisualTestSupport.COMPASS_NORMALIZER );
   }
 
+  @Test
+  public void exportCsv_isStrictlyParseableAndEscapesSurveyMetadata() throws Exception
+  {
+    mSupport.prepareForCase(
+      VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS, SURVEY_CSV )
+    );
+    mSupport.launchMainWindow();
+    createCanonicalSurveyWithShots( SURVEY_CSV );
+    mSupport.addCsvContractMetadata();
+    mSupport.pressBackToMainWindow();
+
+    mSupport.openSurveyWindowFromMainListLongPress( SURVEY_CSV );
+    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
+    mSupport.chooseSpinnerValue( R.id.spin, "CSV" );
+    mSupport.tapViewByDevice( R.id.button_ok );
+
+    File csvFile = mSupport.waitForFile(
+      mSupport.getCsvExportFile( SURVEY_CSV ),
+      VisualTestSupport.FILE_TIMEOUT_MS
+    );
+    mSupport.assertCsvExportContract( csvFile );
+  }
+
+  @Test
+  public void exportCompass_namedBacksightDoesNotDuplicateTraverseLength() throws Exception
+  {
+    mSupport.prepareForCase( VisualTestSupport.allSurveyNames( SURVEY_COMPASS_BACK ) );
+    mSupport.launchMainWindow();
+    mSupport.createSurveyAndOpenShots( SURVEY_COMPASS_BACK, "Compass Team", "1", "backsight contract" );
+    mSupport.addManualShot( "1", "2", "10.0", "90.0", "0.0", true );
+    mSupport.addNamedBacksightForExport( "2", "1", 10.0f, 270.0f, 0.0f );
+    mSupport.pressBackToMainWindow();
+
+    mSupport.openSurveyWindowFromMainListLongPress( SURVEY_COMPASS_BACK );
+    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
+    mSupport.chooseSpinnerValue( R.id.spin, "Compass" );
+    mSupport.tapViewByDevice( R.id.button_ok );
+
+    File datFile = mSupport.waitForFile(
+      mSupport.getCompassExportFile( SURVEY_COMPASS_BACK ),
+      VisualTestSupport.FILE_TIMEOUT_MS
+    );
+    mSupport.assertCompassNamedBacksightContract( datFile );
+  }
+
   private void createCanonicalSurveyWithShots( String surveyName )
   {
     mSupport.createSurveyAndOpenShots( surveyName, "Visual Test Team", "1", "visual regression" );
     addCanonicalShots();
+  }
+
+  private void exportPngWithContractOptions( String filename, String scale, boolean transparent )
+  {
+    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
+    mSupport.chooseSpinnerValue( R.id.spin, "PNG" );
+    mSupport.setCheckboxChecked( R.id.png_stations, false );
+    mSupport.setCheckboxChecked( R.id.png_legs, false );
+    mSupport.setCheckboxChecked( R.id.png_splays, false );
+    mSupport.setCheckboxChecked( R.id.png_grid, false );
+    mSupport.setCheckboxChecked( R.id.png_scale_bar, false );
+    mSupport.setCheckboxChecked( R.id.png_north, false );
+    mSupport.setCheckboxChecked( R.id.png_transparent_background, transparent );
+    mSupport.setCheckboxChecked( R.id.png_overwrite, true );
+    mSupport.replaceTextInField( R.id.png_scale, scale );
+    mSupport.replaceTextInField( R.id.png_filename, filename );
+    mSupport.tapViewByDevice( R.id.button_ok );
   }
 
   private void createCanonicalSurveyAndOpenSketch( String surveyName )

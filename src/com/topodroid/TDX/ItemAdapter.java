@@ -13,7 +13,7 @@ package com.topodroid.TDX;
 
 import com.topodroid.util.TDLog;
 import com.topodroid.ui.ItemButton;
-// import com.topodroid.types.SymbolType;
+import com.topodroid.types.SymbolType;
 
 import java.util.ArrayList;
 
@@ -177,7 +177,7 @@ class ItemAdapter extends ArrayAdapter< ItemSymbol >
       }
     }
     if ( mPos == -1 ) {
-      mPos = ( mItems.size() > 1 )? 1 : 0; // user symbols cannot be disabled: are always present
+      mPos = fallbackPosition();
       mItems.get( mPos ).setItemChecked( true );
     }
     // TDLog.v("set selected at index " + index + " pos " + mPos );
@@ -205,12 +205,29 @@ class ItemAdapter extends ArrayAdapter< ItemSymbol >
       }
     }
     if ( mPos == -1 ) {
-      mPos = ( mItems.size() > 1 )? 1 : 0;
+      mPos = fallbackPosition();
       mItems.get( mPos ).setItemChecked( true );
     }
     // setOnClickReact( true );
     // TDLog.v("Adapter " + mType + " set selected symbol " + mPos + " return " + mItems.get( mPos ).mIndex);
     return mItems.get( mPos ).mIndex;
+  }
+
+  /** Resolve the line fallback by semantic identity; other picker defaults are unchanged. */
+  private int fallbackPosition()
+  {
+    if ( mType == SymbolType.LINE ) {
+      int preferred = BrushManager.getDefaultLineIndex();
+      int user = BrushManager.getLineUserIndex();
+      int userPos = -1;
+      for ( int k = 0; k < mItems.size(); ++k ) {
+        int index = mItems.get( k ).mIndex;
+        if ( index == preferred ) return k;
+        if ( index == user ) userPos = k;
+      }
+      if ( userPos >= 0 ) return userPos;
+    }
+    return ( mItems.size() > 1 ) ? 1 : 0;
   }
 
   // public ItemSymbol get( String name ) 
@@ -307,4 +324,3 @@ class ItemAdapter extends ArrayAdapter< ItemSymbol >
   }
 
 }
-

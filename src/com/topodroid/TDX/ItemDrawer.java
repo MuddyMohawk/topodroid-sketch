@@ -1035,7 +1035,8 @@ abstract class ItemDrawer extends Activity
       if ( TDSetting.mWithLevels > 0 ) {
         if ( ! DrawingLevel.isVisible( BrushManager.getLineLevel( k ) ) ) {
           // TDLog.v("Item drawer line selected " + k + " is not visible");
-          mCurrentLine = 0; // BrushManager.mLineLib.mLineUserIndex;
+          mCurrentLine = BrushManager.getLineUserIndex();
+          if ( mCurrentLine < 0 ) mCurrentLine = BrushManager.getDefaultLineIndex();
         }
       }
     }

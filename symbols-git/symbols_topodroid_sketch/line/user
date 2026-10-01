@@ -1,0 +1,19 @@
+encoding utf-8
+symbol line
+name user
+name-bg потребител
+name-cn 用户
+name-de Nutzer
+name-es Usuario
+name-hu felhasználó
+name-it utente
+name-pt usuário
+name-ru пользовательский
+th_name u:user
+sketch_picker_category text-marks
+sketch_search_terms freehand custom line
+color 0xffffff 0xff
+width 1
+level 1
+roundtrip 3
+endsymbol

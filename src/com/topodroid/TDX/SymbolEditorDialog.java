@@ -91,7 +91,7 @@ class SymbolEditorDialog extends MyDialog
       return;
     }
 
-    mFileView.setText( resString( R.string.symbol_editor_file ) + ": " + mDocument.file().getName() );
+    mFileView.setText( resString( R.string.symbol_editor_file ) + ": " + mDocument.displayName() );
     setEditorText( mOriginalText );
     buildFieldControls();
   }

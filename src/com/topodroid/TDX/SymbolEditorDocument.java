@@ -125,9 +125,7 @@ class SymbolEditorDocument
             || thName.equals( SymbolLibrary.PICTURE )
             || thName.equals( SymbolLibrary.REFERENCE );
       case SymbolType.LINE:
-        return thName.equals( Symbol.deprefix_u( SymbolLibrary.USER ) )
-            || thName.equals( SymbolLibrary.WALL )
-            || thName.equals( SymbolLibrary.SECTION );
+        return false;
       case SymbolType.AREA:
         return thName.equals( Symbol.deprefix_u( SymbolLibrary.USER ) );
     }
@@ -184,9 +182,9 @@ class SymbolEditorDocument
     return null;
   }
 
-  File file()
+  String displayName()
   {
-    return mFile;
+    return mFile.getName();
   }
 
   String symbolName()
@@ -214,6 +212,10 @@ class SymbolEditorDocument
       Symbol parsed = parseSymbolFile( tmp );
       if ( parsed == null || parsed.getName() == null || parsed.isThName( null ) ) return "Symbol file did not parse";
       if ( ! mOriginalThName.equals( Symbol.deprefix_u( parsed.getThName() ) ) ) return "Symbol name changed";
+      if ( mType == SymbolType.LINE && RequiredLineSymbols.isRequired( mOriginalThName ) ) {
+        String semanticError = RequiredLineSymbols.semanticError( (SymbolLine)parsed );
+        if ( semanticError != null ) return semanticError;
+      }
 
       backupOriginal( backupDir );
       writeFileText( mFile, text, "UTF-8" );
@@ -272,7 +274,10 @@ class SymbolEditorDocument
         inBlock = true;
         continue;
       }
-      if ( isEditableField( key ) ) fields.add( new Field( k, key, parsed.mValue ) );
+      if ( isEditableField( key )
+          && ( ! RequiredLineSymbols.isRequired( mOriginalThName ) || RequiredLineSymbols.isAppearanceField( key ) ) ) {
+        fields.add( new Field( k, key, parsed.mValue ) );
+      }
     }
     return fields;
   }
@@ -335,6 +340,7 @@ class SymbolEditorDocument
         || "color".equals( key )
         || "alpha".equals( key )
         || "width".equals( key )
+        || "dash".equals( key )
         || "level".equals( key )
         || "roundtrip".equals( key )
         || "orientation".equals( key )

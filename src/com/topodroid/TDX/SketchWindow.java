@@ -1235,7 +1235,7 @@ public class SketchWindow extends ItemDrawer
 
     // TDLog.v( "on create" );
     // if ( mCurrentPoint < 0 ) mCurrentPoint = ( BrushManager.isPointEnabled(  SymbolLibrary.LABEL  ) )?  1 : 0;
-    if ( mCurrentLine < 0 )  mCurrentLine  = ( BrushManager.isLineEnabled( SymbolLibrary.WALL ) )?  1 : 0;
+    if ( mCurrentLine < 0 ) mCurrentLine = BrushManager.getDefaultLineIndex();
     // if ( mCurrentArea < 0 )  mCurrentArea  = ( BrushManager.isAreaEnabled( SymbolLibrary.WATER ) )?  1 : 0;
 
     doStart( );
@@ -2750,7 +2750,7 @@ public class SketchWindow extends ItemDrawer
       mCurrentLine = BrushManager.getLineIndex( mRecentLine[0] );
       setActiveToolbarSlot( SymbolType.LINE, 0 );
     } else if ( mCurrentLine < 0 ) {
-      mCurrentLine = ( BrushManager.isLineEnabled( SymbolLibrary.WALL ) )?  1 : 0;
+      mCurrentLine = BrushManager.getDefaultLineIndex();
     }
     setToolsToolbars();
   }

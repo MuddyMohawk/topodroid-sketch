@@ -41,6 +41,13 @@ $FullTests = @(
     IdleTimeout = 300
   },
   @{
+    Name = "ZIP failure contracts"
+    Class = "com.topodroid.TDX.ArchiveFailureInstrumentedTest"
+    Estimate = 60
+    Timeout = 240
+    IdleTimeout = 150
+  },
+  @{
     Name = "Imported demo sketch visual fidelity"
     Class = "com.topodroid.TDX.ImportedSketchVisualInstrumentedTest#importDemoSketch_liveScreenAndPngExport_matchGoldens"
     Estimate = 300
@@ -55,8 +62,29 @@ $FullTests = @(
     IdleTimeout = 240
   },
   @{
+    Name = "PNG scale and transparency contract"
+    Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#exportPng_scaleAndTransparencyOptionsAffectEncodedImage"
+    Estimate = 150
+    Timeout = 360
+    IdleTimeout = 240
+  },
+  @{
     Name = "Compass export fixture"
     Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#exportCompass_matchesFixture"
+    Estimate = 120
+    Timeout = 300
+    IdleTimeout = 180
+  },
+  @{
+    Name = "Compass named backsight contract"
+    Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#exportCompass_namedBacksightDoesNotDuplicateTraverseLength"
+    Estimate = 120
+    Timeout = 300
+    IdleTimeout = 180
+  },
+  @{
+    Name = "CSV export contract"
+    Class = "com.topodroid.TDX.VisualGoldenInstrumentedTest#exportCsv_isStrictlyParseableAndEscapesSurveyMetadata"
     Estimate = 120
     Timeout = 300
     IdleTimeout = 180
@@ -112,7 +140,7 @@ $FullTests = @(
   },
   @{
     Name = "Model/rendering/style tests"
-    Class = "com.topodroid.TDX.LinePatternInstrumentedTest,com.topodroid.TDX.AreaLinePatternInstrumentedTest,com.topodroid.TDX.AreaPatternRendererInstrumentedTest,com.topodroid.TDX.PresetBarInstrumentedTest,com.topodroid.TDX.ToolbarRowsInstrumentedTest,com.topodroid.TDX.SymbolPreviewRendererInstrumentedTest,com.topodroid.prefs.RetiredSymbolSizePreferenceInstrumentedTest,com.topodroid.TDX.LineStyleSnappingInstrumentedTest,com.topodroid.TDX.SketchBrushStyleInstrumentedTest,com.topodroid.TDX.SketchBrushCompatibilityInstrumentedTest,com.topodroid.TDX.SmoothPointScaleInstrumentedTest,com.topodroid.TDX.SymbolOpacityParserInstrumentedTest,com.topodroid.TDX.TopoDroidSketchSymbolSliceInstrumentedTest,com.topodroid.TDX.SketchAffinePointInstrumentedTest,com.topodroid.TDX.BreakdownRockOcclusionInstrumentedTest,com.topodroid.TDX.TitleLegendExportInstrumentedTest,com.topodroid.TDX.PngFastWriterInstrumentedTest#encodedPng_preservesTransparentAndOpaquePixels,com.topodroid.TDX.SpecialPointInstrumentedTest#titleLegend_roundTripsRequestedShapeAndPreparedExpansion,com.topodroid.TDX.SpecialPointInstrumentedTest#titleLegend_targetedInstallIsMissingOnlyAndNonOverwriting,com.topodroid.TDX.SpecialPointInstrumentedTest#titleLegend_newerStateRemainsVisibleAndBytePreserved"
+    Class = "com.topodroid.TDX.LinePatternInstrumentedTest,com.topodroid.TDX.AreaLinePatternInstrumentedTest,com.topodroid.TDX.AreaPatternRendererInstrumentedTest,com.topodroid.TDX.PresetBarInstrumentedTest,com.topodroid.TDX.ToolbarRowsInstrumentedTest,com.topodroid.TDX.SymbolPreviewRendererInstrumentedTest,com.topodroid.prefs.RetiredSymbolSizePreferenceInstrumentedTest,com.topodroid.TDX.LineStyleSnappingInstrumentedTest,com.topodroid.TDX.SketchBrushStyleInstrumentedTest,com.topodroid.TDX.SketchBrushCompatibilityInstrumentedTest,com.topodroid.TDX.SmoothPointScaleInstrumentedTest,com.topodroid.TDX.SketchTextObjectInstrumentedTest,com.topodroid.TDX.SymbolOpacityParserInstrumentedTest,com.topodroid.TDX.TopoDroidSketchSymbolSliceInstrumentedTest,com.topodroid.TDX.SketchAffinePointInstrumentedTest,com.topodroid.TDX.BreakdownRockOcclusionInstrumentedTest,com.topodroid.TDX.TitleLegendExportInstrumentedTest,com.topodroid.TDX.PngFastWriterInstrumentedTest#encodedPng_preservesTransparentAndOpaquePixels,com.topodroid.TDX.SpecialPointInstrumentedTest"
     Estimate = 45
     Timeout = 300
     IdleTimeout = 150

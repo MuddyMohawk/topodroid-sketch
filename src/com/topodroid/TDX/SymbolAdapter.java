@@ -134,7 +134,12 @@ class SymbolAdapter extends ArrayAdapter< EnableSymbol >
   void updateSymbols( String prefix )
   {
     // TDLog.v("adapter updates symbols"); // ENABLED_LIST
-    if ( mItems.size() > 0 ) mItems.get(0).setEnabled( true ); // user symbols are always enabled
+    for ( EnableSymbol symbol : mItems ) {
+      if ( Symbol.deprefix_u( SymbolLibrary.USER ).equals( Symbol.deprefix_u( symbol.mSymbol.getThName() ) ) ) {
+        symbol.setEnabled( true ); // user symbols are always enabled
+        break;
+      }
+    }
 
     for ( EnableSymbol symbol : mItems ) {
       if ( symbol.MustSave() ) {

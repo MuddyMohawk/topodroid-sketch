@@ -65,6 +65,9 @@ import androidx.test.uiautomator.Until;
 import com.topodroid.prefs.TDSetting;
 import com.topodroid.prefs.TDPrefHelper;
 import com.topodroid.types.PointScale;
+import com.topodroid.types.BlockType;
+import com.topodroid.util.TDStatus;
+import com.topodroid.util.TDUtil;
 import com.topodroid.ui.ItemButton;
 import com.topodroid.ui.MotionEventWrap;
 
@@ -80,8 +83,11 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
@@ -125,6 +131,16 @@ final class VisualTestSupport
       orientation = orientation_degrees;
       alphaPercent = alpha_percent;
       visible = is_visible;
+    }
+  }
+
+  static final class SurveyArchiveSnapshot
+  {
+    final String canonical;
+
+    SurveyArchiveSnapshot( String value )
+    {
+      canonical = value;
     }
   }
 
@@ -1494,6 +1510,40 @@ final class VisualTestSupport
     waitForIdle();
   }
 
+  void setLatestPointExactScaleForTest( float scale )
+  {
+    runOnMainChecked( "set exact point scale", () -> {
+      DrawingPointPath point = findLatestOrdinaryPointPath();
+      assertNotNull( "No ordinary point path found", point );
+      assertTrue( "Exact point scale was rejected", point.setExactPointScale( scale ) );
+    } );
+    waitForIdle();
+  }
+
+  void addStyledLabelForRoundTrip( String text, float x, float y, SketchTextStyle style )
+  {
+    runOnMainChecked( "add styled label", () -> {
+      DrawingWindow window = requireCurrentDrawingWindow();
+      DrawingSurface surface = requireCurrentDrawingSurface( window );
+      DrawingLabelPath label = new DrawingLabelPath(
+        text, x, y, PointScale.SCALE_M, null, surface.scrapIndex(), style );
+      label.setOrientation( 23.0 );
+      surface.addDrawingPath( label );
+    } );
+    waitForIdle();
+  }
+
+  void assertLatestLabelStyle( SketchTextStyle expected )
+  {
+    runOnMainChecked( "assert styled label", () -> {
+      DrawingLabelPath label = findLatestLabelPath();
+      assertNotNull( "No label path found", label );
+      assertTrue( "Label formatting changed; expected " + expected + " actual " + label.getTextStyle(),
+        expected.formattingEquals( label.getTextStyle() ) );
+      assertEquals( 23.0f, (float)label.mOrientation, 0.001f );
+    } );
+  }
+
   void dragPlaceOrdinaryPointWithActiveStyle( boolean orientable, double startX, double startY, float dx, float dy )
   {
     final Throwable[] error = new Throwable[1];
@@ -1665,6 +1715,21 @@ final class VisualTestSupport
             }
             latest = point;
           }
+        }
+      }
+    }
+    return latest;
+  }
+
+  private DrawingLabelPath findLatestLabelPath()
+  {
+    DrawingWindow window = requireCurrentDrawingWindow();
+    DrawingCommandManager manager = requireCurrentDrawingManager( window );
+    DrawingLabelPath latest = null;
+    for ( Scrap scrap : manager.getScraps() ) {
+      synchronized ( TDPath.mCommandsLock ) {
+        for ( ICanvasCommand command : scrap.mCurrentStack ) {
+          if ( command instanceof DrawingLabelPath ) latest = (DrawingLabelPath)command;
         }
       }
     }
@@ -2171,6 +2236,249 @@ selection.mHotItem.getHandleRole() );
     return new File( getSurveyOutDir( surveyName ), surveyName + ".dat" );
   }
 
+  File getCsvExportFile( String surveyName )
+  {
+    return new File( getSurveyOutDir( surveyName ), surveyName + ".csv" );
+  }
+
+  void addCsvContractMetadata()
+  {
+    runOnMainChecked( "add CSV contract metadata", () -> {
+      long sid = TDInstance.sid;
+      List< DBlock > shots = TopoDroidApp.mData.selectAllShots( sid, TDStatus.NORMAL );
+      assertTrue( "CSV fixture has no shots", shots.size() > 0 );
+      TopoDroidApp.mData.updateShotComment( shots.get( 0 ).mId, sid, "lead, \"quoted\" note" );
+      assertTrue( "Could not insert CSV station metadata",
+        TopoDroidApp.mData.insertStation( sid, "1", "station, \"fixed\"", 1, "Entrance", "ENT" ) );
+      assertTrue( "Could not insert CSV fixed point",
+        TopoDroidApp.mData.insertFixed( sid, -1L, "1", -78.1234567, 38.7654321,
+          321.25, 287.50, "gps, \"checked\"", TDStatus.NORMAL, FixedInfo.SRC_MANUAL,
+          1.2, 2.3 ) >= 0 );
+      TDSetting.mCsvRaw = false;
+      TDSetting.mCsvSeparator = ',';
+      TDSetting.mSurvexEol = "\n";
+    } );
+  }
+
+  void addArchiveContractMetadata()
+  {
+    runOnMainChecked( "add archive contract metadata", () -> {
+      long sid = TDInstance.sid;
+      List< DBlock > shots = TopoDroidApp.mData.selectAllShots( sid, TDStatus.NORMAL );
+      assertTrue( "Archive fixture has no shots", shots.size() > 0 );
+      TopoDroidApp.mData.updateShotComment( shots.get( 0 ).mId, sid,
+        "archive, \"quoted\" shot" );
+      assertTrue( "Could not insert archive station metadata",
+        TopoDroidApp.mData.insertStation( sid, "1", "archive station", 1,
+          "Archive Entrance", "ARC" ) );
+      assertTrue( "Could not insert archive fixed point",
+        TopoDroidApp.mData.insertFixed( sid, -1L, "1", -78.1234567, 38.7654321,
+          321.25, 287.50, "archive fixed", TDStatus.NORMAL, FixedInfo.SRC_MANUAL,
+          1.2, 2.3 ) >= 0 );
+    } );
+  }
+
+  SurveyArchiveSnapshot captureSurveyArchiveSnapshot()
+  {
+    final SurveyArchiveSnapshot[] snapshot = new SurveyArchiveSnapshot[1];
+    runOnMainChecked( "capture archive semantic snapshot", () -> {
+      long sid = TDInstance.sid;
+      SurveyInfo info = TopoDroidApp.mData.selectSurveyInfo( sid );
+      assertNotNull( "Survey metadata missing", info );
+      StringBuilder canonical = new StringBuilder();
+      canonical.append( "survey:" ).append( record(
+        info.name, info.date, info.team, decimal( info.declination, 4 ), info.comment,
+        info.initStation, info.xsections, info.datamode, info.mExtend ) ).append( '\n' );
+
+      ArrayList< String > rows = new ArrayList<>();
+      for ( DBlock shot : TopoDroidApp.mData.selectAllShots( sid, TDStatus.NORMAL ) ) {
+        rows.add( record( shot.mFrom, shot.mTo, decimal( shot.mLength, 3 ),
+          decimal( shot.mBearing, 2 ), decimal( shot.mClino, 2 ), decimal( shot.mRoll, 2 ),
+          decimal( shot.mAcceleration, 2 ), decimal( shot.mMagnetic, 2 ), decimal( shot.mDip, 2 ),
+          shot.getIntExtend(), decimal( shot.getStretch(), 2 ), shot.getFlagFully(),
+          shot.getLegType(), shot.getShotType(), shot.mComment ) );
+      }
+      appendSortedRows( canonical, "shot", rows );
+
+      rows.clear();
+      for ( PlotInfo plot : TopoDroidApp.mData.selectAllPlots( sid ) ) {
+        rows.add( record( plot.name, plot.type, plot.start, plot.view,
+          decimal( plot.xoffset, 2 ), decimal( plot.yoffset, 2 ), decimal( plot.zoom, 2 ),
+          decimal( plot.azimuth, 2 ), decimal( plot.clino, 2 ), plot.hide, plot.nick,
+          plot.orientation, plot.maxscrap, decimal( plot.intercept, 2 ),
+          decimal( plot.center.x, 2 ), decimal( plot.center.y, 2 ), decimal( plot.center.z, 2 ) ) );
+      }
+      appendSortedRows( canonical, "plot", rows );
+
+      rows.clear();
+      for ( StationInfo station : TopoDroidApp.mData.getStations( sid ) ) {
+        rows.add( record( station.mName, station.mComment, station.getFlagCode(),
+          station.mPresentation, station.mGeoCode, station.mPhotoId ) );
+      }
+      appendSortedRows( canonical, "station", rows );
+
+      rows.clear();
+      for ( FixedInfo fixed : TopoDroidApp.mData.selectAllFixed( sid, TDStatus.NORMAL ) ) {
+        rows.add( record( fixed.name, decimal( fixed.lng, 7 ), decimal( fixed.lat, 7 ),
+          decimal( fixed.h_ell, 2 ), decimal( fixed.h_geo, 2 ), fixed.comment, fixed.source,
+          fixed.cs, decimal( fixed.cs_lng, 7 ), decimal( fixed.cs_lat, 7 ),
+          decimal( fixed.cs_h_geo, 1 ), fixed.cs_n_dec, decimal( fixed.convergence, 4 ),
+          decimal( fixed.accuracy, 1 ), decimal( fixed.accuracy_v, 1 ),
+          decimal( fixed.mToUnits, 6 ), decimal( fixed.mToVUnits, 6 ) ) );
+      }
+      appendSortedRows( canonical, "fixed", rows );
+      snapshot[0] = new SurveyArchiveSnapshot( canonical.toString() );
+    } );
+    return snapshot[0];
+  }
+
+  void assertSurveyArchiveSnapshotEquals( SurveyArchiveSnapshot expected )
+  {
+    SurveyArchiveSnapshot actual = captureSurveyArchiveSnapshot();
+    assertEquals( "Survey semantics changed across ZIP export/import",
+      expected.canonical, actual.canonical );
+  }
+
+  private static String decimal( double value, int places )
+  {
+    return String.format( Locale.US, "%." + places + "f", value );
+  }
+
+  private static String record( Object... fields )
+  {
+    StringBuilder row = new StringBuilder();
+    for ( Object field : fields ) {
+      String value = String.valueOf( field );
+      row.append( value.length() ).append( ':' ).append( value ).append( '|' );
+    }
+    return row.toString();
+  }
+
+  private static void appendSortedRows( StringBuilder output, String kind, List< String > rows )
+  {
+    Collections.sort( rows );
+    output.append( kind ).append( "-count:" ).append( rows.size() ).append( '\n' );
+    for ( String row : rows ) output.append( kind ).append( ':' ).append( row ).append( '\n' );
+  }
+
+  void addNamedBacksightForExport( String from, String to, float distance, float bearing, float clino )
+  {
+    runOnMainChecked( "add named backsight", () -> {
+      DBlock back = new DBlock( from, to, distance, bearing, clino, 0.0f,
+                                1, BlockType.BACK_LEG, 1 );
+      assertTrue( "Could not insert named backsight",
+        TopoDroidApp.mData.insertDBlockShot( TDInstance.sid, back ) >= 0 );
+    } );
+  }
+
+  void assertCompassNamedBacksightContract( File datFile ) throws Exception
+  {
+    final float[] expected = new float[3];
+    runOnMainChecked( "read named backsight fixture", () -> {
+      List< DBlock > shots = TopoDroidApp.mData.selectAllExportShots( TDInstance.sid, TDStatus.NORMAL );
+      assertEquals( "Compass backsight fixture must contain exactly two shots", 2, shots.size() );
+      DBlock forward = shots.get( 0 );
+      DBlock reverse = shots.get( 1 );
+      assertTrue( "Compass backsight fixture is not a named reverse pair",
+        SurveyShotPairing.isNamedBacksightPair( forward.mFrom, forward.mTo,
+          reverse.mFrom, reverse.mTo, reverse.isBackLeg() ) );
+      AverageLeg pair = new AverageLeg( 0.0f );
+      pair.set( forward.mLength, forward.mBearing, forward.mClino );
+      pair.add( reverse.mLength, SurveyShotPairing.forwardBearing( reverse.mBearing ),
+                SurveyShotPairing.forwardClino( reverse.mClino ) );
+      expected[0] = pair.length() * TDUtil.M2FT;
+      expected[1] = pair.bearing();
+      expected[2] = pair.clino();
+    } );
+    assertTrue( "Compass export does not exist", datFile.exists() );
+    String text = readFileText( datFile ).replace( "\r\n", "\n" ).replace( '\r', '\n' );
+    writeTextFile( new File( getCaseArtifactsDir(), datFile.getName() ), text );
+    List< String > shotRows = new ArrayList<>();
+    for ( String line : text.split( "\n" ) ) {
+      String trimmed = line.trim();
+      if ( trimmed.matches( "[A-Za-z0-9_.-]+\\s+[A-Za-z0-9_.-]+\\s+-?\\d+(?:\\.\\d+)?(?:\\s+.*)?" ) ) {
+        shotRows.add( trimmed );
+      }
+    }
+    assertEquals( "Named foresight/backsight pair must export as one Compass leg", 1, shotRows.size() );
+    String[] fields = shotRows.get( 0 ).split( "\\s+" );
+    assertEquals( "1", fields[0] );
+    assertEquals( "2", fields[1] );
+    assertEquals( expected[0], Float.parseFloat( fields[2] ), 0.01f );
+    assertEquals( expected[1], Float.parseFloat( fields[3] ), 0.1f );
+    assertEquals( expected[2], Float.parseFloat( fields[4] ), 0.1f );
+  }
+
+  void assertPngScaleAndTransparencyContract( File halfTransparentFile, File fullOpaqueFile )
+  {
+    assertTrue( "Transparent PNG export does not exist", halfTransparentFile.exists() );
+    assertTrue( "Opaque PNG export does not exist", fullOpaqueFile.exists() );
+    Bitmap halfTransparent = BitmapFactory.decodeFile( halfTransparentFile.getAbsolutePath() );
+    Bitmap fullOpaque = BitmapFactory.decodeFile( fullOpaqueFile.getAbsolutePath() );
+    assertNotNull( "Transparent PNG could not be decoded", halfTransparent );
+    assertNotNull( "Opaque PNG could not be decoded", fullOpaque );
+    try {
+      assertEquals( "PNG width does not track export scale",
+        halfTransparent.getWidth() * 2, fullOpaque.getWidth(), 1 );
+      assertEquals( "PNG height does not track export scale",
+        halfTransparent.getHeight() * 2, fullOpaque.getHeight(), 1 );
+      assertTrue( "Transparent PNG lost its transparent padding",
+        android.graphics.Color.alpha( halfTransparent.getPixel( 0, 0 ) ) < 255 );
+      assertEquals( "Opaque PNG background contains alpha",
+        255, android.graphics.Color.alpha( fullOpaque.getPixel( 0, 0 ) ) );
+    } finally {
+      halfTransparent.recycle();
+      fullOpaque.recycle();
+    }
+  }
+
+  void assertCsvExportContract( File csvFile ) throws Exception
+  {
+    assertTrue( "CSV export does not exist", csvFile.exists() );
+    String text = readFileText( csvFile );
+    writeTextFile( new File( getCaseArtifactsDir(), csvFile.getName() ), text );
+
+    assertTrue( "CSV shot comment was not escaped", text.contains( "\"lead, \"\"quoted\"\" note\"" ) );
+    assertTrue( "CSV station comment was not escaped", text.contains( "\"station, \"\"fixed\"\"\"" ) );
+    assertTrue( "CSV fixed comment was not escaped", text.contains( "\"gps, \"\"checked\"\"\"" ) );
+
+    String[] lines = text.replace( "\r\n", "\n" ).replace( '\r', '\n' ).split( "\n" );
+    int surveyRows = 0;
+    for ( String line : lines ) {
+      if ( line.length() == 0 || line.startsWith( "#" ) ) continue;
+      List< String > fields = parseDelimitedLine( line, ',' );
+      assertTrue( "CSV record has too few fields: " + line, fields.size() >= 3 );
+      if ( fields.size() == 8 && fields.get( 0 ).contains( "@" ) ) ++surveyRows;
+    }
+    assertEquals( "Unexpected number of canonical CSV shot rows", 3, surveyRows );
+  }
+
+  private static List< String > parseDelimitedLine( String line, char separator )
+  {
+    List< String > fields = new ArrayList<>();
+    StringBuilder field = new StringBuilder();
+    boolean quoted = false;
+    for ( int i = 0; i < line.length(); ++i ) {
+      char ch = line.charAt( i );
+      if ( ch == '"' ) {
+        if ( quoted && i + 1 < line.length() && line.charAt( i + 1 ) == '"' ) {
+          field.append( '"' );
+          ++i;
+        } else {
+          quoted = ! quoted;
+        }
+      } else if ( ch == separator && ! quoted ) {
+        fields.add( field.toString() );
+        field.setLength( 0 );
+      } else {
+        field.append( ch );
+      }
+    }
+    assertFalse( "Unterminated quoted CSV field: " + line, quoted );
+    fields.add( field.toString() );
+    return fields;
+  }
+
   File getPngExportFile( String surveyName, String filename )
   {
     return new File( getSurveyOutDir( surveyName ), filename );
@@ -2193,27 +2501,48 @@ selection.mHotItem.getHandleRole() );
     File artifactCopy = new File( getCaseArtifactsDir(), zipFile.getName() );
     copyFile( zipFile, artifactCopy );
 
-    boolean foundManifest = false;
-    boolean foundSurveySql = false;
-    boolean foundPlotTdr = false;
+    int manifestCount = 0;
+    int surveySqlCount = 0;
+    int plotTdrCount = 0;
     boolean foundSymbolBundle = false;
+    Set< String > names = new HashSet<>();
+    byte[] buffer = new byte[8192];
+    int entryIndex = 0;
     ZipInputStream zip = new ZipInputStream( new FileInputStream( zipFile ) );
     try {
       ZipEntry entry;
       while ( (entry = zip.getNextEntry()) != null ) {
         String name = entry.getName();
-        if ( name.equals( "manifest" ) || name.endsWith( "/manifest" ) ) foundManifest = true;
-        if ( name.equals( "survey.sql" ) || name.endsWith( "/survey.sql" ) ) foundSurveySql = true;
-        if ( name.endsWith( ".tdr" ) ) foundPlotTdr = true;
+        assertTrue( "Unsafe ZIP entry name: " + name, ArchiveEntryPolicy.isSafeName( name ) );
+        assertTrue( "Duplicate ZIP entry: " + name, names.add( name ) );
+        if ( entryIndex == 0 ) assertEquals( "Manifest must be the first ZIP entry", "manifest", name );
+
+        int size = 0;
+        int count;
+        while ( (count = zip.read( buffer )) != -1 ) size += count;
+
+        if ( name.equals( "manifest" ) ) {
+          ++manifestCount;
+          assertTrue( "ZIP manifest is empty", size > 0 );
+        }
+        if ( name.equals( "survey.sql" ) ) {
+          ++surveySqlCount;
+          assertTrue( "ZIP survey.sql is empty", size > 0 );
+        }
+        if ( name.endsWith( ".tdr" ) ) {
+          ++plotTdrCount;
+          assertTrue( "ZIP plot TDR is empty: " + name, size > 0 );
+        }
         if ( Archiver.isEmbeddedSymbolBundle( name ) ) foundSymbolBundle = true;
+        ++entryIndex;
       }
     } finally {
       zip.close();
     }
 
-    assertTrue( "ZIP export is missing manifest", foundManifest );
-    assertTrue( "ZIP export is missing survey.sql", foundSurveySql );
-    assertTrue( "ZIP export is missing plot TDR", foundPlotTdr );
+    assertEquals( "ZIP export must contain exactly one manifest", 1, manifestCount );
+    assertEquals( "ZIP export must contain exactly one survey.sql", 1, surveySqlCount );
+    assertTrue( "ZIP export is missing plot TDR", plotTdrCount > 0 );
     assertFalse( "ZIP export must not contain embedded symbol bundles", foundSymbolBundle );
   }
 

@@ -126,7 +126,8 @@ public class DrawingLinePath extends DrawingPointLinePath
       type = BrushManager.getLineIndexByThNameOrGroup( thname, group ); 
       if ( type < 0 ) {
         // FIXME-MISSING if ( missingSymbols != null ) missingSymbols.addLineFilename( thname );
-        type = 0;
+        type = BrushManager.getLineUserIndex();
+        if ( type < 0 ) type = BrushManager.getDefaultLineIndex();
         options = (options != null)? options + " -symbol " + thname : "-symbol " + thname;
       }
 

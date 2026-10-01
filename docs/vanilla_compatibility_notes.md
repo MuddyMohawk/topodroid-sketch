@@ -2,8 +2,10 @@
 
 - TopoDroid Sketch now matches current Vanilla persisted leg-type IDs (`NORMAL = 0` for plain splays, `XSPLAY = 2`, and `BACK = 3`); earlier Sketch databases and archives using interim IDs `2`, `3`, and `11` are not migrated and can be misclassified when reopened or imported.
 - Vanilla briefly used the same interim numbering after the upstream change on April 6, 2026, then reverted it on May 14, 2026 without migration; surveys created by affected Vanilla builds can likewise retain incompatible leg-type values.
-- Compass `.dat` export currently writes a named backsight as a separate reverse shot instead of combining it with the foresight record, producing duplicated length rather than one `A`-to-`B` FS/BS pair.
+- Compass `.dat` export combines an immediately paired named reverse backsight with its foresight after normalizing direction, emitting one `A`-to-`B` record instead of duplicated traverse length.
 - Compass `.dat` import now uses the Android provider's display name, so valid files exposed through opaque URI IDs retain their `.dat` suffix; multi-survey Compass exports are still read into the first survey pending confirmation of the intended behavior.
+- Native Sketch ZIP import preserves fixed-point horizontal and vertical accuracy even when the point has no converted coordinate system.
+- GPX export filenames now resolve back to the GPX format through the shared extension registry.
 - Sketch symbol files now carry private `sketch_picker_category`, `sketch_picker_section`, and `sketch_search_terms` directives; a future Vanilla symbol conversion path must strip or safely ignore these directives while preserving the standard symbol definition.
 
 ## Unsupported import/export formats

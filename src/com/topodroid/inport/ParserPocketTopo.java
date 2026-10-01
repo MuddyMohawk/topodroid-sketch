@@ -261,7 +261,8 @@ class ParserPocketTopo extends ImportParser
 		String th_name = PtCmapActivity.getLineThName( col );
                 // add a line to the plotCanvas
 		int line_type = BrushManager.getLineIndexByThName( th_name );
-		if ( line_type < 0 ) line_type = 0;
+		if ( line_type < 0 ) line_type = BrushManager.getLineUserIndex();
+		if ( line_type < 0 ) line_type = BrushManager.getDefaultLineIndex();
 		DrawingLinePath line = new DrawingLinePath( line_type, 0 );
 
                 PTPoint point = elem.point(0);

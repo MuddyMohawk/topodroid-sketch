@@ -85,7 +85,7 @@ public class TDConst
     if ( ext.equalsIgnoreCase("srv") ) return SURVEY_FORMAT_SRV;
     if ( ext.equalsIgnoreCase("kml") ) return SURVEY_FORMAT_KML;
     // if ( ext.equalsIgnoreCase("plt") ) return SURVEY_FORMAT_PLT;
-    // if ( ext.equalsIgnoreCase("gpx") ) return SURVEY_FORMAT_GPX;
+    if ( ext.equalsIgnoreCase("gpx") ) return SURVEY_FORMAT_GPX;
     if ( ext.equalsIgnoreCase("png") ) return SURVEY_FORMAT_PNG;
     if ( ext.equalsIgnoreCase("svg") ) return SURVEY_FORMAT_SVG;
     if ( ext.equalsIgnoreCase("th2") ) return SURVEY_FORMAT_TH2;

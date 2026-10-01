@@ -3229,7 +3229,7 @@ public class DrawingWindow extends ItemDrawer
 
     // TDLog.v( "on create" );
     if ( mCurrentPoint < 0 ) mCurrentPoint = ( BrushManager.isPointEnabled(  SymbolLibrary.LABEL  ) )?  1 : 0;
-    if ( mCurrentLine < 0 )  mCurrentLine  = ( BrushManager.isLineEnabled( SymbolLibrary.WALL ) )?  1 : 0;
+    if ( mCurrentLine < 0 )  mCurrentLine = BrushManager.getDefaultLineIndex();
     if ( mCurrentArea < 0 )  mCurrentArea  = ( BrushManager.isAreaEnabled( SymbolLibrary.WATER ) )?  1 : 0;
 
     if ( ! mTh2Edit ) { // TH2EDIT
@@ -4369,7 +4369,7 @@ public class DrawingWindow extends ItemDrawer
       // pointSelected( mCurrentPoint, true );
       // areaSelected( mCurrentArea, true );
       if ( BrushManager.isLineSection( mCurrentLine ) ) { // line must be last
-        mCurrentLine  = ( BrushManager.isLineEnabled( SymbolLibrary.WALL ) )?  1 : 0;
+        mCurrentLine = BrushManager.getDefaultLineIndex();
         lineSelected( mCurrentLine, true );
         int k = getCurrentLineIndex();       // FIXME SECTION LINE
         // TDLog.v("highlight index " + k );
@@ -12577,7 +12577,7 @@ public class DrawingWindow extends ItemDrawer
       mCurrentLine = BrushManager.getLineIndex( mRecentLine[0] );
       setActiveToolbarSlot( SymbolType.LINE, 0 );
     } else if ( mCurrentLine < 0 ) {
-      mCurrentLine = ( BrushManager.isLineEnabled( SymbolLibrary.WALL ) )?  1 : 0;
+      mCurrentLine = BrushManager.getDefaultLineIndex();
     }
     setToolsToolbars();
   }

@@ -312,9 +312,19 @@ public class BrushManager
    */
   static boolean isLineJoinable( int idx )  { return mLineLib != null && idx != mLineLib.mLineSectionIndex && ! mLineLib.isClosed( idx ); }
 
-  static int getLineSectionIndex()          { return (mLineLib == null)? 2 : mLineLib.mLineSectionIndex; }
-  static int getLineWallIndex()             { return (mLineLib == null)? 1 : mLineLib.mLineWallIndex; }
+  public static int getLineUserIndex()      { return (mLineLib == null)? -1 : mLineLib.mLineUserIndex; }
+  static int getLineSectionIndex()          { return (mLineLib == null)? -1 : mLineLib.mLineSectionIndex; }
+  static int getLineWallIndex()             { return (mLineLib == null)? -1 : mLineLib.mLineWallIndex; }
   static int getLineSlopeIndex()            { return (mLineLib == null)? -1 : mLineLib.mLineSlopeIndex; }
+
+  /** @return the preferred initial line by semantic role, never by library position */
+  public static int getDefaultLineIndex()
+  {
+    if ( mLineLib == null ) return -1;
+    if ( mLineLib.mLineWallIndex >= 0 && isLineEnabled( SymbolLibrary.WALL ) ) return mLineLib.mLineWallIndex;
+    if ( mLineLib.mLineUserIndex >= 0 ) return mLineLib.mLineUserIndex;
+    return mLineLib.size() > 0 ? 0 : -1;
+  }
 
   // FIXME AREA_ORIENT
   static boolean isAreaOrientable( int index )

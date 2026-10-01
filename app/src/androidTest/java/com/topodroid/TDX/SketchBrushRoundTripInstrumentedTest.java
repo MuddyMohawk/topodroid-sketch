@@ -47,7 +47,22 @@ public class SketchBrushRoundTripInstrumentedTest
     mSupport.assertLatestLineBrushWeight( 5.0f );
 
     mSupport.addOrdinaryPointWithActiveStyle( 80.0f, 120.0f );
+    mSupport.setLatestPointExactScaleForTest( 1.60f );
     mSupport.assertLatestPointBrushWeight( 5.0f );
+    mSupport.assertLatestPointBrushScale( 1.60f, 0.0001f );
+
+    SketchTextStyle labelStyle = SketchTextStyle.of(
+      SketchFontRegistry.FONT_DEFAULT,
+      SketchTextStyle.SizeMode.SCREEN,
+      31.0f,
+      5.0f,
+      true,
+      true,
+      true,
+      SketchTextStyle.Alignment.CENTER,
+      0xff55ccff );
+    mSupport.addStyledLabelForRoundTrip( "Italic\nround trip", 150.0f, 95.0f, labelStyle );
+    mSupport.assertLatestLabelStyle( labelStyle );
     mSupport.reportStep( "styled sketch ready" );
 
     File importZip = exportCopyDeleteAndImportZip();
@@ -57,6 +72,8 @@ public class SketchBrushRoundTripInstrumentedTest
     mSupport.openExistingPlanPlot( PLOT_NAME );
     mSupport.assertLatestLineBrushWeight( 5.0f );
     mSupport.assertLatestPointBrushWeight( 5.0f );
+    mSupport.assertLatestPointBrushScale( 1.60f, 0.0001f );
+    mSupport.assertLatestLabelStyle( labelStyle );
   }
 
   private void createSurveyAndOpenSketch()
