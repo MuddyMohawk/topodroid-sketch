@@ -194,7 +194,7 @@ final class LegendLabelFormatDialog extends MyDialog implements MyColorPicker.IC
   private Spinner spinner( LinearLayout root, int label, String[] values, int selected )
   {
     addLabel( root, label );
-    Spinner spinner = new Spinner( getContext() );
+    Spinner spinner = new com.topodroid.ui.StylusOnlySpinner( getContext() );
     spinner.setAdapter( new ArrayAdapter<>( getContext(), android.R.layout.simple_spinner_dropdown_item, values ) );
     spinner.setSelection( Math.max( 0, Math.min( values.length - 1, selected ) ) );
     root.addView( spinner );

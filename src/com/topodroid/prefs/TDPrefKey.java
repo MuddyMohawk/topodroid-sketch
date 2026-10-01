@@ -155,7 +155,8 @@ class TDPrefKey
     new TDPrefKey( B,       NON, "DISTOX_DEVICE_PREF",     R.string.pref_cat_device      ),
     new TDPrefKey( N,       NON, "DISTOX_CAVE3D_PREF",     R.string.pref_cat_cave3d      ),
     new TDPrefKey( A,       NON, "DISTOX_GEEK_PREF",       R.string.pref_cat_geek        ),
-    new TDPrefKey( E,       NON, "DISTOX_EXPORT_SETTINGS", R.string.pref_export_settings )
+    new TDPrefKey( E,       NON, "DISTOX_EXPORT_SETTINGS", R.string.pref_export_settings ),
+    new TDPrefKey( B, BOOL, UI, "DISTOX_STYLUS_ONLY_INPUT", R.string.pref_stylus_only_title, R.string.pref_stylus_only_summary, FALSE )
   };
 
   /** survey settings
@@ -894,7 +895,6 @@ class TDPrefKey
   /** additional plot settings
    * plot shift and scale
    * plot split and merge
-   * size of stylus (0: no stylus)
    * number of plot backups
    * minimum interval between plot backups [60 s]
    * whether to color saved stations
@@ -908,7 +908,6 @@ class TDPrefKey
   static TDPrefKey[] mGeekPlot = {
     new TDPrefKey( T, BOOL, UI,  "DISTOX_PLOT_SHIFT",       R.string.pref_plot_shift_title,        R.string.pref_plot_shift_summary,        FALSE ),
     new TDPrefKey( T, BOOL, XT,  "DISTOX_PLOT_SPLIT",       R.string.pref_plot_split_title,        R.string.pref_plot_split_summary,        FALSE ),
-    new TDPrefKey( T, FLT,  UI,  "DISTOX_STYLUS_SIZE",      R.string.pref_stylus_size_title,       R.string.pref_stylus_size_summary,       TDString.ZERO ),
     new TDPrefKey( A,       GEN, "DISTOX_BACKUP_NUMBER",    R.string.pref_backup_number_title,     R.string.pref_backup_number_summary,     TDString.FIVE, R.array.backupNumber, R.array.backupNumberValue ),
     new TDPrefKey( A, LONG, GEN, "DISTOX_BACKUP_INTERVAL",  R.string.pref_backup_interval_title,   R.string.pref_backup_interval_summary,   TDString.SIXTY ),  
     new TDPrefKey( T, BOOL, UI,  "DISTOX_SAVED_STATIONS",   R.string.pref_saved_stations_title,    R.string.pref_saved_stations_summary,    FALSE ),
@@ -1252,6 +1251,7 @@ class TDPrefKey
    */
   static boolean checkKeyGroup( String kay, int flag )
   {
+    if ( com.topodroid.TDX.StylusOnlyInputController.PREFERENCE.equals( kay ) ) return false;
     // Retired UI preference retained for settings-file round trips only.
     if ( "DISTOX_SYMBOL_SIZE".equals( kay ) ) return ( flag & (1<<UI) ) != 0;
     for ( TDPrefKey[] keyset : mKeySet ) {

@@ -138,7 +138,7 @@ public class TopoDroidAlertDialog
         alert.getWindow().setBackgroundDrawableResource( R.color.alert_background );
       }
 
-      alert.show();
+      StylusOnlyInputController.guardDialog( alert ).show();
       mAlert = alert;
   }
 
@@ -184,7 +184,7 @@ public class TopoDroidAlertDialog
       } else {
         alert.getWindow().setBackgroundDrawableResource( R.color.alert_background );
       }
-      alert.show();
+      StylusOnlyInputController.guardDialog( alert ).show();
       mAlert = alert;
   }
 
@@ -230,7 +230,7 @@ public class TopoDroidAlertDialog
       } else {
         alert.getWindow().setBackgroundDrawableResource( R.color.alert_background );
       }
-      alert.show();
+      StylusOnlyInputController.guardDialog( alert ).show();
       mAlert = alert;
   }
 

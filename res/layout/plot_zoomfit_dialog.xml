@@ -50,7 +50,7 @@
     <!-- CheckBox android:id="@+id/cb_zoom"
     / -->
 
-    <Spinner android:id="@+id/spin_zoom"
+    <com.topodroid.ui.StylusOnlySpinner android:id="@+id/spin_zoom"
       android:layout_width="fill_parent"
       android:layout_height="wrap_content" 
     />

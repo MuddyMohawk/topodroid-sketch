@@ -33,7 +33,7 @@
       android:orientation="horizontal"
       >
       <!-- android:layout_alignParentEnd="true" -->
-      <Spinner android:id="@+id/spinner"
+      <com.topodroid.ui.StylusOnlySpinner android:id="@+id/spinner"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:padding="@dimen/padding"

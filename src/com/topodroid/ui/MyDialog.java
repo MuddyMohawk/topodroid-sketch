@@ -52,6 +52,7 @@ public class MyDialog extends Dialog
   public MyDialog( Context context, TopoDroidApp app, int help_resource )
   {
     super( context );
+    com.topodroid.TDX.StylusOnlyInputController.guardWindow( getWindow() );
     mContext = context;
     mApp     = app;
     if ( help_resource != 0 ) {

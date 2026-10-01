@@ -12,7 +12,7 @@
       android:text="@string/address"
       android:ems="25"
   />
-  <Spinner android:id="@+id/device_address" 
+  <com.topodroid.ui.StylusOnlySpinner android:id="@+id/device_address"
     android:layout_marginTop="@dimen/margintiny"
     android:layout_width="match_parent"
     android:layout_height="wrap_content" 
@@ -25,7 +25,7 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     >
-    <Spinner android:id="@+id/device_model" 
+    <com.topodroid.ui.StylusOnlySpinner android:id="@+id/device_model"
       android:layout_width="0dp"
       android:layout_weight="50"
       android:layout_height="wrap_content" 

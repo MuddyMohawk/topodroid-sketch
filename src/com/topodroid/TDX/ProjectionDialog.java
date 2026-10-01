@@ -419,7 +419,7 @@ class ProjectionDialog extends MyDialog
     // mProjectionSurface.setBuiltInZoomControls(true);
 
     mZoomView = (View) findViewById(R.id.zoomView );
-    mZoomBtnsCtrl = new ZoomButtonsController( mZoomView );
+    mZoomBtnsCtrl = com.topodroid.TDX.StylusOnlyInputController.createZoomControls( mZoomView );
     // FIXME ZOOM_CTRL mZoomCtrl = (ZoomControls) mZoomBtnsCtrl.getZoomControls();
     // ViewGroup vg = mZoomBtnsCtrl.getContainer();
     // switchZoomCtrl( TDSetting.mZoomCtrl );

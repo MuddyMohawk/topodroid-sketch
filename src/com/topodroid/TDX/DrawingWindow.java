@@ -492,7 +492,6 @@ public class DrawingWindow extends ItemDrawer
   private DataDownloader mDataDownloader;
   private MediaManager   mMediaManager;
   private boolean mTh2Edit = false;  // whether to skip saving at modifications // TH2EDIT
-  private float mStylusSizeDpi = 1000;  // stylus size in dpi
 
   private boolean mLandscape;
   private boolean audioCheck;
@@ -1192,7 +1191,7 @@ public class DrawingWindow extends ItemDrawer
   {
     if ( mDrawingSurface.isFixedZoom() ) return;
     if ( mZoomBtnsCtrlOn && mZoomBtnsCtrl != null ) {
-      mZoomBtnsCtrl.setVisible( visible || ( TDSetting.mZoomCtrl > 1 ) );
+      mZoomBtnsCtrl.setVisible( visible || ( StylusOnlyInputController.zoomControlMode() > 1 ) );
     }
   }
 
@@ -3098,16 +3097,13 @@ public class DrawingWindow extends ItemDrawer
     mActivity = this;
     mApp_mData = TopoDroidApp.mData; 
     mMediaManager  = new MediaManager( mApp_mData );
-    // mStylusSizeDpi = TDSetting.mStylusSize * TopoDroidApp.getDisplayDensityDpi() / 25; // STYLUS_MM
-    mStylusSizeDpi = TDSetting.mStylusSize;
-    // TDLog.v("STYLUS size " + mStylusSizeDpi + " flag " + TDSetting.mStylusOnly );
 
     mFormatClosure = getResources().getString(R.string.format_closure );
 
     audioCheck = TDandroid.checkMicrophone( mActivity );
     // TDLog.v( "Microphone perm : " + audioCheck );
 
-    mZoomBtnsCtrlOn = (TDSetting.mZoomCtrl > 1);  // do before setting content
+    mZoomBtnsCtrlOn = (StylusOnlyInputController.zoomControlMode() > 1);  // do before setting content
     mPointScale = PointScale.SCALE_M;
 
     // mIsNotMultitouch = ! TDandroid.checkMultitouch( this );
@@ -3137,10 +3133,10 @@ public class DrawingWindow extends ItemDrawer
     // }
     mZoomView.setTranslationY( ZOOM_TRANSLATION );
 
-    mZoomBtnsCtrl = new ZoomButtonsController( mZoomView );
+    mZoomBtnsCtrl = com.topodroid.TDX.StylusOnlyInputController.createZoomControls( mZoomView );
     // FIXME_ZOOM_CTRL mZoomCtrl = (ZoomControls) mZoomBtnsCtrl.getZoomControls();
     // ViewGroup vg = mZoomBtnsCtrl.getContainer();
-    // switchZoomCtrl( TDSetting.mZoomCtrl );
+    // switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
 
     mListView = (MyHorizontalListView) findViewById(R.id.listview);
     mListView.setEmptyPlaceholder(true);
@@ -4199,7 +4195,7 @@ public class DrawingWindow extends ItemDrawer
     popup.addView( edit, editParams );
     int screen = getResources().getDisplayMetrics().widthPixels;
     int width = Math.min( screen - toolsetDp( 24 ), toolsetDp( 440 ) );
-    mQuickToolPopup = new PopupWindow( popup, width, LinearLayout.LayoutParams.WRAP_CONTENT, true );
+    mQuickToolPopup = com.topodroid.TDX.StylusOnlyInputController.guardPopup( new PopupWindow( popup, width, LinearLayout.LayoutParams.WRAP_CONTENT, true ) );
     mQuickToolPopup.setBackgroundDrawable( new ColorDrawable( 0xff20262b ) );
     mQuickToolPopup.setOutsideTouchable( true );
     mQuickToolPopup.setElevation( toolsetDp( 12 ) );
@@ -4326,7 +4322,7 @@ public class DrawingWindow extends ItemDrawer
     String mode = mApp_mData.getValue( "DISTOX_PLOT_MODE" );
     DrawingCommandManager.setDisplayMode( DisplayMode.parseString( mode ) );
     // mLastLinePath = null; // necessary ??? these two were at the end
-    switchZoomCtrl( TDSetting.mZoomCtrl );
+    switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
 
     if ( ! mTh2Edit ) { // TH2EDIT
       PlotInfo info = mApp_mData.getPlotInfo( mSid, mName );
@@ -5430,32 +5426,6 @@ public class DrawingWindow extends ItemDrawer
   }
 
   // ----------------------------------------------------------------
-  /*
-  private void dumpEvent( MotionEventWrap ev )
-  {
-    String name[] = { "DOWN", "UP", "MOVE", "CANCEL", "OUTSIDE", "PTR_DOWN", "PTR_UP", "7?", "8?", "9?" };
-    StringBuilder sb = new StringBuilder();
-    int action = ev.getAction();
-    int actionCode = action & MotionEvent.ACTION_MASK;
-    sb.append( "Event action_").append( name[actionCode] );
-    if ( actionCode == MotionEvent.ACTION_POINTER_DOWN || actionCode == MotionEvent.ACTION_POINTER_UP ) {
-      sb.append( "(pid " ).append( action>>MotionEvent.ACTION_POINTER_ID_SHIFT ).append( ")" );
-    }
-    sb.append( " [" );
-    for (int i=0; i<ev.getPointerCount(); ++i ) {
-      sb.append( "#" ).append( i );
-      sb.append( "(pid " ).append( ev.getPointerId(i) ).append( ")=" ).append( (int)(ev.getX(i)) ).append( "." ).append( (int)(ev.getY(i)) );
-      if ( i+1 < ev.getPointerCount() ) sb.append( ":" );
-      // normal stylus has TYPE 1 and PRESSURE 1.0
-      // sumsung pen has TYPE 2 and variable PRESSURE between 0.0 and 1.0
-      sb.append(" ").append( ev.getToolType(i) );
-      sb.append(" ").append( ev.getPressure(i) );
-    }
-    sb.append( "]" );
-    TDLog.v( sb.toString() );
-  }
-  */
-
   /** @return the spacing between the first two pointers in the event
    * @param ev    screen event
    */
@@ -5619,7 +5589,7 @@ public class DrawingWindow extends ItemDrawer
     // if ( mZoomBtnsCtrl == null ) return; // not necessary
     // FIXED_ZOOM 
     if ( mDrawingSurface.isFixedZoom() ) return;
-    if ( TDSetting.mZoomCtrl == 2 && ! mZoomBtnsCtrl.isVisible() ) {
+    if ( StylusOnlyInputController.zoomControlMode() == 2 && ! mZoomBtnsCtrl.isVisible() ) {
       mZoomBtnsCtrl.setVisible( true );
     }
   }
@@ -5785,57 +5755,33 @@ public class DrawingWindow extends ItemDrawer
       mTouchActive = false;
     }
 
-    if ( TDSetting.mStylusOnly ) {
+    if (action == MotionEvent.ACTION_POINTER_DOWN) {
+      if ( mTouchMode == MODE_MOVE ) {
+        if ( mMode == MODE_ERASE ) {
+          finishErasing();
+        }
+      }
+      mTouchMode = MODE_ZOOM;
+      oldDist = spacing( event );
+      saveEventPoint( event );
+      mPointerDown = true;
+      return true;
+    } else if ( action == MotionEvent.ACTION_POINTER_UP) {
       int np = event.getPointerCount();
-      for ( id = 0; id < np; ++id ) {
-        // could use also getTouchMajor() however these methods are not supported by most devices
-        TDLog.v("STYLUS tool " + id + "/" + np + " size " + rawEvent.getSize( id ) + " major " + rawEvent.getToolMajor( id ) ); 
-        if ( rawEvent.getToolMajor( id ) < mStylusSizeDpi ) {
-          break;
-        }
+      if ( np > 2 ) return true;
+      mTouchMode = MODE_MOVE;
+      id = 1 - ((act & MotionEvent.ACTION_POINTER_INDEX_MASK) >> MotionEvent.ACTION_POINTER_INDEX_SHIFT);
+      // int idx = rawEvent.findPointerIndex( id );
+      if ( mSymbol != SymbolType.POINT ) {
+        action = MotionEvent.ACTION_DOWN; // force next case
       }
-      if ( id == np ) {
-        TDLog.v("STYLUS only: no point found");
-        return true;
-      }
-      if (action == MotionEvent.ACTION_POINTER_DOWN) {
-        action = MotionEvent.ACTION_DOWN;
-      } else if ( action == MotionEvent.ACTION_POINTER_UP) {
-        action = MotionEvent.ACTION_UP;
-      } else {
-        // TDLog.v("on touch - unhandled action " + action );
-      }
-      // TDLog.v("STYLUS action " + action + " of " + act );
-    } else {
-      if (action == MotionEvent.ACTION_POINTER_DOWN) {
-        if ( mTouchMode == MODE_MOVE ) {
-          if ( mMode == MODE_ERASE ) {
-            finishErasing();
-          }
-        }
-        mTouchMode = MODE_ZOOM;
-        oldDist = spacing( event );
-        saveEventPoint( event );
-        mPointerDown = true;
-        return true;
-      } else if ( action == MotionEvent.ACTION_POINTER_UP) {
-        int np = event.getPointerCount();
-        if ( np > 2 ) return true;
-        mTouchMode = MODE_MOVE;
-        id = 1 - ((act & MotionEvent.ACTION_POINTER_INDEX_MASK) >> MotionEvent.ACTION_POINTER_INDEX_SHIFT);
-        // int idx = rawEvent.findPointerIndex( id );
-        if ( mSymbol != SymbolType.POINT ) {
-          action = MotionEvent.ACTION_DOWN; // force next case
-        }
-        /* fall through */
-      }
+      /* fall through */
     }
 
     float x_canvas = event.getX(id);
     float y_canvas = event.getY(id);
     float x_scene = x_canvas/mZoom - mOffset.x;
     float y_scene = y_canvas/mZoom - mOffset.y;
-    // TDLog.v("STYLUS action " + action + " at " + x_canvas + " " + y_canvas + " scene " + x_scene + " " + y_scene );
 
     if (action == MotionEvent.ACTION_DOWN) { // ---------------------------------------- DOWN
       return onTouchDown( x_canvas, y_canvas, x_scene, y_scene );
@@ -5851,6 +5797,12 @@ public class DrawingWindow extends ItemDrawer
       }
       clearPendingSketchStroke();
       mGesturePreferences = null;
+      mDrawingSurface.setLiveItem( null );
+      mPointerDown = false;
+      HBXP_PointDown = false;
+      mTouchMode = MODE_MOVE;
+      mRotateAzimuth = false;
+      mShiftMove = false;
       applyPendingSymbolSelection();
       applyPendingSketchPresetSelection();
       applyPendingSketchStyleSelection();
@@ -5915,9 +5867,7 @@ public class DrawingWindow extends ItemDrawer
           if ( mSymbol == SymbolType.LINE ) {
             if ( mCurrentLinePath != null ) { // SAFETY CHECK
               if ( squared_shift > TDSetting.mLineSegment2 || ( mPointCnt % mLinePointStep ) > 0 ) {
-                if ( ( ! TDSetting.mStylusOnly ) || squared_shift < 25 * TDSetting.mLineSegment2 ) { // STYLUS_ONLY: to intercept artifacts
-                  mCurrentLinePath.addPoint( xs, ys ); // a jump in stylus points five times the line spacing
-                }
+                mCurrentLinePath.addPoint( xs, ys );
               }
               if ( mLandscape ) mCurrentLinePath.landscapeToPortrait();
             }
@@ -5956,8 +5906,8 @@ public class DrawingWindow extends ItemDrawer
                     if ( joined_line ) rememberGesturePreferences();
                   }
                   if ( ! joined_line ) {
-                    // TODO this is useful for STYLUS-ONLY, it might be better to skip for complex line modes
-                    if ( /* TDSetting.mStylusOnly && */ TDSetting.mLineEnds > 0 ) mCurrentLinePath.dropEndPoints( TDSetting.mLineEnds );
+                    // Trim line ends independently of the input mode.
+                    if ( TDSetting.mLineEnds > 0 ) mCurrentLinePath.dropEndPoints( TDSetting.mLineEnds );
 
                     DrawingLinePath lp1 = new DrawingLinePath( mCurrentLine, mDrawingSurface.scrapIndex() );
                     lp1.setOptions( BrushManager.getLineDefaultOptions( mCurrentLine ) );
@@ -6489,7 +6439,7 @@ public class DrawingWindow extends ItemDrawer
   private boolean onTouchDown( float xc, float yc, float xs, float ys )
   {
     HBXP_PointDown = false; // HBXP
-    if ( commitLivePointPlacement() ) modified(); // safety: commit any stray live point (e.g. cancelled gesture)
+    if ( commitLivePointPlacement() ) modified(); // safety: commit a stray live point from a completed placement
     mDrawingSurface.endEraser();
     float d0 = TDSetting.mCloseCutoff + mSelectSize / mZoom;
     // TDLog.v( "on touch down. mode " + mMode + " " + mTouchMode );
@@ -6628,7 +6578,6 @@ public class DrawingWindow extends ItemDrawer
    */
   private boolean onTouchMove( float xc, float yc, float xs, float ys, MotionEventWrap event )
   {
-    // TDLog.v( "STYLUS action MOVE mode " + mMode + " touch " + mTouchMode + " (" + xc + " " + yc + ") " );
     if ( mTouchMode == MODE_MOVE) {
       float x_shift = xc - mSaveX; // compute shift
       float y_shift = yc - mSaveY;
@@ -6637,9 +6586,6 @@ public class DrawingWindow extends ItemDrawer
       // mSaveY = yc;
       if ( mMode == MODE_DRAW ) {
         float squared_shift = x_shift*x_shift + y_shift*y_shift;
-        if ( TDSetting.mStylusOnly ) { // STYLUS_ONLY: to intercept artifacts
-          if ( squared_shift > 25 * TDSetting.mLineSegment2 ) return false; // a jump in stylus points five times the line spacing
-        }
         if ( mSymbol == SymbolType.LINE ) {
           if ( squared_shift > TDSetting.mLineSegment2 ) {
             if ( ++mPointCnt % mLinePointStep == 0 ) {
@@ -8082,7 +8028,7 @@ public class DrawingWindow extends ItemDrawer
       // mPlot2.hide = hide;
       mApp_mData.updatePlotHide( mPid, mSid, hide );
       plot.hide = hide;
-      h = 1; // hide
+      h = 1; //Â hide
     } else if ( drop && is_hidden ) {
       // mApp_mData.updatePlotHide( mPid1, mSid, new_hide ); 20250321
       // mApp_mData.updatePlotHide( mPid2, mSid, new_hide );
@@ -8423,7 +8369,7 @@ public class DrawingWindow extends ItemDrawer
 
       FontMetrics fm = tv[0].getPaint().getFontMetrics();
       int ih = (int)( (Math.abs(fm.top) + Math.abs(fm.bottom) + Math.abs(fm.leading) ) * 7 * 1.70);
-      mPopupFilter = new PopupWindow( popup_layout, iw, ih ); 
+      mPopupFilter = com.topodroid.TDX.StylusOnlyInputController.guardPopup( new PopupWindow( popup_layout, iw, ih ) );
       mPopupFilter.showAsDropDown(b); 
     }
 
@@ -8828,7 +8774,7 @@ public class DrawingWindow extends ItemDrawer
       
       FontMetrics fm = myTextView0.getPaint().getFontMetrics();
       int ih = (int)( (Math.abs(fm.top) + Math.abs(fm.bottom) + Math.abs(fm.leading) ) * 7 * 1.70);
-      mPopupEdit = new PopupWindow( popup_layout, iw, ih ); 
+      mPopupEdit = com.topodroid.TDX.StylusOnlyInputController.guardPopup( new PopupWindow( popup_layout, iw, ih ) );
       // mPopupEdit = new PopupWindow( popup_layout, popup_layout.getHeight(), popup_layout.getWidth() );
       mPopupEdit.showAsDropDown(b); 
     }
@@ -9385,7 +9331,7 @@ public class DrawingWindow extends ItemDrawer
               } else if ( point instanceof DrawingSemanticPointPath
                   && TitleLegendPointBehavior.isTitleLegend( point ) ) {
                 android.app.Dialog dialog = ( (DrawingSemanticPointPath)point ).createDedicatedEditor( this, false );
-                if ( dialog != null ) dialog.show();
+                if ( dialog != null ) StylusOnlyInputController.guardDialog( dialog ).show();
               } else {
                 new DrawingPointDialog( mActivity, this, point ).show();
               }
@@ -10560,12 +10506,19 @@ public class DrawingWindow extends ItemDrawer
     }
     menu_adapter.add( res.getString( menus[10] ) ); // OPTIONS
     menu_adapter.add( res.getString( menus[11] ) ); // HELP
+    menu_adapter.add( res.getString( StylusOnlyInputController.isEnabled()
+        ? R.string.menu_stylus_only_disable : R.string.menu_stylus_only_enable ) );
     mMenu.setAdapter( menu_adapter );
     mMenu.invalidate();
   }
 
-  /** close the menu popup
-   */
+  /** Refresh controls that follow the session's input mode. */
+  void refreshStylusOnlyUi()
+  {
+    if ( mMenu != null ) setMenuAdapter( getResources(), mType );
+    if ( mZoomBtnsCtrl != null ) switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
+  }
+
   private void closeMenu()
   {
     mMenu.setVisibility( View.GONE );
@@ -10665,6 +10618,11 @@ public class DrawingWindow extends ItemDrawer
    */
   private void handleMenu( int pos )
   {
+    if ( pos == mMenu.getAdapter().getCount() - 1 ) {
+      closeMenu();
+      StylusOnlyInputController.setEnabled( ! StylusOnlyInputController.isEnabled() );
+      return;
+    }
     closeMenu();
     int p = 0;
     if ( p++ == pos ) {

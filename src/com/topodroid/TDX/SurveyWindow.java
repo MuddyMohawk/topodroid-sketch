@@ -471,7 +471,7 @@ public class SurveyWindow extends Activity
         int y = TDUtil.dateParseYear( date );
         int m = TDUtil.dateParseMonth( date );
         int d = TDUtil.dateParseDay( date );
-        new DatePickerDialog( mActivity, mDateListener, y, m, d ).show();
+        StylusOnlyInputController.guardDialog( new DatePickerDialog( mActivity, mDateListener, y, m, d ) ).show();
         saveSurvey( false );
         return;
       }

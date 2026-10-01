@@ -2111,8 +2111,6 @@ On Android-11+ storage access must be granted to TopoDroid.\nYou can do this wit
   <string name="pref_plane_interpolation_summary">Enable plane fitting of splays</string>
   <string name="pref_plot_split_title">Sketch split/merge</string>
   <string name="pref_plot_split_summary">Enable sketch split and merge</string>
-  <string name="pref_stylus_size_title">Stylus only drawing</string>
-  <string name="pref_stylus_size_summary">Stylus maximum size [pxl, 0: ignore]</string>
   <string name="pref_spen_single_click_title">S Pen single-click</string>
   <string name="pref_spen_single_click_summary">Action for a single S Pen button click while hovering</string>
   <string name="pref_spen_long_click_title">S Pen long-click</string>
@@ -2825,4 +2823,11 @@ READ THE HELP BEFORE ATTEMPTING A FIRMWARE UPLOAD
   <string name="pref_remember_symbol_style_summary">Remember each symbol\'s appearance style in this survey. Turning this off pauses recall and learning.</string>
   <string name="pref_remember_symbol_preset_title">Remember drawing preset per symbol</string>
   <string name="pref_remember_symbol_preset_summary">Remember each symbol\'s drawing preset in this survey. Turning this off pauses recall and learning.</string>
+  <string name="pref_stylus_only_title">Stylus-only input</string>
+  <string name="pref_stylus_only_summary">Block non-pen input on app screens. Hold Volume Down for 5 seconds to turn off. A full app restart also turns off. Android’s keyboard and system screens are outside this protection.</string>
+  <string name="menu_stylus_only_enable">Enable stylus-only input</string>
+  <string name="menu_stylus_only_disable">Disable stylus-only input</string>
+  <string name="stylus_only_badge">Pen only</string>
+  <string name="stylus_only_enabled">Pen only: hold Volume Down for 5 seconds to disable. A full app restart also disables it.</string>
+  <string name="stylus_only_disabled">Stylus-only input disabled</string>
 </resources>

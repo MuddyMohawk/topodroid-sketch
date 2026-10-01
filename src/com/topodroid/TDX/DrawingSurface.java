@@ -926,8 +926,8 @@ public class DrawingSurface extends SurfaceView // TH2EDIT was package
   // (drag-placed point symbol being scaled/rotated). It is NOT in the command
   // stack and NOT in the scene cache - it draws as an overlay on every frame,
   // so per-event mutations need only a plain frame request and gestures keep
-  // the cheap blit path. On stylus-up (or any interruption) it is committed
-  // into the scene via addDrawingPath, which invalidates the cache once.
+  // the cheap blit path. On release it is committed into the scene via
+  // addDrawingPath; canceled placement gestures discard the overlay.
   private volatile DrawingPath mLiveItem = null;
 
   /** set the live overlay item (placement drag in progress) */

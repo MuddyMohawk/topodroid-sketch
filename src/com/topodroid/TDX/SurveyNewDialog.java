@@ -186,7 +186,7 @@ class SurveyNewDialog extends MyDialog
         int y = TDUtil.dateParseYear( date );
         int m = TDUtil.dateParseMonth( date );
         int d = TDUtil.dateParseDay( date );
-        new DatePickerDialog( mContext, mDateListener, y, m, d ).show();
+        StylusOnlyInputController.guardDialog( new DatePickerDialog( mContext, mDateListener, y, m, d ) ).show();
         return;
       }
 

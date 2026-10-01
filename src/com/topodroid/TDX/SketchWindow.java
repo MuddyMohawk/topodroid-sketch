@@ -512,7 +512,7 @@ public class SketchWindow extends ItemDrawer
   public void onVisibilityChanged(boolean visible)
   {
     if ( mZoomBtnsCtrlOn && mZoomBtnsCtrl != null ) {
-      mZoomBtnsCtrl.setVisible( visible || ( TDSetting.mZoomCtrl > 1 ) );
+      mZoomBtnsCtrl.setVisible( visible || ( StylusOnlyInputController.zoomControlMode() > 1 ) );
     }
   }
 
@@ -1015,6 +1015,12 @@ public class SketchWindow extends ItemDrawer
    * @param ctrl      type of controls
    * @note this method is a callback to let other objects tell the activity to use zooms or not
    */
+  void refreshStylusOnlyUi()
+  {
+    if ( mMenu != null ) setMenuAdapter( getResources() );
+    switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
+  }
+
   private void switchZoomCtrl( int ctrl )
   {
     // TDLog.v( "DEBUG switchZoomCtrl " + ctrl + " ctrl is " + ((mZoomBtnsCtrl == null )? "null" : "not null") );
@@ -1173,7 +1179,7 @@ public class SketchWindow extends ItemDrawer
     // audioCheck = TDandroid.checkMicrophone( mActivity );
     // TDLog.v( "Microphone perm : " + audioCheck );
 
-    mZoomBtnsCtrlOn = (TDSetting.mZoomCtrl > 1);  // do before setting content
+    mZoomBtnsCtrlOn = (StylusOnlyInputController.zoomControlMode() > 1);  // do before setting content
     mPointScale = PointScale.SCALE_M;
 
     // mIsNotMultitouch = ! TDandroid.checkMultitouch( this );
@@ -1192,10 +1198,10 @@ public class SketchWindow extends ItemDrawer
     mZoomView = (View) findViewById(R.id.zoomView );
     mZoomView.setTranslationY( ZOOM_TRANSLATION );
 
-    mZoomBtnsCtrl = new ZoomButtonsController( mZoomView );
+    mZoomBtnsCtrl = com.topodroid.TDX.StylusOnlyInputController.createZoomControls( mZoomView );
     // FIXME_ZOOM_CTRL mZoomCtrl = (ZoomControls) mZoomBtnsCtrl.getZoomControls();
     // ViewGroup vg = mZoomBtnsCtrl.getContainer();
-    // switchZoomCtrl( TDSetting.mZoomCtrl );
+    // switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
 
     mListView = (MyHorizontalListView) findViewById(R.id.listview);
     mListView.setEmptyPlaceholder(true);
@@ -1538,7 +1544,7 @@ public class SketchWindow extends ItemDrawer
     // String mode = mApp_mData.getValue( "DISTOX_SKETCH_MODE" );
     // TDLog.v("restore drawing display mode " + mode );
     // mSketchSurface.setDisplayMode( DisplayMode.parseString( mode ) );
-    switchZoomCtrl( TDSetting.mZoomCtrl );
+    switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
 
     // TODO FIXME
     // SketchInfo info = mApp_mData.getSketchInfo( mSid, mName );
@@ -1769,7 +1775,7 @@ public class SketchWindow extends ItemDrawer
   public void checkZoomBtnsCtrl()
   {
     // if ( mZoomBtnsCtrl == null ) return; // not necessary
-    if ( TDSetting.mZoomCtrl == 2 && ! mZoomBtnsCtrl.isVisible() ) {
+    if ( StylusOnlyInputController.zoomControlMode() == 2 && ! mZoomBtnsCtrl.isVisible() ) {
       mZoomBtnsCtrl.setVisible( true );
     }
   }
@@ -1823,45 +1829,29 @@ public class SketchWindow extends ItemDrawer
     int id = 0;
     boolean threePointers = false;
 
-    if ( TDSetting.mStylusOnly ) {
+    if (action == MotionEvent.ACTION_POINTER_DOWN) {
+      threePointers = (event.getPointerCount() == 3);
+      if ( mTouchMode == MODE_MOVE ) {
+        if ( mMode == MODE_ERASE ) {
+          finishErasing();
+        }
+      }
+      mTouchMode = MODE_ZOOM;
+      oldDist = spacing( event );
+      saveEventPoint( event );
+      mPointerDown = true;
+      return true;
+    } else if ( action == MotionEvent.ACTION_POINTER_UP) {
       int np = event.getPointerCount();
-      for ( id = 0; id < np; ++id ) {
-        // TDLog.v("STYLUS tool " + id + " size " + rawEvent.getSize( id ) + " " + rawEvent.getToolMajor( id ) + " " + TDSetting.mStylusSize );
-        if ( rawEvent.getToolMajor( id ) < TDSetting.mStylusSize ) {
-          break;
-        }
+      threePointers = (np > 3);
+      if ( np > 2 ) return true;
+      mTouchMode = MODE_MOVE;
+      id = 1 - ((act & MotionEvent.ACTION_POINTER_INDEX_MASK) >> MotionEvent.ACTION_POINTER_INDEX_SHIFT);
+      // int idx = rawEvent.findPointerIndex( id );
+      if ( mSymbol != SymbolType.POINT ) {
+        action = MotionEvent.ACTION_DOWN; // force next case
       }
-      if ( id == np ) return true;
-      if (action == MotionEvent.ACTION_POINTER_DOWN) {
-        action = MotionEvent.ACTION_DOWN;
-      } else if ( action == MotionEvent.ACTION_POINTER_UP) {
-        action = MotionEvent.ACTION_UP;
-      }
-    } else {
-      if (action == MotionEvent.ACTION_POINTER_DOWN) {
-        threePointers = (event.getPointerCount() == 3);
-        if ( mTouchMode == MODE_MOVE ) {
-          if ( mMode == MODE_ERASE ) {
-            finishErasing();
-          }
-        }
-        mTouchMode = MODE_ZOOM;
-        oldDist = spacing( event );
-        saveEventPoint( event );
-        mPointerDown = true;
-        return true;
-      } else if ( action == MotionEvent.ACTION_POINTER_UP) {
-        int np = event.getPointerCount();
-        threePointers = (np > 3);
-        if ( np > 2 ) return true;
-        mTouchMode = MODE_MOVE;
-        id = 1 - ((act & MotionEvent.ACTION_POINTER_INDEX_MASK) >> MotionEvent.ACTION_POINTER_INDEX_SHIFT);
-        // int idx = rawEvent.findPointerIndex( id );
-        if ( mSymbol != SymbolType.POINT ) {
-          action = MotionEvent.ACTION_DOWN; // force next case
-        }
-        /* fall through */
-      }
+      /* fall through */
     }
     float x_canvas = event.getX(id);
     float y_canvas = event.getY(id);
@@ -1874,6 +1864,14 @@ public class SketchWindow extends ItemDrawer
 
     } else if (action == MotionEvent.ACTION_UP) { // ----------------------------------- UP
       return onTouchUp( x_canvas, y_canvas );
+    } else if ( action == MotionEvent.ACTION_CANCEL ) {
+      if ( mMode == MODE_ERASE ) finishErasing();
+      mSketchSurface.endCurrentPath();
+      mSketchSurface.resetPreviewPath();
+      mSketchSurface.endEraser();
+      mPointerDown = false;
+      HBXP_PointDown = false;
+      mTouchMode = MODE_MOVE;
     }
     return true;
   }
@@ -1901,10 +1899,7 @@ public class SketchWindow extends ItemDrawer
         float squared_shift = x_shift*x_shift + y_shift*y_shift;
 
         if ( squared_shift > TDSetting.mLineSegment2 || ( mPointCnt % mLinePointStep ) > 0 ) {
-          if ( ( ! TDSetting.mStylusOnly ) || squared_shift < 10 * TDSetting.mLineSegment2 ) {
-            // TDLog.v("SKETCH DRAW final point " + xc + " " + yc );
-            mSketchSurface.addPointToCurrentPath( new Point2D(xc, yc) );
-          }
+          mSketchSurface.addPointToCurrentPath( new Point2D(xc, yc) );
         }
         
         mSketchSurface.endCurrentPath(); 
@@ -2041,9 +2036,6 @@ public class SketchWindow extends ItemDrawer
       // mSaveY = yc;
       if ( mMode == MODE_DRAW ) {
         float squared_shift = x_shift*x_shift + y_shift*y_shift;
-        if ( TDSetting.mStylusOnly ) {
-          if ( squared_shift > 10 * TDSetting.mLineSegment2 ) return false;
-        }
         if ( squared_shift > TDSetting.mLineSegment2 ) {
           if ( ++mPointCnt % mLinePointStep == 0 ) {
             // TDLog.v("SKETCH DRAW add point " + xc + " " + yc );
@@ -2456,6 +2448,8 @@ public class SketchWindow extends ItemDrawer
     for ( int k = 0; k < mNrMenus; ++k ) {
       menu_adapter.add( res.getString( menus[k] ) ); 
     }
+    menu_adapter.add( res.getString( StylusOnlyInputController.isEnabled()
+        ? R.string.menu_stylus_only_disable : R.string.menu_stylus_only_enable ) );
     mMenu.setAdapter( menu_adapter );
     mMenu.invalidate();
   }
@@ -2470,6 +2464,11 @@ public class SketchWindow extends ItemDrawer
 
   private void handleMenu( int pos )
   {
+    if ( pos == mMenu.getAdapter().getCount() - 1 ) {
+      closeMenu();
+      StylusOnlyInputController.setEnabled( ! StylusOnlyInputController.isEnabled() );
+      return;
+    }
     closeMenu();
     int p = 0;
     if ( p++ == pos ) { // CLOSE SECTION

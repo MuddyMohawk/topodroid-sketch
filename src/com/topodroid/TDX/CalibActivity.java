@@ -307,7 +307,7 @@ public class CalibActivity extends Activity
         int y = TDUtil.dateParseYear( date );
         int m = TDUtil.dateParseMonth( date );
         int d = TDUtil.dateParseDay( date );
-        new DatePickerDialog( this, mDateListener, y, m, d ).show();
+        StylusOnlyInputController.guardDialog( new DatePickerDialog( this, mDateListener, y, m, d ) ).show();
       }
       return;
     }

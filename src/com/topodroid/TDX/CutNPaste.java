@@ -147,7 +147,7 @@ public class CutNPaste
 
     FontMetrics fm = btn_cut.getPaint().getFontMetrics();
     int ih = (int)( (Math.abs(fm.top) + Math.abs(fm.bottom) + Math.abs(fm.leading) ) * 7 * 2.7); // 1.7
-    mPopup = new PopupWindow( layout, iw, ih );
+    mPopup = com.topodroid.TDX.StylusOnlyInputController.guardPopup( new PopupWindow( layout, iw, ih ) );
     mPopup.showAsDropDown( et );
   }
 
@@ -686,7 +686,7 @@ public class CutNPaste
 
     FontMetrics fm = textview0.getPaint().getFontMetrics();
     int ih = (int)( (Math.abs(fm.top) + Math.abs(fm.bottom) + Math.abs(fm.leading) ) * 7 * 1.70);
-    mPopupBT = new PopupWindow( popup_layout, iw, ih ); 
+    mPopupBT = com.topodroid.TDX.StylusOnlyInputController.guardPopup( new PopupWindow( popup_layout, iw, ih ) );
     mPopupBT.showAsDropDown(b); 
     return mPopupBT;
   }

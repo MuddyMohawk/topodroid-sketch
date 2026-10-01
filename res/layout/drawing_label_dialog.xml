@@ -41,7 +41,7 @@
         android:layout_marginTop="@dimen/marginsmall"
         android:text="@string/text_font" />
 
-    <Spinner
+    <com.topodroid.ui.StylusOnlySpinner
         android:id="@+id/text_font"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />

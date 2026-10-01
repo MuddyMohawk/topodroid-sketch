@@ -7,7 +7,7 @@
   android:layout_height="match_parent"
   >
 
-  <Spinner android:id="@+id/bt_model"
+  <com.topodroid.ui.StylusOnlySpinner android:id="@+id/bt_model"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginTop="@dimen/marginvbig"

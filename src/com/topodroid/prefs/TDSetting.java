@@ -633,8 +633,6 @@ public class TDSetting
   public static boolean mEraseReferenceImages = false; // whether the eraser can delete reference-image underlays
   public static int mMinShift = 60;                 // shift sensitivity
   public static int mPointingRadius = 24;
-  public static boolean mStylusOnly = false;        // stylus only sketching - false by default
-  public static float mStylusSize = 0;              // stylus size
   public static final int SPEN_ACTION_NONE = 0;
   public static final int SPEN_ACTION_UNDO = 1;
   public static final int SPEN_ACTION_REDO = 2;
@@ -869,7 +867,7 @@ public class TDSetting
   public static void setZoomControlsInt( int i, boolean is_multitouch )
   {
     if ( i >= 0 && i <= 2 ) mZoomCtrl = i;
-    if ( mZoomCtrl == 0 && ( mStylusOnly || ! is_multitouch ) ) mZoomCtrl = 1;
+    if ( mZoomCtrl == 0 && ! is_multitouch ) mZoomCtrl = 1;
   }
 
   /** set the sibling thresholds 
@@ -1119,22 +1117,6 @@ public class TDSetting
     if ( s < 1 ) { s = 1; ret = TDString.ONE; }
     mPointingRadius = s;
     return ret;
-  }
-
-  /** set the size of the stylus for the sketch canvas
-   * @param s  stylus size
-   */
-  private static String setStylusSize( float s ) // STYLUS_MM
-  {
-    if ( s <= 0 ) { 
-      mStylusOnly = false;
-      mStylusSize = 0;
-      return TDString.ZERO;
-    }
-    mStylusOnly = true;
-    mStylusSize = s;
-    if ( mZoomCtrl == 0 ) mZoomCtrl = 1;
-    return Float.toString( s );
   }
 
   // called only by TopoDroidApp.setButtonSize and internally
@@ -1563,19 +1545,18 @@ public class TDSetting
     key = TDPrefKey.mGeekPlot;
     mPlotShift     = prefs.getBoolean( key[ 0].key, bool(key[ 0].dflt) ); // DISTOX_PLOT_SHIFT
     mPlotSplit     = prefs.getBoolean( key[ 1].key, bool(key[ 1].dflt) ); // DISTOX_PLOT_SPLIT
-    setStylusSize(  tryFloat( prefs,   key[ 2].key,      key[ 2].dflt ) );  // DISTOX_STYLUS_SIZE // STYLUS_MM
-    mBackupNumber   = tryInt( prefs,   key[ 3].key,      key[ 3].dflt );  // DISTOX_BACKUP_NUMBER
-    mBackupInterval = tryInt( prefs,   key[ 4].key,      key[ 4].dflt );  // DISTOX_BACKUP_INTERVAL
-    // mAutoXSections  = prefs.getBoolean( key[ 5].key, bool(key.dflt[ 5].dflt) ); // DISTOX_AUTO_XSECTIONS
-    mSavedStations  = prefs.getBoolean( key[ 5].key, bool(key[ 5].dflt) ); // DISTOX_SAVED_STATIONS
-    mLegOnlyUpdate  = prefs.getBoolean( key[ 6].key, bool(key[ 6].dflt) ); // DISTOX_LEGONLY_UPDATE
-    mFullAffine     = prefs.getBoolean( key[ 7].key, bool(key[ 7].dflt) ); // DISTOX_FULL_UPDATE
-    mWithLevels     = tryInt( prefs,    key[ 8].key,      key[ 8].dflt );   // DISTOX_WITH_LEVELS
-    mGraphPaperScale = tryInt( prefs,   key[ 9].key,      key[ 9].dflt );  // DISTOX_GRAPH_PAPER_SCALE
-    mSlantXSection  = prefs.getBoolean( key[10].key, bool(key[10].dflt) ); // DISTOX_SLANT_XSECTION
-    mObliqueMax     = tryInt( prefs,    key[11].key,      key[11].dflt );  // DISTOX_OBLIQUE_PROJECTED
-    mToolbarUpdate  = normalizeToolbarUpdate( tryInt( prefs, key[12].key, key[12].dflt ) );  // DISTOX_TOOLBAR_UPDATE
-    // mZoomLowerBound = tryFloat( prefs, key[13].key,      key[13].dflt );  // DISTOX_ZOOM_LOWER_BOUND
+    mBackupNumber   = tryInt( prefs,   key[ 2].key,      key[ 2].dflt );  // DISTOX_BACKUP_NUMBER
+    mBackupInterval = tryInt( prefs,   key[ 3].key,      key[ 3].dflt );  // DISTOX_BACKUP_INTERVAL
+    // mAutoXSections  = prefs.getBoolean( key[ 4].key, bool(key.dflt[ 5].dflt) ); // DISTOX_AUTO_XSECTIONS
+    mSavedStations  = prefs.getBoolean( key[ 4].key, bool(key[ 4].dflt) ); // DISTOX_SAVED_STATIONS
+    mLegOnlyUpdate  = prefs.getBoolean( key[ 5].key, bool(key[ 5].dflt) ); // DISTOX_LEGONLY_UPDATE
+    mFullAffine     = prefs.getBoolean( key[ 6].key, bool(key[ 6].dflt) ); // DISTOX_FULL_UPDATE
+    mWithLevels     = tryInt( prefs,    key[ 7].key,      key[ 7].dflt );   // DISTOX_WITH_LEVELS
+    mGraphPaperScale = tryInt( prefs,   key[ 8].key,      key[ 8].dflt );  // DISTOX_GRAPH_PAPER_SCALE
+    mSlantXSection  = prefs.getBoolean( key[ 9].key, bool(key[ 9].dflt) ); // DISTOX_SLANT_XSECTION
+    mObliqueMax     = tryInt( prefs,    key[10].key,      key[10].dflt );  // DISTOX_OBLIQUE_PROJECTED
+    mToolbarUpdate  = normalizeToolbarUpdate( tryInt( prefs, key[11].key, key[11].dflt ) );  // DISTOX_TOOLBAR_UPDATE
+    // mZoomLowerBound = tryFloat( prefs, key[12].key,      key[12].dflt );  // DISTOX_ZOOM_LOWER_BOUND
     // TDLog.v("SETTING load secondary GEEK plot done");
 
     key = TDPrefKey.mErase;
@@ -1851,7 +1832,9 @@ public class TDSetting
     //   // TopoDroidApp.setCWD( tryStringValue( hlp, k, v, "TopoDroid" ), hlp.getString( "DISTOX_CBD", TDPath.getBaseDir() ) );
     //   TopoDroidApp.setCWD( tryStringValue( hlp, k, v, "TopoDroid" ) /* , TDPath.getCurrentBaseDir() */ );
     // } else 
-    if ( k.equals( key[ 0 ].key ) ) {             // DISTOX_EXTRA_BUTTONS (choice)
+    if ( com.topodroid.TDX.StylusOnlyInputController.PREFERENCE.equals( k ) ) {
+      com.topodroid.TDX.StylusOnlyInputController.setEnabled( Boolean.parseBoolean( v ) );
+    } else if ( k.equals( key[ 0 ].key ) ) {             // DISTOX_EXTRA_BUTTONS (choice)
       int level = tryIntValue( hlp, k, v, key[0].dflt );
       setActivityBooleans( hlp.getSharedPrefs(), level );
     } else if ( k.equals( key[ 1 ].key ) ) {              // DISTOX_TEXT_SIZE
@@ -2422,42 +2405,40 @@ public class TDSetting
       mPlotShift    = tryBooleanValue( hlp, k, v, bool(key[0].dflt) );
     } else if ( k.equals( key[ 1 ].key ) ) { // DISTOX_PLOT_SPLIT
       mPlotSplit = tryBooleanValue( hlp, k, v, bool(key[ 1 ].dflt) );
-    } else if ( k.equals( key[ 2 ].key ) ) { // DISTOX_STYLUS_SIZE
-      setStylusSize( tryFloatValue( hlp, k, v, key[ 2].dflt ) ); // STYLUS_MM - LINE ENDS
-    } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_BACKUP_NUMBER
-      mBackupNumber  = tryIntValue( hlp, k, v, key[ 3 ].dflt ); 
+    } else if ( k.equals( key[ 2].key ) ) { // DISTOX_BACKUP_NUMBER
+      mBackupNumber  = tryIntValue( hlp, k, v, key[ 2].dflt );
       if ( mBackupNumber <  4 ) { mBackupNumber =  4; ret = Integer.toString( mBackupNumber ); }
       else if ( mBackupNumber > 10 ) { mBackupNumber = 10; ret = Integer.toString( mBackupNumber ); }
-    } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_BACKUP_INTERVAL
-      mBackupInterval = tryIntValue( hlp, k, v, key[ 4 ].dflt );  
+    } else if ( k.equals( key[ 3].key ) ) { // DISTOX_BACKUP_INTERVAL
+      mBackupInterval = tryIntValue( hlp, k, v, key[ 3].dflt );
       if ( mBackupInterval <  10 ) { mBackupInterval =  10; ret = Integer.toString( mBackupInterval ); }
       else if ( mBackupInterval > 600 ) { mBackupInterval = 600; ret = Integer.toString( mBackupInterval ); }
-    // } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_AUTO_XSECTIONS
-    //   mAutoXSections = tryBooleanValue( hlp, k, v, bool(key[ 5 ].dflt) );
-    } else if ( k.equals( key[ 5 ].key ) ) { // DISTOX_SAVED_STATIONS
-      mSavedStations = tryBooleanValue( hlp, k, v, bool(key[ 5 ].dflt) );
-    } else if ( k.equals( key[ 6 ].key ) ) { // DISTOX_LEGONLY_UPDATE
-      mLegOnlyUpdate = tryBooleanValue( hlp, k, v, bool(key[ 6 ].dflt) );
-    } else if ( k.equals( key[ 7 ].key ) ) { // DISTOX_FULL_AFFINE
-      mFullAffine    = tryBooleanValue( hlp, k, v, bool(key[ 7 ].dflt) );
-    } else if ( k.equals( key[ 8 ].key ) ) { // DISTOX_WITH_LEVELS
-      mWithLevels    = tryIntValue( hlp, k, v, key[ 8 ].dflt );
-    // } else if ( k.equals( key[ 9 ].key ) ) { // DISTOX_GRAPH_PAPER_SCALE - handled by a dialog
-    //   mGraphPaperScale = tryIntValue( hlp, k, v, key[ 9 ].dflt );
-    } else if ( k.equals( key[10 ].key ) ) { // DISTOX_SLANT_XSECTION
-      mSlantXSection = tryBooleanValue( hlp, k, v, bool(key[10 ].dflt) );
-    } else if ( k.equals( key[11 ].key ) ) { // DISTOX_OBLIQUE_PROJECTED
-      mObliqueMax = tryIntValue( hlp, k, v, key[ 11 ].dflt );
+    // } else if ( k.equals( key[ 4].key ) ) { // DISTOX_AUTO_XSECTIONS
+    //   mAutoXSections = tryBooleanValue( hlp, k, v, bool(key[ 4].dflt) );
+    } else if ( k.equals( key[ 4].key ) ) { // DISTOX_SAVED_STATIONS
+      mSavedStations = tryBooleanValue( hlp, k, v, bool(key[ 4].dflt) );
+    } else if ( k.equals( key[ 5].key ) ) { // DISTOX_LEGONLY_UPDATE
+      mLegOnlyUpdate = tryBooleanValue( hlp, k, v, bool(key[ 5].dflt) );
+    } else if ( k.equals( key[ 6].key ) ) { // DISTOX_FULL_AFFINE
+      mFullAffine    = tryBooleanValue( hlp, k, v, bool(key[ 6].dflt) );
+    } else if ( k.equals( key[ 7].key ) ) { // DISTOX_WITH_LEVELS
+      mWithLevels    = tryIntValue( hlp, k, v, key[ 7].dflt );
+    // } else if ( k.equals( key[ 8].key ) ) { // DISTOX_GRAPH_PAPER_SCALE - handled by a dialog
+    //   mGraphPaperScale = tryIntValue( hlp, k, v, key[ 8].dflt );
+    } else if ( k.equals( key[ 9].key ) ) { // DISTOX_SLANT_XSECTION
+      mSlantXSection = tryBooleanValue( hlp, k, v, bool(key[ 9].dflt) );
+    } else if ( k.equals( key[10].key ) ) { // DISTOX_OBLIQUE_PROJECTED
+      mObliqueMax = tryIntValue( hlp, k, v, key[10].dflt );
       if ( mObliqueMax < 10 )  { mObliqueMax = 0; ret = Integer.toString( mObliqueMax ); }
       else if ( mObliqueMax > 80 ) { mObliqueMax = 80; ret = Integer.toString( mObliqueMax ); }
-    } else if ( k.equals( key[12 ].key ) ) { // DISTOX_TOOLBAR_UPDATE
-      int value = tryIntValue( hlp, k, v, key[12 ].dflt );
+    } else if ( k.equals( key[11].key ) ) { // DISTOX_TOOLBAR_UPDATE
+      int value = tryIntValue( hlp, k, v, key[11].dflt );
       int mode = normalizeToolbarUpdate( value );
       mToolbarUpdate = mode;
       TopoDroidApp.resetRecentTools();
       if ( mode != value ) ret = Integer.toString( mode );
-    // } else if ( k.equals( key[13 ] ) ) {  // DISTOX_ZOOM_LOWER_BOUND
-    //   mZoomLowerBound = tryFloatValue( hlp, k, v, key[13] );  // DISTOX_ZOOM_LOWER_BOUND
+    // } else if ( k.equals( key[12] ) ) {  // DISTOX_ZOOM_LOWER_BOUND
+    //   mZoomLowerBound = tryFloatValue( hlp, k, v, key[12] );  // DISTOX_ZOOM_LOWER_BOUND
     //   if ( mZoomLowerBound < 0.0f ) mZoomLowerBound = 0.0f;
     } else {
       TDLog.e("missing GEEK_PLOT key: " + k );
@@ -2484,7 +2465,7 @@ public class TDSetting
       if ( mSplayVertThrs <  0 ) { mSplayVertThrs =  0; ret = TDString.ZERO; }
       if ( mSplayVertThrs > 91 ) { mSplayVertThrs = 91; ret = TDString.NINETYONE; }
     } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_SPLAY_DASH (0,1,2)
-      mDashSplay = tryIntValue( hlp, k, v, key[ 3].dflt );      
+      mDashSplay = tryIntValue( hlp, k, v, key[ 3].dflt );
     } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_VERT_SPLAY
       mVertSplay   = tryFloatValue( hlp, k, v, key[ 4].dflt );
       if ( mVertSplay <  0 ) { mVertSplay =  0; ret = TDString.ZERO; }
@@ -2642,7 +2623,7 @@ public class TDSetting
     // } else if ( k.equals( key[ 4 ].key ) ) {        // DISTOX_AUTO_PLOT_EXPORT moved to EXPORT
     //   mAutoExportPlotFormat = tryIntValue( hlp, k, v, key[ 4].dflt );
     // } else if ( k.equals( key[ 2 ].key ) ) {        // DISTOX_TRANSFER_CSURVEY
-    //   mExportTcsx = tryBooleanValue( hlp, k, v, bool(key[ 2].dflt) ); 
+    //   mExportTcsx = tryBooleanValue( hlp, k, v, bool(key[ 2].dflt) );
     } else {
       TDLog.e("missing GEEK_IMPORT key: " + k );
     }
@@ -2810,7 +2791,7 @@ public class TDSetting
     } else if ( k.equals( key[ 1 ].key ) ) { // DISTOX_VTOPO_LRUD (bool)
       mVTopoLrudAtFrom = tryBooleanValue( hlp, k, v, bool(key[ 1].dflt) );   
     } else if ( k.equals( key[ 2 ].key ) ) { // DISTOX_VTOPO_TROX (bool)
-      mVTopoTrox       = tryBooleanValue( hlp, k, v, bool(key[ 2].dflt) );   
+      mVTopoTrox       = tryBooleanValue( hlp, k, v, bool(key[ 2].dflt) );
     } else {
       TDLog.e("missing EXPORT TRO key: " + k );
     }
@@ -2925,7 +2906,7 @@ public class TDSetting
   //   } else if ( k.equals( key[ 2 ].key ) ) { // DISTOX_SVG_GRID
   //     mSvgGrid = tryBooleanValue( hlp, k, v, bool(key[2].dflt) );
   //   } else if ( k.equals( key[ 3 ].key ) ) { // DISTOX_THERION_SPLAYS
-  //     mTherionSplays = tryBooleanValue( hlp, k, v, bool(key[ 3].dflt) );   
+  //     mTherionSplays = tryBooleanValue( hlp, k, v, bool(key[ 3].dflt) );
   //   // } else if ( k.equals( key[ 4 ].key ) ) { // DISTOX_AUTO_STATIONS
   //   //   mAutoStations  = tryBooleanValue( hlp, k, v, bool(key[ 4].dflt) );
   //   } else {
@@ -4601,6 +4582,7 @@ public class TDSetting
         for ( int k = 0; k < n2; ++k ) {
           if ( TDPrefKey.repeatedKey( j, k ) ) continue;
           TDPrefKey kay = TDPrefKey.getKey( j, k );
+          if ( com.topodroid.TDX.StylusOnlyInputController.PREFERENCE.equals( kay.key ) ) continue;
           if ( kay.key.equals("DISTOX_GEMINI") ) continue;  // really make sure API_key not exported
           if ( ( flag & (1<<kay.group) ) != 0 ) {
             String val;
@@ -4873,7 +4855,6 @@ B DISTOX_SAP5_BIT16_BUG true
       k="DISTOX_WITH_LEVELS";           if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mWithLevels );
 
       k="DISTOX_FULL_AFFINE";           if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "B %s %s\n",   k, tf(mFullAffine) );
-      k="DISTOX_STYLUS_SIZE";           if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "F %s %.4f\n", k, mStylusSize );
       k="DISTOX_SPEN_SINGLE_CLICK";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mSPenSingleClickAction );
       k="DISTOX_SPEN_LONG_CLICK";       if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mSPenLongClickAction );
       k="DISTOX_SPEN_DOUBLE_CLICK";     if ( TDPrefKey.checkKeyGroup(k, flag) ) pw.printf(Locale.US, "I %s %d\n",   k, mSPenDoubleClickAction );
@@ -5158,9 +5139,6 @@ B DISTOX_SAP5_BIT16_BUG true
               break;
             case "DISTOX_SIDE_DRAG":
               mSideDrag = Boolean.parseBoolean( value ); setPreference( editor, kay, mSideDrag );
-              break;
-            case "DISTOX_STYLUS_SIZE":
-              setStylusSize( Float.parseFloat( value ) ); setPreference( editor, kay, mStylusSize ); // STYLUS_MM
               break;
             case "DISTOX_SPEN_SINGLE_CLICK":
               mSPenSingleClickAction = normalizeSPenAction( Integer.parseInt( value ) ); setPreference( editor, kay, mSPenSingleClickAction );

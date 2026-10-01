@@ -10,7 +10,7 @@
     android:layout_marginTop="@dimen/marginv"
     android:text="@string/text_formatting" />
 
-  <Spinner
+  <com.topodroid.ui.StylusOnlySpinner
     android:id="@+id/special_text_font"
     android:layout_width="match_parent"
     android:layout_height="wrap_content" />

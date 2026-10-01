@@ -198,7 +198,7 @@ public class OverviewWindow extends ItemDrawer
     public void onVisibilityChanged(boolean visible)
     {
       if ( mZoomBtnsCtrlOn && mZoomBtnsCtrl != null ) {
-        mZoomBtnsCtrl.setVisible( visible || ( TDSetting.mZoomCtrl > 1 ) );
+        mZoomBtnsCtrl.setVisible( visible || ( StylusOnlyInputController.zoomControlMode() > 1 ) );
       }
     }
 
@@ -401,6 +401,8 @@ public class OverviewWindow extends ItemDrawer
 
 
     // this method is a callback to let other objects tell the activity to use zooms or not
+    void refreshStylusOnlyUi() { switchZoomCtrl( StylusOnlyInputController.zoomControlMode() ); }
+
     private void switchZoomCtrl( int ctrl )
     {
       // TDLog.v( "DEBUG switchZoomCtrl " + ctrl + " ctrl is " + ((mZoomBtnsCtrl == null )? "null" : "not null") );
@@ -478,9 +480,9 @@ public class OverviewWindow extends ItemDrawer
       mOverviewSurface.setOnTouchListener(this);
 
       mZoomView = (View) findViewById(R.id.zoomView );
-      mZoomBtnsCtrl = new ZoomButtonsController( mZoomView );
+      mZoomBtnsCtrl = com.topodroid.TDX.StylusOnlyInputController.createZoomControls( mZoomView );
 
-      switchZoomCtrl( TDSetting.mZoomCtrl );
+      switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
 
       mListView = (MyHorizontalListView) findViewById(R.id.listview);
       mListView.setEmptyPlaceholder( true );
@@ -584,7 +586,7 @@ public class OverviewWindow extends ItemDrawer
     // mOffset.y = info.yoffset;
     // mZoom     = info.zoom;
     mOverviewSurface.setDrawing( true );
-    switchZoomCtrl( TDSetting.mZoomCtrl );
+    switchZoomCtrl( StylusOnlyInputController.zoomControlMode() );
   }
 
   /** implement the actions of a "pause"
@@ -1462,7 +1464,7 @@ public class OverviewWindow extends ItemDrawer
 
   public void checkZoomBtnsCtrl()
   {
-    if ( TDSetting.mZoomCtrl == 2 && ! mZoomBtnsCtrl.isVisible() ) {
+    if ( StylusOnlyInputController.zoomControlMode() == 2 && ! mZoomBtnsCtrl.isVisible() ) {
       mZoomBtnsCtrl.setVisible( true );
     }
   }

@@ -41,6 +41,7 @@ class TopoDroidAbout extends Dialog
   TopoDroidAbout( Context context, MainWindow parent, int setup )
   {
     super( context );
+    StylusOnlyInputController.guardWindow( getWindow() );
     mContext = context;
     // mParent  = parent;
     mSetup   = setup;

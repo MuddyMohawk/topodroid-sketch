@@ -113,6 +113,8 @@ public class ActionKeyBindingManager
     mInstance.doUnregisterHost( host );
   }
 
+  static void cancelVolumeDownGesture() { mInstance.mVolumeDownHelper.cancel(); }
+
   public static boolean onKeyDown( int code, KeyEvent event )
   {
     return mInstance.doOnKeyDown( code, event );

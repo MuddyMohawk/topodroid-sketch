@@ -128,6 +128,7 @@ class QCamCompass extends Dialog
                MediaManager media_manager )
   {
     super( context );
+    StylusOnlyInputController.guardWindow( getWindow() );
     mContext   = context;
     mParent    = parent; 
     mCallback  = callback;
@@ -219,7 +220,7 @@ class QCamCompass extends Dialog
     findViewById( R.id.qcam_layout ).setOnTouchListener( this );
 
     mZoomView = (View) findViewById(R.id.zoomView );
-    mZoomBtnsCtrl = new ZoomButtonsController( mZoomView );
+    mZoomBtnsCtrl = com.topodroid.TDX.StylusOnlyInputController.createZoomControls( mZoomView );
     // mZoomBtnsCtrlOn = (TDSetting.mZoomCtrl > 1);  // do before setting content
     if ( mCamera == PhotoInfo.CAMERA_TOPODROID ) {
       switchZoomCtrl( 1 ); // temporary zoom buttons

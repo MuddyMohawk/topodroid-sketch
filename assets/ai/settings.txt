@@ -7,6 +7,7 @@ Numerical types can be followed by by the interval of allowed values in square b
 Enums are followed by the list of possible values and meanings in curly brackets. 
 --- SETTINGS LIST ---
 MAIN {
+DISTOX_STYLUS_ONLY_INPUT: B, Bool, "Stylus-only input", "Block non-pen pointer input on app screens for this session. Hold Volume Down for five seconds or fully restart the app to disable. Android keyboard and system screens are outside this protection."
 DISTOX_TEXT_SIZE: B, Int[1,], "Text size", "Size of text entries in listings. The default is 20sp, Minimum 10sp"
 DISTOX_SIZE_BUTTONS: B, Enum{0, 1, 3, 4, 5}, "Button size", "Size of top-bar buttons of the app windows"
 DISTOX_LOCALE: N, Enum{ "", "en", "es", "it", "ru", "de", "pt", "bg", "cn", "hu"}, "Language", "TopoDroid language: one of the supported translation of the app strings. The defaull is the empty string. Allowed values are 2-char country ISO codes."
@@ -236,7 +237,6 @@ DISTOX_FULL_AFFINE: T, Bool, "Full affine", "Allow sketch shift, rotation, and s
 SKETCH_UI {
 DISTOX_SIDE_DRAG: B, Bool, "Corner drag", "Sketch can be panned by dragging from a corner even in drawing and erase modes. The corners of the canvas are marked with grey rectangles. Default true."
 DISTOX_ZOOM_CTRL: B, Enum{0 hidden, 1 temporary, 2 permanent}, "Zoom controls", "Sketch zoom is usually done with two finger pinch. It is also possible to have zoom controls in the lower part of the canvas and zoom in and out by tapping the controls. By default the zoom controls are hidden. When the controls are temporary they are brought up by tapping the lower part of the canvas. Default 1 (temporary)"
-DISTOX_STYLUS_SIZE: T, Float, "Stylus size", "Maximum diameter of a touch with the stylus. Larger touches are discarded as finger touches, If non-positive stylus is diesabled"
 DISTOX_SPLAY_VERT_THRS: A, Int[0,91], "Splay vertical threshold", "Include in the plan view only splays with clino below this value"
 DISTOX_SPLAY_DASH: T, Enum{0 no dashing, 1 by plan-view, 2 by profile view, 3 independenty in each view}, "Splay dashing", "With dashing by plan-view the splays dash style in profile view is inherited from that in plan-view. Coversely, by dashing by profile-view the dash style in plan-view is determined by that in profile-view"
 DISTOX_VERT_SPLAY: T, Float[0,91], "Plan-view dashed splays", "Splays with inclination above this value are dashed in planview"

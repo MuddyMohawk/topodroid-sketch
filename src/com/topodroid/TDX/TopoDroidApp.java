@@ -1090,6 +1090,7 @@ public class TopoDroidApp extends Application
     super.onCreate();
 
     thisApp = this;
+    StylusOnlyInputController.initialize( this );
     TDInstance.setContext( getApplicationContext() );
     Region.create( getApplicationContext(), R.array.regions );
 

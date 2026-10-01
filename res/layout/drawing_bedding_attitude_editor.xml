@@ -79,7 +79,7 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:text="@string/bedding_station_label" />
-    <Spinner
+    <com.topodroid.ui.StylusOnlySpinner
       android:id="@+id/bedding_station"
       android:layout_width="match_parent"
       android:layout_height="wrap_content" />

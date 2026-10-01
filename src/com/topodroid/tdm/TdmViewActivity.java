@@ -202,7 +202,7 @@ public class TdmViewActivity extends Activity
 
       if ( mIsNotMultitouch ) {
         mZoomView = (View) findViewById(R.id.zoomView );
-        mZoomBtnsCtrl = new ZoomButtonsController( mZoomView );
+        mZoomBtnsCtrl = com.topodroid.TDX.StylusOnlyInputController.createZoomControls( mZoomView );
         mZoomBtnsCtrl.setOnZoomListener( this );
         mZoomBtnsCtrl.setVisible( true );
         mZoomBtnsCtrl.setZoomInEnabled( true );

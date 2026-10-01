@@ -36,7 +36,6 @@ import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import java.util.ArrayDeque;
@@ -504,7 +503,7 @@ public class ToolbarEditorActivity extends Activity
   {
     if ( mSavePending ) save();
     if ( mLastSaveSucceeded ) { finish(); return; }
-    new AlertDialog.Builder( this )
+    StylusOnlyInputController.guardDialog( new AlertDialog.Builder( this )
       .setTitle( "Toolbar changes are not saved" )
       .setMessage( "Retry saving before leaving the editor." )
       .setNegativeButton( "Stay", null )
@@ -513,7 +512,7 @@ public class ToolbarEditorActivity extends Activity
           save();
           if ( mLastSaveSucceeded ) finish();
         }
-      } ).show();
+      } ).create() ).show();
   }
 
   private void undo()
@@ -704,16 +703,14 @@ public class ToolbarEditorActivity extends Activity
   private void showProfileMenu()
   {
     final ArrayList< ToolsetProfile > profiles = ToolsetRepository.profiles( mData );
-    PopupMenu popup = new PopupMenu( this, mProfileButton );
-    for ( int k = 0; k < profiles.size(); ++k ) popup.getMenu().add( 0, 1000 + k, k, profiles.get( k ).mName );
-    popup.getMenu().add( 0, 2000, profiles.size() + 1, "Duplicate…" );
-    popup.setOnMenuItemClickListener( item -> {
-      if ( item.getItemId() == 2000 ) { promptDuplicate(); return true; }
-      int index = item.getItemId() - 1000;
-      if ( index >= 0 && index < profiles.size() ) switchProfile( profiles.get( index ).mId );
-      return true;
-    } );
-    popup.show();
+    CharSequence[] choices = new CharSequence[ profiles.size() + 1 ];
+    for ( int k = 0; k < profiles.size(); ++k ) choices[k] = profiles.get( k ).mName;
+    choices[profiles.size()] = "Duplicate…";
+    StylusOnlyInputController.guardDialog( new AlertDialog.Builder( this )
+        .setItems( choices, ( dialog, index ) -> {
+          if ( index == profiles.size() ) promptDuplicate();
+          else switchProfile( profiles.get( index ).mId );
+        } ).create() ).show();
   }
 
   private void switchProfile( String id )
@@ -736,7 +733,7 @@ public class ToolbarEditorActivity extends Activity
     input.setSingleLine( true );
     input.setText( mProfile.mName + " copy" );
     input.selectAll();
-    new AlertDialog.Builder( this )
+    StylusOnlyInputController.guardDialog( new AlertDialog.Builder( this )
       .setTitle( "Duplicate profile" )
       .setView( input )
       .setNegativeButton( "Cancel", null )
@@ -751,7 +748,7 @@ public class ToolbarEditorActivity extends Activity
           mProfile = duplicate;
           refreshAll();
         }
-      } ).show();
+      } ).create() ).show();
   }
 
   private void confirmDelete()
@@ -759,7 +756,7 @@ public class ToolbarEditorActivity extends Activity
     if ( mProfile.isDefault() ) return;
     final String id = mProfile.mId;
     final String name = mProfile.mName;
-    new AlertDialog.Builder( this )
+    StylusOnlyInputController.guardDialog( new AlertDialog.Builder( this )
       .setTitle( "Delete “" + name + "”?" )
       .setMessage( "Surveys using this profile will fall back to Default." )
       .setNegativeButton( "Cancel", null )
@@ -772,7 +769,7 @@ public class ToolbarEditorActivity extends Activity
           mProfile = ToolsetRepository.profile( mData, ToolsetProfile.DEFAULT_ID );
           refreshAll();
         }
-      } ).show();
+      } ).create() ).show();
   }
 
   private ToolsetSlotView slotView( final int row, final int slot, final boolean quick )
