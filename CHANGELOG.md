@@ -48,6 +48,9 @@ Everything since forking from TopoDroid 6.4.27.
 - The number of buttons and their functions can be configured 
 - By default, there are three buttons that control line weight, with a setting of `thin`, `standard`, and `thick`
 
+**Symbol Preset Memory**
+- By default, the last used line style and preset for a specific symbol will be remembered. Switching to a different symbol will switch the style and preset to the last-used selections for that specific symbol.
+
 **Recents Toolbar Overhaul**
 - Overhauled the toolbar from a most-recent model to a specifically selected symbol set model
 - Users can have up to 8 symbol toolbars, with up to 12 symbols per bar

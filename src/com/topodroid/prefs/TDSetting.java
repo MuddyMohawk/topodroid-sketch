@@ -720,6 +720,10 @@ public class TDSetting
   public static int   mSketchPreset1LineSegment = 1;
   public static int   mSketchPreset2LineStyle   = LINE_STYLE_BEZIER;
   public static int   mSketchPreset2LineSegment = 10;
+  public static final String REMEMBER_SYMBOL_STYLE_KEY = "DISTOX_REMEMBER_SYMBOL_STYLE";
+  public static final String REMEMBER_SYMBOL_PRESET_KEY = "DISTOX_REMEMBER_SYMBOL_PRESET";
+  public static boolean mRememberSymbolStyle = true;
+  public static boolean mRememberSymbolPreset = true;
   public static int   mSketchStyleSlots         = SKETCH_STYLE_DEFAULT;
   public static int   mActiveSketchStyle        = SKETCH_STYLE_STANDARD;
   private static String[]  mSketchStyleName         = new String[ SKETCH_STYLE_MAX ];
@@ -1674,6 +1678,8 @@ public class TDSetting
     mAutoSectionPt = prefs.getBoolean( key[5].key, bool(key[5].dflt) );  // DISTOX_AUTO_SECTION_PT
     mAreaBorder    = prefs.getBoolean( key[6].key, bool(key[6].dflt) );  // DISTOX_AREA_BORDER
     mSlopeLSide    = tryInt(   prefs,  key[7].key,      key[7].dflt );   // DISTOX_SLOPE_LSIDE
+    mRememberSymbolStyle = prefs.getBoolean( REMEMBER_SYMBOL_STYLE_KEY, true );
+    mRememberSymbolPreset = prefs.getBoolean( REMEMBER_SYMBOL_PRESET_KEY, true );
     int rawPresetSlots = tryInt( prefs, PRESET_SLOTS_KEY, TDString.FOUR );
     boolean resetPresetDefaults = tryInt( prefs, PRESET_DEFAULTS_VERSION_KEY, TDString.ZERO ) < SKETCH_PRESET_DEFAULTS_VERSION;
     if ( resetPresetDefaults ) rawPresetSlots = SKETCH_PRESET_DEFAULT;
@@ -3330,7 +3336,9 @@ public class TDSetting
   {
     String ret = null;
     TDPrefKey[] key = TDPrefKey.mToolPreset;
-    if ( k.equals( key[0].key ) ) { // DISTOX_PRESET_SLOTS
+    if ( REMEMBER_SYMBOL_PRESET_KEY.equals( k ) ) {
+      mRememberSymbolPreset = tryBooleanValue( hlp, k, v, true );
+    } else if ( k.equals( key[0].key ) ) { // DISTOX_PRESET_SLOTS
       int value = tryIntValue( hlp, k, v, key[0].dflt );
       int slots = normalizeSketchPresetSlots( value );
       mSketchPresetSlots = slots;
@@ -3349,7 +3357,9 @@ public class TDSetting
   {
     String ret = null;
     TDPrefKey[] key = TDPrefKey.mToolStyle;
-    if ( k.equals( key[0].key ) ) { // DISTOX_STYLE_SLOTS
+    if ( REMEMBER_SYMBOL_STYLE_KEY.equals( k ) ) {
+      mRememberSymbolStyle = tryBooleanValue( hlp, k, v, true );
+    } else if ( k.equals( key[0].key ) ) { // DISTOX_STYLE_SLOTS
       int value = tryIntValue( hlp, k, v, key[0].dflt );
       int slots = normalizeSketchStyleSlots( value );
       mSketchStyleSlots = slots;
@@ -3832,6 +3842,11 @@ public class TDSetting
 
   private static boolean importSketchPresetKey( Editor editor, String key, String value )
   {
+    if ( REMEMBER_SYMBOL_PRESET_KEY.equals( key ) ) {
+      mRememberSymbolPreset = Boolean.parseBoolean( value );
+      setPreference( editor, key, mRememberSymbolPreset );
+      return true;
+    }
     if ( PRESET_SLOTS_KEY.equals( key ) ) {
       mSketchPresetSlots = normalizeSketchPresetSlots( Integer.parseInt( value ) );
       if ( mActiveSketchPreset > mSketchPresetSlots ) applySketchPreset( mSketchPresetSlots );
@@ -3866,7 +3881,8 @@ public class TDSetting
 
   private static boolean isSketchPresetImportKey( String key )
   {
-    return ACTIVE_SKETCH_PRESET_KEY.equals( key )
+    return REMEMBER_SYMBOL_PRESET_KEY.equals( key )
+        || ACTIVE_SKETCH_PRESET_KEY.equals( key )
         || PRESET_SLOTS_KEY.equals( key )
         || sketchPresetForKey( key, "NAME" ) > 0
         || sketchPresetForKey( key, "LINE_STYLE" ) > 0
@@ -4110,6 +4126,11 @@ public class TDSetting
 
   private static boolean importSketchStyleKey( Editor editor, String key, String value )
   {
+    if ( REMEMBER_SYMBOL_STYLE_KEY.equals( key ) ) {
+      mRememberSymbolStyle = Boolean.parseBoolean( value );
+      setPreference( editor, key, mRememberSymbolStyle );
+      return true;
+    }
     if ( STYLE_SLOTS_KEY.equals( key ) ) {
       mSketchStyleSlots = normalizeSketchStyleSlots( Integer.parseInt( value ) );
       if ( mActiveSketchStyle > mSketchStyleSlots ) mActiveSketchStyle = mSketchStyleSlots;
@@ -4162,7 +4183,8 @@ public class TDSetting
 
   private static boolean isSketchStyleImportKey( String key )
   {
-    return ACTIVE_SKETCH_STYLE_KEY.equals( key )
+    return REMEMBER_SYMBOL_STYLE_KEY.equals( key )
+        || ACTIVE_SKETCH_STYLE_KEY.equals( key )
         || STYLE_SLOTS_KEY.equals( key )
         || sketchStyleForKey( key, "NAME" ) > 0
         || sketchStyleForKey( key, "WEIGHT" ) > 0
@@ -5044,14 +5066,16 @@ B DISTOX_SAP5_BIT16_BUG true
       String line;
       while ( ( line = br.readLine() ) != null ) {
         // TDLog.v("Setting: " + line );
-        String[] vals = line.trim().replaceAll(",", "").replaceAll("\\s+", " ").split(" ");
+        String[] vals = line.trim().replaceAll(",", "").replaceAll("\\s+", " ").split(" ", 3);
         if ( line.startsWith("TopoDroid" ) ) {
           // if ( vals.length < 4 ) return false;
           // if ( Long.parseLong( value ) < 500053L ) return false;
           continue;
         }
+        if ( vals.length < 2 ) continue;
         String kay   = vals[1];
-        String value = vals[2];
+        // Empty text preferences are valid exports; names may also contain spaces.
+        String value = vals.length > 2 ? vals[2] : "";
         // int group    = TDPrefKey.getKeyGroup( kay ); // FIXME TODO
         boolean allowImport = ( isSketchPresetImportKey( kay ) || isSketchStyleImportKey( kay ) )
                            ? ( ( flag & (1 << TDPrefKey.DR) ) != 0 )

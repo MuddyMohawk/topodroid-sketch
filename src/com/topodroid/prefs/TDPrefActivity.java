@@ -696,18 +696,18 @@ public class TDPrefActivity extends Activity
   private void refreshPresetForwardTitles()
   {
     if ( mPrefs == null ) return;
-    int count = Math.min( mPrefs.length, 1 + TDSetting.getSketchPresetSlotCount() );
-    for ( int preset = 1; preset < count; ++ preset ) {
-      mPrefs[preset].setTitle( TDSetting.getSketchPresetSettingsTitle( preset ) );
+    int count = Math.min( mPrefs.length, 2 + TDSetting.getSketchPresetSlotCount() );
+    for ( int preset = 1; preset <= count - 2; ++ preset ) {
+      mPrefs[preset + 1].setTitle( TDSetting.getSketchPresetSettingsTitle( preset ) );
     }
   }
 
   private void refreshStyleForwardTitles()
   {
     if ( mPrefs == null ) return;
-    int count = Math.min( mPrefs.length, 1 + TDSetting.getSketchStyleSlotCount() );
-    for ( int style = 1; style < count; ++ style ) {
-      mPrefs[style].setTitle( TDSetting.getSketchStyleSettingsTitle( style ) );
+    int count = Math.min( mPrefs.length, 2 + TDSetting.getSketchStyleSlotCount() );
+    for ( int style = 1; style <= count - 2; ++ style ) {
+      mPrefs[style + 1].setTitle( TDSetting.getSketchStyleSettingsTitle( style ) );
     }
   }
 

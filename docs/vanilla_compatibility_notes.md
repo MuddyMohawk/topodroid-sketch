@@ -1,5 +1,7 @@
 # Compatibility
 
+- Per-survey symbol style and drawing-preset memories reference local preset slots and are omitted from survey ZIP exports; imported surveys start without learned choices.
+
 - TopoDroid Sketch now matches current Vanilla persisted leg-type IDs (`NORMAL = 0` for plain splays, `XSPLAY = 2`, and `BACK = 3`); earlier Sketch databases and archives using interim IDs `2`, `3`, and `11` are not migrated and can be misclassified when reopened or imported.
 - Vanilla briefly used the same interim numbering after the upstream change on April 6, 2026, then reverted it on May 14, 2026 without migration; surveys created by affected Vanilla builds can likewise retain incompatible leg-type values.
 - Compass `.dat` export combines an immediately paired named reverse backsight with its foresight after normalizing direction, emitting one `A`-to-`B` record instead of duplicated traverse length.

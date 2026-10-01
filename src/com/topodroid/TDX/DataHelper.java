@@ -1510,6 +1510,7 @@ public class DataHelper extends DataSetObservable
       myDB.delete( SHOT_TABLE,    WHERE_SID, clause );
       myDB.delete( STATION_TABLE, WHERE_SID, clause );
       myDB.delete( CONFIG_TABLE, "key=?", new String[] { SketchTextDefaults.key( sid ) } );
+      myDB.delete( CONFIG_TABLE, "key=?", new String[] { SymbolSketchPreferences.key( sid ) } );
       myDB.delete( SURVEY_TABLE, "id=?", clause );
       myDB.setTransactionSuccessful();
     } catch ( SQLiteDiskIOException e ) {  handleDiskIOError( e );

@@ -628,6 +628,22 @@ public class DrawingWindow extends ItemDrawer
   private static final float SKETCH_TOGGLE_DEFAULT_TOOLBAR_SIZE = 2.5f;
   private int mPendingSketchPreset = 0;
   private int mPendingSketchStyle = 0;
+  private String mRecalledSymbol;
+  private long mRecalledSurvey = -1;
+  private boolean mRecalledStyleEnabled;
+  private boolean mRecalledPresetEnabled;
+  private int mRecalledStyleSlots;
+  private int mRecalledPresetSlots;
+  private boolean mRestoringSymbolPreferences;
+  private int mPendingSymbolType = SymbolType.UNDEF;
+  private int mPendingSymbolIndex;
+  private boolean mPendingSymbolRecent;
+  private SymbolSketchPreferences.Use mGesturePreferences;
+  private SymbolSketchPreferences.Use mTextInsertionPreferences;
+  private SymbolSketchPreferences.Use mMediaInsertionPreferences;
+  private SymbolSketchPreferences.Use mReferenceInsertionPreferences;
+  private DrawingPointPath mPointInsertion;
+  private SymbolSketchPreferences.Use mPointInsertionPreferences;
   // private ItemButton[] mBtnRecent;
   private ItemButton[] mBtnRecentP;
   private ItemButton[] mBtnRecentL;
@@ -1519,7 +1535,9 @@ public class DrawingWindow extends ItemDrawer
       TDToast.makeToast( R.string.error_no_section_in_section );
       return;
     }
+    if ( deferSymbolSelection( SymbolType.POINT, k, update_recent ) ) return;
     super.pointSelected( k, update_recent );
+    restoreSymbolPreferences();
     setButtonJoin();
     setButtonTool();
   }
@@ -1535,7 +1553,9 @@ public class DrawingWindow extends ItemDrawer
       TDToast.makeToast( R.string.error_no_section_in_section );
       return;
     }
+    if ( deferSymbolSelection( SymbolType.LINE, k, update_recent ) ) return;
     super.lineSelected( k, update_recent );
+    restoreSymbolPreferences();
     if ( ! TDLevel.overNormal ) return; // 2023-03-10 DROPPED 2023-09-23 REINSTATED
     mDrawingState.setCanJoinLine( mCurrentLine );
     // mDrawingState.setJoinLine( mDrawingState.getJoinLine() );
@@ -1551,7 +1571,9 @@ public class DrawingWindow extends ItemDrawer
   @Override
   public void areaSelected( int k, boolean update_recent )
   {
+    if ( deferSymbolSelection( SymbolType.AREA, k, update_recent ) ) return;
     super.areaSelected( k, update_recent );
+    restoreSymbolPreferences();
     setButtonJoin();
     setButtonTool();
     // mDrawingState.debug("area select");
@@ -3420,13 +3442,117 @@ public class DrawingWindow extends ItemDrawer
 
   private boolean hasPendingSketchStroke()
   {
-    return mCurrentLinePath != null || mCurrentAreaPath != null;
+    return mCurrentLinePath != null || mCurrentAreaPath != null
+        || ( mMode == MODE_DRAW && mGesturePreferences != null );
   }
 
   private void clearPendingSketchStroke()
   {
     mCurrentLinePath = null;
     mCurrentAreaPath = null;
+  }
+
+  private int selectedSketchSymbolType()
+  {
+    return mPendingSymbolType != SymbolType.UNDEF ? mPendingSymbolType : mSymbol;
+  }
+
+  private Symbol symbolByIndex( int type, int index )
+  {
+    switch ( type ) {
+      case SymbolType.POINT: return BrushManager.getPointByIndex( index );
+      case SymbolType.LINE: return BrushManager.getLineByIndex( index );
+      case SymbolType.AREA: return BrushManager.getAreaByIndex( index );
+      default: return null;
+    }
+  }
+
+  /** Queue tool activation too, so its point spacing and type cannot affect the active gesture. */
+  private boolean deferSymbolSelection( int type, int index, boolean updateRecent )
+  {
+    if ( ! hasPendingSketchStroke() || symbolByIndex( type, index ) == null ) return false;
+    mPendingSymbolType = type;
+    mPendingSymbolIndex = index;
+    mPendingSymbolRecent = updateRecent;
+    restoreSymbolPreferences();
+    return true;
+  }
+
+  private void applyPendingSymbolSelection()
+  {
+    int type = mPendingSymbolType;
+    mPendingSymbolType = SymbolType.UNDEF;
+    switch ( type ) {
+      case SymbolType.POINT: pointSelected( mPendingSymbolIndex, mPendingSymbolRecent ); break;
+      case SymbolType.LINE: lineSelected( mPendingSymbolIndex, mPendingSymbolRecent ); break;
+      case SymbolType.AREA: areaSelected( mPendingSymbolIndex, mPendingSymbolRecent ); break;
+    }
+  }
+
+  private Symbol selectedSketchSymbol()
+  {
+    if ( mPendingSymbolType != SymbolType.UNDEF ) return symbolByIndex( mPendingSymbolType, mPendingSymbolIndex );
+    switch ( mSymbol ) {
+      case SymbolType.POINT: return BrushManager.getPointByIndex( mCurrentPoint );
+      case SymbolType.LINE: return BrushManager.getLineByIndex( mCurrentLine );
+      case SymbolType.AREA: return BrushManager.getAreaByIndex( mCurrentArea );
+      default: return null;
+    }
+  }
+
+  private SymbolSketchPreferences.Use captureSymbolPreferences()
+  {
+    Symbol symbol = selectedSketchSymbol();
+    return symbol == null ? null : new SymbolSketchPreferences.Use(
+      mSid, selectedSketchSymbolType(), symbol.getFullThName(), TDSetting.getActiveSketchStyle(),
+      TDSetting.getActiveSketchPreset(), TDSetting.mRememberSymbolStyle, TDSetting.mRememberSymbolPreset );
+  }
+
+  /** Activation is distinct from repainting the toolbar or applying a recalled choice. */
+  private void restoreSymbolPreferences()
+  {
+    if ( mRestoringSymbolPreferences || mDrawingSurface == null || mZoomView == null
+      || mLayoutToolsPreset == null || mLayoutToolsStyle == null ) return;
+    Symbol symbol = selectedSketchSymbol();
+    if ( symbol == null || mSid < 0 ) return;
+    int type = selectedSketchSymbolType();
+    String identity = type + ":" + symbol.getFullThName();
+    if ( identity.equals( mRecalledSymbol ) && mRecalledSurvey == mSid
+      && mRecalledStyleEnabled == TDSetting.mRememberSymbolStyle
+      && mRecalledPresetEnabled == TDSetting.mRememberSymbolPreset
+      && mRecalledStyleSlots == TDSetting.getSketchStyleSlotCount()
+      && mRecalledPresetSlots == TDSetting.getSketchPresetSlotCount() ) return;
+    mRecalledSymbol = identity;
+    mRecalledSurvey = mSid;
+    mRecalledStyleEnabled = TDSetting.mRememberSymbolStyle;
+    mRecalledPresetEnabled = TDSetting.mRememberSymbolPreset;
+    mRecalledStyleSlots = TDSetting.getSketchStyleSlotCount();
+    mRecalledPresetSlots = TDSetting.getSketchPresetSlotCount();
+    SymbolSketchPreferences.Choice choice = SymbolSketchPreferences.load(
+      mApp_mData, mSid, type, symbol.getFullThName() );
+    mRestoringSymbolPreferences = true;
+    try {
+      if ( TDSetting.mRememberSymbolPreset ) requestSketchPresetSelection(
+        choice.resolvePreset( mRecalledPresetSlots, getDisplayedSketchPreset() ), false );
+      if ( TDSetting.mRememberSymbolStyle ) requestSketchStyleSelection(
+        choice.resolveStyle( mRecalledStyleSlots, getDisplayedSketchStyle() ), false );
+    } finally {
+      mRestoringSymbolPreferences = false;
+    }
+  }
+
+  private void rememberGesturePreferences()
+  {
+    SymbolSketchPreferences.rememberMissing( mApp_mData, mGesturePreferences );
+  }
+
+  private void updateLinePointStep()
+  {
+    if ( mSymbol == SymbolType.AREA ) mLinePointStep = TDSetting.mLineType;
+    else if ( mSymbol == SymbolType.LINE ) {
+      mLinePointStep = BrushManager.getLineStyleX( mCurrentLine );
+      if ( mLinePointStep != POINT_MAX ) mLinePointStep *= TDSetting.mLineType;
+    }
   }
 
   private int getDisplayedSketchPreset()
@@ -3543,14 +3669,21 @@ public class DrawingWindow extends ItemDrawer
     int normalized = TDSetting.normalizeSketchPreset( preset );
     mPendingSketchPreset = 0;
     TDSetting.selectSketchPreset( TDInstance.getPrefs(), normalized );
+    updateLinePointStep();
     setToolsToolbars();
     updateSketchPresetButtons();
   }
 
   private void requestSketchPresetSelection( int preset )
   {
+    requestSketchPresetSelection( preset, true );
+  }
+
+  private void requestSketchPresetSelection( int preset, boolean manual )
+  {
     mDrawingSurface.requestSceneRenderPosted(); // preset may restyle the selected item during this UI turn
     int normalized = TDSetting.normalizeSketchPreset( preset );
+    if ( manual ) SymbolSketchPreferences.rememberPreset( mApp_mData, captureSymbolPreferences(), normalized );
     int active = TDSetting.getActiveSketchPreset();
     if ( hasPendingSketchStroke() ) {
       mPendingSketchPreset = ( normalized == active ) ? 0 : normalized;
@@ -3632,8 +3765,14 @@ public class DrawingWindow extends ItemDrawer
 
   private void requestSketchStyleSelection( int style )
   {
+    requestSketchStyleSelection( style, true );
+  }
+
+  private void requestSketchStyleSelection( int style, boolean manual )
+  {
     mDrawingSurface.requestSceneRenderPosted(); // style may restyle the selected item during this UI turn
     int normalized = TDSetting.normalizeSketchStyle( style );
+    if ( manual ) SymbolSketchPreferences.rememberStyle( mApp_mData, captureSymbolPreferences(), normalized );
     int active = TDSetting.getActiveSketchStyle();
     if ( hasPendingSketchStroke() ) {
       mPendingSketchStyle = ( normalized == active ) ? 0 : normalized;
@@ -4095,6 +4234,8 @@ public class DrawingWindow extends ItemDrawer
     doResume();
     loadToolsetProfile();
     if ( mBtnManualToolbar != null && mLayoutTools != null ) setToolsToolbarParams();
+    mRecalledSymbol = null; // another sketch window may have changed this survey's choices
+    restoreSymbolPreferences();
     if ( mDataDownloader != null ) {
       mDataDownloader.onResume();
       setConnectionStatus( mDataDownloader.getStatus() );
@@ -5709,6 +5850,10 @@ public class DrawingWindow extends ItemDrawer
         finishErasing();
       }
       clearPendingSketchStroke();
+      mGesturePreferences = null;
+      applyPendingSymbolSelection();
+      applyPendingSketchPresetSelection();
+      applyPendingSketchStyleSelection();
       finishStationSectionGizmoDrag( false );
       mAffineGizmoDrag = null;
       mDrawingSurface.resetPreviewPath();
@@ -5747,6 +5892,14 @@ public class DrawingWindow extends ItemDrawer
     // TDLog.v( "on touch up. mode " + mMode + " " + mTouchMode );
     if ( mTouchMode == MODE_ZOOM || mTouchMode == MODE_ROTATE ) {
       mTouchMode = MODE_MOVE;
+      if ( mMode == MODE_DRAW ) {
+        clearPendingSketchStroke();
+        mGesturePreferences = null;
+        mDrawingSurface.resetPreviewPath();
+        applyPendingSymbolSelection();
+        applyPendingSketchPresetSelection();
+        applyPendingSketchStyleSelection();
+      }
     } else {
       float x_shift = xc - mSaveX; // compute shift
       float y_shift = yc - mSaveY;
@@ -5800,6 +5953,7 @@ public class DrawingWindow extends ItemDrawer
                   boolean joined_line = false;
                   if ( ! closed_line ) {
                     joined_line = tryAndJoinLine( mCurrentLinePath, mCurrentLinePath );
+                    if ( joined_line ) rememberGesturePreferences();
                   }
                   if ( ! joined_line ) {
                     // TODO this is useful for STYLUS-ONLY, it might be better to skip for complex line modes
@@ -5863,6 +6017,7 @@ public class DrawingWindow extends ItemDrawer
                       if ( add && lp1.size() > 1 ) {
                         lp1.computeUnitNormal();
                         mDrawingSurface.addDrawingPath( lp1 );
+                        rememberGesturePreferences();
                         // mLastLinePath = lp1;
                       }
                     }
@@ -5884,7 +6039,10 @@ public class DrawingWindow extends ItemDrawer
                     if ( add && ap != null && ap.size() > 2 ) {
                       ap.closePath();
                       mDrawingSurface.addDrawingPath( ap );
+                      rememberGesturePreferences();
                     }
+                  } else {
+                    rememberGesturePreferences();
                   }
                   mCurrentAreaPath = null;
                   // mLastLinePath = null;
@@ -6065,11 +6223,18 @@ public class DrawingWindow extends ItemDrawer
               xs = mSaveX/mZoom - mOffset.x;
               ys = mSaveY/mZoom - mOffset.y;
               if ( BrushManager.isPointLabel( mCurrentPoint ) ) {
-                new DrawingTextDialog( mActivity, this, xs, ys ).show();
+                mTextInsertionPreferences = mGesturePreferences;
+                DrawingTextDialog textDialog = new DrawingTextDialog( mActivity, this, xs, ys );
+                textDialog.setOnDismissListener( new DialogInterface.OnDismissListener() {
+                  @Override public void onDismiss( DialogInterface dialog ) { mTextInsertionPreferences = null; }
+                } );
+                textDialog.show();
               } else if ( BrushManager.isPointPhoto( mCurrentPoint ) ) {
+                mMediaInsertionPreferences = mGesturePreferences;
                 new DrawingPhotoDialog( mActivity, this, mPid, xs, ys ).show();
               } else if ( BrushManager.isPointAudio( mCurrentPoint ) ) {
 	        if ( audioCheck ) {
+                  mMediaInsertionPreferences = mGesturePreferences;
                   addAudioPoint( mPid, xs, ys );
 	        } else {
                   TDToast.makeWarn( R.string.no_feature_audio );
@@ -6119,6 +6284,8 @@ public class DrawingWindow extends ItemDrawer
         }
         mPointerDown = false;
         if ( ! defer_modified ) modified();
+        mGesturePreferences = null;
+        applyPendingSymbolSelection();
         applyPendingSketchPresetSelection();
         applyPendingSketchStyleSelection();
       } else if ( mMode == MODE_PLACE_SECTION ) {
@@ -6355,6 +6522,7 @@ public class DrawingWindow extends ItemDrawer
     }
 
     if ( mMode == MODE_DRAW ) {
+      mGesturePreferences = captureSymbolPreferences();
       // TDLog.Log( TDLog.LOG_PLOT, "onTouch ACTION_DOWN symbol " + mSymbol );
       mPointCnt = 0;
       if ( mSymbol == SymbolType.LINE ) {
@@ -6929,6 +7097,7 @@ public class DrawingWindow extends ItemDrawer
     String section_id = mApp_mData.getNextSectionId( TDInstance.sid ); // xxN where N is a number
     currentLine.addOption( "-id " + section_id );
     mDrawingSurface.addDrawingPath( currentLine );
+    rememberGesturePreferences();
 
     if ( TDSetting.mAutoSectionPt && section_id != null ) {
       float x5 = currentLine.mLast.x + currentLine.sectionDirectionX() * 20;
@@ -6966,6 +7135,8 @@ public class DrawingWindow extends ItemDrawer
       label_path.mLandscape = mLandscape;
       label_path.mLevel = level;
       mDrawingSurface.addDrawingPath( label_path );
+      SymbolSketchPreferences.rememberMissing( mApp_mData, mTextInsertionPreferences );
+      mTextInsertionPreferences = null;
       modified();
     } 
   }
@@ -6990,6 +7161,8 @@ public class DrawingWindow extends ItemDrawer
     label_path.mLandscape = mLandscape;
     label_path.mLevel = level;
     mDrawingSurface.addDrawingPath( label_path );
+    SymbolSketchPreferences.rememberMissing( mApp_mData, mTextInsertionPreferences );
+    mTextInsertionPreferences = null;
     modified();
   }
 
@@ -7171,6 +7344,11 @@ public class DrawingWindow extends ItemDrawer
     }
     mDrawingSurface.requestSceneRender();
     modified();
+    if ( point == mPointInsertion ) {
+      SymbolSketchPreferences.rememberMissing( mApp_mData, mPointInsertionPreferences );
+      mPointInsertion = null;
+      mPointInsertionPreferences = null;
+    }
   }
 
   /** Apply area-property changes through the cached drawing lifecycle. */
@@ -7192,19 +7370,41 @@ public class DrawingWindow extends ItemDrawer
   /** Invoke the registered special behavior exactly once after point commit. */
   private void finalizePointPlacement( DrawingPointPath point )
   {
-    if ( ! ( point instanceof DrawingSemanticPointPath ) ) return;
+    if ( ! ( point instanceof DrawingSemanticPointPath ) ) {
+      rememberGesturePreferences();
+      return;
+    }
+    DrawingCommandManager owner = mDrawingSurface.getManager( mType );
     DrawingSemanticPointPath semantic = (DrawingSemanticPointPath)point;
     SpecialPointPlacementAction action = semantic.initializePlacement( new SpecialPointPlacementContext( this ) );
     if ( action == SpecialPointPlacementAction.OPEN_EDITOR ) {
-      new DrawingPointDialog( mActivity, this, point, true ).show();
+      showPointPlacementDialog( new DrawingPointDialog( mActivity, this, point, true ), point );
     } else if ( action == SpecialPointPlacementAction.OPEN_DEDICATED_EDITOR ) {
       android.app.Dialog dialog = semantic.createDedicatedEditor( this, true );
-      if ( dialog != null ) dialog.show();
+      if ( dialog != null ) showPointPlacementDialog( dialog, point );
     } else if ( action == SpecialPointPlacementAction.LAUNCH_WORKFLOW ) {
       // Reserved for strike/dip and similar calculation workflows.
       TDLog.e( "Special point requested an unimplemented external workflow: "
         + semantic.specialBehavior().behaviorId() );
+    } else if ( owner != null && owner.getCommands().contains( point ) ) {
+      rememberGesturePreferences(); // initialization may have rejected and removed the point
     }
+  }
+
+  /** Only a confirmed initial editor teaches choices; later property edits have no pending use. */
+  private void showPointPlacementDialog( android.app.Dialog dialog, final DrawingPointPath point )
+  {
+    mPointInsertion = point;
+    mPointInsertionPreferences = mGesturePreferences;
+    dialog.setOnDismissListener( new DialogInterface.OnDismissListener() {
+      @Override public void onDismiss( DialogInterface ignored ) {
+        if ( mPointInsertion == point ) {
+          mPointInsertion = null;
+          mPointInsertionPreferences = null;
+        }
+      }
+    } );
+    dialog.show();
   }
 
   double textObjectDefaultOrientation()
@@ -7230,6 +7430,8 @@ public class DrawingWindow extends ItemDrawer
       id, scrap );
     photo.mLandscape = mLandscape;
     mDrawingSurface.addDrawingPath( photo );
+    SymbolSketchPreferences.rememberMissing( mApp_mData, mMediaInsertionPreferences );
+    mMediaInsertionPreferences = null;
 
     DrawingPicturePath picture = new DrawingPicturePath( s, x+1, y+1, id, scrap );
     picture.setLink( photo );
@@ -7406,6 +7608,8 @@ public class DrawingWindow extends ItemDrawer
       audio = new DrawingAudioPath( mMediaManager.getX(), mMediaManager.getY(), mPointScale, null, audio_id, mDrawingSurface.scrapIndex() );
       audio.mLandscape = mLandscape;
       mDrawingSurface.addDrawingPath( audio );
+      SymbolSketchPreferences.rememberMissing( mApp_mData, mMediaInsertionPreferences );
+      mMediaInsertionPreferences = null;
       modified();
     }
   }
@@ -7691,6 +7895,7 @@ public class DrawingWindow extends ItemDrawer
     mPendingReferenceX = 0.0f;
     mPendingReferenceY = 0.0f;
     mPendingReferenceScrap = -1;
+    mReferenceInsertionPreferences = null;
   }
 
   private void clearPendingReferenceReplace()
@@ -7723,6 +7928,7 @@ public class DrawingWindow extends ItemDrawer
 
   private void beginReferenceInsertion( float x, float y, int scrap )
   {
+    mReferenceInsertionPreferences = mGesturePreferences;
     mPendingReferenceX = x;
     mPendingReferenceY = y;
     mPendingReferenceScrap = scrap;
@@ -7798,6 +8004,7 @@ public class DrawingWindow extends ItemDrawer
     point.setReferenceAlpha( ReferencePointHelper.DEFAULT_ALPHA );
     point.setReferenceVisible( true );
     mDrawingSurface.addDrawingPath( point );
+    SymbolSketchPreferences.rememberMissing( mApp_mData, mReferenceInsertionPreferences );
     modified();
     clearPendingReferenceInsert();
     clearPendingReferenceReplace();
@@ -8062,6 +8269,15 @@ public class DrawingWindow extends ItemDrawer
         return;
       }
       if ( commitLivePointPlacement() ) modified(); // never strand a live point across a mode switch
+
+      if ( mMode == MODE_DRAW ) {
+        clearPendingSketchStroke();
+        mGesturePreferences = null;
+        mDrawingSurface.resetPreviewPath();
+        applyPendingSymbolSelection();
+        applyPendingSketchPresetSelection();
+        applyPendingSketchStyleSelection();
+      }
 
       if ( mMode == MODE_DRAW ) {  // this has annoying glitches 
         mZoomView.setTranslationY( 0 );
@@ -12698,7 +12914,6 @@ public class DrawingWindow extends ItemDrawer
     int index = BrushManager.getPointIndex( mRecentPoint[k] );
     if ( index < 0 ) return false;
     if ( forbidPointSection( index ) || forbidPointPicture( index ) ) return false;
-    mCurrentPoint = index;
     pointSelected( index, update_recent );
     setActiveToolbarSlot( SymbolType.POINT, k );
     if ( ! isManualToolbar() ) updateAge( k, mRecentPointAge );
@@ -12716,7 +12931,6 @@ public class DrawingWindow extends ItemDrawer
     if ( current < 0 ) return false;
     if ( forbidLineSection( current ) ) return false;
     // TDLog.v("set line " + k + " update " + update_recent + " current " + current );
-    mCurrentLine = current;
     lineSelected( current, update_recent );
     setActiveToolbarSlot( SymbolType.LINE, k );
     if ( ! isManualToolbar() ) updateAge( k, mRecentLineAge );
@@ -12732,7 +12946,6 @@ public class DrawingWindow extends ItemDrawer
   {
     int index = BrushManager.getAreaIndex( mRecentArea[k] );
     if ( index < 0 ) return false;
-    mCurrentArea = index;
     areaSelected( index, update_recent );
     setActiveToolbarSlot( SymbolType.AREA, k );
     if ( ! isManualToolbar() ) updateAge( k, mRecentAreaAge );

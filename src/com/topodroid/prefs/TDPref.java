@@ -788,16 +788,16 @@ public class TDPref implements AdapterView.OnItemSelectedListener
   static TDPref[] makePlotPrefs( Context ctx, TDPrefHelper hlp )   { return makePrefs( TDPrefKey.mPlot, ctx, hlp ); }
   static TDPref[] makeToolPresetPrefs( Context ctx, TDPrefHelper hlp )
   {
-    int count = 1 + TDSetting.getSketchPresetSlotCount();
+    int count = 2 + TDSetting.getSketchPresetSlotCount();
     TDPref[] ret = makePrefs( TDPrefKey.mToolPreset, ctx, hlp, count );
-    for ( int preset = 1; preset < count; ++ preset ) ret[preset].setTitle( TDSetting.getSketchPresetSettingsTitle( preset ) );
+    for ( int preset = 1; preset <= count - 2; ++ preset ) ret[preset + 1].setTitle( TDSetting.getSketchPresetSettingsTitle( preset ) );
     return ret;
   }
   static TDPref[] makeToolStylePrefs( Context ctx, TDPrefHelper hlp )
   {
-    int count = 1 + TDSetting.getSketchStyleSlotCount();
+    int count = 2 + TDSetting.getSketchStyleSlotCount();
     TDPref[] ret = makePrefs( TDPrefKey.mToolStyle, ctx, hlp, count );
-    for ( int style = 1; style < count; ++ style ) ret[style].setTitle( TDSetting.getSketchStyleSettingsTitle( style ) );
+    for ( int style = 1; style <= count - 2; ++ style ) ret[style + 1].setTitle( TDSetting.getSketchStyleSettingsTitle( style ) );
     return ret;
   }
   static TDPref[] makeCalibPrefs( Context ctx, TDPrefHelper hlp )  { return makePrefs( TDPrefKey.mCalib, ctx, hlp ); }

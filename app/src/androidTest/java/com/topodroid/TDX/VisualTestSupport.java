@@ -3304,6 +3304,10 @@ selection.mHotItem.getHandleRole() );
   {
     SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences( mTargetContext );
     SharedPreferences.Editor editor = prefs.edit();
+    // Existing visual fixtures explicitly choose their global tool settings.
+    // Symbol-memory tests enable recall after preparing their isolated survey.
+    editor.putBoolean( TDSetting.REMEMBER_SYMBOL_STYLE_KEY, false );
+    editor.putBoolean( TDSetting.REMEMBER_SYMBOL_PRESET_KEY, false );
     editor.putString( "DISTOX_EXTRA_BUTTONS", "3" );
     editor.putBoolean( "DISTOX_MKEYBOARD", false );
     editor.putBoolean( "DISTOX_SETUP_SCREEN", false );

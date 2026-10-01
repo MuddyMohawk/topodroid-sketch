@@ -680,10 +680,11 @@ class TDPrefKey
 
   private static TDPrefKey[] makeToolPresetKeys()
   {
-    TDPrefKey[] ret = new TDPrefKey[ TDSetting.SKETCH_PRESET_MAX + 1 ];
+    TDPrefKey[] ret = new TDPrefKey[ TDSetting.SKETCH_PRESET_MAX + 2 ];
     ret[0] = new TDPrefKey( B, LONG, DR, "DISTOX_PRESET_SLOTS", R.string.pref_preset_slots_title, R.string.pref_preset_slots_summary, TDString.FOUR );
+    ret[1] = new TDPrefKey( B, BOOL, DR, TDSetting.REMEMBER_SYMBOL_PRESET_KEY, R.string.pref_remember_symbol_preset_title, R.string.pref_remember_symbol_preset_summary, TRUE );
     for ( int preset = 1; preset <= TDSetting.SKETCH_PRESET_MAX; ++ preset ) {
-      ret[preset] = new TDPrefKey( B, NON, presetScreenKey( preset ), R.string.title_settings_preset );
+      ret[preset + 1] = new TDPrefKey( B, NON, presetScreenKey( preset ), R.string.title_settings_preset );
     }
     return ret;
   }
@@ -745,10 +746,11 @@ class TDPrefKey
 
   private static TDPrefKey[] makeToolStyleKeys()
   {
-    TDPrefKey[] ret = new TDPrefKey[ TDSetting.SKETCH_STYLE_MAX + 1 ];
+    TDPrefKey[] ret = new TDPrefKey[ TDSetting.SKETCH_STYLE_MAX + 2 ];
     ret[0] = new TDPrefKey( B, LONG, DR, "DISTOX_STYLE_SLOTS", R.string.pref_style_slots_title, R.string.pref_style_slots_summary, "3" );
+    ret[1] = new TDPrefKey( B, BOOL, DR, TDSetting.REMEMBER_SYMBOL_STYLE_KEY, R.string.pref_remember_symbol_style_title, R.string.pref_remember_symbol_style_summary, TRUE );
     for ( int style = 1; style <= TDSetting.SKETCH_STYLE_MAX; ++ style ) {
-      ret[style] = new TDPrefKey( B, NON, styleScreenKey( style ), R.string.title_settings_style );
+      ret[style + 1] = new TDPrefKey( B, NON, styleScreenKey( style ), R.string.title_settings_style );
     }
     return ret;
   }

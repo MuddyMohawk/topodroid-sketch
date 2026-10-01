@@ -47,6 +47,10 @@ public class SketchStyleBarInstrumentedTest
     TDInstance.setContext( mContext );
     mPrefs = PreferenceManager.getDefaultSharedPreferences( mContext );
     mSavedPrefs = new HashMap<>();
+    remember( TDSetting.REMEMBER_SYMBOL_STYLE_KEY );
+    remember( TDSetting.REMEMBER_SYMBOL_PRESET_KEY );
+    mPrefs.edit().putBoolean( TDSetting.REMEMBER_SYMBOL_STYLE_KEY, false )
+      .putBoolean( TDSetting.REMEMBER_SYMBOL_PRESET_KEY, false ).apply();
     rememberStylePrefs();
     resetStylePrefs();
   }
@@ -55,6 +59,8 @@ public class SketchStyleBarInstrumentedTest
   public void tearDown()
   {
     SharedPreferences.Editor editor = mPrefs.edit();
+    editor.remove( TDSetting.REMEMBER_SYMBOL_STYLE_KEY );
+    editor.remove( TDSetting.REMEMBER_SYMBOL_PRESET_KEY );
     removeStylePrefs( editor );
     for ( Map.Entry<String, Object> entry : mSavedPrefs.entrySet() ) {
       Object value = entry.getValue();
