@@ -35,6 +35,47 @@ abstract public class BleComm extends TopoDroidComm
   protected BleOpsQueue mQps      = null;
   protected BleCallback mCallback = null;
   protected BleQueue    mQueue    = null;
+  private volatile boolean mClosing;
+
+  public boolean isClosing() { return mClosing; }
+
+  @Override public void disconnectRemoteDevice() { disconnectDevice(); }
+
+  @Override public void shutdown()
+  {
+    mClosing = true;
+    try { terminate(); } // drain accepted packets before clearing their protocol
+    finally {
+      if ( mCallback != null ) mCallback.closeGatt();
+      if ( mQps != null ) mQps.discard();
+      mBTConnected = false;
+      closeProtocol();
+    }
+  }
+
+  /** Wait for queued command writes to be acknowledged before releasing the operation. */
+  protected boolean waitForOperations( int timeout )
+  {
+    long deadline = android.os.SystemClock.elapsedRealtime() + timeout;
+    while ( mQps != null && ! mQps.isIdle() ) {
+      if ( ! isConnected() || isClosing() || android.os.SystemClock.elapsedRealtime() >= deadline ) return false;
+      try { Thread.sleep( 20 ); }
+      catch ( InterruptedException e ) { Thread.currentThread().interrupt(); return false; }
+    }
+    return ! Thread.currentThread().isInterrupted();
+  }
+
+  protected void drainConsumer( Thread consumer )
+  {
+    mQueue.close();
+    if ( consumer == null || consumer == Thread.currentThread() ) return;
+    boolean interrupted = false;
+    while ( consumer.isAlive() ) {
+      try { consumer.join(); }
+      catch ( InterruptedException e ) { interrupted = true; }
+    }
+    if ( interrupted ) Thread.currentThread().interrupt();
+  }
 
   private boolean mUseMtu;
   protected UUID mServiceUuid;

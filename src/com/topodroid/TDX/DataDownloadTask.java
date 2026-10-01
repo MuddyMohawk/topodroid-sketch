@@ -13,7 +13,6 @@ package com.topodroid.TDX;
 
 // import com.topodroid.util.TDLog;
 import com.topodroid.calib.CalibInfo;
-import com.topodroid.dev.ConnectionState;
 
 import java.lang.ref.WeakReference;
 
@@ -26,7 +25,7 @@ class DataDownloadTask extends AsyncTask< String, Integer, Integer >
 {
   private final WeakReference<TopoDroidApp> mApp; // FIXME LEAK
   private final WeakReference<GMActivity> mGMactivity; // can be null
-  private static DataDownloadTask running = null; // static reference to this class - to lock/unlock
+  private TopoDroidApp.DeviceOperation mOperation;
   private final ListerHandler mLister; // FIXME_LISTER
   private int mDataType;
 
@@ -45,6 +44,12 @@ class DataDownloadTask extends AsyncTask< String, Integer, Integer >
     mDataType = data_type;
   }
 
+  @Override protected void onPreExecute()
+  {
+    TopoDroidApp app = mApp.get();
+    if ( app != null ) mOperation = app.beginDeviceOperation();
+  }
+
 // -------------------------------------------------------------------
   /** task background execution
    * @param statuses   (unused)
@@ -53,24 +58,28 @@ class DataDownloadTask extends AsyncTask< String, Integer, Integer >
   @Override
   protected Integer doInBackground( String... statuses )
   {
-    GMActivity gm = mGMactivity.get();
-    TopoDroidApp app = mApp.get();
-    if ( gm != null && ! gm.isFinishing() && app != null ) {
-      int algo = gm.getAlgo();
-      if ( algo == CalibInfo.ALGO_AUTO ) { 
-        algo = app.getCalibAlgoFromDevice();
-        if ( algo < CalibInfo.ALGO_AUTO ) { // could not get the algo from the device type
-          algo = CalibInfo.ALGO_LINEAR; 
+    if ( mOperation == null ) return null;
+    try {
+      GMActivity gm = mGMactivity.get();
+      TopoDroidApp app = mApp.get();
+      if ( gm != null && ! gm.isFinishing() && app != null ) {
+        int algo = gm.getAlgo();
+        if ( algo == CalibInfo.ALGO_AUTO ) {
+          algo = app.getCalibAlgoFromDevice();
+          if ( algo < CalibInfo.ALGO_AUTO ) { // could not get the algo from the device type
+            algo = CalibInfo.ALGO_LINEAR;
+          }
+          app.updateCalibAlgo( algo );
+          gm.setAlgo( algo );
         }
-        app.updateCalibAlgo( algo );
-        gm.setAlgo( algo );
+        // app.setGMdownload( true ); // GM_DOWNLOAD
       }
-      // app.setGMdownload( true ); // GM_DOWNLOAD
+      return app.downloadDataBatch( mOperation, mLister, mDataType );
+    } catch ( RuntimeException e ) {
+      com.topodroid.util.TDLog.e( "Data download: " + e.getMessage() );
+      return -1;
     }
-    if ( ! lock() ) return null;
-    int ret = ( app == null )? 0 : app.downloadDataBatch( mLister, mDataType );
     // app.setGMdownload( false ); // GM_DOWNLOAD
-    return ret;
   }
 
   // @Override
@@ -83,39 +92,15 @@ class DataDownloadTask extends AsyncTask< String, Integer, Integer >
   /** post-execution: forward the result to the lister and some housekeeping
    * @param res   result of the background execution
    */
-  @Override
-  protected void onPostExecute( Integer res )
+  @Override protected void onPostExecute( Integer result )
   {
-    // TDLog.Log( TDLog.LOG_COMM, "onPostExecute res " + res );
-    // TDLog.v( "BLE data download task: post execute: res " + res );
-    TopoDroidApp app = mApp.get();
-    if ( app != null ) {
-      if ( res != null ) {
-        int r = res.intValue();
-        mLister.refreshDisplay( r, true );  // true: toast a message
-        unlock();
-      }
-      app.stopDownloading( mLister );
-    }
+    if ( mOperation == null ) return;
+    try {
+      TopoDroidApp app = mApp.get();
+      if ( result != null && mLister != null ) mLister.refreshDisplay( result, true );
+      if ( app != null ) app.stopDownloading( mLister );
+    } finally { mOperation.close(); }
   }
 
-  /** lock the static reference
-   * @return true if successful, false if already locked
-   */
-  private synchronized boolean lock()
-  {
-    // TDLog.v("DATA " + "data download task lock: running is " + ( (running == null )? "null" : (running == this)? "this" : "other") );
-    if ( running != null ) return false;
-    running = this;
-    return true;
-  }
-
-  /** unlock the static reference
-   */
-  private synchronized void unlock()
-  {
-    // TDLog.v("DATA " + "data download task unlock: running is " + ( (running == null )? "null" : (running == this)? "this" : "other") );
-    if ( running == this ) running = null;
-  }
-
+  @Override protected void onCancelled( Integer result ) { onPostExecute( result ); }
 }

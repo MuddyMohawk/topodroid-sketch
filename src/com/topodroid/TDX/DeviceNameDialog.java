@@ -67,6 +67,8 @@ class DeviceNameDialog extends MyDialog
     mETnickname = (EditText) findViewById( R.id.tv_nickname );
 
     mCBsecondDevice = (CheckBox) findViewById( R.id.second_device );
+    mCBsecondDevice.setChecked( TDInstance.isSecondDeviceAddress( mDevice.getAddress() ) );
+    mCBsecondDevice.setEnabled( ! mDevice.hasAddress( TDInstance.deviceAddress() ) );
 
     // setTitle( resString( R.string.device_info ) );
 
@@ -98,6 +100,8 @@ class DeviceNameDialog extends MyDialog
       }
       if ( mCBsecondDevice.isChecked() ) {
         mParent.setSecondDevice( mDevice.getAddress() );
+      } else if ( TDInstance.isSecondDeviceAddress( mDevice.getAddress() ) ) {
+        mParent.setSecondDevice( null );
       }
     } else if ( b == mBTforget ) {
       mParent.forgetDevice( mDevice );

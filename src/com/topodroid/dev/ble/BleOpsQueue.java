@@ -21,23 +21,35 @@ public class BleOpsQueue
 
   private ConcurrentLinkedQueue< BleOperation > mOps;
   private BleOperation mPendingOp = null;
+  private boolean mDiscarded;
 
   public BleOpsQueue()
   {
     mOps = new ConcurrentLinkedQueue< BleOperation >();
   }
 
-  public void clear( boolean after_clear_pending)
+  public synchronized void clear( boolean after_clear_pending)
   {
     if ( after_clear_pending ) clearPending();
     mOps.clear();
     if ( ! after_clear_pending ) clearPending();
   }
 
+  public synchronized boolean isIdle() { return mPendingOp == null && mOps.isEmpty(); }
+
+  /** Shutdown must discard operations without executing the next queued command. */
+  public synchronized void discard()
+  {
+    mDiscarded = true;
+    mOps.clear();
+    mPendingOp = null;
+  }
+
   /** clear the pending op and do the next if the queue is not empty
    */
-  public void clearPending()
+  public synchronized void clearPending()
   {
+    if ( mDiscarded ) return;
     mPendingOp = null;
     // if ( ! mOps.isEmpty() || mPendingCommands > 0 ) doNextOp();
     if ( ! mOps.isEmpty() ) {
@@ -51,8 +63,9 @@ public class BleOpsQueue
    * @param op   BLE op
    * @return the length of the ops queue
    */
-  public int enqueueOp( BleOperation op )
+  public synchronized int enqueueOp( BleOperation op )
   {
+    if ( mDiscarded ) return 0;
     mOps.add( op );
     // printOps(); // DEBUG
     if ( mPendingOp == null ) {
@@ -64,8 +77,9 @@ public class BleOpsQueue
   /** do the next op on the queue
    * @note access by BricChrtChanged
    */
-  public void doNextOp()
+  public synchronized void doNextOp()
   {
+    if ( mDiscarded ) return;
     if ( mPendingOp != null ) {
       if ( LOG ) TDLog.v( "OpsQueue next op with pending " + mPendingOp.name() + " not null, ops " + mOps.size() );
       return;

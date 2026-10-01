@@ -194,11 +194,9 @@ public class BricComm extends BleComm
   @Override
   public void terminate()
   {
-    // TDLog.v("BRIC comm terminate");
-    if ( mConsumer != null ) {
-      // put a BleQueue.DATA_QUIT buffer on the queue
-      mQueue.put( BleQueue.DATA_QUIT, new byte[0] );
-    }
+    mReconnect = false;
+    drainConsumer( mConsumer );
+    mConsumer = null;
   }
 
   /** register an info-dialog

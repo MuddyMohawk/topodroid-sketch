@@ -102,6 +102,7 @@ public class DistoXComm extends TopoDroidComm
       @Override
       public void onReceive( Context ctx, Intent data )
       {
+        if ( ! mApp.isCurrentComm( DistoXComm.this ) ) return;
         String action = data.getAction();
         BluetoothDevice bt_device = data.getParcelableExtra( DeviceUtil.EXTRA_DEVICE );
         String device = ( bt_device != null )? bt_device.getAddress() : "undefined";

@@ -472,7 +472,7 @@ public class ShotWindow extends Activity
   public void setTheTitle()
   {
     StringBuilder sb = new StringBuilder();
-    if ( TDSetting.isConnectionModeMulti() /* || TDSetting.isConnectionModeDouble() */ ) {
+    if ( TDInstance.getDeviceA() != null ) {
       sb.append( "{" );
       if ( TDInstance.getDeviceA() != null ) sb.append( TDInstance.getDeviceA().getNickname() );
       sb.append( "} " );
@@ -1799,23 +1799,7 @@ public class ShotWindow extends Activity
           TDToast.makeWarn("Immutable survey");
           return true;
         }
-        if ( TDInstance.isDeviceDistoX() ) {
-          if ( ! mDataDownloader.isDownloading() && TDSetting.isConnectionModeMulti() && TopoDroidApp.mDData.getDevices().size() > 1 ) {
-            if ( TDSetting.mSecondDistoX && TDInstance.getDeviceB() != null ) {
-              mApp.switchSecondDevice();
-              setTheTitle();
-              // TDToast.make( String.format( getResources().getString(R.string.using), TDInstance.deviceNickname() ) );
-            } else {
-              (new DeviceSelectDialog( this, mApp, mDataDownloader, this )).show();
-            }
-          } else {
-            mDataDownloader.toggleDownloading();
-            mDataDownloader.doDataDownload( mApp.mListerSet, DataType.DATA_SHOT );
-          }
-        } else { // TODO something cleverer than falling back to short click
-          mDataDownloader.toggleDownloading();
-          mDataDownloader.doDataDownload( mApp.mListerSet, DataType.DATA_SHOT );
-        }
+        mApp.showSurveyDeviceSwitch( this, this );
         ret = true;
       } else if ( isButton1( b, BTN_PLOT ) ) {
         if ( mWaitPlot ) {
@@ -3062,7 +3046,7 @@ public class ShotWindow extends Activity
       if ( status != mBTstatus ) {
         mBTstatus = status;
         // mButton1[ BTN_DOWNLOAD ].setVisibility( View.VISIBLE );
-        boolean isBricOrCavway = TDInstance.isDeviceBric() || TDInstance.isDeviceCavway();
+        boolean isBricOrCavway = TDInstance.isDeviceBric() || TDInstance.isDeviceCavway() || TDInstance.isDeviceXBLE();
         switch ( status ) {
           case ConnectionState.CONN_CONNECTED:
             TDFeedback.notifyFeedback( this, true );
@@ -3085,7 +3069,7 @@ public class ShotWindow extends Activity
   public void enableBluetoothButton( boolean enable )
   {
     if ( TDInstance.isDivingMode() ) return;
-    if ( TDInstance.hasBleDevice() ) enable = true;
+    enable = enable && ! mApp.isDeviceOperationBusy();
     TDandroid.setButtonBackground( mButton1[BTN_BLUETOOTH], (enable ? mBMbluetooth : mBMbluetooth_no) );
     mButton1[BTN_BLUETOOTH].setEnabled( enable );
   }

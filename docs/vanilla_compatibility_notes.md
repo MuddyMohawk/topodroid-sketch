@@ -10,6 +10,8 @@
 - GPX export filenames now resolve back to the GPX format through the shared extension registry.
 - Sketch symbol files now carry private `sketch_picker_category`, `sketch_picker_section`, and `sketch_search_terms` directives; a future Vanilla symbol conversion path must strip or safely ignore these directives while preserving the standard symbol definition.
 
+- Survey shot instrument addresses now come from the receiving connection. Earlier quick swaps could persist the selected device instead of the actual source in survey databases and native ZIPs; existing instrument attribution is not reconstructed.
+
 ## Unsupported import/export formats
 
 - TopoDroid Sketch survey ZIP import intentionally ignores embedded `points.zip`, `lines.zip`, and `areas.zip`, and Sketch export does not create them. Native Sketch ZIPs therefore render against the receiving installation's symbol definitions and code: differing builds or symbol state can reverse the apparent side of directional lines or omit newer smart-point text such as passage height. A future dedicated Vanilla import path may need to translate Vanilla-only symbol references and definitions into Sketch-standard tools before opening drawings.

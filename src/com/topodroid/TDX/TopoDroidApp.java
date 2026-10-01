@@ -38,7 +38,7 @@ import com.topodroid.prefs.TDSetting;
 import com.topodroid.packetX.MemoryOctet;
 import com.topodroid.packetX.CavwayData;
 import com.topodroid.dev.Device;
-// import com.topodroid.dev.ConnectionState;
+import com.topodroid.dev.ConnectionState;
 import com.topodroid.dev.TopoDroidComm;
 import com.topodroid.dev.DataType;
 import com.topodroid.dev.distox.IMemoryDialog;
@@ -86,6 +86,7 @@ import java.util.ArrayList;
 // import android.os.Environment;
 // import android.os.Build;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
@@ -245,8 +246,7 @@ public class TopoDroidApp extends Application
   { 
     // TDLog.v( "APP: notify status " + status );
     if ( lister == null ) return;
-    if ( mMainActivity == null ) return;
-    mMainActivity.runOnUiThread( new Runnable() { 
+    runOnMainThread( new Runnable() {
       public void run () { 
         // TDLog.v("APP notify " + status + " to listers " + mListerSet.size() );
         // mListerSet.setConnectionStatus( status );
@@ -262,7 +262,7 @@ public class TopoDroidApp extends Application
   {
     if ( mListerSet.size() > 0 ) {
       try {
-        new ReconnectTask( mDataDownloader, lister, data_type, 500 ).execute();
+        mDataDownloader.requestReconnect( lister, data_type, 500 );
       } catch ( RuntimeException e ) {
         TDLog.e("reconnect error: " + e.getMessage() );
       }
@@ -275,7 +275,192 @@ public class TopoDroidApp extends Application
 
   String[] DistoXConnectionError;
   // BluetoothAdapter mBTAdapter = null;     // BT connection
-  private TopoDroidComm mComm = null;     // BT communication
+  private volatile TopoDroidComm mComm = null;     // BT communication
+  private final DeviceSwitchState mDeviceSwitch = new DeviceSwitchState();
+  private long mSwitchSurveyId;
+  private volatile boolean mSwitchCancelled;
+
+  void runOnMainThread( Runnable action )
+  {
+    if ( Looper.myLooper() == Looper.getMainLooper() ) action.run();
+    else new Handler( Looper.getMainLooper() ).post( action );
+  }
+
+  public boolean isDeviceOperationBusy() { return mDeviceSwitch.isBusy(); }
+
+  protected Device findDevice( String address ) { return mDData == null ? null : mDData.getDevice( address ); }
+  protected ArrayList<Device> knownDevices() { return mDData == null ? new ArrayList<Device>() : mDData.getDevices(); }
+
+  /** Owns a particular driver until its finite operation has completely finished. */
+  public final class DeviceOperation implements AutoCloseable
+  {
+    public final TopoDroidComm comm;
+    public final String address;
+    private boolean mFinished;
+    private boolean mRemote;
+    private final boolean mKeepConnection;
+
+    private DeviceOperation( TopoDroidComm driver )
+    {
+      comm = driver;
+      address = TDInstance.deviceAddress();
+      mKeepConnection = mDataDownloader.isDownloading() && TDInstance.isContinuousMode();
+      comm.bindDataContext( TDInstance.sid, TDInstance.cid, address, TDInstance.deviceType() );
+    }
+
+    public boolean laser( int what, int nr, ListerHandler lister, int dataType, boolean close )
+    {
+      mRemote = true;
+      comm.setRemoteOperation( true );
+      if ( what == Device.DEVICE_OFF ) mDataDownloader.setDownloading( false );
+      boolean closeConnection = close && ! mKeepConnection;
+      if ( comm instanceof DistoX310Comm ) return ((DistoX310Comm)comm).setX310Laser( address, what, nr, lister, dataType );
+      if ( comm instanceof CavwayComm ) return ((CavwayComm)comm).setCavwayLaser( address, what, nr, lister, dataType, closeConnection );
+      if ( comm instanceof DistoXBLEComm ) return ((DistoXBLEComm)comm).setXBLELaser( address, what, nr, lister, dataType, closeConnection );
+      return false;
+    }
+
+    @Override public void close()
+    {
+      synchronized ( mDeviceSwitch ) {
+        if ( mFinished ) return;
+        mFinished = true;
+        comm.setRemoteOperation( false );
+        mDeviceSwitch.endOperation();
+      }
+      if ( mRemote ) notifyCommStatus( comm, mListerSet, comm.isConnected() ? ConnectionState.CONN_CONNECTED : ConnectionState.CONN_DISCONNECTED );
+      runOnMainThread( () -> {
+        refreshDeviceUi();
+        processPendingDeviceSwitch();
+        if ( TDInstance.isContinuousMode() ) mDataDownloader.requestReconnect( mListerSet, DataType.DATA_SHOT, 500 );
+      } );
+    }
+  }
+
+  public DeviceOperation beginDeviceOperation()
+  {
+    synchronized ( mDeviceSwitch ) {
+      if ( mComm == null || TDInstance.getDeviceA() == null || ! mDeviceSwitch.beginOperation() ) return null;
+      DeviceOperation operation = new DeviceOperation( mComm );
+      runOnMainThread( () -> refreshDeviceUi() );
+      return operation;
+    }
+  }
+
+  private void refreshDeviceUi()
+  {
+    if ( mListerSet == null || mDataDownloader == null ) return;
+    mListerSet.setTheTitle();
+    mListerSet.setConnectionStatus( mDataDownloader.getStatus() );
+    mListerSet.enableBluetoothButton( ! isDeviceOperationBusy() );
+  }
+
+  /** One survey switch entry point for the picker and both survey windows. */
+  void requestSurveyDeviceSwitch( String address )
+  {
+    Device target = findDevice( address );
+    if ( target == null || ! (target.isBT() || target.isBLE()) || ! TDInstance.isSurveyMutable ) return;
+    synchronized ( mDeviceSwitch ) {
+      if ( ! mDeviceSwitch.request( TDInstance.deviceAddress(), target.getAddress() ) ) return;
+      mSwitchSurveyId = TDInstance.sid;
+      mSwitchCancelled = false;
+    }
+    TDToast.make( String.format( getString( R.string.device_switching ), target.getNickname() ) );
+    refreshDeviceUi();
+    processPendingDeviceSwitch();
+  }
+
+  void cancelPendingDeviceSwitch()
+  {
+    synchronized ( mDeviceSwitch ) {
+      mSwitchCancelled = true;
+      mDeviceSwitch.cancelPending();
+    }
+  }
+
+  private void processPendingDeviceSwitch()
+  {
+    final String address;
+    final TopoDroidComm oldComm;
+    final long surveyId;
+    synchronized ( mDeviceSwitch ) {
+      address = mDeviceSwitch.takePending();
+      if ( address == null ) return;
+      surveyId = mSwitchSurveyId;
+      oldComm = mComm;
+      mComm = null; // invalidates old status callbacks before shutdown begins
+    }
+    mDataDownloader.prepareForDeviceSwitch();
+    new Thread( () -> {
+      try { if ( oldComm != null ) oldComm.shutdown(); }
+      catch ( RuntimeException e ) {
+        TDLog.e( "Device shutdown: " + e.getMessage() );
+        runOnMainThread( () -> {
+          mDeviceSwitch.finishSwitch();
+          mDataDownloader.setDownloading( false );
+          refreshDeviceUi();
+          TDToast.makeBad( R.string.device_connection_failed );
+        } );
+        return;
+      }
+      runOnMainThread( () -> {
+        try {
+          Device target = findDevice( address );
+          if ( target == null ) return;
+          Device previous = TDInstance.getDeviceA();
+          boolean swapPair = TDInstance.isSecondDeviceAddress( address );
+          try { setDevicePrimary( target.getAddress(), target.mModel, target.mName, null ); }
+          finally {
+            if ( swapPair ) TDInstance.setDeviceB( previous );
+            saveDevicePair();
+          }
+        } catch ( RuntimeException e ) {
+          TDLog.e( "Device switch: " + e.getMessage() );
+          TDToast.makeBad( R.string.device_connection_failed );
+          return;
+        } finally {
+          mDeviceSwitch.finishSwitch();
+          mDataDownloader.setDownloading( false );
+          refreshDeviceUi();
+        }
+        if ( ! mSwitchCancelled && surveyId == TDInstance.sid && TDInstance.isSurveyMutable && mListerSet.size() > 0 ) {
+          mDataDownloader.setDownloading( true );
+          mDataDownloader.doDataDownload( mListerSet, DataType.DATA_SHOT );
+        }
+      } );
+    }, "survey-device-switch" ).start();
+  }
+
+  void showSurveyDeviceSwitch( Context context, ILister lister )
+  {
+    if ( ! TDInstance.isSurveyMutable ) { TDToast.makeWarn( "Immutable survey" ); return; }
+    if ( TDSetting.mSecondDistoX && TDInstance.getDeviceB() != null ) requestSurveyDeviceSwitch( TDInstance.secondDeviceAddress() );
+    else new DeviceSelectDialog( context, this ).show();
+  }
+
+  private void saveDevicePair()
+  {
+    TDPrefHelper.update( TDSetting.keyDeviceName(), TDInstance.deviceAddress() == null ? "" : TDInstance.deviceAddress(),
+      TDSetting.keySecondDeviceName(), TDInstance.secondDeviceAddress() == null ? "" : TDInstance.secondDeviceAddress() );
+  }
+
+  public boolean isCurrentComm( TopoDroidComm source ) { return source == mComm; }
+
+  public void notifyCommStatus( TopoDroidComm source, ListerHandler lister, int status )
+  {
+    synchronized ( mDeviceSwitch ) {
+      if ( source != mComm ) return;
+      if ( mDataDownloader != null ) mDataDownloader.setConnected( status );
+    }
+    if ( mDataDownloader != null ) {
+      if ( status == ConnectionState.CONN_DISCONNECTED && TDInstance.isContinuousMode() ) mDataDownloader.requestReconnect( mListerSet, DataType.DATA_SHOT, 500 );
+    }
+    runOnMainThread( () -> {
+      if ( source != mComm ) return;
+      if ( mListerSet != null ) mListerSet.setConnectionStatus( status );
+      if ( lister != null && lister != mListerSet ) lister.setConnectionStatus( status );
+    } );
+  }
   public DataDownloader mDataDownloader = null;  // data downloader
   public static DataHelper mData = null;         // database 
   public static DeviceHelper mDData = null;      // device/calib database
@@ -709,6 +894,7 @@ public class TopoDroidApp extends Application
 
   public void resetComm() 
   { 
+    if ( isDeviceOperationBusy() ) { TDToast.makeWarn( R.string.device_operation_busy ); return; }
     // TDLog.v("APP reset BT");
     mDataDownloader.onStop(); // mDownload = false;
     createComm();
@@ -726,7 +912,7 @@ public class TopoDroidApp extends Application
   {
     // return mComm != null && mComm.mBTConnected;
     // return mComm != null && mComm.mBTConnected && mComm.mCommThread != null;
-    return mComm != null && mComm.isConnected() && ! mComm.isCommThreadNull(); // FIXME BLE5 to check
+    return mComm != null && mComm.isConnected();
   }
 
   public void disconnectRemoteDevice( boolean force )
@@ -746,13 +932,9 @@ public class TopoDroidApp extends Application
   private void deleteComm( boolean disconnect ) // FIXME BLE5
   {
     // TDLog.v( "APP: delete comm - disconnect " + disconnect );
-    if ( mComm != null ) {
-      if ( disconnect || mComm.isConnected() ) {
-        mComm.disconnectRemoteDevice(); 
-      }
-      mComm.terminate();
-      mComm = null;
-    }
+    TopoDroidComm oldComm = mComm;
+    mComm = null;
+    if ( oldComm != null ) oldComm.shutdown();
   }
 
   // void connectRemoteDevice( String address )
@@ -768,7 +950,10 @@ public class TopoDroidApp extends Application
     // TDLog.v( "TDApp: connect address " + address + " comm is " + ((mComm==null)? "null" : "non-null") );
     // return mComm != null && mComm.connectDevice( address, mListerSet, data_type, timeout ); // FIXME_LISTER
     if ( lister == null ) lister = mListerSet;
-    return mComm != null && mComm.connectDevice( address, lister, data_type, timeout ); // FIXME_LISTER
+    TopoDroidComm comm = mComm;
+    if ( comm == null ) return false;
+    comm.bindDataContext( TDInstance.sid, TDInstance.cid, address, TDInstance.deviceType() );
+    return comm.connectDevice( address, lister, data_type, timeout );
   }
 
   public boolean disconnectComm()
@@ -928,53 +1113,24 @@ public class TopoDroidApp extends Application
    */
   private void createComm()
   {
-    // TDLog.v("APP create Comm");
-    deleteComm( true ); // if mComm is null this is nothing
-    // if ( TDInstance.isDeviceAddress( Device.ZERO_ADDRESS ) ) { // FIXME VirtualDistoX
-    //   mComm = new VirtualDistoXComm( this, mVirtualDistoX );
-    // } else {
-      if ( TDInstance.isDeviceX310() ) {
-        // TDLog.v( "TDApp: create DistoX2 comm");
-        mComm = new DistoX310Comm( this );
-      } else if ( TDInstance.isDeviceA3() ) {
-        // TDLog.v( "TDApp: create DistoX1 comm");
-        mComm = new DistoXA3Comm( this );
-      } else if ( TDInstance.isDeviceSap5() ) {
-        String address = TDInstance.deviceAddress();
-        BluetoothDevice bt_device = TDInstance.getBleDevice();
-        // TDLog.v( "TDApp: create SAP comm");
-        mComm = new SapComm( this, address, bt_device, 5 );
-      } else if ( TDInstance.isDeviceSap6() ) {
-        String address = TDInstance.deviceAddress();
-        BluetoothDevice bt_device = TDInstance.getBleDevice();
-        // TDLog.v( "TDApp: create SAP comm");
-        mComm = new SapComm( this, address, bt_device, 6 );
-      } else if ( TDInstance.isDeviceDiscoX() ) {
-        String address = TDInstance.deviceAddress();
-        BluetoothDevice bt_device = TDInstance.getBleDevice();
-        // TDLog.v( "TDApp: create SAP comm");
-        mComm = new DiscoXComm( this, address, bt_device );
-      } else if ( TDInstance.isDeviceBric() ) {
-        String address = TDInstance.deviceAddress();
-        BluetoothDevice bt_device = TDInstance.getBleDevice();
-        // TDLog.v( "TDApp: create BRIC comm");
-        mComm = new BricComm( this, this, address, bt_device );
-      // } else if ( TDInstance.isDeviceBlex() ) {
-      //   address = TDInstance.deviceAddress();
-      //   BluetoothDevice bt_device = TDInstance.getBleDevice();
-      //   // TDLog.v( "TDApp: create ble comm. address " + address + " BT " + ((bt_device==null)? "null" : bt_device.getAddress() ) );
-      //   mComm = new BleComm( this, address, bt_device );
-      } else if (TDInstance.isDeviceXBLE()){ // SIWEI_TIAN changed on Jun 2022
-        // TDLog.v( "TDApp: create DistoX-BLE comm");
-        String address = TDInstance.deviceAddress();
-        BluetoothDevice bt_device = TDInstance.getBleDevice();
-        mComm = new DistoXBLEComm( this,this, address, bt_device );
-      } else if (TDInstance.isDeviceCavway()){
-        String address = TDInstance.deviceAddress();
-        BluetoothDevice bt_device = TDInstance.getBleDevice();
-        mComm = new CavwayComm( this,this, address, bt_device );
-      }
-    // }
+    deleteComm( true );
+    mComm = makeDeviceComm( TDInstance.getDeviceA() );
+  }
+
+  protected TopoDroidComm makeDeviceComm( Device device )
+  {
+    if ( device == null ) return null;
+    String address = device.getAddress();
+    if ( device.isX310() ) return new DistoX310Comm( this );
+    if ( device.isA3() ) return new DistoXA3Comm( this );
+    BluetoothDevice bluetooth = TDInstance.getBleDevice();
+    if ( device.isSap5() ) return new SapComm( this, address, bluetooth, 5 );
+    if ( device.isSap6() ) return new SapComm( this, address, bluetooth, 6 );
+    if ( device.isDiscoX() ) return new DiscoXComm( this, address, bluetooth );
+    if ( device.isBric() ) return new BricComm( this, this, address, bluetooth );
+    if ( device.isDistoXBLE() ) return new DistoXBLEComm( this, this, address, bluetooth );
+    if ( device.isCavway() ) return new CavwayComm( this, this, address, bluetooth );
+    return null;
   }
 
   /** react to a user tap on the bluetooth button
@@ -990,12 +1146,16 @@ public class TopoDroidApp extends Application
       return;
     }
 
+    if ( isDeviceOperationBusy() ) { TDToast.makeWarn( R.string.device_operation_busy ); return; }
     if ( TDLevel.overAdvanced ) {
       if ( TDInstance.isDeviceCavway() ) { // CAVWAY
-        if ( TDInstance.hasDeviceRemoteControl() && ! TDSetting.isConnectionModeMulti()) {
+        if ( TDInstance.hasDeviceRemoteControl()) {
           CutNPaste.showPopupBT( ctx, lister, this, b, false, (nr_shots == 0) );
           return;
         }
+      } else if ( TDInstance.isDeviceXBLE() ) {
+        CutNPaste.showPopupBT( ctx, lister, this, b, false, (nr_shots == 0) );
+        return;
       } else if ( TDInstance.isDeviceBric() ) {
         // TDLog.v( "bt button over advanced : BRIC");
         if ( mComm != null && mComm.isConnected() ) { // FIXME BRIC_TESTER
@@ -1013,7 +1173,7 @@ public class TopoDroidApp extends Application
       } else { // DistoX
         // TDLog.v( "bt button over advanced : DistoX");
         if ( ! isDownloading() ) {
-          if ( TDInstance.hasDeviceRemoteControl() && ! TDSetting.isConnectionModeMulti()) {
+          if ( TDInstance.hasDeviceRemoteControl()) {
             CutNPaste.showPopupBT( ctx, lister, this, b, false, (nr_shots == 0) );
             return;
           }
@@ -1251,7 +1411,7 @@ public class TopoDroidApp extends Application
     // TDLog.Profile("TDApp device etc.");
     if ( mDData != null ) { 
       TDandroid.mHicsum = mDData.getValue( "hicsum" );
-      TDInstance.setDeviceA( mDData.getDevice( prefHlp.getString( TDSetting.keyDeviceName(), TDString.EMPTY ) ) );
+      thisApp.restoreDevicePair( prefHlp );
     }
 
     if ( TDInstance.getDeviceA() != null ) {
@@ -1929,68 +2089,42 @@ public class TopoDroidApp extends Application
    * @param name      device name
    * @param bt_device bluetooth device of the device
    */
-  void setDevicePrimary( String address, String model, String name, BluetoothDevice bt_device )
-  { 
-    deleteComm( false );
-    if ( address == null ) { // null, ..., ...
-      TDInstance.setDeviceA( null );
-      address = TDString.EMPTY;
-    } else {
-      if ( model != null ) { // addr, model, ...
-        // TDInstance.setDeviceA( new Device( address, model, 0, 0, name, null ) );
-        // if ( Device.isBle( TDInstance.deviceType() ) ) TDInstance.initBleDevice();
-        Device device = mDData.getDevice( address );
-        if ( device == null ) device = new Device( address, model, 0, 0, name, null );
-        TDInstance.setDeviceA( device );
-        if ( device.isBLE() ) TDInstance.initBleDevice();
-      } else if ( bt_device != null ) { // addr, null, dev
-        model = Device.typeToString( TDInstance.deviceType() );
-        // address, model, head, tail, name, nickname
-        TDInstance.setDeviceA( new Device( address, model, 0, 0, name, null ) );
-        TDInstance.setBleDevice( bt_device );
-        if ( TDInstance.isDeviceDiscoX() ) {
-          mComm = new DiscoXComm( this, address, bt_device ); 
-        } else if ( TDInstance.isDeviceSap5() ) {
-          mComm = new SapComm( this, address, bt_device, 5 ); 
-        } else if ( TDInstance.isDeviceSap6() ) {
-          mComm = new SapComm( this, address, bt_device, 6 ); 
-        } else if ( TDInstance.isDeviceBric() ) {
-          mComm = new BricComm( this, this, address, bt_device );
-        }
-      } else { // addr, null, null
-        // boolean create = Device.isBle( TDInstance.deviceType() );
-        TDInstance.setDeviceA( mDData.getDevice( address ) );
-        // TDInstance.setBleDevice( null );
-        // if ( create ) createComm();
-        if ( Device.isBle( TDInstance.deviceType() ) ) TDInstance.initBleDevice();
-      }
-      createComm();
+  void setDevicePrimary( String address, String model, String name, BluetoothDevice btDevice )
+  {
+    if ( isDeviceOperationBusy() && ! mDeviceSwitch.isSwitching() ) {
+      TDToast.makeWarn( R.string.device_operation_busy );
+      return;
     }
-    TDPrefHelper.update( TDSetting.keyDeviceName(), address ); 
+    if ( mDataDownloader != null ) mDataDownloader.prepareForDeviceSwitch();
+    deleteComm( true );
+    Device device = address == null ? null : findDevice( address );
+    if ( device == null && address != null && model != null ) device = new Device( address, model, 0, 0, name, null );
+    TDInstance.setDeviceA( device );
+    if ( device != null && device.isBLE() && btDevice != null ) TDInstance.setBleDevice( btDevice );
+    if ( device != null && TDInstance.isSecondDeviceAddress( device.getAddress() ) ) TDInstance.setDeviceB( null );
+    if ( mDataDownloader != null ) mDataDownloader.setDownloading( false );
+    if ( device != null ) createComm();
+    saveDevicePair();
     if ( mMainActivity != null ) mMainActivity.setButtonDevice();
   }
 
-  // TODO BLE for the second DistoX
-  /** set the address of the alternate device
-   * @param address   alternate device address
-   */
   void setDeviceB( String address )
   {
-    if ( address == null ) {
-      // if ( mVirtualDistoX != null ) mVirtualDistoX.stopServer( this ); // FIXME VirtualDistoX
-      TDInstance.setDeviceB( null );
-      // address = TDString.EMPTY;
-    } else {
-      TDInstance.setDeviceB( mDData.getDevice( address ) );
+    Device device = address == null ? null : findDevice( address );
+    if ( device != null && device.hasAddress( TDInstance.deviceAddress() ) ) {
+      TDToast.makeWarn( R.string.device_pair_duplicate );
+      return;
     }
+    TDInstance.setDeviceB( device );
+    saveDevicePair();
   }
 
-  /** switch to the alternate device
-   * @return true if success
-   */
-  boolean switchSecondDevice()
+  void restoreDevicePair( TDPrefHelper preferences )
   {
-    return TDInstance.switchDevice();
+    TDInstance.setDeviceA( findDevice( preferences.getString( TDSetting.keyDeviceName(), "" ) ) );
+    Device alternate = findDevice( preferences.getString( TDSetting.keySecondDeviceName(), "" ) );
+    if ( alternate != null && alternate.hasAddress( TDInstance.deviceAddress() ) ) alternate = null;
+    TDInstance.setDeviceB( alternate );
   }
 
   // -------------------------------------------------------------
@@ -2003,11 +2137,11 @@ public class TopoDroidApp extends Application
    *
    * NOTE called only by DataDownloadTask
    */
-  int downloadDataBatch( ListerHandler lister, int data_type ) // FIXME_LISTER
+  int downloadDataBatch( DeviceOperation operation, ListerHandler lister, int data_type ) // FIXME_LISTER
   {
     // TDLog.v( "APP: batch download, data type " + data_type );
     int ret = 0;
-    if ( mComm == null || TDInstance.getDeviceA() == null ) {
+    if ( operation == null ) {
       TDLog.e( "Comm or Device null ");
     } else {
       if ( data_type != DataType.DATA_CALIB ) { // 20250118 moved inside the block
@@ -2015,7 +2149,7 @@ public class TopoDroidApp extends Application
       }
       // TDLog.v( "APP: batch download, device " + TDInstance.deviceAddress() + " " + TDInstance.getDeviceA().getAddress() + " comm " + mComm.toString() );
       int timeout = 10; // 10 seconds
-      ret = mComm.downloadData( TDInstance.getDeviceA().getAddress(), lister, data_type, timeout );
+      ret = operation.comm.downloadData( operation.address, lister, data_type, timeout );
       // FIXME BATCH
       // if ( ret > 0 && TDSetting.mSurveyStations > 0 ) {
       //   // FIXME TODO select only shots after the last leg shots
@@ -2934,28 +3068,9 @@ public class TopoDroidApp extends Application
    * @note this is called by popup menu to set laser on/off
    *                  and by DeviceTakeShot to measure splay/leg
    */
-  public boolean setX310Laser( int what, int nr, ListerHandler lister, int data_type, boolean do_thread ) // FIXME_LISTER
+  public boolean setX310Laser( int what, int nr, ListerHandler lister, int dataType, boolean doThread )
   {
-    if ( mComm == null || TDInstance.getDeviceA() == null ) return true;
-    if ( mComm instanceof DistoX310Comm ) {
-      DistoX310Comm comm = (DistoX310Comm)mComm;
-      if ( comm != null ) {
-        // TDLog.v("APP set X310 laser " + what + " nr " + nr );
-        if ( do_thread ) {
-          (new Thread() {
-            public void run() {
-              comm.setX310Laser( TDInstance.deviceAddress(), what, nr, lister, data_type );
-            }
-          } ).start();
-          return true;
-        } else {
-          return comm.setX310Laser( TDInstance.deviceAddress(), what, nr, lister, data_type );
-        }
-      }
-    } else {
-      TDLog.e("APP set X310 laser: not X310 comm");
-    }
-    return false;
+    return runLaserCommand( DistoX310Comm.class, what, nr, lister, dataType, true, doThread );
   }
 
   /** set the Disto-XBLE laser
@@ -2967,58 +3082,33 @@ public class TopoDroidApp extends Application
    * @param do_thread whether to run on a thread
    *                  SIWEI TIAN added on Jul
    */
-  public boolean setXBLELaser( int what, int nr, ListerHandler lister, int data_type, boolean closeBT, boolean do_thread ) // FIXME_LISTER
+  public boolean setXBLELaser( int what, int nr, ListerHandler lister, int dataType, boolean closeBT, boolean doThread )
   {
-    if ( mComm == null || TDInstance.getDeviceA() == null ) return false;
-    if ( mComm instanceof DistoXBLEComm ) {
-      if ( do_thread ) {
-        (new Thread() {
-          public void run() {
-            ((DistoXBLEComm)mComm).setXBLELaser(TDInstance.deviceAddress(), what, nr, lister, data_type, closeBT );
-          }
-        } ).start();
-        return true;
-      } else {
-        return ((DistoXBLEComm)mComm).setXBLELaser(TDInstance.deviceAddress(), what, nr, lister, data_type, closeBT );
-      }
-    } else {
-      TDLog.e("set XBLE laser: not XBLE comm");
-    }
-    return false;
+    return runLaserCommand( DistoXBLEComm.class, what, nr, lister, dataType, closeBT, doThread );
   }
 
-  /** set the Cavway laser
-   * @param what      what to do:  0: off, 1: on, 2: measure
-   * @param nr        number od data to download
-   # @param lister    optional lister
-   * @param data_type type of expected data
-   # @param closeBT   whether to close the connection at the end
-   * @param do_thread whether to run on a thread
-   *                  SIWEI TIAN added on Jul
-   */
-  public boolean setCavwayLaser( int what, int nr, ListerHandler lister, int data_type, boolean closeBT, boolean do_thread ) // FIXME_LISTER
+  public boolean setCavwayLaser( int what, int nr, ListerHandler lister, int dataType, boolean closeBT, boolean doThread )
   {
-    if ( mComm == null || TDInstance.getDeviceA() == null ) return false;
-    if ( mComm instanceof CavwayComm ) {
-      if ( do_thread ) {
-        (new Thread() {
-          public void run() {
-            ((CavwayComm)mComm).setCavwayLaser(TDInstance.deviceAddress(), what, nr, lister, data_type, closeBT );
-            // notifyDisconnected( lister, data_type );
-            // TDLog.v("shot window cmd " + what + " set connection status " + mDataDownloader.getStatus() );
-            // if ( mShotWindow != null ) mShotWindow.setConnectionStatus( mDataDownloader.getStatus() );
-          }
-        } ).start();
-        return true;
-      } else {
-        boolean ret = ((CavwayComm)mComm).setCavwayLaser(TDInstance.deviceAddress(), what, nr, lister, data_type, closeBT );
-        // if ( ret && mShotWindow != null ) mShotWindow.setConnectionStatus( mDataDownloader.getStatus() );
-        return ret;
-      }
-    } else {
-      TDLog.e("set XBLE laser: not XBLE comm");
+    return runLaserCommand( CavwayComm.class, what, nr, lister, dataType, closeBT, doThread );
+  }
+
+  private boolean runLaserCommand( Class<?> driverType, int what, int nr, ListerHandler lister, int dataType, boolean closeBT, boolean doThread )
+  {
+    DeviceOperation operation = beginDeviceOperation();
+    if ( operation == null ) return false;
+    if ( ! driverType.isInstance( operation.comm ) ) { operation.close(); return false; }
+    if ( doThread ) {
+      new Thread( () -> {
+        boolean success = false;
+        try { success = operation.laser( what, nr, lister, dataType, closeBT ); }
+        catch ( RuntimeException e ) { TDLog.e( "Device command: " + e.getMessage() ); }
+        finally { operation.close(); }
+        if ( ! success ) runOnMainThread( () -> TDToast.makeBad( R.string.device_command_failed ) );
+      }, "device-command" ).start();
+      return true;
     }
-    return false;
+    try { return operation.laser( what, nr, lister, dataType, closeBT ); }
+    finally { operation.close(); }
   }
 
   // int readFirmwareHardware()

@@ -1648,7 +1648,7 @@ public class DrawingWindow extends ItemDrawer
     sb.append(mName);
     sb.append(": ");
     
-    if ( TDSetting.isConnectionModeMulti() /* || TDSetting.isConnectionModeDouble() */ ) {
+    if ( TDInstance.getDeviceA() != null ) {
       sb.append( "{" );
       if ( TDInstance.getDeviceA() != null ) sb.append( TDInstance.getDeviceA().getNickname() );
       sb.append( "} " );
@@ -3203,8 +3203,8 @@ public class DrawingWindow extends ItemDrawer
     if ( TDLevel.overNormal ) {
       if ( BTN_TOOL < mNrButton2 ) mButton2[ BTN_TOOL ].setOnLongClickListener( this );
     }
+    if ( BTN_DOWNLOAD < mNrButton1 && mDataDownloader != null ) mButton1[BTN_DOWNLOAD].setOnLongClickListener( this );
     if ( TDLevel.overAdvanced ) {
-      if ( BTN_DOWNLOAD  < mNrButton1 && mDataDownloader != null ) mButton1[BTN_DOWNLOAD].setOnLongClickListener( this );
       if ( BTN_DIAL      < mNrButton1 ) mButton1[BTN_DIAL].setOnLongClickListener( this );
       if ( BTN_ITEM_EDIT < mNrButton3 ) mButton3[BTN_ITEM_EDIT].setOnLongClickListener( this );
     }
@@ -8991,22 +8991,8 @@ public class DrawingWindow extends ItemDrawer
   {
     mDrawingSurface.requestSceneRenderPosted(); // button actions may mutate the scene: invalidate before and after the handler
     Button b = (Button)view;
-    if ( TDLevel.overAdvanced && BTN_DOWNLOAD < mNrButton1 && b == mButton1[ BTN_DOWNLOAD ] ) {
-      if ( mDataDownloader != null ) { // TH2EDIT added this test 
-        if (  ! mDataDownloader.isDownloading() && TDSetting.isConnectionModeMulti() && TopoDroidApp.mDData.getDevices().size() > 1 ) {
-          if ( TDSetting.mSecondDistoX && TDInstance.getDeviceB() != null ) {
-            mApp.switchSecondDevice();
-            setTheTitle();
-            // TDToast.make( String.format( getResources().getString(R.string.using), TDInstance.deviceNickname() ) );
-          } else {
-            (new DeviceSelectDialog( this, mApp, mDataDownloader, this )).show();
-          }
-        } else {
-          mDataDownloader.toggleDownloading();
-          setConnectionStatus( mDataDownloader.getStatus() );
-          mDataDownloader.doDataDownload( mApp.mListerSet, DataType.DATA_SHOT );
-        }
-      }
+    if ( BTN_DOWNLOAD < mNrButton1 && b == mButton1[ BTN_DOWNLOAD ] ) {
+      if ( mDataDownloader != null ) mApp.showSurveyDeviceSwitch( this, this );
     } else if ( TDLevel.overAdvanced && BTN_DIAL < mNrButton1 && b == mButton1[ BTN_DIAL ] ) {
       if ( /* TDLevel.overAdvanced && */ mType == PlotType.PLOT_PLAN && TDAzimuth.mFixedExtend == 0 ) {
         mRotateAzimuth = true;
@@ -11063,7 +11049,7 @@ public class DrawingWindow extends ItemDrawer
         switch ( status ) {
           case ConnectionState.CONN_CONNECTED:
             setButton1( BTN_DOWNLOAD, mBMdownload_on );
-            if ( TDInstance.isDeviceBric() ) {
+            if ( TDInstance.hasDeviceRemoteControl() ) {
               setButton1( BTN_BLUETOOTH, mBMbluetooth );
             } else {
               setButton1( BTN_BLUETOOTH, mBMbluetooth_no );
@@ -11084,7 +11070,7 @@ public class DrawingWindow extends ItemDrawer
   public void enableBluetoothButton( boolean enable )
   {
     if ( TDInstance.isDivingMode() ) return;
-    if ( TDInstance.hasBleDevice() ) enable = true;
+    enable = enable && ! mApp.isDeviceOperationBusy();
     setButton1( BTN_BLUETOOTH, enable ? mBMbluetooth : mBMbluetooth_no );
     if ( BTN_BLUETOOTH < mNrButton1 ) mButton1[BTN_BLUETOOTH].setEnabled( enable );
   }

@@ -292,6 +292,7 @@ public class DeviceActivity extends Activity
       mTvAddress.setText( R.string.no_device_address );
     }
     if ( TDSetting.mSecondDistoX ) {
+      mTvAddressB.setVisibility( View.VISIBLE );
       if ( currDeviceB() != null ) { 
         mTvAddressB.setTextColor( 0xffffcc33 );
         mTvAddressB.setText( String.format( getResources().getString( R.string.using ), currDeviceB().toString() ) );
@@ -401,6 +402,7 @@ public class DeviceActivity extends Activity
     String address = device.getAddress();
     TDLog.v("forget device " + address );
     mApp_mDData.forgetDevice( address );
+    if ( TDInstance.isSecondDeviceAddress( address ) ) mApp.setDeviceB( null );
     // forget device on Android
     Set<BluetoothDevice> bt_device_set = DeviceUtil.getBondedDevices(); // add bonded devices
     if ( bt_device_set != null && ! bt_device_set.isEmpty() ) {
@@ -1559,13 +1561,9 @@ public class DeviceActivity extends Activity
    * @param address  BT address of secondary device
    */
   void setSecondDevice( String address )
-  {  
-    if ( currDeviceB() == null || ! address.equals( currDeviceB().getAddress() ) ) {
-      mApp.setDeviceB( address );
-      // mCurrDeviceB = TDInstance.getDeviceB();
-      mApp.disconnectRemoteDevice( true ); // new DataStopTask( mApp, null, null );
-      setState( false );
-    }
+  {
+    mApp.setDeviceB( address );
+    setState( false );
   }
 
   /** open a calibration

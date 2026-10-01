@@ -101,11 +101,12 @@ public class CavwayComm extends BleComm
   BluetoothGattCharacteristic mWriteChrt = null;
   //private boolean mReadInitialized  = false;
   //private boolean mWriteInitialized = false;
-  private boolean mReconnect = false;
-  private boolean mSkipNotify = false;
+  private volatile boolean mReconnect = false;
+  private volatile boolean mSkipNotify = false;
   private int mReadingMemory = READ_NONE; // 0 none; 1 memory; 2 coeffs
 
   private int mDataType;
+  private volatile int mProcessedPackets;
   private int mPacketType;  // type of the last incoming packet that has been read
 
   // private Timer mTimer;
@@ -200,6 +201,7 @@ public class CavwayComm extends BleComm
             if ( res == CavwayProtocol.PACKET_FLASH_BYTES_1 ) continue;   // first-half of firmware block received
             synchronized (mNewDataFlag) {
               // if ( mPacketToRead > 0 ) mPacketToRead --; // only for shot data from laser task
+              mProcessedPackets = mNrReadPackets;
               mPacketType = res;
               mNewDataFlag.notifyAll(); // wake sleeping threads
             }
@@ -215,23 +217,12 @@ public class CavwayComm extends BleComm
     mConsumer.start();
   }
 
-  private void stopConsumerThread()
-  {
-    if ( mConsumer != null ) {
-      // put a BleQueue.DATA_QUIT buffer on the queue
-      if ( LOG ) TDLog.v( TAG + "stop consumer thread");
-      mQueue.put( BleQueue.DATA_QUIT, new byte[0] );
-    }
-    mConsumer = null;
-  }
-    
-
   /** @return true if it is downloading or in skip-notify mode
    */
   boolean isDownloading() 
   { 
     if ( LOG ) TDLog.v( TAG + "is downloading - skip notyfy " + mSkipNotify );
-    return mApp.isDownloading() || mSkipNotify;
+    return isClosing() || mRemoteOperation || mApp.isDownloading() || mSkipNotify;
   }
 
   /** @return true if the communication is reading from memory
@@ -248,8 +239,9 @@ public class CavwayComm extends BleComm
   @Override
   public void terminate()
   {
-    if ( LOG ) TDLog.v( TAG + "terminate");
-    stopConsumerThread();
+    mReconnect = false;
+    drainConsumer( mConsumer );
+    mConsumer = null;
   }
   // -------------------------------------------------------------
   /**
@@ -319,6 +311,7 @@ public class CavwayComm extends BleComm
     if ( LOG ) TDLog.v( TAG + "\"connect Device\" data type " + data_type );
     mAddress       = address; // saved
     mNrReadPackets = 0;
+    mProcessedPackets = 0;
     mDataType      = data_type;
     mLister        = lister;  // saved
     mTimeout       = timeout; // saved
@@ -364,7 +357,12 @@ public class CavwayComm extends BleComm
   {
     if ( LOG ) TDLog.v( TAG + "\"disconnect device\": connected " + mBTConnected );
     mReconnect = false;  // was stopTimer();
-    return closeDevice( false );
+    mReconnect = false;
+    mBTConnected = false;
+    if ( mQps != null ) mQps.discard();
+    if ( mCallback != null ) mCallback.closeGatt();
+    notifyStatus( ConnectionState.CONN_DISCONNECTED );
+    return true;
   }
 
   // this is called only on a GATT failure, or the user disconnects
@@ -535,8 +533,10 @@ public class CavwayComm extends BleComm
   {
     if ( LOG ) TDLog.v( TAG + "written descr, bytes " + bytes.length );
     if ( uuid_str.equals( BleUtils.CCCD_UUID_STR ) ) { // a notify op - 202301818 using CCCD_UUID_STR
-      if ( bytes != null ) {
+      if ( bytes != null && bytes.length > 0 ) {
         if ( bytes[0] != 0 ) { // set notify/indicate
+          mBTConnected = true;
+          notifyStatus( ConnectionState.CONN_CONNECTED );
           if ( LOG ) TDLog.v( TAG + "CCCD set notify " + bytes[0] + " chrt " + uuid_chrt_str );
           // here we may save the UUID of notifying characteristics
         } else { 
@@ -631,8 +631,7 @@ public class CavwayComm extends BleComm
     } else {
       if ( LOG ) TDLog.v( TAG + "enable PNotify success");
       // 202211XX
-      mBTConnected  = true;
-      notifyStatus( ConnectionState.CONN_CONNECTED );
+
       // resetTimer();  // resetTimer was empty
       // TODO write a resend-interrupt to the DistoXBLE
     }
@@ -699,6 +698,12 @@ public class CavwayComm extends BleComm
    */
   private void reconnectDevice()
   {
+    if ( isClosing() ) return;
+    if ( mApp.isDownloading() && TDSetting.isConnectionModeContinuous() ) {
+      disconnectDevice();
+      mApp.notifyDisconnected( mLister, mDataType );
+      return;
+    }
     if ( LOG ) TDLog.v( TAG + "reconnect device - close GATT" );
     // mOps.clear();
     // // mPendingCommands = 0; // FIXME COMPOSITE_COMMANDS
@@ -712,7 +717,7 @@ public class CavwayComm extends BleComm
       notifyStatus( ConnectionState.CONN_WAITING );
       mQps.enqueueOp( new BleOpConnect( mContext, this, mRemoteBtDevice ) ); // exec connectGatt()
       mQps.doNextOp();
-      mBTConnected = true;
+      mBTConnected = false;
     } else {
       if ( LOG ) TDLog.v( TAG + "reconnect device - disconnected" );
       notifyStatus( ConnectionState.CONN_DISCONNECTED );
@@ -745,7 +750,7 @@ public class CavwayComm extends BleComm
   {
     if ( LOG ) TDLog.v( TAG + "notify status " + status + " skip " + mSkipNotify );
     if ( mSkipNotify ) return;
-    mApp.notifyListerStatus( mLister, status );
+    mApp.notifyCommStatus( this, mLister, status );
   }
 
   /** prepare a write op and put it on the queue - call the next op
@@ -883,73 +888,33 @@ public class CavwayComm extends BleComm
    * @param closeBT   whether to close the connection at the end
    * @return true on success
    */
-  public boolean setCavwayLaser( String address, int what, int to_read, ListerHandler lister, int data_type, boolean closeBT )
+  public boolean setCavwayLaser( String address, int what, int toRead, ListerHandler lister, int dataType, boolean closeBT )
   {
     mSkipNotify = true;
-    // FIXME no need to run on a thread
-    // Thread laserThread = new Thread() {
-    //   @Override public void run() {
-        boolean connected = isConnected();
-        if ( ! connected ) {
-          if ( ! tryConnectDevice( address, lister, 0 ) ) {
-            TDLog.t( TAG + "set laser - failed connect device");
-            closeDevice( true );
-            mSkipNotify = false;
-            return false; 
+    try {
+      if ( ! tryConnectDevice( address, lister, dataType ) ) return false;
+      int before = mProcessedPackets;
+      if ( ! sendCommand( (byte)(what == Device.MEASURE_DOWNLOAD ? Device.MEASURE : what) ) ) return false;
+      if ( ! TDUtil.slowDown( 601 ) || ! waitForOperations( 5000 ) ) return false;
+      if ( what == Device.DEVICE_OFF ) { disconnectDevice(); return true; }
+      if ( (what == Device.MEASURE || what == Device.MEASURE_DOWNLOAD) && toRead > 0 ) {
+        long deadline = android.os.SystemClock.elapsedRealtime() + Math.max( 5000, TDSetting.mWaitShot + 2000 );
+        synchronized ( mNewDataFlag ) {
+          while ( mProcessedPackets - before < toRead ) {
+            if ( ! isConnected() || Thread.currentThread().isInterrupted() || android.os.SystemClock.elapsedRealtime() >= deadline ) return false;
+            if ( ! syncWait( 100, "remote measurement" ) ) return false;
           }
         }
-        // mNrReadPackets = 0;
-        // mPacketToRead = to_read; // set the number of packet to read
-        if ( LOG ) TDLog.v( TAG + "set laser: " + what + " packet " + to_read );
-        switch ( what ) {
-          case Device.DEVICE_OFF:
-            mSkipNotify = false;
-            // stopTimer();
-            sendCommand( (byte)Device.DEVICE_OFF );
-            disconnectDevice( );
-            break;
-          case Device.LASER_ON:
-            sendCommand( (byte)Device.LASER_ON );
-            break;
-          case Device.LASER_OFF:
-            sendCommand( (byte)Device.LASER_OFF );
-            break;
-          case Device.MEASURE:
-            // sendCommand( (byte)Device.MEASURE );
-            // break;
-          case Device.MEASURE_DOWNLOAD:
-            sendCommand( (byte)Device.MEASURE );
-            break;
-          case Device.CALIB_OFF:
-            sendCommand( (byte)Device.CALIB_OFF );
-            break;
-          case Device.CALIB_ON:
-            sendCommand( (byte)Device.CALIB_ON );
-            break;
-        }
-        if ( LOG ) TDLog.v( TAG + "set laser - slow down after send command");
-        TDUtil.slowDown(601);
-        if ( closeBT ) {
-          // synchronized ( mNewDataFlag ) {
-          //   try {
-          //     if ( LOG ) TDLog.v( TAG + "to read " + to_read + " read " + mNrReadPackets );
-          //     while ( 2 * to_read > mNrReadPackets ) mNewDataFlag.wait( 500 ); // 0.5 seconds
-          //   } catch ( InterruptedException e ) { 
-          //     if ( LOG ) TDLog.v( TAG + "interrupted setXBLELaser");
-          //     // e.printStackTrace();
-          //   }
-          // }
-          if ( LOG ) TDLog.v( TAG + "set laser - wait 2 sec before closing device");
-          TDUtil.slowDown( 2001 );
-          // syncWait(2000, "laser close device");
-          // TDLog.v( TAG + "laser close device");
-          closeDevice( true );
-          mSkipNotify = false;
-        }
-    //   }
-    // };
-    // laserThread.start();
-    return true;
+      }
+      if ( closeBT ) {
+        TDUtil.slowDown( 2001 );
+        disconnectDevice();
+      }
+      return ! Thread.currentThread().isInterrupted();
+    } finally {
+      if ( closeBT && isConnected() ) disconnectDevice();
+      mSkipNotify = false;
+    }
   }
 
   // ----------------- SEND COMMAND -------------------------------
@@ -1331,16 +1296,18 @@ public class CavwayComm extends BleComm
     if ( LOG ) TDLog.v( TAG + "cavway batch download, address " + address + " data_type " + data_type );
     // mConnectionMode = 0;
     mDataType = data_type;
-    if ( ! tryConnectDevice( address, lister, 0 ) ) return -1; 
     mNrReadPackets = 0;
+    mProcessedPackets = 0;
+    mPacketType = CavwayProtocol.PACKET_NONE;
+    if ( ! tryConnectDevice( address, lister, data_type ) ) return -1;
 
     //sendCommand( 0x40 );     // start send measure packet ???
     TDUtil.yieldDown( 500 );
     // ??? start a thread that keeps track of read packets - when read done stop it and return
-    mPacketType = CavwayProtocol.PACKET_NONE;
     synchronized ( mNewDataFlag ) {
       while( true ) {
-        if ( syncWait( 2000, "data download" ) ) {
+        if ( ! syncWait( 2000, "data download" ) ) break;
+        {
           if ( mPacketType == CavwayProtocol.PACKET_MEASURE_DATA || mPacketType == CavwayProtocol.PACKET_CALIB_DATA ) {
             mPacketType = CavwayProtocol.PACKET_NONE; // reset
             if ( LOG ) TDLog.v( TAG + "got packet type " + mPacketType + " nr packets " + mNrReadPackets );
@@ -1389,6 +1356,7 @@ public class CavwayComm extends BleComm
     }
     int loop_cnt = 50; // 20230118 local var "loop_cnt"
     while( ! mBTConnected ) {
+      if ( isClosing() || Thread.currentThread().isInterrupted() ) return false;
       if ( LOG ) TDLog.v( TAG + "try connect - not connected ... " + loop_cnt );
       TDUtil.slowDown( 105 );
       if ( loop_cnt-- == 0 ) {

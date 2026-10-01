@@ -76,6 +76,9 @@ public class ListerHandler extends Handler
     if ( mLister != null ) mLister.setConnectionStatus( status );
   }
 
+  public void setTheTitle() { if ( mLister != null ) mLister.setTheTitle(); }
+  public void enableBluetoothButton( boolean enable ) { if ( mLister != null ) mLister.enableBluetoothButton( enable ); }
+
   /** handle a message
    * @param msg  message
    */
@@ -124,4 +127,3 @@ public class ListerHandler extends Handler
   }
 
 }
-

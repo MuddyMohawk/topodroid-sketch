@@ -149,7 +149,7 @@ public class TDInstance
   /** set primary bluetooth device
    * @param device bluetooth device
    */
-  public static void setDeviceA( Device device ) { deviceA = device; }
+  public static void setDeviceA( Device device ) { deviceA = device; mBleDevice = null; }
 
   /** set secondary bluetooth device
    * @param device bluetooth device
@@ -170,7 +170,9 @@ public class TDInstance
   static void initBleDevice( )
   {
     BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-    mBleDevice = adapter.getRemoteDevice( TDInstance.deviceAddress() );
+    if ( adapter == null || TDInstance.deviceAddress() == null ) { mBleDevice = null; return; }
+    try { mBleDevice = adapter.getRemoteDevice( TDInstance.deviceAddress() ); }
+    catch ( IllegalArgumentException | SecurityException e ) { mBleDevice = null; }
   }
 
   /** set the bluetooth LE device
@@ -241,18 +243,6 @@ public class TDInstance
 
   static String recentPlot = null;
   static long   recentPlotType = PlotType.PLOT_PLAN;
-
-  /** switch device
-   * @return true if successfully switched
-   */
-  static boolean switchDevice()
-  {
-    if ( deviceB == null ) return false;
-    Device tmp = deviceA;
-    deviceA = deviceB;
-    deviceB = tmp;
-    return true;
-  }
 
   /** @return a bundle containing TopoDroid status
    */

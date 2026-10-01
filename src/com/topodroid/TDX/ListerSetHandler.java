@@ -49,6 +49,16 @@ class ListerSetHandler extends ListerHandler
     for ( ILister lister : mListers ) lister.setConnectionStatus( status );
   }
 
+  @Override synchronized public void setTheTitle()
+  {
+    for ( ILister lister : mListers ) lister.setTheTitle();
+  }
+
+  @Override synchronized public void enableBluetoothButton( boolean enable )
+  {
+    for ( ILister lister : mListers ) lister.enableBluetoothButton( enable );
+  }
+
   @Override
   synchronized public void refreshDisplay( int nr, boolean toast )
   {
@@ -91,4 +101,3 @@ class ListerSetHandler extends ListerHandler
 
 
 }
-

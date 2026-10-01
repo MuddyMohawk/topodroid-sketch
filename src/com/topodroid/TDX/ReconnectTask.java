@@ -11,94 +11,32 @@
  */
 package com.topodroid.TDX;
 
-import com.topodroid.prefs.TDSetting;
-import com.topodroid.util.TDLog;
-// import com.topodroid.dev.ConnectionState;
-
 import android.os.AsyncTask;
 
-class ReconnectTask extends AsyncTask< String, Integer, Integer >
+class ReconnectTask extends AsyncTask<String, Integer, Integer>
 {
-  private DataDownloader mDownloader;
-  private ReconnectTask  running;
-  private ListerHandler  mLister;
-  private int mDataType; // data type, passed to data_downloader try_connect()
-  private int mDelay = 0;
+  private final DataDownloader mDownloader;
+  private final ListerHandler mLister;
+  private final int mDataType;
+  private final int mDelay;
+  private final long mGeneration;
 
-  /** cstr
-   * @param downloader   data downloader
-   * @param lister       data lister
-   * @param data_type    type of data to download
-   * @param delay        ...
-   */
-  ReconnectTask( DataDownloader downloader, ListerHandler lister, int data_type, int delay )
+  ReconnectTask( DataDownloader downloader, ListerHandler lister, int dataType, int delay )
   {
     mDownloader = downloader;
-    mLister     = lister;
-    mDataType = data_type;
+    mLister = lister;
+    mDataType = dataType;
     mDelay = delay;
-    running = null;
+    mGeneration = downloader.generation();
   }
 
-  /** execute the task in background
-   * @param statuses   unused
-   * @return result (?)
-   */
-  @Override
-  protected Integer doInBackground( String... statuses )
+  @Override protected Integer doInBackground( String... ignored )
   {
-    if ( ! lock() ) return null;
-    if ( TDSetting.mAutoReconnect && TDInstance.isContinuousMode() ) {
-      // TDLog.v( "RECONNECT TASK running ...");
-      while ( mDownloader.needReconnect() ) {
-        try {
-          if ( mDelay > 0 ) {
-            // TDLog.v("SLEEP reconnect " + mDelay );
-            Thread.sleep( mDelay );
-          }
-          // TDLog.v( "RECONNECT TASK status " + mDownloader.isDownloading() );
-          mDownloader.tryConnect( mLister, mDataType ); 
-        } catch ( InterruptedException e ) {
-          TDLog.e( e.getMessage() );
-        }
-      }
-    }
-    // TDLog.v( "RECONNECT TASK exits");
+    try {
+      if ( mDelay > 0 ) Thread.sleep( mDelay );
+      if ( ! isCancelled() && mDownloader.isCurrent( mGeneration ) ) mDownloader.tryConnect( mLister, mDataType, mGeneration );
+    } catch ( InterruptedException e ) { Thread.currentThread().interrupt(); }
+    finally { mDownloader.reconnectFinished( this ); }
     return 0;
   }
-
-  // @Override
-  // protected void onProgressUpdate( Integer... values)
-  // {
-  //   super.onProgressUpdate( values );
-  // }
-
-  /** execute after the task: release the lock
-   */
-  @Override
-  protected void onPostExecute( Integer res )
-  {
-    // mDownloader.notifyConnectionStatus( mDownloader.isConnected()? ConnectionState.CONN_CONNECTED : ConnectionState.CONN_WAITING );
-    // TDLog.v( "Reconnect Task done with delay " + mDelay );
-    unlock();
-  }
-
-  /** acquire the lock
-   * @return true if successful
-   */
-  private synchronized boolean lock()
-  {
-    if ( running != null ) return false;
-    running = this;
-    return true;
-  }
-
-  /** release the lock
-   */
-  private synchronized void unlock()
-  {
-    if ( running == this ) running = null;
-  }
-
 }
-

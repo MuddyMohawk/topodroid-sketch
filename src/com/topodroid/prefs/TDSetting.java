@@ -236,6 +236,7 @@ public class TDSetting
      
 
   public static String keyDeviceName() { return "DISTOX_DEVICE"; }
+  public static String keySecondDeviceName() { return "DISTOX_SECOND_DEVICE"; }
 
   // static final  String EXPORT_TYPE    = "th";    // DISTOX_EXPORT_TH
 

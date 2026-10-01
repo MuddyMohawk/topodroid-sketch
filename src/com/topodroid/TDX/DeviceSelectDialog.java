@@ -11,11 +11,9 @@
  */
 package com.topodroid.TDX;
 
-import com.topodroid.util.TDLog;
 import com.topodroid.ui.MyDialog;
 import com.topodroid.ui.ListItemAdapter;
 import com.topodroid.dev.Device;
-import com.topodroid.dev.DataType;
 
 // import java.util.Set;
 // import java.util.List;
@@ -27,7 +25,6 @@ import android.os.Bundle;
 import android.content.Context;
 // import android.content.DialogInterface;
 
-import android.widget.TextView;
 import android.widget.ListView;
 import android.widget.Button;
 import android.widget.AdapterView;
@@ -41,25 +38,20 @@ class DeviceSelectDialog extends MyDialog
                          , OnClickListener
 {
   private final Context mContext;
-  private final DataDownloader mDownloader;
-  private final ILister mLister;
 
   private ListView mList;
+  private final ArrayList<Device> mDevices = new ArrayList<>();
   // private Button  mBtnCancel;
 
   // ---------------------------------------------------------------
   /** cstr
    * @param context    context
    * @param app        application
-   * @param downloader data downloader
-   * @param lister     data lister
    */
-  DeviceSelectDialog( Context context, TopoDroidApp app, DataDownloader downloader, ILister lister )
+  DeviceSelectDialog( Context context, TopoDroidApp app )
   {
     super( context, app, R.string.DeviceSelectDialog );
     mContext = context;
-    mDownloader = downloader;
-    mLister = lister;
     // TDLog.v( "device select dialog created");
   }
 
@@ -91,14 +83,13 @@ class DeviceSelectDialog extends MyDialog
     // if ( TDLevel.overTester ) { // FIXME VirtualDistoX
     //   array_adapter.add( "X000" );
     // }
-    ArrayList< Device > devices = TopoDroidApp.mDData.getDevices();
-    for ( Device device : devices ) {
-      // String addr  = device.mAddress;
-      // String model = device.mName;
-      // String name  = device.mName;
-      // String nick  = device.mNickname;
-      if ( device.isBT() ) { // FIXME BLE : only classic BT
-        array_adapter.add( device.toString() );
+    mDevices.clear();
+    for ( Device device : mApp.knownDevices() ) {
+      if ( device.isBT() || device.isBLE() ) {
+        mDevices.add( device );
+        String label = device.toString() + " [" + device.getAddress() + "]";
+        if ( device.hasAddress( TDInstance.deviceAddress() ) ) label += " (active)";
+        array_adapter.add( label );
       }
     }
     mList.setAdapter( array_adapter );
@@ -114,26 +105,7 @@ class DeviceSelectDialog extends MyDialog
   public void onItemClick(AdapterView<?> parent, View view, int pos, long id)
   {
     dismiss();
-    if ( ! ( view instanceof TextView ) ) {
-      TDLog.e("device select view instance of " + view.toString() );
-      return;
-    }
-    CharSequence item = ((TextView) view).getText();
-    StringBuffer buf = new StringBuffer( item );
-    int k = buf.lastIndexOf(" ");
-    String[] vals = item.toString().split(" ", 3 );
-
-    // FIXME VirtualDistoX
-    // String address = ( vals[0].equals("X000") )? Device.ZERO_ADDRESS : vals[2];
-    String model   = vals[0];
-    String name    = vals[1];
-    String address = vals[2];
-
-    mApp.setDevicePrimary( address, model, name, null ); // FIXME BLEX only BT devices
-    mLister.setTheTitle();
-    mDownloader.toggleDownloading();
-    mLister.setConnectionStatus( mDownloader.getStatus() );
-    mDownloader.doDataDownload( mApp.mListerSet, DataType.DATA_ALL );
+    if ( pos >= 0 && pos < mDevices.size() ) mApp.requestSurveyDeviceSwitch( mDevices.get( pos ).getAddress() );
   }
 
   /** respond to a user tap - dismiss the dialog

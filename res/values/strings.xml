@@ -2913,4 +2913,9 @@ READ THE HELP BEFORE ATTEMPTING A FIRMWARE UPLOAD
   <string name="stylus_only_disabled">Stylus-only input disabled</string>
   <string name="stylus_zoom_in">Zoom in</string>
   <string name="stylus_zoom_out">Zoom out</string>
+    <string name="device_switching">Switching to %1$s…</string>
+    <string name="device_operation_busy">Device busy; finish the current operation first</string>
+    <string name="device_pair_duplicate">Choose a different instrument for the alternate device</string>
+    <string name="device_connection_failed">Could not connect to the selected device. Tap Download to retry.</string>
+    <string name="device_command_failed">Device command failed</string>
 </resources>
