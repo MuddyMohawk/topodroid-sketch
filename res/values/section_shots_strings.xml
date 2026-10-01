@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="section_shots_title">Cross-section shots</string>
+  <string name="section_search_stations">Search stations</string>
+  <string name="section_station_help">Check a station to show its name and connected legs. Choose its splays separately.</string>
+  <string name="section_show_out_of_plane">Show out-of-plane splays</string>
+  <string name="section_station_unavailable">No coordinates connected to this section</string>
+  <string name="section_no_stations">No matching stations</string>
+  <string name="section_selection_save_failed">Could not save cross-section selections</string>
+  <string name="section_selection_import_warning">Survey imported; cross-section selections could not be restored</string>
+  <string name="section_station_accessibility">Station %1$s</string>
+  <string name="section_splays_accessibility">Splays at station %1$s</string>
+</resources>

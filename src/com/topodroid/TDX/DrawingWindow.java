@@ -820,8 +820,6 @@ public class DrawingWindow extends ItemDrawer
   private long mType; // current plot type
   private String mFrom;
   private String mTo;   // TO station for sections
-  private ArrayList< String > mFroms = new ArrayList<>(); // multileg stations
-  private ArrayList< String > mTos   = new ArrayList<>();
   private float mAzimuth = 0.0f;
   private float mClino   = 0.0f;
   private float mIntersectionT = -1.0f; // intersection abscissa for leg xsections (2 for multileg, negative for regular plots)
@@ -890,14 +888,7 @@ public class DrawingWindow extends ItemDrawer
   private BitmapDrawable mBMadd;
   private BitmapDrawable mBMleft;
   private BitmapDrawable mBMright;
-  private BitmapDrawable mBMsplayNone;       // grey bg
-  private BitmapDrawable mBMsplayFront;
-  private BitmapDrawable mBMsplayBack;
-  private BitmapDrawable mBMsplayBoth;
-  private BitmapDrawable mBMsplayNoneBlack;  // black bg
-  private BitmapDrawable mBMsplayFrontBlack;
-  private BitmapDrawable mBMsplayBackBlack;
-  private BitmapDrawable mBMsplayBothBlack;
+  private BitmapDrawable mBMsectionShots;
   private BitmapDrawable mBMeraseAll;
   private BitmapDrawable mBMerasePoint;
   private BitmapDrawable mBMeraseLine;
@@ -1500,29 +1491,6 @@ public class DrawingWindow extends ItemDrawer
         path.setPathPaint( BrushManager.paintSplayXB );      // LIGHT_BLUE
       }
     }
-  }
-
-  /** used for splays in XSections
-   * the DBlock comes from a query in the DB and it is not the DBlock in the plan/profile
-   *     therefore coloring the splays of those blocks does not affect the X-Section splay coloring
-   * @param blk    data block
-   * @param x1,y1  first endpoint
-   * @param x2,y2  second endpoint
-   * @param angle  angle between splay and the plane [degrees]
-   * @param blue   true for splays at TO station
-   */
-  private void addFixedSectionSplay( DBlock blk, float x1, float y1, float x2, float y2, float angle,
-                                     // float xoff, float yoff,
-                                     boolean blue )
-  {
-    // TDLog.v("add fixed section splay " + blue );
-    DrawingSplayPath dpath = new DrawingSplayPath( blk, mDrawingSurface.scrapIndex() );
-    dpath.setCosine( angle );
-    setSectionSplayPaint( dpath, blk, angle, blue );
-    // dpath.setPathPaint( blue? BrushManager.paintSplayXViewed : BrushManager.paintSplayXB );
-    // DrawingUtil.makeDrawingPath( dpath, x1, y1, x2, y2, xoff, yoff );
-    DrawingUtil.makeDrawingSplayPath( dpath, x1, y1, x2, y2 );
-    mDrawingSurface.addFixedSplayPath( dpath, false ); // false SELECTABLE
   }
 
   // --------------------------------------------------------------------------------------
@@ -2624,14 +2592,7 @@ public class DrawingWindow extends ItemDrawer
     mBMright         = MyButton.getButtonBackground( this, res, R.drawable.iz_right );
     mBMbluetooth_no  = MyButton.getButtonBackground( this, res, R.drawable.iz_bt_no );
     setRefAzimuth( TDAzimuth.mRefAzimuth, TDAzimuth.mFixedExtend );
-    mBMsplayNone     = MyButton.getButtonBackground( this, res, R.drawable.iz_splay_none );
-    mBMsplayFront    = MyButton.getButtonBackground( this, res, R.drawable.iz_splay_front );
-    mBMsplayBack     = MyButton.getButtonBackground( this, res, R.drawable.iz_splay_back );
-    mBMsplayBoth     = MyButton.getButtonBackground( this, res, R.drawable.iz_splay_both );
-    mBMsplayNoneBlack  = MyButton.getButtonBackground( this, res, R.drawable.iz_splay_none_black );
-    mBMsplayFrontBlack = MyButton.getButtonBackground( this, res, R.drawable.iz_splay_front_black );
-    mBMsplayBackBlack  = MyButton.getButtonBackground( this, res, R.drawable.iz_splay_back_black );
-    mBMsplayBothBlack  = MyButton.getButtonBackground( this, res, R.drawable.iz_splay_both_black );
+    mBMsectionShots = MyButton.getButtonBackground( this, res, R.drawable.iz_select_shot );
 
     // if ( ! TDLevel.overNormal ) -- mNrButton2;
     mButton2 = new Button[ mNrButton2 + 1 ]; // DRAW
@@ -3849,7 +3810,6 @@ public class DrawingWindow extends ItemDrawer
   // ------------------------------------- PUSH / POP INFO --------------------------------
   private long mSavedType;
   private int mSavedMode;
-  // private int mSplayMode;
 
   /** reset the status mode(s) to the default values
    * @note called by popInfo pushInfo
@@ -3944,13 +3904,12 @@ public class DrawingWindow extends ItemDrawer
     mDrawingSurface.setDisplayMode( DisplayMode.DISPLAY_SECTION & mSavedMode );
     resetStatus();
     doStart( true, tt, center );
-    updateSplays( mApp.mSplayMode );
 
     // FIXME_SK mButton1[ BTN_DOWNLOAD ].setVisibility( View.GONE );
     // FIXME_SK mButton1[ BTN_BLUETOOTH ].setVisibility( View.GONE );
 
     // mButton1[ BTN_PLAN ].setVisibility( View.GONE );
-    if ( ! TDLevel.overExpert && BTN_PLAN < mNrButton1 ) mButton1[BTN_PLAN].setOnLongClickListener( null );
+    updateSectionSelectionButton();
     if ( TDLevel.overNormal ) {
       mListView.setAdapter( mButtonView1x.mAdapter );
       // mListView.setAdapter( mButtonView1.mAdapter );
@@ -3959,59 +3918,33 @@ public class DrawingWindow extends ItemDrawer
     }
   }
 
-  /** update the display of the splays - for XSections
-   * @param mode  splay display mode
-   */
-  private void updateSplays( int mode )
+  private void updateSectionSelectionButton()
   {
-    mApp.mSplayMode = mode;
-    switch ( mode ) {
-      case 0: 
-        // TDLog.v("hide splays at FROM and at TO");
-        setButton1( BTN_PLAN, (mApp.mShowSectionSplays? mBMsplayNone : mBMsplayNoneBlack) );
-        if ( PlotType.isMultilegSection( mType, mTo ) ) {
-          for ( String from : mFroms ) mDrawingSurface.hideStationSplays( from );
-          for ( String to   : mTos ) mDrawingSurface.hideStationSplays( to );
-        } else {
-          if ( PlotType.isLegSection( mType ) ) mDrawingSurface.hideStationSplays( mTo );
-          mDrawingSurface.hideStationSplays( mFrom );
-        }
-        break;
-      case 1: 
-        // TDLog.v("hide splays at FROM show splays at TO");
-        setButton1( BTN_PLAN, (mApp.mShowSectionSplays? mBMsplayFront : mBMsplayFrontBlack) );
-        if ( PlotType.isMultilegSection( mType, mTo ) ) {
-          for ( String from : mFroms ) mDrawingSurface.hideStationSplays( from );
-          for ( String to   : mTos ) mDrawingSurface.showStationSplays( to );
-        } else {
-          if ( PlotType.isLegSection( mType ) ) mDrawingSurface.showStationSplays( mTo );
-          mDrawingSurface.hideStationSplays( mFrom );
-        }
-        break;
-      case 2: 
-        // TDLog.v("show splays at FROM and at TO");
-        setButton1( BTN_PLAN, (mApp.mShowSectionSplays? mBMsplayBoth : mBMsplayBothBlack) );
-        if ( PlotType.isMultilegSection( mType, mTo ) ) {
-          for ( String from : mFroms ) mDrawingSurface.showStationSplays( from );
-          for ( String to   : mTos ) mDrawingSurface.showStationSplays( to );
-        } else {
-          if ( PlotType.isLegSection( mType ) ) mDrawingSurface.showStationSplays( mTo );
-          mDrawingSurface.showStationSplays( mFrom );
-        }
-        break;
-      case 3: 
-        // TDLog.v("show splays at FROM, hide splays at TO");
-        setButton1( BTN_PLAN, (mApp.mShowSectionSplays? mBMsplayBack : mBMsplayBackBlack) );
-        if ( PlotType.isMultilegSection( mType, mTo ) ) {
-          for ( String from : mFroms ) mDrawingSurface.showStationSplays( from );
-          for ( String to   : mTos ) mDrawingSurface.hideStationSplays( to );
-        } else {
-          if ( PlotType.isLegSection( mType ) ) mDrawingSurface.hideStationSplays( mTo );
-          mDrawingSurface.showStationSplays( mFrom );
-        }
-        break;
+    if ( ! PlotType.isAnySection( mType ) ) return;
+    setButton1( BTN_PLAN, mBMsectionShots );
+    if ( BTN_PLAN < mNrButton1 ) {
+      mButton1[BTN_PLAN].setContentDescription( getString( R.string.section_shots_title ) );
+      mButton1[BTN_PLAN].setOnLongClickListener( this );
     }
-    mDrawingSurface.setSplayAlpha( mApp.mShowSectionSplays ); // not necessary ?
+  }
+
+  private void showSectionShotsDialog()
+  {
+    if ( mPlot3 == null || ! PlotType.isAnySection( mType ) ) return;
+    List<DBlock> blocks = mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
+    refreshSectionNumbers( blocks );
+    SectionReferenceSelection selection = SectionReferenceRepository.load( mApp_mData, mSid, mPlot3, blocks );
+    SectionReferenceBuilder geometry = buildSectionGeometry( mPlot3, blocks, selection );
+    java.util.Map<String,Boolean> available = new java.util.LinkedHashMap<>();
+    for ( String station : mApp_mData.selectAllSurveyStations( mSid ) ) available.put( station, geometry.positions.containsKey( station ) );
+    for ( String station : selection.stations ) available.put( station, geometry.positions.containsKey( station ) );
+    for ( String station : selection.hiddenSplays ) available.put( station, geometry.positions.containsKey( station ) );
+    final long plotId = mPlot3.id;
+    new DrawingSectionShotsDialog( mActivity, selection, available, choices -> {
+      if ( ! SectionReferenceRepository.save( mApp_mData, mSid, plotId, choices ) ) return false;
+      doRestart();
+      return true;
+    } ).show();
   }
 
   /** switch to another plot
@@ -4361,83 +4294,31 @@ public class DrawingWindow extends ItemDrawer
   // }
 
 // ----------------------------------------------------------------------------
-  /** @return the list of legs and splays given a set of IDs of the legs
-   * @param from    string with the leg IDs
-   */
-  private List<DBlock> getMultilegShots( String from )
-  {
-    mFroms.clear();
-    mTos.clear();
-    ArrayList< DBlock > list = new ArrayList< >();
-    TreeSet< String > stations = new TreeSet<>();
-    String[] ids = from.split(" ");
-    for ( String id : ids ) {
-      if ( id.length() == 0 ) continue;
-      DBlock blk = mApp_mData.selectShot( Long.parseLong(id), mSid );
-      if ( blk != null ) { 
-        // TDLog.v("PLOT leg " + id + ": " + blk.mFrom + " " + blk.mTo );
-        stations.add( blk.mFrom );
-        stations.add( blk.mTo );
-        if ( TDMath.angleDifference( mAzimuth, blk.mBearing) < 90.0f ) {
-          mFroms.add( blk.mFrom );
-          mTos.add( blk.mTo );
-        } else {
-          mTos.add( blk.mFrom );
-          mFroms.add( blk.mTo );
-        }
-        list.add( blk );
-      }
-    }
-    List< DBlock > list0 = mApp_mData.selectAllSplaysAtStations( mSid, stations );
-    list.addAll( list0 ); // for ( DBlock blk0 : list0 ) list.add( blk0 );
-    // TDLog.v("PLOT multileg list size " + list.size() + " stations " + stations.size() + " splays " + list0.size() + " froms " + mFroms.size() + " tos " + mTos.size() );
-    return list;
-  }
- 
-  /** @return the list of x-section shots
-   * @param type  xsection type
-   * @param from  viewing station or station at-station x-section
-   * @param to    viewed station or null for at-station x-section
-   */
   private List<DBlock> getXSectionShots( long type, String from, String to )
   {
-    List< DBlock > list = null;
-    if ( PlotType.isLegSection( type ) ) {
-      if ( to != null && to.length() > 0 ) { // single leg xsection
-        list = mApp_mData.selectAllShotsAtStations( mSid, from, to );
-        // TDLog.v("Leg-Xsection select all shots at " + mFrom + " " + mTo + " : " + list.size() );
-      } else { // multileg xsection
-        list = getMultilegShots( from );
-      }
-    } else if ( PlotType.isStationSection( type ) ) { 
-      // N.B. mTo can be null
-      list = mApp_mData.selectShotsAt( mSid, from, false ); // select only splays
-      // TDLog.v("Station-Xsection select all shots at " + mFrom + " : " + list.size() );
-    }
-    return list;
+    return mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
   }
 
-  /** restart a xsection
-   * @note called by updateDisplay if the type is not plan/profile
-   */
-  private void doRestart( )
+  private void refreshSectionNumbers( List<DBlock> blocks )
   {
-    // mLastLinePath = null;
-    List< DBlock > list = getXSectionShots( mType, mFrom, mTo );
-    if ( list != null && list.size() > 0 ) {
-      if ( PlotType.isMultilegSection( mType, mTo ) ) {
-        // TDLog.v("PLOT restart multileg: from " + mFrom + " to " + mTo + " leg nr. " + list.size() );
-        makeMultilegSectionReferences( list, mPlot3.center );
-      } else {
-        // TDLog.v("PLOT restart single leg: from " + mFrom + " to " + mTo + " leg nr. " + ((list == null)? "null" : list.size()) );
-        if ( mIntersectionT != mPlot3.intercept ) {
-          // TDLog.v( "PLOT restart section - update intercept T " + mIntersectionT + " " + mPlot3.intercept);
-          mPlot3.intercept = mIntersectionT;
-          mApp_mData.updatePlotIntercept( mPlot3.id, TDInstance.sid, mIntersectionT );
-        }
-        makeSinglelegSectionReferences( list, mPlot3.intercept );
-      }
-    }
+    String origin = mPlot1 != null ? mPlot1.start : ( mNum != null ? mNum.getOriginStation() : null );
+    if ( origin != null ) mNum = new TDNum( blocks, origin, mDecl, mFormatClosure );
+  }
+
+  private SectionReferenceBuilder buildSectionGeometry( PlotInfo plot, List<DBlock> blocks, SectionReferenceSelection choices )
+  {
+    return new SectionReferenceBuilder( plot, blocks, mNum, choices, TDSetting.mSectionSplay, TDSetting.mHThreshold );
+  }
+
+  /** Rebuild references only: selections never alter the section origin or sketch. */
+  private void doRestart()
+  {
+    if ( mPlot3 == null ) return;
+    List<DBlock> blocks = mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
+    refreshSectionNumbers( blocks );
+    makeSectionReferences( blocks );
+    mDrawingSurface.setAllXSectionOutlines( this, 1 );
+    mDrawingSurface.setAllXSectionOutlines( this, 2 );
   }
 
   /** start the sketch display 
@@ -4487,6 +4368,7 @@ public class DrawingWindow extends ItemDrawer
       }
     }
 
+    if ( is_section ) refreshSectionNumbers( list );
     setPlotType( mType, do_load ); // if loaded update display-params
     // TDLog.TimeEnd( "after load" );
 
@@ -4514,16 +4396,16 @@ public class DrawingWindow extends ItemDrawer
           mPlot3.center = center;
           mApp_mData.updatePlotCenter( mPlot3.id, mSid, center );
         }
-        makeMultilegSectionReferences( list, mPlot3.center );
+        makeSectionReferences( list );
       } else {
         // TDLog.v("do start section T " + tt + " " + mPlot3.intercept );
-        if ( tt != mPlot3.intercept ) {
+        if ( tt >= 0 && tt <= 1 && tt != mPlot3.intercept ) {
           // TDLog.v( "do start section - update plot intercept T " + tt + " " + mPlot3.intercept );
           mApp_mData.updatePlotIntercept( mPlot3.id, mSid, tt );
           mPlot3.intercept = tt;
         }
         // FIXME MOVED_BACK_IN DrawingUtil.addGrid( -10, 10, -10, 10, 0.0f, 0.0f, mDrawingSurface );
-        makeSinglelegSectionReferences( list, mPlot3.intercept );
+        makeSectionReferences( list );
       } 
     }
     // TDLog.TimeEnd("do start done");
@@ -4537,299 +4419,25 @@ public class DrawingWindow extends ItemDrawer
   //   mDrawingSurface.addDrawingPath( path );
   // }
 
-  /** make the reference for a leg/at-station XSection
-   * @param list   list of shots of the section
-   * @param tt     abscissa of the leg intercept
-   * @note called by doRestart, doStart, doRecover
-   */
-  private void makeSinglelegSectionReferences( List< DBlock > list, float tt )
+  private void makeSectionReferences( List<DBlock> blocks )
   {
-
-    // assert( mLastLinePath == null); // not needed - guaranteed by callers
+    if ( mPlot3 == null ) return;
+    SectionReferenceSelection choices = SectionReferenceRepository.load( mApp_mData, mSid, mPlot3, blocks );
+    SectionReferenceBuilder geometry = buildSectionGeometry( mPlot3, blocks, choices );
     mDrawingSurface.newReferences( DrawingSurface.DRAWING_SECTION, (int)mType );
-    // TDLog.v( "single leg section list " + list.size() + " tt " + tt + " azimuth " + mAzimuth + " clino " + mClino );
-    // 2023-01-31 use survey declination for PLOT_H_SECTION
-    float decl = ( mType == PlotType.PLOT_H_SECTION )? mApp_mData.getSurveyDeclination( mSid ) : 0;
+    DrawingUtil.addGrid( -10, 10, -10, 10, 0.0f, 0.0f, mDrawingSurface );
+    float decl = mType == PlotType.PLOT_H_SECTION ? mApp_mData.getSurveyDeclination( mSid ) : 0;
     mDrawingSurface.addScaleRef( DrawingSurface.DRAWING_SECTION, (int)mType, decl );
-    float xfrom=0;
-    float yfrom=0;
-    float zfrom=0;
-    float xto=0;
-    float yto=0;
-    float zto=0;
-    // normal, horizontal and cross-product
-    float mc = mClino   * TDMath.DEG2RAD;
-    float ma = mAzimuth * TDMath.DEG2RAD;
-    // canvas X-axis, unit horizontal axis: 90 degrees to the right of the azimuth
-    //   azimuth = 0 (north) --> horizontal = ( 0N, 1E)
-    //   azimuth = 90 (east) --> horizontal = (-1N, 0E)
-    //   etc.
-    // canvas UP-axis: this is X0 ^ X1 : it goes up in the section plane 
-    // canvas Y-axis = - UP-axis
-
-    TDVector V0 = new TDVector( (float)(Math.cos(ma)*Math.cos(mc)), (float)(Math.sin(ma)*Math.cos(mc)), (float)Math.sin(mc) ); // normal to the x-section plane
-    // V1,V2 are the frame of reference in the x-section plane
-    TDVector V1 = new TDVector( - (float)Math.sin( ma ), (float)Math.cos( ma ), 0 );
-    TDVector V2 = V0.cross( V1 );
-
-    float dist = 0;
-    DBlock blk = null;
-    float xn = 0;  // X-North // Rotate as NORTH is upward
-    float yn = -1; // Y-North
-
-    float xc = 0; // center
-    float yc = 0;
-
-    if ( PlotType.isLegSection( mType ) ) {
-      if ( mType == PlotType.PLOT_H_SECTION ) {
-        if ( Math.abs( mClino ) > TDSetting.mHThreshold ) { // north arrow == (1,0,0), 5 m long in the CS plane
-          // 2023-01-31 north is shown in scalebar
-          xn =  V1.x;
-          yn = -V2.x; 
-          float d = 2 / (float)Math.sqrt(xn*xn + yn*yn);
-          // if ( mClino > 0 ) xn = -xn;
-          if ( mClino > 0 ) decl = -decl;
-          // TDLog.v("H-SECTION clino " + mClino + ": " + xn + " " + yn + " decl " + decl );
-          // if ( mLandscape ) {
-          //   addFixedSpecial( -d, 0, 0, 0, decl);
-          // } else {
-            addFixedSpecial( 0, -d, 0, 0, decl ); 
-          // }
-        }
-      }
-      for ( DBlock b : list ) {
-        if ( b.isSplay() ) continue;
-        if ( mFrom.equals( b.mFrom ) && mTo.equals( b.mTo ) ) { // FROM --> TO
-          dist = b.mLength;
-          blk = b;
-          break;
-        } else if ( mFrom.equals( b.mTo ) && mTo.equals( b.mFrom ) ) { // TO --> FROM
-          dist = - b.mLength;
-          blk = b;
-          break;
-        }
-      }
-      if ( blk != null ) { // test blk.isCommenetd() ?
-        float dfrom = dist;
-        float dto   = 0;
-        if ( tt >= 0 && tt <= 1 ) {
-          dfrom = dist * tt;
-          dto   = dist * ( 1 - tt );
-
-          DrawingSpecialPath path = new DrawingSpecialPath( DrawingSpecialPath.SPECIAL_DOT, DrawingUtil.toSceneX(xc,yc), DrawingUtil.toSceneY(xc,yc),
-                                                            DrawingLevel.LEVEL_DEFAULT, mDrawingSurface.scrapIndex() );
-          mDrawingSurface.addDrawingDotPath( path );
-        }
-
-        TDVector v = blk.getUnitVector( );
-        xfrom = -dfrom * v.dot(V1); // neg. because it is the FROM point
-        yfrom =  dfrom * v.dot(V2);
-        zfrom =  dfrom * v.dot(V0);
-        xto =  dto * v.dot(V1);
-        yto = -dto * v.dot(V2);
-        zto = -dto * v.dot(V0);
-
-        // TDLog.v( "PLOT tt " + tt + " X " + xfrom + " " + xto + " Y " + yfrom + " " + yto );
-
-        if ( mType == PlotType.PLOT_H_SECTION ) { // Rotate as NORTH is upward
-          float xx = -yn * xfrom + xn * yfrom;
-          yfrom = -xn * xfrom - yn * yfrom;
-          xfrom = xx;
-          xx  = -yn * xto + xn * yto;
-          yto = -xn * xto - yn * yto;
-          xto = xx;
-        }
-        addFixedLine( mType, blk, xfrom, yfrom, xto, yto, blk.getReducedExtend(), false, false ); // not-splay, not-selectable
-        mDrawingSurface.addDrawingStationName( mFrom, DrawingUtil.toSceneX(xfrom, yfrom), DrawingUtil.toSceneY(xfrom, yfrom) );
-        mDrawingSurface.addDrawingStationName( mTo, DrawingUtil.toSceneX(xto, yto), DrawingUtil.toSceneY(xto, yto) );
-
-      }
-    } else { // if ( PlotType.isStationSection( mType ) ) 
-      mDrawingSurface.addDrawingStationName( mFrom, DrawingUtil.toSceneX(xfrom, yfrom), DrawingUtil.toSceneY(xfrom, yfrom) );
-    }
-    
-    // TDLog.v( "From " + xfrom + " " + yfrom + " " + zfrom );
-    // TDLog.v( "To   " + xto + " " + yto + " " + zto );
-
-    // using distance of splay endpoint from xsection plane
-    // V0 = normal to the plane
-
-    int cnt = 0;
-    float x0 = 0;
-    float y0 = 0;
-    float z0 = 0;
-    for ( DBlock b : list ) { // repeat for splays
-      ++cnt;
-      if ( ! b.isSplay() ) {
-        // TDLog.v("cnt " + cnt + " is splay " + b.isSplay() + " " + b.getBlockType() );
-        continue;
-      }
-  
-      int splay_station = 3; // could use a boolean
-      if ( b.mFrom.equals( mFrom ) ) {
-        splay_station = 1;
-        x0 = xfrom;
-        y0 = yfrom;
-        z0 = zfrom;
-        // if ( TDSetting.mSectionStations == 2 ) continue;
-      } else if ( b.mFrom.equals( mTo ) ) {
-        splay_station = 2;
-        x0 = xto;
-        y0 = yto;
-        z0 = zto;
-        // if ( TDSetting.mSectionStations == 1 ) continue;
-      } else {
-        continue;
-      }
-
-      float d = b.mLength;
-      TDVector v = b.getUnitVector( );
-
-      float x =  d * v.dot(V1);
-      float y = -d * v.dot(V2);
-      // float a = 90 - (float)(Math.acos( v.dot(V0) ) * TDMath.RAD2DEG); // cos-angle with the normal
-
-      // splay endpoint
-      x0 += d * v.dot(V1);
-      y0 += d * v.dot(V2);
-      z0 += d * v.dot(V0);
-      float d0 = ( x0*x0 + y0*y0 + z0*z0 );
-      float a = (d0 > 0)? 90 - TDMath.acosd( z0 / TDMath.sqrt( d0 ) ) : 90; // angle with plane [degrees]
-      
-      if ( mType == PlotType.PLOT_H_SECTION ) { // Rotate as NORTH is upward
-        float xx = -yn * x + xn * y;
-        y = -xn * x - yn * y;
-        x = xx;
-      }
-      // TDLog.v( "splay " + d + " " + b.mBearing + " " + b.mClino + " coord " + X + " " + Y + " " + Z );
-      if ( splay_station == 1 ) {
-        // N.B. this must be guaranteed for X_SECTION
-        // addFixedSectionSplay( b, xfrom, yfrom, xfrom+x, yfrom+y, 0, 0, false );
-        addFixedSectionSplay( b, xfrom, yfrom, xfrom+x, yfrom+y, a, false );
-      } else { // if ( splay_station == 2
-        // addFixedSectionSplay( b, xto, yto, xto+x, yto+y, 0, 0, true );
-        addFixedSectionSplay( b, xto, yto, xto+x, yto+y, a, true );
-      }
-    }
-    // mSectionSkip = cnt;
-    // mDrawingSurface.setScaleBar( mCenter.x, mCenter.y ); // (90,160) center of the drawing
-
-    // TDLog.v("X0 " + x0 + " " + y0 + " grid unit " + TDSetting.mUnitGrid );
-    DrawingUtil.addGrid( -10, 10, -10, 10, xc, yc, 0, 0, mDrawingSurface ); // FIXME_SK moved out
-    mDrawingSurface.commitReferences();
-  }
-
-  /** make the reference for a multileg xsection
-   * @param list   list of shots of the section
-   * @param center center
-   * @note called by doRestart, doStart, doRecover
-   */
-  private void makeMultilegSectionReferences( List< DBlock > list, Vector3D center )
-  {
-    // assert( mLastLinePath == null); // not needed - guaranteed by callers
-    // TDLog.v("multileg section azimuth " + mAzimuth + " clino " + mClino + " list " + list.size() );
-    mDrawingSurface.newReferences( DrawingSurface.DRAWING_SECTION, (int)mType );
-    DrawingUtil.addGrid( -10, 10, -10, 10, 0.0f, 0.0f, mDrawingSurface ); // FIXME_SK moved out
-    mDrawingSurface.addScaleRef( DrawingSurface.DRAWING_SECTION, (int)mType, 0 );
-    float xfrom=0;
-    float yfrom=0;
-    float zfrom=0;
-    float xto=0;
-    float yto=0;
-    float zto=0;
-    // normal, horizontal and cross-product
-    float mc = mClino   * TDMath.DEG2RAD;
-    float ma = mAzimuth * TDMath.DEG2RAD;
-    // canvas X-axis, unit horizontal axis: 90 degrees to the right of the azimuth
-    //   azimuth = 0 (north) --> horizontal = ( 0N, 1E)
-    //   azimuth = 90 (east) --> horizontal = (-1N, 0E)
-    //   etc.
-    // canvas UP-axis: this is X0 ^ X1 : it goes up in the section plane 
-    // canvas Y-axis = - UP-axis
-
-    // FIXME_VECTOR
-    // float X0 = (float)Math.cos( mc ) * (float)Math.cos( ma );  // X = North
-    // float Y0 = (float)Math.cos( mc ) * (float)Math.sin( ma );  // Y = East
-    // float Z0 = (float)Math.sin( mc );                          // Z = Up
-    // float X1 = - (float)Math.sin( ma ); // X1 goes to the left in the section plane !!!
-    // float Y1 =   (float)Math.cos( ma ); 
-    // float Z1 = 0;
-    // // float X2 = - (float)Math.sin( mc ) * (float)Math.cos( ma );
-    // // float Y2 = - (float)Math.sin( mc ) * (float)Math.sin( ma );
-    // // float Z2 =   (float)Math.cos( ma );
-    // float X2 = Y0 * Z1 - Y1 * Z0; 
-    // float Y2 = Z0 * X1 - Z1 * X0;
-    // float Z2 = X0 * Y1 - X1 * Y0;
-
-    TDVector V0 = new TDVector( (float)(Math.cos(ma)*Math.cos(mc)), (float)(Math.sin(ma)*Math.cos(mc)), (float)Math.sin(mc) ); // normal to the x-section plane
-    // V1,V2 are the frame of reference in the x-section plane
-    TDVector V1 = new TDVector( - (float)Math.sin( ma ), (float)Math.cos( ma ), 0 ); // N,E,Up
-    TDVector V2 = V0.cross( V1 ); 
-
-    float dist = 0;
-    DBlock blk = null;
-    // float xn = 0;  // X-North // Rotate as NORTH is upward
-    // float yn = -1; // Y-North
-    float xtt = (float)center.x; // x-section center East
-    float ytt = (float)center.y; // South
-    float ztt = (float)center.z; // Down
-    for ( DBlock b : list ) {
-      if ( b.isSplay() ) { // test b.isCommented() ? // FIXME_COMMENTED
-        // TDLog.v("multileg splay block " + b.mId + ": " +  b.mFrom );
-        NumStation st_f = mNum.getStation( b.mFrom );
-        NumSplay sp = mNum.getSplayOf( b );
-        if ( st_f != null && sp != null ) {
-          TDVector vf = new TDVector( ytt - (float)st_f.s, (float)st_f.e - xtt, ztt - (float)st_f.v ); // N,E,Up
-          TDVector vt = new TDVector( ytt - (float)sp.s,   (float)sp.e - xtt,   ztt - (float)sp.v );
-          TDVector vft = new TDVector( (float)st_f.s - (float)sp.s, (float)sp.e - (float)st_f.e, (float)st_f.v - (float)sp.v );
-          float cosine = vft.dot(V0)/vft.length();
-          xfrom =   vf.dot(V1); 
-          yfrom = - vf.dot(V2);
-          xto   =   vt.dot(V1); 
-          yto   = - vt.dot(V2);
-          // TDLog.v("leg " + b.mFrom + " " + xfrom + " " + yfrom + " - " + b.mTo + " " + xto + " " + yto + " cosine " + cosine );
-          addFixedLine( mType, b, xfrom, yfrom, xto, yto, cosine, true, false ); // splay, not-selectable
-        } else {
-          TDLog.e( "splay block without station " +  b.mId + ": " + b.mFrom );
-        }
-      } else {
-        // TDLog.v("multileg leg block " +  b.mId + ": " + b.mFrom + " " + b.mTo );
-        NumStation st_f = mNum.getStation( b.mFrom );
-        NumStation st_t = mNum.getStation( b.mTo );
-        if ( st_f != null && st_t != null ) {
-          TDVector vf = new TDVector( ytt - (float)st_f.s, (float)st_f.e - xtt, ztt - (float)st_f.v ); // N,E,Up
-          TDVector vt = new TDVector( ytt - (float)st_t.s, (float)st_t.e - xtt, ztt - (float)st_t.v );
-          float af = vf.dot( V0 );
-          float at = vt.dot( V0 );
-          // intercept   F ----- X ----- T
-          //                af      at
-          float tt = Math.abs( af / ( af - at ) );
-
-          xfrom =   vf.dot(V1); 
-          yfrom = - vf.dot(V2);
-          xto   =   vt.dot(V1); 
-          yto   = - vt.dot(V2);
-          // TDLog.v("leg " + b.mFrom + " " + xfrom + " " + yfrom + " - " + b.mTo + " " + xto + " " + yto );
-          addFixedLine( mType, b, xfrom, yfrom, xto, yto, 1.0f, false, false ); // cosine 1.0 not used, not-splay, not-selectable
-          mDrawingSurface.addDrawingStationName( b.mFrom, DrawingUtil.toSceneX(xfrom, yfrom), DrawingUtil.toSceneY(xfrom, yfrom) );
-          mDrawingSurface.addDrawingStationName( b.mTo, DrawingUtil.toSceneX(xto, yto), DrawingUtil.toSceneY(xto, yto) );
-          // TDLog.v("leg  " + b.mFrom + " " + b.mTo + ": intercept " + tt + " af " + af + " at " + at );
-          if ( tt >= 0 && tt <= 1 ) {
-            float xt = xfrom + tt * ( xto - xfrom );
-            float yt = yfrom + tt * ( yto - yfrom );
-            // float zt = zfrom + tt * ( zto - zfrom );
-            // zfrom =  dist * v.dot(V0);
-            if ( mLandscape ) { float t=xtt; xtt=-ytt; ytt=t; }
-            DrawingSpecialPath path = new DrawingSpecialPath( DrawingSpecialPath.SPECIAL_DOT, DrawingUtil.toSceneX(xt,yt), DrawingUtil.toSceneY(xt,yt), DrawingLevel.LEVEL_DEFAULT, mDrawingSurface.scrapIndex() );
-            mDrawingSurface.addDrawingDotPath( path );
-          } else {
-          }
-        } else {
-          TDLog.e( "leg block without station " +  b.mId + ": " + b.mFrom + " " + b.mTo );
-        }
-      }
+    for ( DrawingPath path : makeSectionReferencePaths( mPlot3, geometry, mDrawingSurface.scrapIndex(), 0, 0 ) ) {
+      if ( path instanceof DrawingSplayPath ) mDrawingSurface.addFixedSplayPath( (DrawingSplayPath)path, false );
+      else if ( path instanceof DrawingStationName ) {
+        mDrawingSurface.addDrawingStationName( ((DrawingStationName)path).getName(), path.cx, path.cy );
+      } else if ( path instanceof DrawingSpecialPath ) mDrawingSurface.addFixedLegPath( path, false );
+      else if ( path.mType == DrawingPath.DRAWING_PATH_NORTH ) mDrawingSurface.setNorthPath( path );
+      else mDrawingSurface.addFixedLegPath( path, false );
     }
     mDrawingSurface.commitReferences();
+    updateSectionSelectionButton();
   }
 
   /** read the plot from file(s) - the file name(s) is taken from the plot names stored in the object
@@ -8867,6 +8475,7 @@ public class DrawingWindow extends ItemDrawer
       mName = mName2;
       mType = mPlot2.type; // FIXME if ( mPlot2 == null ) { what ? }
       setButton1( BTN_PLAN, mBMextend );
+      if ( BTN_PLAN < mNrButton1 ) mButton1[BTN_PLAN].setContentDescription( getString( R.string.help_toggle_plot ) );
       mDrawingSurface.setManager( DrawingSurface.DRAWING_PROFILE, (int)mType );
       if ( compute && mNum != null ) {
         mNum.setBarrierAndHidden( mPlot2.view, mPlot2.hide ); // 20250321
@@ -8896,6 +8505,7 @@ public class DrawingWindow extends ItemDrawer
       mName = mName1;
       mType = mPlot1.type;
       setButton1( BTN_PLAN, mBMplan );
+      if ( BTN_PLAN < mNrButton1 ) mButton1[BTN_PLAN].setContentDescription( getString( R.string.help_toggle_plot ) );
       mDrawingSurface.setManager( DrawingSurface.DRAWING_PLAN, (int)mType );
       if ( compute && mNum != null ) {
         mNum.setBarrierAndHidden( mPlot1.view, mPlot1.hide ); // 20250321
@@ -9007,11 +8617,8 @@ public class DrawingWindow extends ItemDrawer
         } else {
           return false; // not consumed
         }
-      } else if ( TDLevel.overExpert ) {
-        mApp.mShowSectionSplays = ! mApp.mShowSectionSplays;
-        // TDLog.v( "toggle section splays " + mShowSectionSplays );
-        mDrawingSurface.setSplayAlpha( mApp.mShowSectionSplays );
-        updateSplays( mApp.mSplayMode );
+      } else if ( PlotType.isAnySection( mType ) ) {
+        showSectionShotsDialog();
       }
     } else if ( BTN_TOOL < mNrButton2 && b == mButton2[ BTN_TOOL ] /* && ! TDSetting.mTripleToolbar */ ) {
       if ( ! toggleButtonRetrace() ) {
@@ -9393,10 +9000,8 @@ public class DrawingWindow extends ItemDrawer
           startSaveTdrTask( mType, PlotSave.TOGGLE, TDSetting.mBackupNumber+2, TDPath.NR_BACKUP ); 
           // mDrawingSurface.clearDrawing();
           switchPlotType();
-        } else if ( PlotType.isLegSection( mType ) ) {
-          updateSplays( (mApp.mSplayMode + 1)%4 );
-        } else if ( PlotType.isStationSection( mType ) ) {
-          updateSplays( (mApp.mSplayMode + 2)%4 );
+        } else if ( PlotType.isAnySection( mType ) ) {
+          showSectionShotsDialog();
         }
       } else if ( k1 < mNrButton1 && b == mButton1[k1++] ) { //  NOTE
         // TDLog.v("Button NOTE");
@@ -10130,6 +9735,7 @@ public class DrawingWindow extends ItemDrawer
    */
   private void doComputeReferences( boolean reset )
   {
+    if ( PlotType.isAnySection( mType ) ) { doRestart(); return; }
     // TDLog.v( "PLOT compute ref type " + mType + " reset " + reset );
     List< DBlock > list = mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
     mMultiBad = new ArrayList< StringPair >();
@@ -10153,6 +9759,8 @@ public class DrawingWindow extends ItemDrawer
 
       if ( reset ) resetReference( mPlot2, false );
     }
+    mDrawingSurface.setAllXSectionOutlines( this, 1 );
+    mDrawingSurface.setAllXSectionOutlines( this, 2 );
   }
 
   /** refresh the display
@@ -10188,7 +9796,7 @@ public class DrawingWindow extends ItemDrawer
     if ( mType != (int)PlotType.PLOT_PLAN && ! PlotType.isProfile( mType ) ) {
       // FIXME_SK resetReference( mPlot3 );
       doRestart();
-      updateSplays( mApp.mSplayMode );
+      updateSectionSelectionButton();
     } else {
       List< DBlock > list = mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
       mMultiBad = new ArrayList< StringPair >();
@@ -10206,6 +9814,7 @@ public class DrawingWindow extends ItemDrawer
    */
   private void incrementalUpdateDisplay( long blk_id, boolean got_leg )
   {
+    if ( PlotType.isAnySection( mType ) ) { doRestart(); return; }
     if ( mType != (int)PlotType.PLOT_PLAN && ! PlotType.isProfile( mType ) ) return;
     if ( mNum == null ) {
       List< DBlock > list = mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
@@ -10290,6 +9899,8 @@ public class DrawingWindow extends ItemDrawer
         }
       }
     }
+    mDrawingSurface.setAllXSectionOutlines( this, 1 );
+    mDrawingSurface.setAllXSectionOutlines( this, 2 );
   }
 
   /** fit the view to the sketch
@@ -10338,6 +9949,7 @@ public class DrawingWindow extends ItemDrawer
   private void recomputeReferences( TDNum num, float zoom )
   {
     if ( num == null ) return;
+    mNum = num; // Placed section references must use the refreshed reduction too.
     // mLastLinePath = null; // not needed
 
     // if ( mType == (int)PlotType.PLOT_PLAN ) { 20250321
@@ -10382,6 +9994,7 @@ public class DrawingWindow extends ItemDrawer
    */
   public void notifyUpdateDisplay( long blk_id, boolean got_leg )
   {
+    if ( PlotType.isAnySection( mType ) ) { doRestart(); return; }
     // TDLog.v("DATA " + "drawing window: notified update display id " + blk_id ); 
     if ( StationPolicy.isSurveyBackward1() ) { // splays+backward can update display only on receiving a leg
       if ( got_leg ) updateDisplay( );
@@ -10896,16 +10509,9 @@ public class DrawingWindow extends ItemDrawer
         mDrawingSurface.modeloadDataStream( tdr, null, false /*, null */ ); // sections are not cached
         setPlotType3( true ); // true reset display-params
         // FIXME MOVED_BACK_IN DrawingUtil.addGrid( -10, 10, -10, 10, 0.0f, 0.0f, mDrawingSurface );
-        List< DBlock > list = getXSectionShots( mType, mFrom, mTo );
-        if ( list != null && list.size() > 0 /* mSectionSkip */ ) {
-          if ( PlotType.isMultilegSection( mType, mTo ) ) {
-            // TDLog.v("PLOT recover multileg list " + list.size() );
-            makeMultilegSectionReferences( list, mPlot3.center );
-          } else {
-            // float tt = mApp_mData.selectPlotIntercept( mSid, mPlot3.id );
-            makeSinglelegSectionReferences( list, mPlot3.intercept );
-          }
-        }
+        List<DBlock> list = getXSectionShots( mType, mFrom, mTo );
+        refreshSectionNumbers( list );
+        makeSectionReferences( list );
       } else {
         TDLog.e("null Plot 3");
       }
@@ -11891,184 +11497,32 @@ public class DrawingWindow extends ItemDrawer
    * @param list  section shots
    * @return list of detached reference paths
    */
-  private ArrayList< DrawingPath > makePlacedSectionReferences( DrawingPointPath point, PlotInfo plot, List< DBlock > list )
+  private ArrayList<DrawingPath> makePlacedSectionReferences( DrawingPointPath point, PlotInfo plot, List<DBlock> blocks )
   {
-    ArrayList< DrawingPath > refs = new ArrayList<>();
-    if ( point == null || plot == null || ! PlotType.isAnySection( plot.type ) ) return refs;
-
-    if ( PlotType.isStationSection( plot.type ) ) {
-      return makePlacedStationSectionReferences( point, plot, list );
-    }
-
-    String from_station = ( plot.start == null ) ? "" : plot.start;
-    String to_station   = ( plot.view  == null ) ? "" : plot.view;
-    float dx = point.cx - DrawingUtil.CENTER_X;
-    float dy = point.cy - DrawingUtil.CENTER_Y;
-    float decl = ( plot.type == PlotType.PLOT_H_SECTION ) ? mApp_mData.getSurveyDeclination( mSid ) : 0.0f;
-    float xfrom = 0.0f;
-    float yfrom = 0.0f;
-    float zfrom = 0.0f;
-    float xto = 0.0f;
-    float yto = 0.0f;
-    float zto = 0.0f;
-
-    float mc = plot.clino * TDMath.DEG2RAD;
-    float ma = plot.azimuth * TDMath.DEG2RAD;
-    TDVector V0 = new TDVector( (float)(Math.cos( ma ) * Math.cos( mc )),
-                                (float)(Math.sin( ma ) * Math.cos( mc )),
-                                (float)Math.sin( mc ) );
-    TDVector V1 = new TDVector( - (float)Math.sin( ma ), (float)Math.cos( ma ), 0 );
-    TDVector V2 = V0.cross( V1 );
-
-    float dist = 0.0f;
-    DBlock blk = null;
-    float xn = 0.0f;
-    float yn = -1.0f;
-    float xc = 0.0f;
-    float yc = 0.0f;
-
-    if ( plot.type == PlotType.PLOT_H_SECTION ) {
-      if ( Math.abs( plot.clino ) > TDSetting.mHThreshold ) {
-        xn =  V1.x;
-        yn = -V2.x;
-        float d = 2.0f / (float)Math.sqrt( xn * xn + yn * yn );
-        if ( plot.clino > 0 ) decl = -decl;
-        refs.add( makePlacedSectionNorth( 0, -d, 0, 0, decl, point.mScrap, dx, dy ) );
-      }
-    }
-
-    if ( TDUtil.isNonEmpty( list ) ) {
-      for ( DBlock b : list ) {
-        if ( b.isSplay() ) continue;
-        if ( from_station.equals( b.mFrom ) && to_station.equals( b.mTo ) ) {
-          dist = b.mLength;
-          blk = b;
-          break;
-        } else if ( from_station.equals( b.mTo ) && to_station.equals( b.mFrom ) ) {
-          dist = -b.mLength;
-          blk = b;
-          break;
-        }
-      }
-    }
-
-    if ( blk != null ) {
-      float dfrom = dist;
-      float dto   = 0.0f;
-      if ( plot.intercept >= 0.0f && plot.intercept <= 1.0f ) {
-        dfrom = dist * plot.intercept;
-        dto   = dist * ( 1.0f - plot.intercept );
-        refs.add( makePlacedSectionDot( xc, yc, point.mScrap, dx, dy ) );
-      }
-
-      TDVector v = blk.getUnitVector();
-      xfrom = -dfrom * v.dot( V1 );
-      yfrom =  dfrom * v.dot( V2 );
-      zfrom =  dfrom * v.dot( V0 );
-      xto   =  dto   * v.dot( V1 );
-      yto   = -dto   * v.dot( V2 );
-      zto   = -dto   * v.dot( V0 );
-
-      if ( plot.type == PlotType.PLOT_H_SECTION ) {
-        float xx = -yn * xfrom + xn * yfrom;
-        yfrom = -xn * xfrom - yn * yfrom;
-        xfrom = xx;
-        xx = -yn * xto + xn * yto;
-        yto = -xn * xto - yn * yto;
-        xto = xx;
-      }
-
-      refs.add( makePlacedSectionLeg( blk, xfrom, yfrom, xto, yto, point.mScrap, dx, dy ) );
-      refs.add( makePlacedSectionStation( from_station, xfrom, yfrom, point.mScrap, dx, dy ) );
-      refs.add( makePlacedSectionStation( to_station, xto, yto, point.mScrap, dx, dy ) );
-    }
-
-    if ( TDUtil.isEmpty( list ) ) return refs;
-
-    float x0 = 0.0f;
-    float y0 = 0.0f;
-    float z0 = 0.0f;
-    for ( DBlock b : list ) {
-      if ( ! b.isSplay() ) continue;
-
-      int splay_station = 3;
-      if ( b.mFrom.equals( from_station ) ) {
-        splay_station = 1;
-        x0 = xfrom;
-        y0 = yfrom;
-        z0 = zfrom;
-      } else if ( b.mFrom.equals( to_station ) ) {
-        splay_station = 2;
-        x0 = xto;
-        y0 = yto;
-        z0 = zto;
-      } else {
-        continue;
-      }
-
-      float d = b.mLength;
-      TDVector v = b.getUnitVector();
-
-      float x2 = d * v.dot( V1 );
-      float y2 = -d * v.dot( V2 );
-
-      x0 += d * v.dot( V1 );
-      y0 += d * v.dot( V2 );
-      z0 += d * v.dot( V0 );
-      float d0 = x0 * x0 + y0 * y0 + z0 * z0;
-      float a = ( d0 > 0 ) ? 90 - TDMath.acosd( z0 / TDMath.sqrt( d0 ) ) : 90;
-
-      if ( plot.type == PlotType.PLOT_H_SECTION ) {
-        float xx = -yn * x2 + xn * y2;
-        y2 = -xn * x2 - yn * y2;
-        x2 = xx;
-      }
-
-      if ( splay_station == 1 ) {
-        refs.add( makePlacedSectionSplay( b, xfrom, yfrom, xfrom + x2, yfrom + y2, a, false, point.mScrap, dx, dy ) );
-      } else {
-        refs.add( makePlacedSectionSplay( b, xto, yto, xto + x2, yto + y2, a, true, point.mScrap, dx, dy ) );
-      }
-    }
-
-    return refs;
+    SectionReferenceSelection choices = SectionReferenceRepository.load( mApp_mData, mSid, plot, blocks );
+    return makeSectionReferencePaths( plot, buildSectionGeometry( plot, blocks, choices ), point.mScrap,
+      point.cx - DrawingUtil.CENTER_X, point.cy - DrawingUtil.CENTER_Y );
   }
 
-  private ArrayList< DrawingPath > makePlacedStationSectionReferences( DrawingPointPath point, PlotInfo plot, List< DBlock > list )
+  private ArrayList<DrawingPath> makeSectionReferencePaths( PlotInfo plot, SectionReferenceBuilder geometry,
+                                                            int scrap, float dx, float dy )
   {
-    ArrayList< DrawingPath > refs = new ArrayList<>();
-    if ( point == null || plot == null || ! PlotType.isStationSection( plot.type ) ) return refs;
-
-    String station = ( plot.start == null ) ? "" : plot.start;
-    float dx = point.cx - DrawingUtil.CENTER_X;
-    float dy = point.cy - DrawingUtil.CENTER_Y;
-    float mc = plot.clino * TDMath.DEG2RAD;
-    float ma = plot.azimuth * TDMath.DEG2RAD;
-    TDVector normal = new TDVector( (float)(Math.cos( ma ) * Math.cos( mc )),
-                                    (float)(Math.sin( ma ) * Math.cos( mc )),
-                                    (float)Math.sin( mc ) );
-    TDVector horizontal = new TDVector( -(float)Math.sin( ma ), (float)Math.cos( ma ), 0.0f );
-    TDVector up = normal.cross( horizontal );
-
-    refs.add( makePlacedSectionStation( station, 0.0f, 0.0f, point.mScrap, dx, dy ) );
-    if ( TDUtil.isEmpty( list ) ) return refs;
-
-    for ( DBlock block : list ) {
-      if ( block == null || ! block.isSplay() ) continue;
-      boolean direct = station.equals( block.mFrom ) && TDString.isNullOrEmpty( block.mTo );
-      boolean reverse = station.equals( block.mTo ) && TDString.isNullOrEmpty( block.mFrom );
-      if ( ! direct && ! reverse ) continue;
-
-      float sign = reverse ? -1.0f : 1.0f;
-      float distance = sign * block.mLength;
-      TDVector vector = block.getUnitVector();
-      float x = distance * vector.dot( horizontal );
-      float y = -distance * vector.dot( up );
-      float z = distance * vector.dot( normal );
-      float length = TDMath.sqrt( x * x + y * y + z * z );
-      float angle = ( length > 0.0f ) ? 90.0f - TDMath.acosd( z / length ) : 90.0f;
-      refs.add( makePlacedSectionSplay( block, 0.0f, 0.0f, x, y, angle, false, point.mScrap, dx, dy ) );
+    ArrayList<DrawingPath> refs = new ArrayList<>();
+    if ( geometry.northLength > 0 ) {
+      float decl = mApp_mData.getSurveyDeclination( mSid );
+      if ( plot.clino > 0 ) decl = -decl;
+      refs.add( makePlacedSectionNorth( 0, -geometry.northLength, 0, 0, decl, scrap, dx, dy ) );
     }
+    for ( SectionReferenceBuilder.Shot shot : geometry.shots ) {
+      if ( shot.splay ) refs.add( makePlacedSectionSplay( shot.block, shot.from.x, shot.from.y,
+        shot.to.x, shot.to.y, shot.angle, shot.viewed, scrap, dx, dy ) );
+      else refs.add( makePlacedSectionLeg( shot.block, shot.from.x, shot.from.y, shot.to.x, shot.to.y, scrap, dx, dy ) );
+    }
+    for ( java.util.Map.Entry<String,SectionReferenceBuilder.Position> station : geometry.stations.entrySet() ) {
+      SectionReferenceBuilder.Position p = station.getValue();
+      refs.add( makePlacedSectionStation( station.getKey(), p.x, p.y, scrap, dx, dy ) );
+    }
+    for ( SectionReferenceBuilder.Position dot : geometry.dots ) refs.add( makePlacedSectionDot( dot.x, dot.y, scrap, dx, dy ) );
     return refs;
   }
 
@@ -12925,6 +12379,7 @@ public class DrawingWindow extends ItemDrawer
    */
   private void recomputeReferences( boolean redo_num )
   {
+    if ( PlotType.isAnySection( mType ) ) { doRestart(); return; }
     mDrawingSurface.clearShotsAndStations( );
     if ( redo_num ) {
       List< DBlock > list = mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );

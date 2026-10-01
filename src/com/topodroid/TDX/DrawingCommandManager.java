@@ -1669,6 +1669,9 @@ public class DrawingCommandManager
   Bitmap renderExportBitmap( DrawingStationSplay station_splay, SketchPngExportOptions options )
   {
     if ( options == null ) return null;
+    // Section references are already filtered by their saved station/splay choices.
+    // The parent sketch's per-station visibility must not hide them again.
+    if ( mMode == DrawingSurface.DRAWING_SECTION ) station_splay = null;
 
     RectF bounds = getExportBitmapBounds( options.includeLegs, options.includeSplays, options.includeStations, station_splay );
     RectF scene_bounds = new RectF( bounds.left - BITMAP_PADDING, bounds.top - BITMAP_PADDING,
@@ -2130,7 +2133,11 @@ public class DrawingCommandManager
     Path scratch = new Path(); // per-invocation scratch for screen-space item draws (legs, splays, grid, stations)
 
     boolean legs     = (mDisplayMode & DisplayMode.DISPLAY_LEG     ) != 0;
-    boolean splays   = (mDisplayMode & DisplayMode.DISPLAY_SPLAY   ) != 0;
+    boolean sectionSplays = mMode == DrawingSurface.DRAWING_SECTION;
+    boolean splays   = sectionSplays || (mDisplayMode & DisplayMode.DISPLAY_SPLAY) != 0;
+    // DISPLAY_SECTION omits the legacy global splay bit. The section builder,
+    // rather than the parent sketch's visibility rules, now selects its splays.
+    if ( sectionSplays ) station_splay = null;
     boolean latest   = ( (mDisplayMode & DisplayMode.DISPLAY_LATEST  ) != 0 ) && TDSetting.mShotRecent;
     boolean stations = (mDisplayMode & DisplayMode.DISPLAY_STATION ) != 0;
     boolean grids    = (mDisplayMode & DisplayMode.DISPLAY_GRID    ) != 0;

@@ -624,8 +624,11 @@ public class DataHelper extends DataSetObservable
     String wSid = "where surveyId=" + sid;
     try {
       myDB.beginTransaction();
+      renameSectionReferenceStations( sid, null, prefix );
       myDB.execSQL( "update plots set hide =\"\" " + wSid );
-      myDB.execSQL( "update plots set start = \""    + prefix + "\" || start "    + wSid );
+      // A multileg section's start contains shot IDs, not station names.
+      myDB.execSQL( "update plots set start = \"" + prefix + "\" || start " + wSid
+        + " and not (type in (" + PlotType.PLOT_SECTION + "," + PlotType.PLOT_H_SECTION + ") and (view is null or view=\"\"))" );
       myDB.execSQL( "update plots set view = \""     + prefix + "\" || view "     + wSid + " and view!=\"\" ");
       myDB.execSQL( "update fixeds set station = \"" + prefix + "\" || station "  + wSid + " and station!=\"\" ");
       myDB.execSQL( "update stations set name = \""  + prefix + "\" || name "     + wSid + " and name!=\"\" ");
@@ -1511,6 +1514,7 @@ public class DataHelper extends DataSetObservable
       myDB.delete( STATION_TABLE, WHERE_SID, clause );
       myDB.delete( CONFIG_TABLE, "key=?", new String[] { SketchTextDefaults.key( sid ) } );
       myDB.delete( CONFIG_TABLE, "key=?", new String[] { SymbolSketchPreferences.key( sid ) } );
+      deleteSectionReferenceValues( sid );
       myDB.delete( SURVEY_TABLE, "id=?", clause );
       myDB.setTransactionSuccessful();
     } catch ( SQLiteDiskIOException e ) {  handleDiskIOError( e );
@@ -3117,6 +3121,7 @@ public class DataHelper extends DataSetObservable
     try {
       myDB.beginTransaction();
       myDB.delete( PLOT_TABLE, WHERE_SID_ID, new String[]{ Long.toString(sid), Long.toString(pid) } );
+      myDB.delete( CONFIG_TABLE, "key=?", new String[] { SectionReferenceRepository.key( sid, pid ) } );
       myDB.setTransactionSuccessful();
     } catch ( SQLiteDiskIOException e ) { handleDiskIOError( e );
     } catch (SQLiteException e) { logError("plt drop", e);
@@ -3143,6 +3148,9 @@ public class DataHelper extends DataSetObservable
     if ( ! isSurveyMutable( sid, "deletePlotByName" ) ) return;
     try {
       myDB.beginTransaction();
+      PlotInfo section = getPlotInfo( sid, name );
+      if ( section != null ) myDB.delete( CONFIG_TABLE, "key=?",
+        new String[] { SectionReferenceRepository.key( sid, section.id ) } );
       myDB.delete( PLOT_TABLE, WHERE_SID_NAME, new String[]{ Long.toString(sid), name } );
       myDB.setTransactionSuccessful();
     } catch ( SQLiteDiskIOException e ) { handleDiskIOError( e );
@@ -4104,6 +4112,9 @@ public class DataHelper extends DataSetObservable
         cv.clear(); cv.put( "hide",     sm.mTo ); myDB.update( PLOT_TABLE,    cv, where7, values );
       }
       TDLog.v("remap OK");
+      java.util.Map<String,String> section_names = new java.util.LinkedHashMap<>();
+      for ( StationMap mapping : name_map ) section_names.put( mapping.mFrom, mapping.mTo );
+      renameSectionReferenceStations( sid, section_names, null );
       myDB.setTransactionSuccessful();
     } catch ( SQLiteDiskIOException e ) { handleDiskIOError( e ); 
     } catch (SQLiteException e ) { logError( "remap station names", e ); 
@@ -5535,6 +5546,77 @@ public class DataHelper extends DataSetObservable
 
   // ----------------------------------------------------------------------
   // CONFIG DATA
+
+  boolean saveSectionReferenceValue( long sid, long pid, String value )
+  {
+    java.util.Map<Long,String> values = new java.util.LinkedHashMap<>();
+    values.put( pid, value );
+    return saveSectionReferenceValues( sid, values );
+  }
+
+  /** Report persistence failures to the dialog; keep imported choices atomic. */
+  boolean saveSectionReferenceValues( long sid, java.util.Map<Long,String> values )
+  {
+    if ( myDB == null || ! isSurveyMutable( sid, "section reference choices" ) ) return false;
+    if ( values.isEmpty() ) return true;
+    boolean success = false;
+    boolean started = false;
+    try {
+      myDB.beginTransaction();
+      started = true;
+      for ( java.util.Map.Entry<Long,String> entry : values.entrySet() ) {
+        Cursor plot = myDB.query( PLOT_TABLE, new String[] { "type" }, WHERE_SID_ID,
+          new String[] { Long.toString( sid ), Long.toString( entry.getKey() ) }, null, null, null );
+        try {
+          if ( ! plot.moveToFirst() || ! PlotType.isAnySection( plot.getInt( 0 ) ) ) return false;
+        } finally { plot.close(); }
+        ContentValues cv = new ContentValues();
+        String key = SectionReferenceRepository.key( sid, entry.getKey() );
+        cv.put( "key", key ); cv.put( "value", entry.getValue() );
+        if ( myDB.update( CONFIG_TABLE, cv, "key=?", new String[] { key } ) == 0
+          && myDB.insertOrThrow( CONFIG_TABLE, null, cv ) < 0 ) return false;
+      }
+      myDB.setTransactionSuccessful();
+      success = true;
+    } catch ( SQLiteDiskIOException e ) { handleDiskIOError( e );
+    } catch ( SQLiteException e ) { logError( "section reference choices", e );
+    } finally {
+      if ( started ) try { myDB.endTransaction(); }
+      catch ( SQLiteDiskIOException e ) { handleDiskIOError( e ); success = false; }
+      catch ( SQLiteException e ) { logError( "section reference choices commit", e ); success = false; }
+    }
+    return success;
+  }
+
+  private void deleteSectionReferenceValues( long sid )
+  {
+    String prefix = SectionReferenceRepository.surveyPrefix( sid );
+    myDB.delete( CONFIG_TABLE, "substr(key,1,?)=?", new String[] { Integer.toString( prefix.length() ), prefix } );
+  }
+
+  private void renameSectionReferenceStations( long sid, java.util.Map<String,String> names, String prefix )
+  {
+    String key_prefix = SectionReferenceRepository.surveyPrefix( sid );
+    Cursor cursor = myDB.query( CONFIG_TABLE, new String[] { "key", "value" }, "substr(key,1,?)=?",
+      new String[] { Integer.toString( key_prefix.length() ), key_prefix }, null, null, null );
+    try {
+      while ( cursor.moveToNext() ) {
+        try {
+          SectionReferenceSelection selection = SectionReferenceRepository.decode( new org.json.JSONObject( cursor.getString( 1 ) ) );
+          java.util.Map<String,String> mapping = names;
+          if ( prefix != null ) {
+            mapping = new java.util.LinkedHashMap<>();
+            for ( String station : selection.stations ) mapping.put( station, prefix + station );
+            for ( String station : selection.hiddenSplays ) mapping.put( station, prefix + station );
+          }
+          selection.rename( mapping );
+          ContentValues cv = new ContentValues();
+          cv.put( "value", SectionReferenceRepository.encode( selection ).toString() );
+          myDB.update( CONFIG_TABLE, cv, "key=?", new String[] { cursor.getString( 0 ) } );
+        } catch ( org.json.JSONException e ) { TDLog.e( "Cannot rename section choices: " + e.getMessage() ); }
+      }
+    } finally { cursor.close(); }
+  }
 
   String getValue( String key )
   {

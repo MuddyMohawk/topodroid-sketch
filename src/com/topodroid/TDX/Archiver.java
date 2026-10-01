@@ -374,6 +374,13 @@ public class Archiver
       if ( ret ) ret &= addEntry( zos, TDFile.getTopoDroidFile(pathname), pathname );
       TDLog.v("ZIP archive post-sqlite returns " + ret );
 
+      String section_choices = SectionReferenceRepository.exportArchive( app_data, TDInstance.sid );
+      if ( section_choices != null ) {
+        zos.putNextEntry( new ZipEntry( SectionReferenceRepository.ARCHIVE_ENTRY ) );
+        zos.write( section_choices.getBytes( java.nio.charset.StandardCharsets.UTF_8 ) );
+        zos.closeEntry();
+      }
+
       pathname = TDPath.getSurveyNoteFile( survey );
       TDLog.v("ZIP note file " + pathname );
       ret &= addOptionalEntry( zos, TDFile.getTopoDroidFile( pathname ), pathname );
@@ -411,6 +418,9 @@ public class Archiver
       ret &= addDirectory( zos, TDFile.getTopoDroidFile( pathname ), pathname );
 
       // ret = true;
+    } catch ( org.json.JSONException e ) {
+      TDLog.e( "ZIP section choices: " + e.getMessage() );
+      ret = false;
     } catch ( FileNotFoundException e ) {
       TDLog.v("ZIP 6 file not found " + e.getMessage() );
       ret = false;
@@ -642,6 +652,8 @@ public class Archiver
   {
     TDLog.v("ZIP 7 un-archive file " + filename );
     boolean sql_success = false;
+    long loaded_survey_id = -1;
+    String section_choices = null;
     int ok_manifest = ERR_UNKNOWN;
     String pathname;
     // mManifestPath = null;
@@ -707,7 +719,9 @@ public class Archiver
           // TDLog.Log( TDLog.LOG_ZIP, "Zip entry " + nr_entry + " \"" + ze.getName() + "\"" );
           boolean sql = false;
           pathname = null;
-          if ( ze.getName().equals( "survey.sql" ) ) {
+          if ( ze.getName().equals( SectionReferenceRepository.ARCHIVE_ENTRY ) ) {
+            section_choices = readSectionChoices( zin );
+          } else if ( ze.getName().equals( "survey.sql" ) ) {
             if ( manifestSurveyAlreadyPresent( app_data ) ) {
               zin.close();
               zip.close();
@@ -750,7 +764,8 @@ public class Archiver
               if ( sql ) {
                 // TDLog.Log( TDLog.LOG_ZIP, "Zip sqlfile \"" + pathname + "\" DB version " + mManifestDbVersion );
                 TDLog.v( "ZIP 7 sqlfile " + pathname + " DB version " + mManifestDbVersion );
-                sql_success = ( app_data.loadFromFile( pathname, mManifestDbVersion ) > 0 );
+                loaded_survey_id = app_data.loadFromFile( pathname, mManifestDbVersion );
+                sql_success = loaded_survey_id > 0;
                 TDFile.deleteFile( pathname );
               }
             } else {
@@ -771,6 +786,7 @@ public class Archiver
       TDLog.e( "ZIP 7 cast: " + e.getMessage() );
       ok_manifest = ERR_FORMAT;
     }
+    if ( sql_success && ok_manifest >= ERR_OK ) restoreSectionChoices( app_data, loaded_survey_id, section_choices );
     if ( ok_manifest == ERR_OK ) {
       if ( ! sql_success ) {
         TDLog.e( "ZIP 7 sql error" );
@@ -780,6 +796,28 @@ public class Archiver
       if ( DataHelper.hasResetColor() ) ok_manifest = ERR_OK_WITH_COLOR_RESET;
     }
     return ok_manifest; // return error code (neg) or success (zero or positive)
+  }
+
+  private static String readSectionChoices( InputStream input ) throws IOException
+  {
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    byte[] buffer = new byte[4096];
+    int count;
+    boolean oversized = false;
+    while ( ( count = input.read( buffer ) ) != -1 ) {
+      if ( bytes.size() + count > 4 * 1024 * 1024 ) oversized = true;
+      if ( ! oversized ) bytes.write( buffer, 0, count );
+    }
+    return oversized ? "invalid oversized section metadata" : new String( bytes.toByteArray(), java.nio.charset.StandardCharsets.UTF_8 );
+  }
+
+  private static void restoreSectionChoices( DataHelper data, long sid, String choices )
+  {
+    if ( ! SectionReferenceRepository.importArchive( data, sid, choices ) ) {
+      TDLog.e( "Survey imported without section reference choices" );
+      new android.os.Handler( android.os.Looper.getMainLooper() ).post(
+        () -> TDToast.makeWarn( R.string.section_selection_import_warning ) );
+    }
   }
 
   /** check if manifest file is OK
@@ -847,6 +885,7 @@ public class Archiver
     int ok_manifest = 0;
     boolean sql_success = false;
     long loaded_survey_id = -1;
+    String section_choices = null;
     String pathname;
     ZipEntry ze;
     DataHelper app_data = TopoDroidApp.mData;
@@ -878,7 +917,9 @@ public class Archiver
           // TDLog.v( "ZIP 8 file entry " + nr_entry + " \"" + ze.getName() + "\"");
           boolean sql = false;
           pathname = null;
-          if ( ze.getName().equals( "survey.sql" ) ) {
+          if ( ze.getName().equals( SectionReferenceRepository.ARCHIVE_ENTRY ) ) {
+            section_choices = readSectionChoices( zin );
+          } else if ( ze.getName().equals( "survey.sql" ) ) {
             if ( manifestSurveyAlreadyPresent( app_data ) ) {
               ok_manifest = ERR_SURVEY;
               zin.closeEntry();
@@ -946,6 +987,7 @@ public class Archiver
       if ( loaded_survey_id > 0 ) app_data.doDeleteSurvey( loaded_survey_id );
       TDPath.deleteSurveyDir( mManifestSurveyname );
     }
+    if ( ok_manifest == ERR_OK && sql_success ) restoreSectionChoices( app_data, loaded_survey_id, section_choices );
     TDLog.v( "unarchive stream returns " + ok_manifest );
     if ( ok_manifest == ERR_OK ) {
       if ( sql_success  && DataHelper.hasResetColor() ) ok_manifest = ERR_OK_WITH_COLOR_RESET;

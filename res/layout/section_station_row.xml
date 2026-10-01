@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:padding="4dp">
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:orientation="horizontal" android:gravity="center_vertical">
+    <CheckBox android:id="@+id/section_station_checked"
+        android:layout_width="0dp" android:layout_height="wrap_content"
+        android:layout_weight="1" android:minHeight="48dp" />
+    <CheckBox android:id="@+id/section_station_splays"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:minHeight="48dp" android:text="@string/splays" />
+  </LinearLayout>
+  <TextView android:id="@+id/section_station_unavailable"
+      android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:text="@string/section_station_unavailable" android:visibility="gone" />
+</LinearLayout>

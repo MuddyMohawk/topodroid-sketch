@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/base_padding"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+  <EditText android:id="@+id/section_station_search"
+      style="@style/edit_text"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:singleLine="true"
+      android:inputType="text"
+      android:hint="@string/section_search_stations"
+      android:importantForAutofill="no" />
+
+  <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:layout_marginTop="@dimen/marginv" android:text="@string/section_station_help" />
+
+  <ListView android:id="@+id/section_station_list"
+      style="@style/list_top"
+      android:layout_width="match_parent"
+      android:layout_height="0dp"
+      android:layout_weight="1"
+      android:layout_marginTop="@dimen/marginv" />
+
+  <TextView android:id="@+id/section_station_empty"
+      android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:visibility="gone" android:text="@string/section_no_stations" />
+
+  <CheckBox android:id="@+id/section_out_of_plane"
+      android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:text="@string/section_show_out_of_plane" />
+
+  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:orientation="horizontal" android:gravity="end">
+    <Button android:id="@+id/button_cancel" style="@style/button_default"
+        android:layout_marginEnd="@dimen/marginh" android:text="@string/button_cancel" />
+    <Button android:id="@+id/button_save" style="@style/button_default"
+        android:text="@string/button_save" />
+  </LinearLayout>
+</LinearLayout>

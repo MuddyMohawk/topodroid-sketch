@@ -1,5 +1,7 @@
 # Compatibility
 
+- Cross-section station, splay, and out-of-plane visibility selections are Sketch-specific metadata carried by the optional `section_references.json` entry in native survey ZIPs; a future Vanilla conversion path must translate or omit these choices while preserving the section geometry.
+
 - Per-survey symbol style and drawing-preset memories reference local preset slots and are omitted from survey ZIP exports; imported surveys start without learned choices.
 
 - TopoDroid Sketch now matches current Vanilla persisted leg-type IDs (`NORMAL = 0` for plain splays, `XSPLAY = 2`, and `BACK = 3`); earlier Sketch databases and archives using interim IDs `2`, `3`, and `11` are not migrated and can be misclassified when reopened or imported.
