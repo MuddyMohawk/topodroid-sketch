@@ -59,6 +59,8 @@ public class DrawingCommandManager
   private static final float EXPORT_BITMAP_SCALE = 10.0f;
   private static final float MIN_EXPORT_BITMAP_SCALE = 0.125f;
   private static final float EXPORT_DECORATION_GAP = 24.0f;
+  private static final int EXPORT_RASTER_CLIP_LIMIT = 16383;
+  private static final int EXPORT_TILE_SIZE = 2048;
   private int mMode = 0;  // command manager mode type (PLAN PROFILE SECTION OVERVIEW)
 
   static private volatile int mDisplayMode = DisplayMode.DISPLAY_PLOT; // this display mode is shared among command managers
@@ -1723,6 +1725,36 @@ public class DrawingCommandManager
 
   private void drawExportScene( Canvas canvas, Matrix matrix, float scale, RectF bbox,
                                 DrawingStationSplay station_splay, SketchPngExportOptions options )
+  {
+    if ( canvas.getWidth() <= EXPORT_RASTER_CLIP_LIMIT && canvas.getHeight() <= EXPORT_RASTER_CLIP_LIMIT ) {
+      drawExportSceneContent( canvas, matrix, scale, bbox, station_splay, options );
+      return;
+    }
+
+    // Older Android software canvases truncate clipPath masks at 16383 device
+    // pixels. A rectangular clip alone does not move that limit: saveLayer gives
+    // each tile its own small raster device, with an origin local to the tile.
+    // Keep the full scene bounds and area unions so strokes, patterns and fades
+    // crossing a tile edge render exactly as they do inside a tile.
+    for ( int top = 0; top < canvas.getHeight(); top += EXPORT_TILE_SIZE ) {
+      int bottom = Math.min( top + EXPORT_TILE_SIZE, canvas.getHeight() );
+      for ( int left = 0; left < canvas.getWidth(); left += EXPORT_TILE_SIZE ) {
+        int right = Math.min( left + EXPORT_TILE_SIZE, canvas.getWidth() );
+        int save = canvas.save();
+        try {
+          canvas.clipRect( left, top, right, bottom );
+          canvas.saveLayer( left, top, right, bottom, null );
+          if ( ! options.transparentBackground ) canvas.drawColor( 0xff000000 );
+          drawExportSceneContent( canvas, matrix, scale, bbox, station_splay, options );
+        } finally {
+          canvas.restoreToCount( save );
+        }
+      }
+    }
+  }
+
+  private void drawExportSceneContent( Canvas canvas, Matrix matrix, float scale, RectF bbox,
+                                       DrawingStationSplay station_splay, SketchPngExportOptions options )
   {
     if ( mCurrentScrap != null ) {
       synchronized( mSyncScrap ) {

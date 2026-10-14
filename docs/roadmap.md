@@ -66,6 +66,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Making the toolbars smaller causes point symbols to become illegible. Even smaller, and other rendering problems come up
 
 ## Future possible features / brainstorming
+- Editing mode `undo` button 
 - Compass import support
   - split trips into different surveys if desired. Warning on lots of trips
 - Sketch item properties overhaul (see similar todo item)

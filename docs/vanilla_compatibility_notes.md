@@ -1,5 +1,7 @@
 # Compatibility
 
+- Large PNG exports created before bounded raster rendering can omit area fills on older Android; regenerate affected PNGs from the original sketches before using them for interchange.
+
 - Cross-section station, splay, and out-of-plane visibility selections are Sketch-specific metadata carried by the optional `section_references.json` entry in native survey ZIPs; a future Vanilla conversion path must translate or omit these choices while preserving the section geometry.
 
 - Per-survey symbol style and drawing-preset memories reference local preset slots and are omitted from survey ZIP exports; imported surveys start without learned choices.
