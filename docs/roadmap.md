@@ -3,6 +3,7 @@
 The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles.
 
 ## TODO
+- Add small ceiling channel symbol (alternate)
 - invert colors upon export (white to black, etc) (Ryan)
 - Flip/mirror cross-section
 - TopoDroid calibration. Shots are grouped into 4 for calibration purposes, but that doesn't show in the UI. Would be nice to have better controls around this.
@@ -31,8 +32,10 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - per-symbol defaults? locking?
 - Option for rearranging render order (eg, survey station designations on top)
 - Change the update check and versioning to track something besides `https://raw.githubusercontent.com/marcocorvi/speleoapks/main/tdversion.txt`
-- Update the edit dialog for all the symbols to have line weight, color, opacity, and other global style options
+- Edit mode overhaul
+  - Update the edit dialog for all the symbols to have line weight, color, opacity, and other global style options
   - The slider widget sucks and needs to be redone
+  - undo/redo edits
 - symbol notes:
   - maybe make a popcorn line symbol
   - calcite crust needs a different line length to dot ratio

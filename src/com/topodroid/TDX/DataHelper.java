@@ -2211,11 +2211,10 @@ public class DataHelper extends DataSetObservable
         ih.bind( magneticCol, 0.0);
         ih.bind( dipCol, 0.0);
         ih.bind( extendCol, s.extend );
-        ih.bind( flagCol, s.duplicate ? DBlock.FLAG_DUPLICATE 
-                        : s.surface ? DBlock.FLAG_SURFACE 
-                        // : s.commented ? DBlock.FLAG_COMMENTED // ParserShots are not "commented"
-                        : s.backshot ? DBlock.FLAG_BACKSHOT
-                        : 0 );
+        ih.bind( flagCol, (s.duplicate ? DBlock.FLAG_DUPLICATE : 0)
+                       | (s.surface ? DBlock.FLAG_SURFACE : 0)
+                       | (s.backshot ? DBlock.FLAG_BACKSHOT : 0)
+                       | (s.noPlot ? DBlock.FLAG_NONE : 0) );
         ih.bind( legCol, s.leg );
         ih.bind( statusCol, 0 );
         ih.bind( commentCol, s.comment );

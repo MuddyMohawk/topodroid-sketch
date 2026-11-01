@@ -69,6 +69,7 @@ public class ImportDialogShot extends MyDialog
   private CheckBox mCBdivingDat; // Compass
   private CheckBox mCBlrudDat;
   private CheckBox mCBlegDat;
+  private CheckBox mCBcavewhereDat;
   private CheckBox mCBtherionPath; // Therion survey path
   private CheckBox mCsvBric;
   private CheckBox mCsvCavway;
@@ -204,6 +205,7 @@ public class ImportDialogShot extends MyDialog
         {
           mImportData.mLrud   = mCBlrudDat.isChecked();
           mImportData.mLeg    = mCBlegDat.isChecked();
+          mImportData.mCompassCavewhereUnits = mCBcavewhereDat.isChecked();
           if ( TDLevel.overExpert ) mImportData.setDiving( mCBdivingDat.isChecked() );
         }
         break;
@@ -249,6 +251,9 @@ public class ImportDialogShot extends MyDialog
     mCBlrudDat = (CheckBox) findViewById( R.id.dat_lrud );   // Compass
     mCBlegDat  = (CheckBox) findViewById( R.id.dat_leg_first );
     mCBdivingDat = (CheckBox) findViewById( R.id.dat_diving );
+    mCBcavewhereDat = (CheckBox) findViewById( R.id.dat_cavewhere_units );
+    // DAT headers cannot identify this dialect reliably; ask for a fresh choice on each import.
+    mCBcavewhereDat.setChecked( false );
     mCBlrudDat.setChecked( mImportData.mLrud );
     mCBlegDat .setChecked( mImportData.mLeg );
     mCBdivingDat.setChecked( mImportData.getDiving() );

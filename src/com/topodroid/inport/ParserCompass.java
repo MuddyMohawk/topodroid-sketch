@@ -12,7 +12,6 @@
  */
 package com.topodroid.inport;
 
-import com.topodroid.util.TDMath;
 import com.topodroid.util.TDLog;
 import com.topodroid.util.TDio;
 import com.topodroid.util.TDString;
@@ -22,242 +21,272 @@ import com.topodroid.TDX.TDAzimuth;
 import com.topodroid.types.ExtendType;
 import com.topodroid.types.LegType;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.BufferedReader;
-// import java.util.ArrayList;
-// import java.util.Stack;
+import java.util.HashMap;
 import java.util.Locale;
-// import java.util.regex.Pattern;
 
 class ParserCompass extends ImportParser
 {
-  private boolean mLrud;
-  private boolean mLegFirst;
+  private final boolean mLrud;
+  private final boolean mLegFirst;
+  private final boolean mCavewhereUnits;
 
-  /** Compass parser
-   * @param filename name of the file to parse
-   * @param apply_declination whether to apply declination correction
-   */
-  ParserCompass( InputStreamReader isr, String filename, boolean apply_declination, boolean lrud, boolean leg_first ) throws ParserException
+  /** Settings belong to one survey header, not to the complete DAT file. */
+  private static class Survey
   {
-    super( apply_declination );
-    // TDLog.v( "Parser Compass <" + filename + ">" );
-    // mName = survey name is read from the file
-    mLrud     = lrud;
-    mLegFirst = leg_first;
+    float declination;
+    float compassCorrection, clinoCorrection, tapeCorrection;
+    float backCompassCorrection, backClinoCorrection;
+    float lengthUnit = TDUtil.FT2M;
+    float lrudUnit = TDUtil.FT2M;
+    boolean backsights;
+    boolean lrudTo;
+    final HashMap<String, Float> stationBearings = new HashMap<>();
+  }
+
+  ParserCompass( InputStreamReader isr, String filename, boolean applyDeclination,
+                 boolean lrud, boolean legFirst ) throws ParserException
+  {
+    this( isr, filename, applyDeclination, lrud, legFirst, false );
+  }
+
+  ParserCompass( InputStreamReader isr, String filename, boolean applyDeclination,
+                 boolean lrud, boolean legFirst, boolean cavewhereUnits ) throws ParserException
+  {
+    super( applyDeclination );
+    mLrud = lrud;
+    mLegFirst = legFirst;
+    mCavewhereUnits = cavewhereUnits;
+    mDate = null;
+    mDeclination = 0;
     readFile( isr, filename );
     checkValid();
   }
 
-  private boolean isDuplicate( String flag ) { return  ( flag != null && flag.indexOf('l') >= 0 ); }
+  private static float number( String value )
+  {
+    float result = Float.parseFloat( value );
+    if ( Float.isNaN( result ) || Float.isInfinite( result ) ) {
+      throw new NumberFormatException( "non-finite reading" );
+    }
+    return result;
+  }
 
-  private boolean isSurface( String flag ) { return ( flag != null && flag.indexOf('x') >= 0 ); }
+  private static float bearing( float value )
+  {
+    value %= 360;
+    return value < 0 ? value + 360 : value;
+  }
 
-  // compass has no flag for backshot, therefore this is always false
-  private boolean isBackshot( String flag ) { return false; }
+  private static float angleReading( String value, float correction, boolean clino )
+  {
+    float raw = number( value );
+    if ( raw < -900 ) return Float.NaN;
+    if ( clino ? raw < -90 || raw > 90 : raw < 0 || raw > 360 ) return Float.NaN;
+    float corrected = raw + correction;
+    if ( Float.isInfinite( corrected ) ) throw new NumberFormatException( "angle correction overflow" );
+    if ( clino ) return corrected < -90 || corrected > 90 ? Float.NaN : corrected;
+    return bearing( corrected );
+  }
 
-  /** read input file
-   * @param isr input stream reader
-   * @param filename input filename
-   */
+  private static float mean( float forward, float backward, boolean circular )
+  {
+    if ( Float.isNaN( forward ) ) return backward;
+    if ( Float.isNaN( backward ) ) return forward;
+    float result = (forward + backward) / 2;
+    if ( circular && Math.abs( forward - backward ) > 180 ) result += 180;
+    return circular ? bearing( result ) : result;
+  }
+
+  private static float dimension( String value, float unit )
+  {
+    try {
+      float raw = number( value );
+      return raw < 0 ? Float.NaN : raw * unit;
+    } catch ( NumberFormatException e ) {
+      TDLog.e( "Compass LRUD: " + e.getMessage() );
+      return Float.NaN;
+    }
+  }
+
+  /** FORMAT describes notebook/display units; standard DAT numbers remain feet/degrees. */
+  private void readFormat( Survey survey, String format )
+  {
+    int backIndex = format.length() >= 15 ? 13 : 11;
+    survey.backsights = format.length() > backIndex && format.charAt( backIndex ) == 'B';
+    survey.lrudTo = format.length() > backIndex + 1 && format.charAt( backIndex + 1 ) == 'T';
+    if ( mCavewhereUnits ) {
+      // Cavewhere exports native metric numbers. Only use this dialect when explicitly selected.
+      survey.lengthUnit = format.length() > 1 && format.charAt( 1 ) == 'M' ? 1 : TDUtil.FT2M;
+      survey.lrudUnit = format.length() > 2 && format.charAt( 2 ) == 'M' ? 1 : TDUtil.FT2M;
+    }
+  }
+
+  private void readHeader( Survey survey, String line )
+  {
+    String[] fields = splitLine( line );
+    for ( int i = 0; i < fields.length; ++i ) {
+      switch ( fields[i].toUpperCase( Locale.ROOT ) ) {
+        case "DECLINATION:":
+          survey.declination = number( fields[++i] );
+          if ( ! mApplyDeclination && shots.isEmpty() ) mDeclination = survey.declination;
+          break;
+        case "FORMAT:": readFormat( survey, fields[++i] ); break;
+        case "CORRECTIONS:":
+          survey.compassCorrection = number( fields[++i] );
+          survey.clinoCorrection = number( fields[++i] );
+          survey.tapeCorrection = number( fields[++i] );
+          break;
+        case "CORRECTIONS2:":
+          survey.backCompassCorrection = number( fields[++i] );
+          survey.backClinoCorrection = number( fields[++i] );
+          break;
+        default: break;
+      }
+    }
+  }
+
+  private void readDate( String line )
+  {
+    if ( mDate != null ) return;
+    String[] fields = splitLine( line.substring( line.indexOf( ':' ) + 1 ).trim() );
+    if ( fields.length < 3 ) return;
+    int year = Integer.parseInt( fields[2] );
+    if ( year < 100 ) year += year < 50 ? 2000 : 1900;
+    mDate = String.format( Locale.US, "%04d.%02d.%02d", year,
+                           Integer.parseInt( fields[0] ), Integer.parseInt( fields[1] ) );
+    int comment = line.toUpperCase( Locale.ROOT ).indexOf( "COMMENT:" );
+    if ( comment >= 0 ) mTitle = line.substring( comment + 8 ).trim();
+  }
+
   private void readFile( InputStreamReader isr, String filename ) throws ParserException
   {
-    // lengths in meters
-    // angles  in degrees
-    float mLength, mBearing, mClino, mLeft, mUp, mDown, mRight;
-    String mFlag=null, mComment=null, mFrom=null, mTo=null;
-
-    BufferedReader br = TDio.getBufferedReader( isr, filename );
-    String line = "";
+    BufferedReader reader = TDio.getBufferedReader( isr, filename );
+    if ( reader == null ) throw new ParserException();
+    Survey survey = null;
+    boolean data = false;
+    String line;
     try {
-      line = nextLine( br );
-      while ( line != null ) {
+      while ( (line = reader.readLine()) != null ) {
+        ++mLineCnt;
+        int separator = line.lastIndexOf( '\f' );
+        if ( separator >= 0 ) {
+          survey = null;
+          data = false;
+          line = line.substring( separator + 1 );
+        }
         line = line.trim();
-        // TDLog.v( line );
-        if ( line.startsWith("SURVEY NAME") ) {
-          if ( mName == null ) {
-            int pos = line.indexOf( ':' );
-            if ( pos >= 0 ) {
-              mName = line.substring( pos+2 );
-            }
-          }
-        } else if ( line.startsWith("SURVEY DATE") ) {
-          if ( mDate == null ) {
-            String[] vals = splitLine(line); // line.split( "\\s+" );
-            try {
-              mDate = String.format(Locale.US, "%04d.%02d.%02d",
-                Integer.parseInt( vals[4] ), Integer.parseInt( vals[2] ), Integer.parseInt( vals[3] ) );
-            } catch ( NumberFormatException e ) {
-              TDLog.e("Non-integer date value");
-            }
-            if ( vals.length >= 6 ) {
-              int com = line.indexOf("COMMENT:");
-              mComment = line.substring( com+8 ).trim();
-            }
-          }
-        } else if ( line.startsWith("SURVEY TEAM") ) {
-          String team = nextLine( br );
-          if ( mTeam.length() == 0 ) {
-            mTeam = team.trim();
-          }
-        } else if ( line.startsWith("DECLINATION") ) {
-          String[] vals = splitLine(line); // line.split( "\\s+" );
-          mDeclination = Float.parseFloat( vals[1] );
-        } else if ( line.length() > 8 ) {
-          String[] vals = splitLine(line); // line.split( "\\s+" );
-          int k = 0;
-          int kmax = vals.length;
-          if ( kmax >= 5 && ! vals[0].equals("FROM") ) {
-            mLength = -1;
-            mLeft = mRight = mUp = mDown = -1;
-
-            mFrom = vals[k]; ++k;
-            mTo   = vals[k]; ++k;
-            try {
-              mLength  = Float.parseFloat(vals[k]) * TDUtil.FT2M; ++k;
-              mBearing = Float.parseFloat(vals[k]); ++k;
-              mClino   = Float.parseFloat(vals[k]); ++k;
-              if ( k < kmax ) {
-                mLeft = Float.parseFloat(vals[k]) * TDUtil.FT2M; ++k;
-                if ( k < kmax ) {
-                  mUp = Float.parseFloat(vals[k]) * TDUtil.FT2M; ++k;
-                  if ( k < kmax ) {
-                    mDown = Float.parseFloat(vals[k]) * TDUtil.FT2M; ++k;
-                    if ( k < kmax ) {
-                      mRight = Float.parseFloat(vals[k]) * TDUtil.FT2M; ++k;
-                      mFlag = null;
-                      mComment = "";
-                      if ( k < kmax ) {
-                        if (vals[k].startsWith("#")) {
-                          mFlag = vals[k]; ++k;
-                          if ( k < kmax ) mComment = TDUtil.concat( vals, k );
-                        } else if ( mBearing < -900 || mClino < -900 ) {
-                          float bearing = TDMath.add180( Float.parseFloat(vals[k]) ); ++k; 
-                          if ( mBearing < -900 ) {
-                            mBearing = bearing;
-                          } else if ( bearing >= 0 && bearing <= 360 ) {
-                            if ( Math.abs( mBearing - bearing ) > 180 ) {
-                              mBearing = TDMath.in360( ( mBearing + bearing + 360 ) / 2 );
-                            } else {
-                              mBearing = ( mBearing + bearing ) / 2;
-                            }
-                          }
-                          if ( k < kmax ) {
-                            float clino = Float.parseFloat(vals[k]); ++k;
-                            if ( mClino < -900 ) {
-                              mClino = - clino;
-                            } else if ( clino >= -90 && clino <= 90 ) {
-                              mClino = ( mClino - clino ) / 2;
-                            }
-                          }
-                          if ( k < kmax ) {
-                            if (vals[k].startsWith("#")) {
-                              mFlag = vals[k]; ++k;
-                            }
-                            if ( k < kmax ) mComment = TDUtil.concat( vals, k );
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-                mBearing = TDMath.in360( mBearing );
-
-                // got shot+LRUD
-                int extend = 0;
-                if ( mLegFirst ) {
-                  extend = ( mBearing < 90 || mBearing > 270 )? 1 : -1;
-                  shots.add( new ParserShot( mFrom, mTo, mLength, mBearing, mClino, 0.0f,
-                             extend, LegType.NORMAL, isDuplicate( mFlag ), isSurface(mFlag), isBackshot(mFlag), mComment ) );
-                }
-                if ( mLrud ) {
-                  if ( mLeft > 0 ) {
-                    float ber = TDMath.in360( mBearing + 270 );
-                    extend = ( TDSetting.mLRExtend )? (int)TDAzimuth.computeSplayExtend( ber ) : ExtendType.EXTEND_UNSET;
-                    // FIXME splays in the shots array to keep them interleaved with legs, but have leg flag 2
-                    shots.add( new ParserShot( mFrom, TDString.EMPTY, mLeft, ber, 0.0f, 0.0f, extend, LegType.XSPLAY, false, false, false, "" ) );
-                  }
-                  if ( mRight > 0 ) {
-                    float ber = TDMath.in360( mBearing + 90 );
-                    extend = ( TDSetting.mLRExtend )? (int)TDAzimuth.computeSplayExtend( ber ) : ExtendType.EXTEND_UNSET;
-                    shots.add( new ParserShot( mFrom, TDString.EMPTY, mRight, ber, 0.0f, 0.0f, extend, LegType.XSPLAY, false, false, false, "" ) );
-                  }
-                  if ( mUp > 0 ) {
-                    shots.add( new ParserShot( mFrom, TDString.EMPTY, mUp, 0.0f, 90.0f, 0.0f, ExtendType.EXTEND_VERT, LegType.XSPLAY, false, false, false, "" ) );
-                  }
-                  if ( mDown > 0 ) {
-                    shots.add( new ParserShot( mFrom, TDString.EMPTY, mDown, 0.0f, -90.0f, 0.0f, ExtendType.EXTEND_VERT, LegType.XSPLAY, false, false, false, "" ) );
-                  }
-                }
-                if ( ! mLegFirst ) {
-                  extend = ( mBearing < 90 || mBearing > 270 )? 1 : -1;
-                  shots.add( new ParserShot( mFrom, mTo, mLength, mBearing, mClino, 0.0f,
-                             extend, LegType.NORMAL, isDuplicate( mFlag ), isSurface(mFlag), isBackshot(mFlag), mComment ) );
-                }
-              } else { // got only shot
-                int extend = ( mBearing < 90 || mBearing > 270 )? 1 : -1;
-                shots.add( new ParserShot( mFrom, mTo, mLength, mBearing, mClino, 0.0f,
-                                 extend, LegType.NORMAL, isDuplicate( mFlag ), isSurface(mFlag), isBackshot(mFlag), mComment ) );
-              }
-            } catch ( NumberFormatException e ) {
-              TDLog.e( "ERROR " + mLineCnt + ": " + line + e.getMessage() );
-            }
+        String upper = line.toUpperCase( Locale.ROOT );
+        if ( upper.startsWith( "SURVEY NAME:" ) ) {
+          survey = new Survey();
+          data = false;
+          if ( mName == null ) mName = line.substring( line.indexOf( ':' ) + 1 ).trim();
+        } else if ( survey == null || line.isEmpty() ) {
+          continue;
+        } else if ( upper.startsWith( "SURVEY DATE:" ) ) {
+          readDate( line );
+        } else if ( upper.startsWith( "SURVEY TEAM:" ) ) {
+          String team = reader.readLine();
+          ++mLineCnt;
+          if ( team != null && mTeam.isEmpty() ) mTeam = team.trim();
+        } else if ( upper.startsWith( "DECLINATION:" ) || upper.startsWith( "FORMAT:" )
+                 || upper.startsWith( "CORRECTIONS:" ) || upper.startsWith( "CORRECTIONS2:" ) ) {
+          readHeader( survey, line );
+        } else if ( upper.matches( "FROM\\s+TO\\s+(LEN|LENGTH)\\s+.*" ) ) {
+          data = true;
+        } else if ( data ) {
+          try {
+            readShot( survey, splitLine( line ) );
+          } catch ( NumberFormatException e ) {
+            TDLog.e( "Compass row " + mLineCnt + ": " + e.getMessage() );
           }
         }
-        line = nextLine( br );
       }
-    } catch ( IOException e ) {
-      // TODO
-      TDLog.e( "ERROR " + mLineCnt + ": " + line );
+    } catch ( IOException | NumberFormatException | IndexOutOfBoundsException e ) {
+      TDLog.e( "Compass header " + mLineCnt + ": " + e.getMessage() );
       throw new ParserException();
     }
-    if ( mDate == null ) {
-      mDate = TDUtil.currentDate();
+    if ( mDate == null ) mDate = TDUtil.currentDate();
+  }
+
+  private void readShot( Survey survey, String[] fields )
+  {
+    if ( fields.length < 9 ) throw new NumberFormatException( "incomplete shot" );
+    String from = fields[0];
+    String to = fields[1];
+    float rawLength = number( fields[2] );
+    if ( rawLength < 0 ) throw new NumberFormatException( "missing or negative length" );
+    float forwardBearing = angleReading( fields[3], survey.compassCorrection, false );
+    float forwardClino = angleReading( fields[4], survey.clinoCorrection, true );
+    float backwardBearing = Float.NaN, backwardClino = Float.NaN;
+    int column = 9;
+    if ( survey.backsights && fields.length >= 11 && ! fields[column].startsWith( "#" ) ) {
+      backwardBearing = angleReading( fields[column++], survey.backCompassCorrection, false );
+      if ( ! Float.isNaN( backwardBearing ) ) backwardBearing = bearing( backwardBearing + 180 );
+      backwardClino = -angleReading( fields[column++], survey.backClinoCorrection, true );
     }
-    // TDLog.Log( TDLog.LOG_THERION, "Parser Compass shots "+ shots.size() +" splays "+ splays.size()  );
-    // TDLog.v( "Parser Compass shots "+ shots.size() + " splays "+ splays.size() );
+    String flags = "";
+    if ( column < fields.length && fields[column].startsWith( "#|" ) && fields[column].endsWith( "#" ) ) {
+      flags = fields[column++].toUpperCase( Locale.ROOT );
+    }
+    if ( flags.indexOf( 'X' ) >= 0 ) return;
+    String comment = column < fields.length ? TDUtil.concat( fields, column ) : "";
+    boolean duplicate = flags.indexOf( 'L' ) >= 0;
+    boolean noPlot = flags.indexOf( 'P' ) >= 0;
+    boolean stationOnly = from.equals( to ) && rawLength == 0;
+    float length = stationOnly ? 0 : (rawLength + survey.tapeCorrection) * survey.lengthUnit;
+    if ( length < 0 || Float.isInfinite( length ) ) throw new NumberFormatException( "invalid corrected length" );
+    float clino = mean( forwardClino, backwardClino, false );
+    float azimuth = mean( forwardBearing, backwardBearing, true );
+    if ( stationOnly ) {
+      // Exporters use zero-length self records for the final station's LRUD, not traverse legs.
+      Float previous = survey.stationBearings.get( from );
+      azimuth = previous == null ? Float.NaN : previous;
+    } else {
+      if ( Float.isNaN( clino ) ) throw new NumberFormatException( "missing inclination" );
+      if ( Float.isNaN( azimuth ) ) {
+        if ( Math.abs( clino ) != 90 ) throw new NumberFormatException( "missing bearing" );
+        azimuth = 0;
+      }
+      if ( mApplyDeclination ) azimuth = bearing( azimuth + survey.declination );
+      survey.stationBearings.put( from, azimuth );
+      survey.stationBearings.put( to, azimuth );
+    }
+    ParserShot leg = null;
+    if ( ! stationOnly ) {
+      int extend = azimuth < 90 || azimuth > 270 ? 1 : -1;
+      leg = new ParserShot( from, to, length, azimuth, clino, 0, extend, LegType.NORMAL,
+                            duplicate, false, false, comment );
+      leg.noPlot = noPlot;
+      if ( mLegFirst ) shots.add( leg );
+    }
+    if ( mLrud ) {
+      String station = survey.lrudTo ? to : from;
+      float left = dimension( fields[5], survey.lrudUnit );
+      float up = dimension( fields[6], survey.lrudUnit );
+      float down = dimension( fields[7], survey.lrudUnit );
+      float right = dimension( fields[8], survey.lrudUnit );
+      if ( ! Float.isNaN( azimuth ) ) {
+        addLrud( station, left, bearing( azimuth + 270 ), 0, noPlot );
+        addLrud( station, right, bearing( azimuth + 90 ), 0, noPlot );
+      }
+      addLrud( station, up, 0, 90, noPlot );
+      addLrud( station, down, 0, -90, noPlot );
+    }
+    if ( leg != null && ! mLegFirst ) shots.add( leg );
   }
 
-  float parseAngleUnit( String unit ) 
+  private void addLrud( String station, float length, float azimuth, float clino, boolean noPlot )
   {
-    // not handled "percent"
-    if ( unit.startsWith("min") ) return 1/60.0f;
-    if ( unit.startsWith("grad") ) return TDUtil.GRAD2DEG;
-    if ( unit.startsWith("mil") ) return TDUtil.GRAD2DEG;
-    // if ( unit.startsWith("deg") ) return 1.0f;
-    return 1.0f;
+    if ( Float.isNaN( length ) || length <= 0 ) return;
+    int extend = clino == 0
+        ? (TDSetting.mLRExtend ? (int)TDAzimuth.computeSplayExtend( azimuth ) : ExtendType.EXTEND_UNSET)
+        : ExtendType.EXTEND_VERT;
+    ParserShot shot = new ParserShot( station, TDString.EMPTY, length, azimuth, clino, 0,
+                                     extend, LegType.XSPLAY, false, false, false, "" );
+    shot.noPlot = noPlot;
+    shots.add( shot );
   }
-
-  float parseLengthUnit( String unit ) 
-  {
-    if ( unit.startsWith("c") ) return 0.01f; // cm centimeter
-    if ( unit.startsWith("f") ) return TDUtil.FT2M; // ft feet
-    if ( unit.startsWith("i") ) return TDUtil.IN2M; // in inch
-    if ( unit.startsWith("milli") || unit.equals("mm") ) return 0.001f; // mm millimeter
-    if ( unit.startsWith("y") ) return TDUtil.YD2M; // yd yard
-    // if ( unit.startsWith("m") ) return 1.0f;
-    return 1.0f;
-  }
-
-  // int parseExtend( String extend, int old_extend )
-  // {
-  //   // skip: hide, start
-  //   if ( extend.equals("hide") || extend.equals("start") ) {
-  //     return old_extend;
-  //   }
-  //   if ( extend.equals("left") || extend.equals("reverse") ) {
-  //     return ExtendType.EXTEND_LEFT;
-  //   } 
-  //   if ( extend.startsWith("vert") ) {
-  //     return ExtendType.EXTEND_VERT;
-  //   }
-  //   if ( extend.startsWith("ignore") ) {
-  //     return ExtendType.EXTEND_IGNORE;
-  //   }
-  //   // if ( extend.equals("right") || extend.equals("normal") ) {
-  //   //   return ExtendType.EXTEND_RIGHT;
-  //   // } 
-  //   return ExtendType.EXTEND_RIGHT;
-  // }
 }

@@ -27,6 +27,7 @@ public class ImportCompassTask extends ImportTask
   private int mDatamode;
   private boolean mLrud;
   private boolean mLegFirst;
+  private boolean mCavewhereUnits;
 
   // public ImportCompassTask( MainWindow main, InputStreamReader isr, ImportData data )
   // {
@@ -42,6 +43,7 @@ public class ImportCompassTask extends ImportTask
     mDatamode = data.mDatamode; 
     mLrud     = data.mLrud;
     mLegFirst = data.mLeg;
+    mCavewhereUnits = data.mCompassCavewhereUnits;
   }
 
 
@@ -50,7 +52,7 @@ public class ImportCompassTask extends ImportTask
   {
     long sid = 0;
     try {
-      ParserCompass parser = new ParserCompass( isr, str[0], true, mLrud, mLegFirst ); // apply_declination = true
+      ParserCompass parser = new ParserCompass( isr, str[0], true, mLrud, mLegFirst, mCavewhereUnits );
       if ( ! parser.isValid() ) return -2L;
       if ( mApp.get() == null ) return -1L;
       if ( hasSurveyName( parser.mName ) ) {
@@ -73,7 +75,7 @@ public class ImportCompassTask extends ImportTask
       ArrayList< ParserShot > splays = parser.getSplays();
       insertImportShots( sid, id, splays );
     } catch ( ParserException e ) {
-      // TDToast.makeBad( R.string.file_parse_fail );
+      return -2L;
     }
     return sid;
   }

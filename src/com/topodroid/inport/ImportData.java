@@ -23,6 +23,7 @@ public class ImportData
   public boolean mLeg;   // leg first
   public boolean mTrox;
   public int     mDatamode; // Compass
+  public boolean mCompassCavewhereUnits; // explicitly selected native-unit DAT dialect
   public boolean mTherionPath; // Therion survey path
 
   private boolean mDiving;

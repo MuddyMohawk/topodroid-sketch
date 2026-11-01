@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="import_compass_cavewhere_units">Cavewhere DAT units</string>
+    <string name="import_compass_cavewhere_units_help">Use for Cavewhere exports that store metric trips in metres. Leave unchecked for standard Compass files, which store distances in feet.</string>
+</resources>

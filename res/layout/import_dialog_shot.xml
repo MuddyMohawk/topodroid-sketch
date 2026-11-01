@@ -38,6 +38,16 @@
       android:layout_height="wrap_content" 
       android:text="@string/import_lrud"
       />
+    <CheckBox android:id="@+id/dat_cavewhere_units"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/import_compass_cavewhere_units"
+      />
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/import_compass_cavewhere_units_help"
+      />
     <CheckBox android:id="@+id/dat_leg_first"
       android:layout_width="match_parent"
       android:layout_height="wrap_content" 

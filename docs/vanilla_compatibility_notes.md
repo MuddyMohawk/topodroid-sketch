@@ -11,6 +11,7 @@
 - Compass `.dat` export combines an immediately paired named reverse backsight with its foresight after normalizing direction, emitting one `A`-to-`B` record instead of duplicated traverse length.
 - Compass `.dat` import now uses the Android provider's display name, so valid files exposed through opaque URI IDs retain their `.dat` suffix.
 - Native Sketch ZIP import preserves fixed-point horizontal and vertical accuracy even when the point has no converted coordinate system.
+- Native Sketch survey ZIPs serialize shot distances to 0.001 m and bearings and inclinations to 0.01 degrees in `survey.sql`; ZIP round trips can round stored measurements and are not exact-value recovery snapshots.
 - GPX export filenames now resolve back to the GPX format through the shared extension registry.
 - Sketch symbol files now carry private `sketch_picker_category`, `sketch_picker_section`, and `sketch_search_terms` directives; a future Vanilla symbol conversion path must strip or safely ignore these directives while preserving the standard symbol definition.
 
@@ -18,9 +19,9 @@
 
 ## Unsupported import/export formats
 
-- Compass `.dat` import loses redundant backsights, instrument corrections, To-station LRUD association and standard exclusion flags; missing readings can become invalid legs, and survey blocks share the last declination. Current Vanilla fixes per-survey declination and uppercase `L` on records without redundant backsights, but retains the other tested issues.
+- Compass `.dat` import now combines backsights, applies per-survey corrections and declination, preserves `L`/`P`/`X` exclusions and To-station LRUD, and omits invalid measurement placeholders. Earlier imports are not repaired and require comparison with the source before reimport. Compass's `C` flag (disable loop adjustment) still has no equivalent in Sketch.
 
-- Cavewhere's current Compass `.dat` exporter writes metric distances and LRUD without the conversion to decimal feet required by Compass; `TB.dat` contains this mismatch in its metric trips. Fixing that exporter defect must not change the interpretation of standard DAT files.
+- Cavewhere's Compass `.dat` exporter writes native metric distances and LRUD instead of standard decimal feet. Select the explicit **Cavewhere DAT units** import option for affected exports such as `TB.dat`; standard Compass interpretation remains the default, and the choice resets for each import. Existing saved surveys are not rescaled.
 
 - Survex `.svx` import now preserves scoped units and column order, combines fore/back readings, and accepts explicit vertical shots. Earlier Sketch and current Vanilla imports can contain mis-scaled lengths and missing backsight-only or vertical shots; correcting the importer does not repair those saved surveys, which require comparison with the original source before reimport or repair.
 
