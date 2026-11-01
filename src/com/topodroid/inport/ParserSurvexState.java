@@ -12,20 +12,30 @@
  */
 package com.topodroid.inport;
 
+import java.util.Arrays;
+
 class ParserSurvexState
 {
+  static final int LENGTH = 0;
+  static final int BEARING = 1;
+  static final int CLINO = 2;
+  static final int BACK_LENGTH = 3;
+  static final int BACK_BEARING = 4;
+  static final int BACK_CLINO = 5;
+
   ParserSurvexState mParent;
 
   String mName; // *begin name
 
-  // zero_error includes scale and units
-  float mUnitLen,   mScaleLen,   mZeroLen; 
-  float mUnitBer,   mScaleBer,   mZeroBer; 
-  float mUnitCln,   mScaleCln,   mZeroCln;
-  // float mUnitLeft,  mScaleLeft,  mZeroLeft;
-  // float mUnitRight, mScaleRight, mZeroRight;
-  // float mUnitUp,    mScaleUp,    mZeroUp;
-  // float mUnitDown,  mScaleDown,  mZeroDown;
+  // Zero errors include scale and units; backsight instruments are independent.
+  final float[] mUnit = new float[6];
+  final float[] mScale = new float[6];
+  final float[] mZero = new float[6];
+
+  // Column order is scoped just like units and calibration.
+  int jFrom, jTo, jLength, jCompass, jClino;
+  int jBackLength, jBackCompass, jBackClino;
+  int jLeft, jRight, jUp, jDown, jStation;
   float mDeclination;
   boolean mDuplicate;
   boolean mSurface;
@@ -54,22 +64,32 @@ class ParserSurvexState
 
   void setDataDefault()
   {
-    data_type = 0; // DATA_DEFAULT
+    data_type = ParserUtil.DATA_NORMAL;
     interleaved = false;
+    clearDataIndices();
+    jFrom = 0;
+    jTo = 1;
+    jLength = 2;
+    jCompass = 3;
+    jClino = 4;
+  }
+
+  void clearDataIndices()
+  {
+    jFrom = jTo = jLength = jCompass = jClino = -1;
+    jBackLength = jBackCompass = jBackClino = -1;
+    jLeft = jRight = jUp = jDown = jStation = -1;
   }
 
   void setCalibrateDefault()
   {
-    mZeroLen   = mZeroBer   = mZeroCln   = 0.0f;
-    mScaleLen  = mScaleBer  = mScaleCln  = 1.0f;
-    // mUnitLeft  = mUnitRight  = mUnitUp  = mUnitDown  = 1.0f;
-    // mScaleLeft = mScaleRight = mScaleUp = mScaleDown = 1.0f;
-    // mZeroLeft  = mZeroRight  = mZeroUp  = mZeroDown  = 0.0f;
+    Arrays.fill( mZero, 0.0f );
+    Arrays.fill( mScale, 1.0f );
   }
 
   void setUnitsDefault()
   {
-    mUnitLen   = mUnitBer   = mUnitCln   = 1.0f;
+    Arrays.fill( mUnit, 1.0f );
   }
 
   ParserSurvexState( ParserSurvexState state, String name )
@@ -77,28 +97,22 @@ class ParserSurvexState
     mParent  = state;
     mName    = name;
 
-    mUnitLen   = state.mUnitLen;
-    mUnitBer   = state.mUnitBer;
-    mUnitCln   = state.mUnitCln;
-    mZeroLen   = state.mZeroLen;
-    mZeroBer   = state.mZeroBer;
-    mZeroCln   = state.mZeroCln;
-    mScaleLen  = state.mScaleLen;
-    mScaleBer  = state.mScaleBer;
-    mScaleCln  = state.mScaleCln;
-
-    // mUnitLeft   = state.mUnitLeft;
-    // mUnitRight  = state.mUnitRight;
-    // mUnitUp     = state.mUnitUp;
-    // mUnitDown   = state.mUnitDown;
-    // mScaleLeft  = state.mScaleLeft;
-    // mScaleRight = state.mScaleRight;
-    // mScaleUp    = state.mScaleUp;
-    // mScaleDown  = state.mScaleDown;
-    // mZeroLeft   = state.mZeroLeft;
-    // mZeroRight  = state.mZeroRight;
-    // mZeroUp     = state.mZeroUp;
-    // mZeroDown   = state.mZeroDown;
+    System.arraycopy( state.mUnit, 0, mUnit, 0, mUnit.length );
+    System.arraycopy( state.mScale, 0, mScale, 0, mScale.length );
+    System.arraycopy( state.mZero, 0, mZero, 0, mZero.length );
+    jFrom = state.jFrom;
+    jTo = state.jTo;
+    jLength = state.jLength;
+    jCompass = state.jCompass;
+    jClino = state.jClino;
+    jBackLength = state.jBackLength;
+    jBackCompass = state.jBackCompass;
+    jBackClino = state.jBackClino;
+    jLeft = state.jLeft;
+    jRight = state.jRight;
+    jUp = state.jUp;
+    jDown = state.jDown;
+    jStation = state.jStation;
 
     mDeclination= state.mDeclination;
     mDuplicate = state.mDuplicate;
