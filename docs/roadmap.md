@@ -3,8 +3,14 @@
 The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles.
 
 ## TODO
-- change the shadow-line preview line thingy to match the selected drawing style (smooth, straight, snap)
-- Show footage total of selected shots
+- invert colors upon export (white to black, etc) (Ryan)
+- Flip/mirror cross-section
+- TopoDroid calibration. Shots are grouped into 4 for calibration purposes, but that doesn't show in the UI. Would be nice to have better controls around this.
+- Cross-section overhaul. We can just do one cross-section and make it good
+- Add the gour dam symbol (Ryan)
+- Add an "all" category to the toolbar editor
+- Be able to add a projected profile after sketch creation (Oliver)
+- change the shadow-line preview line thingy to match the selected drawing style (smooth, straight, snap) (Oliver)
 - Additional display settings for splays to show only dots or only labelled splays. Having all splays gets crowded. Splay thickness settings?
 - export needs to work in background?
   - export progress bar/spinny
@@ -43,7 +49,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - are the bedrock area lines too thin?
   - make slope point symbol lines stretchable/configurable?
 
-## Known bugs 
+## Known bugs
 - User reported, but not replicated: "changing an unlocked row caused the row to visually change but the button didn't actually change"
 - User reported: if the app loses permissions for some reason, like an OS update or something, it won't open. Just immediate crash with no indication of what's wrong
 - Multi-device functionality seems terrible. Could not switch between DistoX and Cavway via long-press in multi mode, but could manually swap then at the main screen. 
@@ -58,7 +64,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - station designation font size does not affect export size
   - actually all the sketch settings might not be respected (eg leg lines size)?
 - The "location is needed" pop-ups upon install even if permission was granted during installation. Vanilla bug.
-- The `undo` action seems weird over many actions. Potentially vanilla bug
+- The `undo` action seems weird over many actions. Sometimes when deleting things, you can't undo that delete. Potentially vanilla bug
 - Taking screenshot with volume-up doesn't work. Vanilla bug.
 - Seems like the scaling of dashed line is odd, like it has a minimum size? Vanilla bug.
 - Had a bug where I placed a section cross-section but then couldn't select it via the edit tool. Wasn't replicable but noted here.
@@ -123,6 +129,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
   - Toggle between active device (multi-device survey)
 - Pie in the sky: Advanced GPS/gnss tools. RTK when.
 - Inventory/Rope Audit/Vandalism tracking tools
+  - cave camp resource tracking
 - In-app symbol editor v2
 - Sketch layers
 - Opacity? that would be useful for doing fade-in-fade-out overlapping layers
