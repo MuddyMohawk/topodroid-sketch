@@ -3,6 +3,7 @@
 The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles.
 
 ## TODO
+- Deprecate/hide/warn unsupport import and export formats
 - Add small ceiling channel symbol (alternate)
 - invert colors upon export (white to black, etc) (Ryan)
 - Flip/mirror cross-section
@@ -75,6 +76,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Making the toolbars smaller causes point symbols to become illegible. Even smaller, and other rendering problems come up
 
 ## Future possible features / brainstorming
+- Overhaul the sketch creation experience. Need to be able to manage, delete, rename, etc from there. 
 - Editing mode `undo` button 
 - Compass import support
   - split trips into different surveys if desired. Warning on lots of trips
