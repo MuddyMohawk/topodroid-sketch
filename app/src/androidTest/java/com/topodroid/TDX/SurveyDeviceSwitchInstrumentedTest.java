@@ -4,14 +4,11 @@ import static org.junit.Assert.*;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.SharedPreferences;
-import android.widget.ListView;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.topodroid.dev.*;
 import com.topodroid.dev.cavway.CavwayComm;
 import com.topodroid.dev.distox_ble.DistoXBLEComm;
 import com.topodroid.prefs.TDSetting;
-import com.topodroid.prefs.TDPrefHelper;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -19,9 +16,13 @@ import java.util.concurrent.TimeUnit;
 import org.junit.*;
 import org.junit.runner.RunWith;
 
-@RunWith(AndroidJUnit4.class)
+@RunWith(com.topodroid.TDX.QaJUnit4.class)
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.UI)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DEVICES})
 public class SurveyDeviceSwitchInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final String CAVWAY = "00:00:00:00:00:11";
   private static final String DISTO = "00:00:00:00:00:22";
   private TestApp app;
@@ -77,47 +78,6 @@ public class SurveyDeviceSwitchInstrumentedTest
     if (support != null) support.finish();
   }
 
-  @Test public void switchesBothDirectionsAndObeysEveryConnectionMode() throws Exception
-  {
-    for (int mode : new int[]{0, 1, 2}) {
-      modeField().setInt(null, mode);
-      onMain(() -> app.requestSurveyDeviceSwitch(DISTO));
-      awaitIdle();
-      assertTrue(app.latest instanceof FakeDisto);
-      assertEquals(DISTO, TDInstance.deviceAddress());
-      assertEquals(CAVWAY, TDInstance.secondDeviceAddress());
-      TDPrefHelper saved = new TDPrefHelper(TDInstance.context);
-      assertEquals(DISTO, saved.getString(TDSetting.keyDeviceName(), ""));
-      assertEquals(CAVWAY, saved.getString(TDSetting.keySecondDeviceName(), ""));
-      assertEquals(mode == 1, app.latest.isConnected());
-      assertEquals(mode == 1 ? 0 : 1, app.downloads);
-      onMain(() -> app.requestSurveyDeviceSwitch(CAVWAY));
-      awaitIdle();
-      assertTrue(app.latest instanceof FakeCavway);
-      assertEquals(CAVWAY, TDInstance.deviceAddress());
-      assertEquals(DISTO, TDInstance.secondDeviceAddress());
-      assertEquals(mode == 1, app.latest.isConnected());
-      app.downloads = 0;
-    }
-  }
-
-  @Test public void busyOperationRetainsSourceAndCoalescesSwitchRequests() throws Exception
-  {
-    modeField().setInt(null, 1);
-    TopoDroidApp.DeviceOperation operation = app.beginDeviceOperation();
-    TopoDroidComm original = operation.comm;
-    onMain(() -> { app.requestSurveyDeviceSwitch(DISTO); app.requestSurveyDeviceSwitch(DISTO); });
-    assertEquals(CAVWAY, operation.address);
-    assertEquals(CAVWAY, TDInstance.deviceAddress());
-    assertSame(original, app.latest);
-    assertTrue(app.isDeviceOperationBusy());
-    operation.close();
-    awaitIdle();
-    assertNotSame(original, app.latest);
-    assertEquals(DISTO, TDInstance.deviceAddress());
-    assertEquals(2, app.created);
-  }
-
   @Test public void lateStatusFromOldDriverCannotDisconnectNewDevice() throws Exception
   {
     modeField().setInt(null, 1);
@@ -130,63 +90,7 @@ public class SurveyDeviceSwitchInstrumentedTest
     assertEquals(ConnectionState.CONN_CONNECTED, listener.status);
   }
 
-  @Test public void rememberedPairUsesAddressesDespiteDuplicateNicknames() throws Exception
-  {
-    onMain(() -> {
-      TDInstance.setDeviceA(null); TDInstance.setDeviceB(null);
-      app.restoreDevicePair(new TDPrefHelper(TDInstance.context));
-      assertEquals(CAVWAY, TDInstance.deviceAddress());
-      assertEquals(DISTO, TDInstance.secondDeviceAddress());
-      app.setDeviceB(CAVWAY);
-      assertEquals(DISTO, TDInstance.secondDeviceAddress());
-      app.devices.remove(1);
-      app.restoreDevicePair(new TDPrefHelper(TDInstance.context));
-      assertNull(TDInstance.getDeviceB());
-    });
-  }
-
-  @Test public void pickerIncludesBleAndChoosesObjectBehindDisplayedName() throws Exception
-  {
-    modeField().setInt(null, 0);
-    onMain(() -> {
-      DeviceSelectDialog dialog = new DeviceSelectDialog(TopoDroidApp.mMainActivity, app);
-      dialog.show();
-      ListView list = dialog.findViewById(R.id.dev_list);
-      assertEquals(2, list.getAdapter().getCount());
-      dialog.onItemClick(list, null, 1, 0);
-    });
-    awaitIdle();
-    assertEquals(DISTO, TDInstance.deviceAddress());
-  }
-
-  @Test public void leavingSurveyCancelsDeferredSwitch() throws Exception
-  {
-    TopoDroidApp.DeviceOperation operation = app.beginDeviceOperation();
-    onMain(() -> { app.requestSurveyDeviceSwitch(DISTO); app.mDataDownloader.onStop(); });
-    operation.close();
-    awaitIdle();
-    assertEquals(CAVWAY, TDInstance.deviceAddress());
-  }
-
-  @Test public void remoteSequenceKeepsButtonsDisabledUntilFinalCommandFinishes() throws Exception
-  {
-    modeField().setInt(null, 1);
-    app.mDataDownloader.setDownloading(true);
-    app.latest.mBTConnected = true;
-    FakeCavway cavway = (FakeCavway)app.latest;
-    cavway.block = new CountDownLatch(1);
-    onMain(() -> assertTrue(app.setCavwayLaser(Device.MEASURE, 1, app.mListerSet, DataType.DATA_SHOT, true, true)));
-    assertTrue(cavway.entered.await(5, TimeUnit.SECONDS));
-    onMain(() -> app.requestSurveyDeviceSwitch(DISTO));
-    assertFalse(listener.enabled);
-    assertEquals(CAVWAY, TDInstance.deviceAddress());
-    cavway.block.countDown();
-    awaitIdle();
-    assertFalse(cavway.closeRequested);
-    assertEquals(DISTO, TDInstance.deviceAddress());
-    assertTrue(listener.enabled);
-  }
-
+  @com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DEVICES, com.topodroid.qa.TestFeatures.Feature.DATA})
   @Test public void packetContextDoesNotFollowGlobalSurveyOrInstrument() throws Exception
   {
     SnapshotComm comm = new SnapshotComm(app);
@@ -200,6 +104,7 @@ public class SurveyDeviceSwitchInstrumentedTest
     assertEquals(Device.DISTO_CAVWAYX1, comm.type());
   }
 
+  @com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DEVICES, com.topodroid.qa.TestFeatures.Feature.DATA})
   @Test public void packetsStayInTheirOriginalSurveyWithTheirActualInstrumentAddress() throws Exception
   {
     long source = TopoDroidApp.mData.setSurvey("multi_device_source", 0);
@@ -221,20 +126,6 @@ public class SurveyDeviceSwitchInstrumentedTest
     assertEquals(CAVWAY, shots.get(0).getAddress());
     assertEquals(DISTO, shots.get(1).getAddress());
     assertTrue(TopoDroidApp.mData.selectAllShots(other, com.topodroid.util.TDStatus.NORMAL).isEmpty());
-  }
-
-  @Test public void longPressDownloadSwitchesBleFromBothSurveyScreens() throws Exception
-  {
-    modeField().setInt(null, 1);
-    TDSetting.mSecondDistoX = true;
-    support.createSurveyAndOpenShots("multi_device_contract", "Test", "1", "Device switch test");
-    ShotWindow shots = TopoDroidApp.mShotWindow;
-    switchFromWindow(shots, ShotWindow.class);
-    assertEquals(DISTO, TDInstance.deviceAddress());
-    support.addManualShot("1", "2", "10", "0", "0", true);
-    support.openNewPlotFromShotWindow("1", "1");
-    switchFromWindow(TopoDroidApp.mDrawingWindow, DrawingWindow.class);
-    assertEquals(CAVWAY, TDInstance.deviceAddress());
   }
 
   private void switchFromWindow(ILister window, Class<?> type) throws Exception
@@ -289,19 +180,6 @@ public class SurveyDeviceSwitchInstrumentedTest
     } finally {
       cavway.block.countDown(); TDSetting.mWaitLaser = waitLaser; TDSetting.mWaitShot = waitShot;
     }
-  }
-
-  @Test public void failedConnectionLeavesChosenDeviceVisibleAndStopsWaiting() throws Exception
-  {
-    modeField().setInt(null, 1);
-    app.failConnect = true;
-    onMain(() -> app.requestSurveyDeviceSwitch(DISTO));
-    awaitIdle();
-    assertEquals(DISTO, TDInstance.deviceAddress());
-    assertEquals(CAVWAY, TDInstance.secondDeviceAddress());
-    assertEquals(ConnectionState.CONN_DISCONNECTED, listener.status);
-    assertFalse(app.mDataDownloader.isDownloading());
-    assertTrue(listener.enabled);
   }
 
   @Test public void leavingSurveyClosesConnectionThatCompletesAfterCancellation() throws Exception

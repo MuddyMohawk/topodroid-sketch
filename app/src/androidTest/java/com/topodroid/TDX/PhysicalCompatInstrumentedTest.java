@@ -13,16 +13,12 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.SystemClock;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.BySelector;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
-import androidx.test.uiautomator.UiObjectNotFoundException;
-import androidx.test.uiautomator.UiScrollable;
-import androidx.test.uiautomator.UiSelector;
 import androidx.test.uiautomator.Until;
 
 import org.junit.After;
@@ -37,20 +33,23 @@ import com.topodroid.types.LegType;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.List;
-import java.util.Locale;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.COMPAT)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.VANILLA})
 public class PhysicalCompatInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final String VANILLA_PACKAGE_DEFAULT = "com.topodroid.TDX";
   private static final String SKETCH_PACKAGE_DEFAULT = "com.topodroid.TDX.sketch";
   private static final String MAIN_WINDOW_CLASS = "com.topodroid.TDX.MainWindow";
   private static final String IMPORT_ACTION = "TopoDroid.intent.action.Import";
   private static final String PLOT_NAME = "1";
-  private static final long UI_TIMEOUT_MS = 30000L;
-  private static final long IMPORT_TIMEOUT_MS = 90000L;
-  private static final long EXPORT_TIMEOUT_MS = 90000L;
+  private static final long UI_TIMEOUT_MS = 5000L;
+  private static final long IMPORT_TIMEOUT_MS = 45000L;
+  private static final long EXPORT_TIMEOUT_MS = 45000L;
 
   private Instrumentation mInstrumentation;
   private UiDevice mDevice;
@@ -66,6 +65,7 @@ public class PhysicalCompatInstrumentedTest
     mDevice = UiDevice.getInstance( mInstrumentation );
     Bundle args = InstrumentationRegistry.getArguments();
     mSurveyName = arg( args, "physical_compat_survey", defaultSurveyName() );
+    assertTrue("Compatibility survey must use a unique, path-safe QA name",mSurveyName.matches("compat_[A-Za-z0-9_]+"));
     mVanillaPackage = arg( args, "physical_compat_vanilla_package", VANILLA_PACKAGE_DEFAULT );
     mSketchPackage = arg( args, "physical_compat_sketch_package", SKETCH_PACKAGE_DEFAULT );
     mSupport = new VisualTestSupport( "physical_compat_" + mSurveyName );
@@ -92,7 +92,6 @@ public class PhysicalCompatInstrumentedTest
     File sketchZip = exportSketchZip( mSurveyName );
     mSupport.assertZipContainsSurveyCore( sketchZip );
 
-    mSupport.copyFileToDownloads( sketchZip );
     progress( "import Sketch ZIP into vanilla" );
     importZipWithIntent( mVanillaPackage, sketchZip );
     waitForSurveyOnMainList( mVanillaPackage, mSurveyName, IMPORT_TIMEOUT_MS );
@@ -114,6 +113,8 @@ public class PhysicalCompatInstrumentedTest
     assertCanonicalLegTypes( mSurveyName );
     mSupport.openExistingPlanPlot( PLOT_NAME );
     mSupport.waitForDrawingWindow();
+    assertEquals("Vanilla round trip must preserve all three committed drawing strokes",3,mSupport.countSketchLinePaths());
+    mSupport.assertLatestLineBrushWeight(SketchBrushStyle.DEFAULT_WEIGHT_THICK);
     mSupport.captureScreen( "roundtrip-opened-in-sketch.png" );
     progress( "round-trip opened in Sketch" );
   }
@@ -139,11 +140,30 @@ public class PhysicalCompatInstrumentedTest
     setCheckboxChecked( mVanillaPackage, "zip_overwrite", true );
     clickRequired( By.res( mVanillaPackage, "button_ok" ), "vanilla export OK" );
 
-    File zipFile = new File(
-      new File( Environment.getExternalStoragePublicDirectory( Environment.DIRECTORY_DOCUMENTS ), "TDX/TopoDroid/zip" ),
-      surveyName + ".zip"
-    );
-    return waitForFile( zipFile, EXPORT_TIMEOUT_MS );
+    // Vanilla can use a different working directory. Locate only this run's
+    // uniquely named export; never assume or clean a user's field-data path.
+    long deadline=SystemClock.uptimeMillis()+EXPORT_TIMEOUT_MS;
+    File documents=Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS);
+    while(SystemClock.uptimeMillis()<deadline) {
+      java.util.ArrayList<File> matches=new java.util.ArrayList<>();
+      findGeneratedVanillaZip(documents,documents.getCanonicalPath(),surveyName+".zip",0,matches);
+      assertTrue("Ambiguous Vanilla QA export paths: "+matches,matches.size()<=1);
+      if(matches.size()==1)return mSupport.waitForFile(matches.get(0),Math.max(1,deadline-SystemClock.uptimeMillis()));
+      SystemClock.sleep(200);
+    }
+    fail("Vanilla did not create its uniquely named ZIP in Documents within 45 seconds: "+surveyName);
+    return null;
+  }
+
+  private void findGeneratedVanillaZip(File directory,String documents,String name,int depth,java.util.List<File> matches) throws Exception
+  {
+    if(depth>8 || QaFixtureRule.owns(directory))return;
+    String canonical=directory.getCanonicalPath();
+    if(!canonical.equals(documents) && !canonical.startsWith(documents+File.separator))return;
+    File candidate=new File(directory,name);
+    if(directory.getName().equals("zip") && candidate.isFile())matches.add(candidate);
+    File[] children=directory.listFiles();
+    if(children!=null)for(File child:children)if(child.isDirectory())findGeneratedVanillaZip(child,documents,name,depth+1,matches);
   }
 
   private void createCanonicalSurveyAndOpenSketch( String surveyName )
@@ -294,62 +314,42 @@ public class PhysicalCompatInstrumentedTest
     return value.replaceAll( "[^A-Za-z0-9_.-]", "_" );
   }
 
-  private boolean containsShellStartError( String output )
-  {
-    if ( output == null ) return false;
-    String lower = output.toLowerCase( Locale.US );
-    return lower.contains( "error:" )
-      || lower.contains( "exception" )
-      || lower.contains( "permission denial" )
-      || lower.contains( "not found" )
-      || lower.contains( "unable to resolve intent" );
-  }
-
-  private Uri externalStorageDocumentUri( File file )
-  {
-    String root = Environment.getExternalStorageDirectory().getAbsolutePath();
-    String absolute = file.getAbsolutePath();
-    assertTrue( "File is not under external storage: " + absolute, absolute.startsWith( root + File.separator ) );
-    String relative = absolute.substring( root.length() + 1 ).replace( File.separatorChar, '/' );
-    return Uri.parse( "content://com.android.externalstorage.documents/document/" + Uri.encode( "primary:" + relative ) );
-  }
-
   private UiObject2 waitForSurveyOnMainList( String packageName, String surveyName, long timeoutMs )
   {
-    waitForPackage( packageName, timeoutMs );
-    dismissKnownPrompts( packageName, 6 );
     long deadline = SystemClock.uptimeMillis() + timeoutMs;
+    waitForPackage(packageName,Math.min(10000,timeoutMs));
     while ( SystemClock.uptimeMillis() < deadline ) {
+      dismissKnownPrompts(packageName,1);
       UiObject2 row = findSurveyRow( packageName, surveyName, 500 );
       if ( row != null ) return row;
-      scrollCurrentListToText( surveyName );
-      SystemClock.sleep( 500 );
+      UiObject2 list=mDevice.findObject(By.pkg(packageName).scrollable(true));
+      if(list!=null)list.scroll(androidx.test.uiautomator.Direction.DOWN,0.7f);
+      SystemClock.sleep(100);
     }
-    fail( "Survey not visible in " + packageName + ": " + surveyName );
+    // Capture the failure before Sketch's activity cleanup changes focus. An
+    // importer error, delayed list refresh, and a lost app are different causes.
+    try {
+      mDevice.dumpWindowHierarchy(new File(mSupport.getCaseArtifactsDirectory(),"import-wait-failure.xml"));
+      mSupport.captureScreen("import-wait-failure.png");
+      writeTextArtifact("import-wait-activity.txt",mDevice.executeShellCommand("dumpsys activity activities"));
+      int uid=mInstrumentation.getTargetContext().getPackageManager().getApplicationInfo(packageName,0).uid;
+      writeTextArtifact("import-wait-logcat.txt",mDevice.executeShellCommand("logcat -d --uid="+uid+" -t 200"));
+    } catch(Exception diagnostic) {progress("Import failure diagnostics: "+diagnostic);}
+    fail( "Survey did not become visible within " + timeoutMs + "ms in " + packageName + ": " + surveyName );
     return null;
   }
 
   private void openSurveyWindowFromMainListLongPress( String packageName, String surveyName )
   {
-    for ( int attempt = 0; attempt < 3; ++attempt ) {
-      UiObject2 row = waitForSurveyOnMainList( packageName, surveyName, UI_TIMEOUT_MS );
-      row.longClick();
-      waitForIdle();
-      if ( waitForOptional( By.res( packageName, "survey_team" ), 5000 ) != null ) return;
-      if ( waitForOptional( By.res( packageName, "list" ), 1000 ) != null ) {
-        mDevice.pressBack();
-        waitForIdle();
-      }
-    }
-    waitForRequired( By.res( packageName, "survey_team" ), "survey window" );
+    UiObject2 row=waitForSurveyOnMainList(packageName,surveyName,10000);
+    row.longClick();
+    assertNotNull("Survey window did not open within 10 seconds",waitForOptional(By.res(packageName,"survey_team"),10000));
   }
 
   private void openMenuAndClickText( String packageName, String text )
   {
     clickRequired( By.res( packageName, "handle" ), "menu handle" );
-    UiObject2 item = waitForOptional( By.text( text ), 1000 );
-    if ( item == null ) item = waitForOptional( By.text( text.toUpperCase( Locale.US ) ), UI_TIMEOUT_MS );
-    if ( item == null ) item = waitForOptional( By.text( text.toLowerCase( Locale.US ) ), 1000 );
+    UiObject2 item=waitForOptional(By.text(java.util.regex.Pattern.compile(java.util.regex.Pattern.quote(text),java.util.regex.Pattern.CASE_INSENSITIVE)),UI_TIMEOUT_MS);
     assertNotNull( "Timed out waiting for " + text, item );
     item.click();
     waitForIdle();
@@ -357,13 +357,12 @@ public class PhysicalCompatInstrumentedTest
 
   private void ensureZipExportDialog( String packageName )
   {
-    UiObject2 zipOptions = waitForOptional( By.res( packageName, "layout_zip" ), 2000 );
+    UiObject2 zipOptions = mDevice.findObject(By.res(packageName,"layout_zip"));
     if ( zipOptions != null ) return;
-    zipOptions = waitForOptional( By.res( packageName, "zip_overwrite" ), 1000 );
+    zipOptions=mDevice.findObject(By.res(packageName,"zip_overwrite"));
     if ( zipOptions != null ) return;
 
-    clickRequired( By.res( packageName, "spin" ), "export spinner" );
-    clickRequired( By.text( "ZIP" ), "ZIP export type" );
+    VisualTestSupport.chooseSpinnerValue(mDevice,packageName,"spin","ZIP");
     assertNotNull( "ZIP export options did not become visible",
       waitForOptional( By.res( packageName, "zip_overwrite" ), UI_TIMEOUT_MS ) );
   }
@@ -378,17 +377,6 @@ public class PhysicalCompatInstrumentedTest
     assertTrue( "Unexpected checkbox state for " + resourceName, checkbox.isChecked() == checked );
   }
 
-  private File waitForFile( File file, long timeoutMs )
-  {
-    long deadline = SystemClock.uptimeMillis() + timeoutMs;
-    while ( SystemClock.uptimeMillis() < deadline ) {
-      if ( file.exists() ) return file;
-      SystemClock.sleep( 500 );
-    }
-    fail( "Timed out waiting for file " + file.getAbsolutePath() );
-    return file;
-  }
-
   private UiObject2 findSurveyRow( String packageName, String surveyName, long waitMs )
   {
     long deadline = SystemClock.uptimeMillis() + waitMs;
@@ -400,18 +388,6 @@ public class PhysicalCompatInstrumentedTest
       SystemClock.sleep( 150 );
     }
     return null;
-  }
-
-  private void scrollCurrentListToText( String text )
-  {
-    try {
-      UiScrollable scrollable = new UiScrollable( new UiSelector().scrollable( true ).instance( 0 ) );
-      scrollable.setAsVerticalList();
-      scrollable.setMaxSearchSwipes( 10 );
-      scrollable.scrollIntoView( new UiSelector().textContains( text ) );
-    } catch ( UiObjectNotFoundException e ) {
-      // The next polling pass will fail clearly if the row is still absent.
-    }
   }
 
   private void dismissKnownPrompts( String packageName, int maxClicks )
@@ -482,8 +458,7 @@ public class PhysicalCompatInstrumentedTest
 
   private void waitForIdle()
   {
-    mInstrumentation.waitForIdleSync();
-    mDevice.waitForIdle();
+    mInstrumentation.runOnMainSync(() -> {});
   }
 
   private static String arg( Bundle args, String key, String defaultValue )

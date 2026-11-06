@@ -7,7 +7,6 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.topodroid.types.SymbolType;
@@ -16,9 +15,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DRAWING, com.topodroid.qa.TestFeatures.Feature.DATA})
 public class ToolsetRepositoryInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private DataHelper mData;
 
   @Before

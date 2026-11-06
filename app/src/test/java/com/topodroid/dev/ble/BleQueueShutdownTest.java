@@ -3,6 +3,7 @@ package com.topodroid.dev.ble;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DEVICES, com.topodroid.qa.TestFeatures.Feature.DATA})
 public class BleQueueShutdownTest
 {
   @Test public void shutdownDrainsAcceptedPacketsAndRejectsLateNotifications()

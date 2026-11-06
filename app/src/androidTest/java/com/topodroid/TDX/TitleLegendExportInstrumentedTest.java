@@ -14,7 +14,6 @@ import android.graphics.pdf.PdfDocument;
 import android.graphics.pdf.PdfRenderer;
 import android.os.ParcelFileDescriptor;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.topodroid.prefs.TDPrefHelper;
@@ -31,9 +30,12 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.EXCHANGE})
 public class TitleLegendExportInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final int BACKGROUND = 0xff202124;
 
   private Context mContext;
@@ -45,8 +47,7 @@ public class TitleLegendExportInstrumentedTest
     mContext = InstrumentationRegistry.getInstrumentation().getTargetContext().getApplicationContext();
     TDInstance.setContext( mContext );
     TDSetting.loadSecondaryPreferences( new TDPrefHelper( mContext ) );
-    TDPath.clearSymbols();
-    TopoDroidApp.installSymbols( true );
+    QaFixtureRule.ensureSymbols();
     BrushManager.reloadPointLibrary( mContext, mContext.getResources() );
     BrushManager.reloadLineLibrary( mContext.getResources() );
     BrushManager.reloadAreaLibrary( mContext.getResources() );
@@ -99,6 +100,14 @@ public class TitleLegendExportInstrumentedTest
     canvas.drawColor( BACKGROUND );
     point.draw( canvas, new Matrix(), 1.0f, new RectF( 0.0f, 0.0f, width, height ) );
     assertTrue( countNonWhite( bitmap ) > 1000 );
+    for (TitleLegendLayout.PreparedRow row : layout.rows) {
+      if(row.swatch==null)continue;
+      RectF box=new RectF(row.box);box.offset(point.cx,point.cy);box.inset(layout.lineHeight*.16f+1,layout.lineHeight*.16f+1);
+      android.graphics.Rect glyph=new android.graphics.Rect((int)Math.ceil(box.left),(int)Math.ceil(box.top),(int)Math.floor(box.right),(int)Math.floor(box.bottom));
+      int ink=QaBitmapChecks.foreground(bitmap,glyph);
+      assertTrue("Legend glyph missing for " + row.displayLabel + ": " + ink,ink>5);
+    }
+    QaBitmapChecks.assertApprovedCrop(bitmap,new android.graphics.Rect(34,56,82,139),"legend-representative.png");
 
     File directory = mContext.getExternalFilesDir( "test-artifacts" );
     assertNotNull( directory );

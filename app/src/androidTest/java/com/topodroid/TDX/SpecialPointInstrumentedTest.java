@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -17,7 +18,6 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.topodroid.prefs.TDPrefHelper;
@@ -37,13 +37,15 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.DATA})
 public class SpecialPointInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final int TDR_VERSION = 602055;
   private Context mPreviousContext;
   private boolean mPreviousCount;
@@ -58,8 +60,7 @@ public class SpecialPointInstrumentedTest
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext().getApplicationContext();
     TDInstance.setContext( context );
     TDSetting.loadSecondaryPreferences( new TDPrefHelper( context ) );
-    TDPath.clearSymbols();
-    TopoDroidApp.installSymbols( true );
+    QaFixtureRule.ensureSymbols();
     BrushManager.reloadPointLibrary( context, context.getResources() );
     BrushManager.reloadLineLibrary( context.getResources() );
     mPreviousCount = TDSetting.mLRUDcount;
@@ -674,8 +675,10 @@ public class SpecialPointInstrumentedTest
       BeddingAttitudePointState.PlanGlyphOverride.HORIZONTAL ) );
     Bitmap vertical = renderBedding( point, plan.withPlanGlyphOverride(
       BeddingAttitudePointState.PlanGlyphOverride.VERTICAL ) );
-    assertTrue( bitmapDifference( inclined, horizontal ) > 30 );
-    assertTrue( bitmapDifference( horizontal, vertical ) > 20 );
+    int inclinedHorizontal = bitmapDifference( inclined, horizontal );
+    int horizontalVertical = bitmapDifference( horizontal, vertical );
+    assertTrue( "Inclined/horizontal actual glyph pixel differences=" + inclinedHorizontal, inclinedHorizontal > 30 );
+    assertTrue( "Horizontal/vertical actual glyph pixel differences=" + horizontalVertical, horizontalVertical > 20 );
     assertEquals( 32.0, plan.withPlanGlyphOverride(
       BeddingAttitudePointState.PlanGlyphOverride.HORIZONTAL ).attitude().dipDegrees, 1.0e-8 );
 
@@ -687,11 +690,12 @@ public class SpecialPointInstrumentedTest
       Double.NaN, Double.NaN, false, -8.75, SketchTextStyle.defaultStyle(), 125 );
     Bitmap right = renderBedding( point, falling_right );
     Bitmap left = renderBedding( point, falling_left );
-    assertTrue( bitmapDifference( right, left ) > 20 );
+    int profileDifference = bitmapDifference( right, left );
+    assertTrue( "Opposite profile glyph pixel differences=" + profileDifference, profileDifference > 20 );
 
     point.setSpecialState( plan, false );
     RectF bounds = point.specialBehavior().renderer().sceneBounds( point );
-    assertOpaqueInside( inclined, bounds );
+    assertTrue( "Production bounds must include glyph centre", bounds.contains(point.cx,point.cy) );
     inclined.recycle();
     horizontal.recycle();
     vertical.recycle();
@@ -876,9 +880,32 @@ public class SpecialPointInstrumentedTest
   private static Bitmap renderBedding( DrawingSemanticPointPath point,
                                        BeddingAttitudePointState state )
   {
-    point.setSpecialState( state, false );
-    Bitmap bitmap = Bitmap.createBitmap( 400, 400, Bitmap.Config.ARGB_8888 );
-    point.draw( new Canvas( bitmap ), new Matrix(), 1.0f, new RectF( 0, 0, 400, 400 ) );
+    point.setSpecialState( state, true );
+    android.graphics.Paint ink = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+    point.setSketchBrushStyle(null);
+    float worldScale=point.specialPointScale()*SpecialPointSizing.BEDDING_ATTITUDE_SCALE;
+    assertTrue("Bedding scene scale must be explicit and positive",worldScale>0);
+    float magnification=4.0f/worldScale;
+    ink.setColor(android.graphics.Color.WHITE); ink.setStrokeWidth(2.0f/magnification);
+    point.setPathPaint(ink);
+    assertSame("Bedding fixture must apply the requested production state",state,point.specialState());
+    float scale=4.0f;
+    // Glyph and label use different comparison regions; allocate from their production bounds.
+    float radius=BeddingAttitudePointRenderer.contentRadius(state,scale)+8;
+    int size=2*(int)Math.ceil(Math.max(100,radius));
+    Bitmap complete = Bitmap.createBitmap(size,size,Bitmap.Config.ARGB_8888);
+    RectF worldBounds=point.specialBehavior().renderer().sceneBounds(point);
+    Matrix sceneToPixels=new Matrix();sceneToPixels.setScale(magnification,magnification);
+    sceneToPixels.postTranslate(size/2f-point.cx*magnification,size/2f-point.cy*magnification);
+    point.draw(new Canvas(complete),sceneToPixels,1.0f/magnification,worldBounds);
+    RectF pixelBounds=new RectF(worldBounds);sceneToPixels.mapRect(pixelBounds);
+    assertOpaqueInside(complete,pixelBounds);
+    // Tight, equal-sized glyph regions exclude the dip label for all three plan glyphs.
+    int half=(int)Math.ceil(Math.max(5,SpecialPointSizing.BEDDING_STRIKE_HALF_LENGTH)*scale+4);
+    Bitmap bitmap=Bitmap.createBitmap(complete,size/2-half,size/2-half,half*2,half*2);
+    if(state.viewKind!=BeddingAttitudePointState.ViewKind.PLAN || state.planGlyphKind()==BeddingAttitude.Kind.INCLINED)
+      assertTrue("Dip text must have visible pixels outside the glyph region",countOpaque(complete)-countOpaque(bitmap)>10);
+    if (bitmap!=complete) complete.recycle();
     assertTrue( countOpaque( bitmap ) > 20 );
     return bitmap;
   }

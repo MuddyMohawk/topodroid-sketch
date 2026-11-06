@@ -9,7 +9,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.test.core.app.ActivityScenario;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.topodroid.prefs.TDSetting;
@@ -24,9 +23,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.UI)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DATA})
 public class BacksightWarningInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final String COMMENT = "Error. M: 1.0000 2.0000; surveyor note";
   private ActivityScenario< ShotWindow > scenario;
   private TopoDroidApp app;

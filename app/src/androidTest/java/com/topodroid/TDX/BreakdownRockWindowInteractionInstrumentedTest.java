@@ -7,7 +7,6 @@ import static org.junit.Assert.assertTrue;
 
 import android.graphics.PointF;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -22,10 +21,14 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 /** Exercises affine handles through DrawingWindow's real post-selection MODE_SHIFT path. */
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.UI)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.DRAWING})
 public class BreakdownRockWindowInteractionInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final String SURVEY_NAME = "breakdown_gizmo_shift_case";
   private static final String PLOT_NAME = "1";
 

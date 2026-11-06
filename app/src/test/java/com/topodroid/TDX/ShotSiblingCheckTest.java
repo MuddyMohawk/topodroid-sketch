@@ -12,6 +12,7 @@ import java.util.Map;
 
 import org.junit.Test;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DATA})
 public class ShotSiblingCheckTest
 {
   @Test public void correctReverseAcrossNorthPasses()

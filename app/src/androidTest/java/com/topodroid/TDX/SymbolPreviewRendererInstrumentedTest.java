@@ -12,7 +12,6 @@ import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.RectF;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -24,10 +23,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS})
 public class SymbolPreviewRendererInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private Context mContext;
   private Context mPreviousContext;
   private float mPreviousToolbarSize;
@@ -38,7 +40,7 @@ public class SymbolPreviewRendererInstrumentedTest
     mPreviousToolbarSize = TDSetting.mItemButtonSize;
     mContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
     TDInstance.setContext( mContext.getApplicationContext() );
-    TopoDroidApp.installSymbols( true );
+    QaFixtureRule.ensureSymbols();
     BrushManager.reloadPointLibrary( mContext, mContext.getResources() );
     BrushManager.reloadLineLibrary( mContext.getResources() );
     BrushManager.reloadAreaLibrary( mContext.getResources() );

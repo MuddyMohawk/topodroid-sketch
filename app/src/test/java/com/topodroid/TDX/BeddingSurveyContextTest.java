@@ -12,6 +12,7 @@ import java.util.Arrays;
 
 import org.junit.Test;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.DATA})
 public class BeddingSurveyContextTest
 {
   @Test public void declinationSnapshot_preservesKnownAndRejectsUnsetSentinel()

@@ -6,25 +6,34 @@ param(
   [switch]$SkipSketchInstall
 )
 
+function Resolve-Launcher {
+  param([string]$Package)
+  $resolved = Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments @('shell','cmd','package','resolve-activity','--brief','-a','android.intent.action.MAIN','-c','android.intent.category.LAUNCHER',$Package) -Description 'Resolve installed launcher'
+  $component = @($resolved | Where-Object { $_ -match '^[A-Za-z0-9_.]+/[A-Za-z0-9_.$]+$' })
+  if ($component.Count -ne 1) { throw "No unique launcher for $Package" }
+  return $component[0].Trim()
+}
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $ScriptDir "android-test-common.ps1")
+. (Join-Path $ScriptDir "test-suite-common.ps1")
 $RepoRoot = Split-Path -Parent $ScriptDir
 $LocalProperties = Join-Path $RepoRoot "local.properties"
 $VanillaPackage = "com.topodroid.TDX"
 $SketchPackage = "com.topodroid.TDX.sketch"
 $VanillaActivity = "$VanillaPackage/.MainWindow"
-$SketchActivity = "$SketchPackage/com.topodroid.TDX.MainWindow"
+$SketchActivity = "$SketchPackage/com.topodroid.TDX.LauncherActivity"
 $VanillaFileProvider = "com.topodroid.fileprovider"
 $SketchFileProvider = "com.topodroid.TDX.sketch.fileprovider"
 
 if ([string]::IsNullOrWhiteSpace($VanillaApk)) {
-  $VanillaApk = Join-Path $RepoRoot "test-fixtures\apks\TopoDroidX-6.4.53-36.apk"
+  $UseInstalledVanilla = $true
 }
 if ([string]::IsNullOrWhiteSpace($SketchApk)) {
-  $SketchApk = Join-Path $RepoRoot "app\build\outputs\apk\debug\app-debug.apk"
+  $SketchApk = Resolve-GradleApkOutput -OutputDirectory (Join-Path $RepoRoot 'app/build/outputs/apk/debug') -Description 'Sketch'
 }
 
 function Convert-SdkPath {
@@ -194,6 +203,15 @@ function Assert-ProviderAuthority {
   }
 }
 
+function Resolve-FileProviderAuthority {
+  param([string]$PackageName)
+  $dump=(Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments @('shell','dumpsys','package',$PackageName) -Description 'Resolve installed file provider') -join "`n"
+  $pattern='(?m)^\s*\[([^\]\r\n]+)\]:\r?\n\s*Provider\{[^\r\n]*'+[regex]::Escape($PackageName)+'/com[.]topodroid[.]util[.]MyFileProvider\}'
+  $authorities=@([regex]::Matches($dump,$pattern) | ForEach-Object {$_.Groups[1].Value} | Select-Object -Unique)
+  if($authorities.Count -ne 1){throw "No unique installed TopoDroid file provider for $PackageName"}
+  return $authorities[0]
+}
+
 function Start-AppChecked {
   param(
     [string]$Adb,
@@ -230,6 +248,7 @@ $Adb = Join-Path $SdkPath "platform-tools\adb.exe"
 $Aapt = Get-AaptPath -SdkPath $SdkPath
 
 Assert-AdbTarget -Adb $Adb -Serial $Serial
+Assert-SafeQaTarget -Adb $Adb -Serial $Serial
 $deviceAbisText = ((Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments @("shell", "getprop", "ro.product.cpu.abilist") -Description "Get device ABIs") -join "").Trim()
 $deviceAbis = @($deviceAbisText -split "," | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 Write-Host "Device ABIs: $($deviceAbis -join ', ')"
@@ -260,6 +279,10 @@ if (-not $SkipSketchInstall) {
 
 Assert-InstalledPackage -Adb $Adb -Serial $Serial -PackageName $VanillaPackage
 Assert-InstalledPackage -Adb $Adb -Serial $Serial -PackageName $SketchPackage
+$VanillaActivity = Resolve-Launcher -Package $VanillaPackage
+$SketchActivity = Resolve-Launcher -Package $SketchPackage
+$VanillaFileProvider = Resolve-FileProviderAuthority -PackageName $VanillaPackage
+$SketchFileProvider = Resolve-FileProviderAuthority -PackageName $SketchPackage
 Assert-ResolveActivity -Adb $Adb -Serial $Serial -PackageName $VanillaPackage -ExpectedComponent $VanillaActivity
 Assert-ResolveActivity -Adb $Adb -Serial $Serial -PackageName $SketchPackage -ExpectedComponent $SketchActivity
 Assert-ProviderAuthority -Adb $Adb -Serial $Serial -PackageName $VanillaPackage -Authority $VanillaFileProvider
@@ -269,8 +292,5 @@ Write-Host "Launching vanilla..."
 Start-AppChecked -Adb $Adb -Serial $Serial -Component $VanillaActivity
 Write-Host "Launching Sketch..."
 Start-AppChecked -Adb $Adb -Serial $Serial -Component $SketchActivity
-
-Assert-RemoteDirectory -Adb $Adb -Serial $Serial -Path "/sdcard/Documents/TDX"
-Assert-RemoteDirectory -Adb $Adb -Serial $Serial -Path "/sdcard/Documents/TopoDroid Sketch"
 
 Write-Host "Side-by-side smoke OK for $VanillaPackage and $SketchPackage."

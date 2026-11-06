@@ -3,6 +3,7 @@ package com.topodroid.TDX;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DATA, com.topodroid.qa.TestFeatures.Feature.DRAWING})
 public class SectionReferenceSelectionTest
 {
   @Test public void eitherEndpointKeepsLegButOnlyCheckedStationHasSplays()

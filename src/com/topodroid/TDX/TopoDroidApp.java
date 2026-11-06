@@ -2118,10 +2118,10 @@ public class TopoDroidApp extends Application
 
   void restoreDevicePair( TDPrefHelper preferences )
   {
-    TDInstance.setDeviceA( findDevice( preferences.getString( TDSetting.keyDeviceName(), "" ) ) );
-    Device alternate = findDevice( preferences.getString( TDSetting.keySecondDeviceName(), "" ) );
-    if ( alternate != null && alternate.hasAddress( TDInstance.deviceAddress() ) ) alternate = null;
-    TDInstance.setDeviceB( alternate );
+    SurveyDeviceSelection.restorePair(
+      preferences.getString( TDSetting.keyDeviceName(), "" ),
+      preferences.getString( TDSetting.keySecondDeviceName(), "" ),
+      this::findDevice, TDInstance::setDeviceA, TDInstance::setDeviceB );
   }
 
   // -------------------------------------------------------------

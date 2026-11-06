@@ -6,21 +6,22 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import com.topodroid.types.SymbolType;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.DRAWING})
 public class ToolbarRowsInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private Context mPreviousContext;
 
   @Before
@@ -29,7 +30,7 @@ public class ToolbarRowsInstrumentedTest
     mPreviousContext = TDInstance.context;
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     TDInstance.setContext( context.getApplicationContext() );
-    TopoDroidApp.installSymbols( true );
+    QaFixtureRule.ensureSymbols();
     BrushManager.reloadPointLibrary( context, context.getResources() );
     BrushManager.reloadLineLibrary( context.getResources() );
     BrushManager.reloadAreaLibrary( context.getResources() );
@@ -39,26 +40,6 @@ public class ToolbarRowsInstrumentedTest
   public void tearDown()
   {
     TDInstance.context = mPreviousContext;
-  }
-
-  @Test
-  public void freshProfileHasTwoMixedCanvasRowsMovableQuickSwitcherAndQuickTools()
-  {
-    ToolsetProfile profile = ToolsetProfile.freshDefault();
-
-    assertEquals( 8, profile.mVisibleSlots );
-    assertEquals( 2, profile.mOnCanvas.size() );
-    assertEquals( Integer.valueOf( 0 ), profile.mOnCanvas.get( 0 ) );
-    assertEquals( Integer.valueOf( 1 ), profile.mOnCanvas.get( 1 ) );
-    assertSlot( profile.mRows[0][0], SymbolType.LINE, SymbolLibrary.WALL );
-    assertSlot( profile.mRows[0][1], SymbolType.LINE, SymbolLibrary.USER );
-    assertSlot( profile.mRows[1][0], SymbolType.POINT, SymbolLibrary.BLOCKS );
-    assertSlot( profile.mRows[1][4], SymbolType.AREA, SymbolLibrary.CLAY );
-    assertSlot( profile.mRows[1][5], SymbolType.AREA, SymbolLibrary.WATER );
-    assertTrue( ToolsetProfile.isQuickSwitcher( profile.mRows[1][7] ) );
-    assertSlot( profile.mQuick[0], SymbolType.POINT, SymbolLibrary.LABEL );
-    assertSlot( profile.mQuick[1], SymbolType.POINT, SymbolLibrary.STATION );
-    assertSlot( profile.mQuick[2], SymbolType.LINE, SymbolLibrary.SECTION );
   }
 
   @Test
@@ -82,17 +63,6 @@ public class ToolbarRowsInstrumentedTest
     ToolsetProfile restored = ToolsetProfile.fromJson( ToolsetProfile.freshDefault().toJson() );
     assertNotNull( restored );
     assertTrue( ToolsetProfile.isQuickSwitcher( restored.mRows[1][7] ) );
-  }
-
-  @Test
-  public void canvasVisibilityDoesNotDestroyConfiguredRows()
-  {
-    ToolsetProfile profile = ToolsetProfile.freshDefault();
-    profile.mRows[7][15] = new ToolsetProfile.Slot( SymbolType.LINE, SymbolLibrary.WALL );
-    profile.moveRowToCanvasEnd( 7 );
-    assertTrue( profile.moveRowOffCanvas( 7 ) );
-    assertSlot( profile.mRows[7][15], SymbolType.LINE, SymbolLibrary.WALL );
-    assertEquals( 2, profile.mOnCanvas.size() );
   }
 
   private static void assertSlot( ToolsetProfile.Slot slot, int type, String name )

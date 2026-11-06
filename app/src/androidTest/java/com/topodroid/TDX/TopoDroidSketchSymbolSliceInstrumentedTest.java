@@ -16,7 +16,6 @@ import android.graphics.RectF;
 import android.os.Bundle;
 import android.util.Base64;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -38,10 +37,13 @@ import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS})
 public class TopoDroidSketchSymbolSliceInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final int WIDTH = 1440;
   private static final int HEIGHT = 8300;
   private static final float LEFT = 260.0f;
@@ -53,11 +55,14 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
 
   private Context mContext;
   private Context mPreviousContext;
+  private Bitmap mContactSheet;
+  private Canvas mContactCanvas;
   private Instrumentation mInstrumentation;
 
   @Before
   public void setUp()
   {
+    BBOX.set(-20,-20,WIDTH+20,HEIGHT+20);
     mPreviousContext = TDInstance.context;
     mInstrumentation = InstrumentationRegistry.getInstrumentation();
     mContext = mInstrumentation.getTargetContext().getApplicationContext();
@@ -726,8 +731,10 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
   public void topodroidSketchSymbolContactSheet_rendersProofSymbols() throws Exception
   {
     Bitmap bitmap = Bitmap.createBitmap( WIDTH, HEIGHT, Bitmap.Config.ARGB_8888 );
+    mContactSheet=bitmap;
     bitmap.eraseColor( Color.BLACK );
     Canvas canvas = new Canvas( bitmap );
+    mContactCanvas=canvas;
 
     Paint label = new Paint();
     label.setColor( 0xffbbbbbb );
@@ -837,7 +844,15 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     drawOpacityRow( canvas, label, y ); y += 108.0f;
     drawScaleRow( canvas, label, y );
 
+    bitmap=mContactSheet;
+    int completeHeight=(int)Math.ceil(y+70);
+    assertTrue("All contact-sheet rows must fit",completeHeight<=bitmap.getHeight());
+    if(completeHeight<bitmap.getHeight()) {
+      Bitmap cropped=Bitmap.createBitmap(bitmap,0,0,bitmap.getWidth(),completeHeight);
+      if(cropped!=bitmap)bitmap.recycle();bitmap=cropped;
+    }
     assertTrue( "TopoDroid Sketch symbol contact sheet is unexpectedly sparse", countForeground( bitmap ) > 45000 );
+    QaBitmapChecks.assertApprovedCrop(bitmap,new android.graphics.Rect(250,40,1410,310),"symbol-representative.png");
     File externalArtifact = new File( getExternalArtifactDir(), "topodroid-sketch-symbol-slice.png" );
     File internalArtifact = new File( getInternalArtifactDir(), "topodroid-sketch-symbol-slice.png" );
     byte[] png = encodeBitmap( bitmap );
@@ -994,17 +1009,20 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
 
   private void drawStyledLine( Canvas canvas, int lineType, float x, float y, SketchBrushStyle style )
   {
+    int[] before=cellPixels(x-4,y-30,218,60);
     DrawingLinePath line = new DrawingLinePath( lineType, 0 );
     line.setSketchBrushStyle( style );
     line.addStartPoint( x, y );
     line.addPoint( x + 210.0f, y );
     line.computeUnitNormal();
     line.draw( canvas, new Matrix(), BBOX );
+    assertCellChanged(before,x-4,y-30,218,60,"line "+lineType);
   }
 
   private void drawStyledCurvedLine( Canvas canvas, int lineType, float x, float y,
                                      SketchBrushStyle style, boolean reversed )
   {
+    int[] before=cellPixels(x-4,y-22,218,44);
     DrawingLinePath line = new DrawingLinePath( lineType, 0 );
     line.setSketchBrushStyle( style );
     line.addStartPoint( x, y );
@@ -1012,6 +1030,7 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
     line.setReversed( reversed );
     line.computeUnitNormal();
     line.draw( canvas, new Matrix(), BBOX );
+    assertCellChanged(before,x-4,y-22,218,44,"curved line "+lineType+" reversed="+reversed);
   }
 
   private void drawPointRow( Canvas canvas, Paint label, String title, String thName, float y, double orientation )
@@ -1067,10 +1086,29 @@ public class TopoDroidSketchSymbolSliceInstrumentedTest
 
   private void drawStyledPoint( Canvas canvas, int pointType, float x, float y, SketchBrushStyle style, double orientation )
   {
+    int[] before=cellPixels(x-80,y-32,160,64);
     DrawingPointPath point = new DrawingPointPath( pointType, x, y, PointScale.SCALE_M, 0 );
     point.setSketchBrushStyle( style );
     if ( orientation != 0.0 ) point.setOrientation( orientation );
     point.draw( canvas, new Matrix(), 1.0f, BBOX );
+    assertCellChanged(before,x-80,y-32,160,64,"point "+pointType);
+  }
+
+  private int[] cellPixels(float x,float y,int width,int height) {
+    if(mContactSheet==null)return null;
+    assertTrue("Contact-sheet glyph extends outside horizontal layout",x>=0 && y>=0 && x+width<=mContactSheet.getWidth());
+    if(y+height+70>mContactSheet.getHeight()) {
+      Bitmap expanded=Bitmap.createBitmap(mContactSheet.getWidth(),(int)Math.ceil(y+height+128),Bitmap.Config.ARGB_8888);
+      Canvas copy=new Canvas(expanded);copy.drawColor(Color.BLACK);copy.drawBitmap(mContactSheet,0,0,null);
+      Bitmap previous=mContactSheet;mContactSheet=expanded;mContactCanvas.setBitmap(expanded);BBOX.bottom=expanded.getHeight()+20;previous.recycle();
+    }
+    int[] pixels=new int[width*height];mContactSheet.getPixels(pixels,0,width,(int)x,(int)y,width,height);return pixels;
+  }
+  private void assertCellChanged(int[] before,float x,float y,int width,int height,String glyph) {
+    if(before==null)return;
+    int[] after=cellPixels(x,y,width,height);int changed=0;
+    for(int i=0;i<before.length;i++)if(before[i]!=after[i])changed++;
+    assertTrue("Contact-sheet cell did not render its glyph: "+glyph+" changed pixels="+changed,changed>3);
   }
 
   private SketchBrushStyle style( float weight, float pointScale )

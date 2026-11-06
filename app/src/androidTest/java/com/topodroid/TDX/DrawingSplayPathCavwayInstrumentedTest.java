@@ -6,7 +6,6 @@ import static org.junit.Assert.assertNotSame;
 
 import android.graphics.Paint;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.topodroid.dev.cavway.CavwayConst;
 import com.topodroid.util.TDColor;
@@ -14,9 +13,12 @@ import com.topodroid.util.TDColor;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS})
 public class DrawingSplayPathCavwayInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   @Test
   public void cavwaySplayPaint_mapsKnownFlagsToSpecialColors()
   {

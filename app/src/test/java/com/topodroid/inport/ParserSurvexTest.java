@@ -10,6 +10,7 @@ import java.util.ArrayList;
 
 import org.junit.Test;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.EXCHANGE, com.topodroid.qa.TestFeatures.Feature.DATA})
 public class ParserSurvexTest
 {
   private static final float EPS = 0.0001f;

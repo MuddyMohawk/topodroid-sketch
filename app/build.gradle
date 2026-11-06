@@ -101,7 +101,7 @@ android {
         buildConfigField 'String', 'TOPODROID_COMPAT_VERSION_NAME', "\"${topodroidCompatVersionName}\""
         buildConfigField 'int', 'TOPODROID_COMPAT_VERSION_CODE', "${topodroidCompatVersionCode}"
         multiDexEnabled true
-        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        testInstrumentationRunner 'com.topodroid.TDX.qa.SketchTestRunner'
     }
 
     signingConfigs {
@@ -133,6 +133,8 @@ android {
     }
 
     sourceSets {
+        test { java.srcDir 'src/qa/java' }
+        androidTest { java.srcDir 'src/qa/java' }
         main {
             manifest.srcFile '../AndroidManifest.xml'
             java.srcDirs = ['../src']
@@ -187,5 +189,56 @@ tasks.register('packageQaDebug', Copy) {
     into(rootProject.layout.projectDirectory.dir('dist'))
     rename { String filename ->
         "TopoDroid-Sketch-v${sketchVersionName}-${sketchVersionCode}-${shortGitSha()}-debug.apk"
+    }
+}
+
+// The full/default JVM run includes calibration. The quick command excludes only
+// explicitly categorized simulations, and always reruns the test task itself.
+tasks.withType(Test).configureEach {
+    if (providers.gradleProperty('qaFast').isPresent()) {
+        useJUnit { excludeCategories 'com.topodroid.qa.SlowChecks' }
+    }
+    outputs.upToDateWhen { false }
+    onlyIf {
+        def inventory = []
+        def requestedFeatures = providers.gradleProperty('qaFeatures').orElse('').get().split(',').findAll { it }.toSet()
+        def loader = new URLClassLoader(classpath.files.collect { it.toURI().toURL() } as URL[], (ClassLoader)null)
+        try {
+            def validFeatures = Class.forName('com.topodroid.qa.TestFeatures$Feature', false, loader).enumConstants.collect { it.name().toLowerCase(Locale.ROOT) }.toSet()
+            if (!validFeatures.containsAll(requestedFeatures)) throw new GradleException('Unknown JVM feature selection: ' + requestedFeatures)
+            testClassesDirs.files.each { directory ->
+                if (directory.exists()) directory.eachFileRecurse { candidate ->
+                    if (candidate.name.endsWith('.class') && !candidate.name.contains('$')) {
+                        def name = directory.toPath().relativize(candidate.toPath()).toString().replace(File.separator, '.').replaceAll(/\.class$/, '')
+                        def type = Class.forName(name, false, loader)
+                        def slow = type.annotations.any { annotation ->
+                            annotation.annotationType().name == 'org.junit.experimental.categories.Category' &&
+                                annotation.value().any { it.name == 'com.topodroid.qa.SlowChecks' }
+                        }
+                        type.declaredMethods.findAll { method -> method.annotations.any { it.annotationType().name == 'org.junit.Test' } }.each { method ->
+                            def features = method.annotations.find { it.annotationType().name == 'com.topodroid.qa.TestFeatures' } ?:
+                                type.annotations.find { it.annotationType().name == 'com.topodroid.qa.TestFeatures' }
+                            if (features == null || features.value().length == 0) throw new GradleException('JVM test missing feature classification: ' + name + '#' + method.name)
+                            def names = features.value().collect { it.name().toLowerCase(Locale.ROOT) }.sort()
+                            if (names.toSet().size() != names.size()) throw new GradleException('Duplicate JVM feature: ' + name + '#' + method.name)
+                            def requested = (requestedFeatures.empty || names.any { requestedFeatures.contains(it) }) &&
+                                !(slow && providers.gradleProperty('qaFast').isPresent())
+                            inventory.add([id: 'jvm:' + name + '#' + method.name, tier: slow ? 'CALIBRATION' : 'JVM', features: names,
+                                requested: requested, status: 'NOT_REQUESTED', seconds: 0, note: ''])
+                        }
+                    }
+                }
+            }
+        } finally { loader.close() }
+        if (inventory.empty) throw new GradleException('JVM discovery returned zero tests')
+        def output = layout.buildDirectory.file('qa/jvm-inventory.json').get().asFile
+        output.parentFile.mkdirs()
+        output.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(inventory))
+        def selected = inventory.findAll { it.requested }
+        if (!requestedFeatures.empty && !selected.empty) {
+            filter.setIncludePatterns(selected.collect { it.id.substring(4).replace('#', '.') } as String[])
+        }
+        if (selected.empty) logger.lifecycle('No JVM methods requested for these features; Android selection is accounted separately.')
+        return !selected.empty
     }
 }

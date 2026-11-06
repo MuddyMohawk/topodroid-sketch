@@ -3,6 +3,7 @@ package com.topodroid.TDX;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.DATA})
 public class SymbolSketchPreferenceChoiceTest
 {
   @Test public void unfamiliarSymbolUsesStandardAndKeepsCurrentPreset()

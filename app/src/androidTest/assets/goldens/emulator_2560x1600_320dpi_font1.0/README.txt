@@ -1,10 +1,6 @@
-Generated visual baselines live in this directory.
+Approved visual fixtures for the fixed emulator profile.
 
-Refresh them with:
-scripts/refresh-visual-baselines.ps1 -Serial emulator-5554
-
-Files expected here:
-- sketch_screen.png
-- zip_roundtrip_screen.png
-- export_png.png
-- export_compass.dat
+Stage candidates using scripts/refresh-visual-baselines.ps1 -Serial emulator-5554.
+Review the generated review.html, images, and diffs. Apply reviewed candidates only
+with explicit -Apply -CandidateDirectory, then rebuild the Android test APK.
+Validation never refreshes approved assets. See docs/testing.md.

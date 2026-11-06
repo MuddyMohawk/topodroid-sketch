@@ -3,7 +3,6 @@ package com.topodroid.TDX;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.topodroid.util.TDVersion;
@@ -23,9 +22,13 @@ import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.EXCHANGE, com.topodroid.qa.TestFeatures.Feature.DATA})
 public class ArchiveFailureInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final String SURVEY = "archive_failure_contract";
 
   private VisualTestSupport mSupport;
@@ -35,7 +38,6 @@ public class ArchiveFailureInstrumentedTest
   {
     mSupport = new VisualTestSupport( "archive_failure_contract" );
     mSupport.prepareForCase( VisualTestSupport.allSurveyNames( SURVEY ) );
-    mSupport.launchMainWindow();
     mApp = (TopoDroidApp)InstrumentationRegistry.getInstrumentation()
       .getTargetContext().getApplicationContext();
   }
@@ -43,7 +45,6 @@ public class ArchiveFailureInstrumentedTest
   @After public void tearDown()
   {
     if ( mSupport != null ) {
-      mSupport.deleteGeneratedSurveyAndArtifacts( SURVEY );
       mSupport.finish();
     }
   }

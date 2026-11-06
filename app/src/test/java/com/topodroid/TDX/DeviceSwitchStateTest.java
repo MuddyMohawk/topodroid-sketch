@@ -3,6 +3,7 @@ package com.topodroid.TDX;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DEVICES})
 public class DeviceSwitchStateTest
 {
   @Test public void downloadFinishesBeforeRequestedSwitchCanStart()

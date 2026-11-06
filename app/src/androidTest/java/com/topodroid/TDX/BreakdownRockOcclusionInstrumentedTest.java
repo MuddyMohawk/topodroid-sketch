@@ -19,7 +19,6 @@ import android.graphics.RegionIterator;
 import android.graphics.pdf.PdfDocument;
 import android.os.Bundle;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -34,10 +33,13 @@ import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
 import java.util.Locale;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.DRAWING})
 public class BreakdownRockOcclusionInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final int PERF_SAMPLES = 20;
 
   private Context mContext;
@@ -49,7 +51,7 @@ public class BreakdownRockOcclusionInstrumentedTest
     mPreviousContext = TDInstance.context;
     mContext = InstrumentationRegistry.getInstrumentation().getTargetContext().getApplicationContext();
     TDInstance.setContext( mContext );
-    TopoDroidApp.installSymbols( true );
+    QaFixtureRule.ensureSymbols();
     BrushManager.reloadPointLibrary( mContext, mContext.getResources() );
     mBoulder = BrushManager.getPointIndexByThName( "boulder" );
     assertTrue( "Missing boulder point", mBoulder >= 0 );

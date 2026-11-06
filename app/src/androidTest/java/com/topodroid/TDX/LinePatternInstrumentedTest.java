@@ -12,7 +12,6 @@ import android.graphics.Path;
 import android.graphics.PathMeasure;
 import android.graphics.RectF;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -26,10 +25,13 @@ import java.util.ArrayList;
  *  - dash/pattern repeat count along a line is independent of zoom (patterns are scene geometry)
  *  - ink thickness on screen scales linearly with zoom (pure magnification)
  */
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS})
 public class LinePatternInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final int WIDTH = 1600;
   private static final int HEIGHT = 260;
   private static final float LINE_LENGTH = 180.0f;

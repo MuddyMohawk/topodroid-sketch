@@ -8,6 +8,7 @@ import java.util.Collections;
 
 import org.junit.Test;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DATA})
 public class StationNameOrderTest
 {
   @Test public void naturalOrder_handlesNumericAndMixedStationNames()

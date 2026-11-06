@@ -5,6 +5,7 @@ import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.EXCHANGE, com.topodroid.qa.TestFeatures.Feature.DATA})
 public class TDsafUriTest
 {
   @Test

@@ -97,7 +97,7 @@ import junit.framework.AssertionFailedError;
 
 final class VisualTestSupport
 {
-  private static final double SCREEN_MAX_DIFF_RATIO = 0.05;
+  private static final double SCREEN_MAX_DIFF_RATIO = 0.005;
   private static final int SCREEN_MAX_CHANNEL_DELTA = 8;
   private static final double PNG_MAX_DIFF_RATIO = 0.005;
   private static final int PNG_MAX_CHANNEL_DELTA = 8;
@@ -151,7 +151,7 @@ final class VisualTestSupport
   static final String GOLDEN_PROFILE_DIR = "goldens/emulator_2560x1600_320dpi_font1.0";
   static final String RECORDED_GOLDENS_DIR = "recorded-goldens/emulator_2560x1600_320dpi_font1.0";
   static final String TEST_ARTIFACTS_DIR = "test-artifacts";
-  static final long UI_TIMEOUT_MS = 20000L;
+  static final long UI_TIMEOUT_MS = 10000L;
   static final long FILE_TIMEOUT_MS = 45000L;
 
   static final TextNormalizer COMPASS_NORMALIZER = new TextNormalizer() {
@@ -176,6 +176,7 @@ final class VisualTestSupport
   private ActivityScenario< MainWindow > mScenario;
   private boolean mShellIdentityAdopted;
   private boolean mDemoModeEnabled;
+  private boolean mSeededShots;
 
   VisualTestSupport( String caseName )
   {
@@ -183,7 +184,7 @@ final class VisualTestSupport
     mTargetContext   = mInstrumentation.getTargetContext();
     mTestContext     = mInstrumentation.getContext();
     mDevice          = UiDevice.getInstance( mInstrumentation );
-    mCaseName        = sanitizeName( caseName );
+    mCaseName        = sanitizeName( caseName ) + "-" + Long.toString(System.nanoTime(),36);
     String baselineMode = InstrumentationRegistry.getArguments().getString( "visual_baseline_mode", "" );
     mRecordMode = "record".equalsIgnoreCase( baselineMode );
   }
@@ -210,14 +211,8 @@ final class VisualTestSupport
     configureStableRuntimeState();
     disableDialogRExit();
     ensureDataHelperReady();
-    // Wipe every known survey (from this run, prior runs, or dev work) so the
-    // main list is empty when the test starts. Without this, the list grows
-    // across runs and UiScrollable has to fling through dozens of rows to find
-    // our target survey. Named-survey cleanup is kept as a belt-and-suspenders
-    // pass in case the DB handle wasn't ready when wipeAllSurveys ran.
-    wipeAllSurveys();
-    cleanupNamedSurveysInDatabase( surveyNames );
-    cleanupNamedSurveyArtifacts( surveyNames );
+    // A fresh method-owned CWD is established by QaFixtureRule before @Before.
+    // Never enumerate or delete surveys belonging to another run.
     resetSelectedSurveyState();
     configureStablePreferences();
     configureStableRuntimeState();
@@ -245,72 +240,6 @@ final class VisualTestSupport
     // hardware; golden tests verify the profile via their own launchMainWindow()
     launchMainWindowOnAnyDevice();
     closeScenario();
-  }
-
-  private void wipeAllSurveys()
-  {
-    // Database: delete every survey row regardless of name. Snapshot the list
-    // first — doDeleteSurvey mutates the table we just iterated on some
-    // branches, and we'd rather not trust the implementation here.
-    List< String > allNames = null;
-    if ( TopoDroidApp.mData != null ) {
-      allNames = TopoDroidApp.mData.selectAllSurveys();
-      if ( allNames != null ) {
-        for ( String name : allNames ) {
-          long sid = TopoDroidApp.mData.getSurveyId( name );
-          if ( sid > 0L ) TopoDroidApp.mData.doDeleteSurvey( sid );
-        }
-      }
-    }
-
-    // Filesystem: the public root (/Documents/TopoDroid Sketch) also hosts
-    // distox14.sqlite — TopoDroid's main DB. Deleting the whole tree yanks the
-    // DB file out from under the live SQLite handle and every subsequent query
-    // fails with SQLITE_IOERR_FSTAT. Instead, delete per-survey subdirectories
-    // we know about (from both the DB and whatever's on disk) plus the export
-    // folders, and leave distox14.sqlite* alone.
-    File root = getPublicRoot();
-    if ( root.isDirectory() ) {
-      if ( allNames != null ) {
-        for ( String name : allNames ) deleteRecursively( new File( root, name ) );
-      }
-      // Catch any survey dirs left over from prior runs whose DB rows were
-      // already gone (e.g. pm-clear wiped the DB but the public dir persisted).
-      File[] children = root.listFiles();
-      if ( children != null ) {
-        for ( File child : children ) {
-          String name = child.getName();
-          if ( ! child.isDirectory() ) continue;
-          if ( name.equals( "zip" ) || name.equals( "tmp" )
-            || name.equals( "thconfig" ) || name.equals( "c3export" ) ) continue;
-          deleteRecursively( child );
-        }
-      }
-      // Wipe the zip/ folder contents so stale exports don't survive, but keep
-      // the folder itself — TopoDroid expects it to exist.
-      File zipDir = new File( root, "zip" );
-      if ( zipDir.isDirectory() ) {
-        File[] zipKids = zipDir.listFiles();
-        if ( zipKids != null ) {
-          for ( File z : zipKids ) deleteRecursively( z );
-        }
-      }
-    }
-
-    // /Downloads copies made by the ZIP-import round-trip test.
-    File downloads = Environment.getExternalStoragePublicDirectory( Environment.DIRECTORY_DOWNLOADS );
-    if ( downloads != null && downloads.isDirectory() ) {
-      File[] children = downloads.listFiles();
-      if ( children != null ) {
-        for ( File child : children ) {
-          String n = child.getName();
-          if ( n.startsWith( "visual_" ) && n.endsWith( ".zip" ) ) {
-            //noinspection ResultOfMethodCallIgnored
-            child.delete();
-          }
-        }
-      }
-    }
   }
 
   void launchMainWindow() throws Exception
@@ -347,14 +276,17 @@ final class VisualTestSupport
     try {
       disableDemoMode();
     } catch ( Exception e ) {
-      // ignore cleanup failures in tear-down
+      QaFixtureRule.cleanupError(e);
     }
     try {
-      returnToMainWindowForCleanup();
+      if(areDocumentsUiVisible()) {
+        mDevice.pressBack();
+        assertTrue("External document picker did not close during cleanup",waitForDocumentsUiToClose(10000));
+      }
     } catch ( Throwable t ) {
-      Log.w( "VisualTestSupport", "Unable to return to main window before cleanup", t );
+      QaFixtureRule.cleanupError(t);
     }
-    closeScenario();
+    try { closeScenario(); } catch ( Throwable error ) { QaFixtureRule.cleanupError( error ); }
     if ( mShellIdentityAdopted ) {
       mInstrumentation.getUiAutomation().dropShellPermissionIdentity();
       mShellIdentityAdopted = false;
@@ -368,65 +300,69 @@ final class VisualTestSupport
 
   void waitForMainWindow( long timeoutMs )
   {
-    long deadline = SystemClock.uptimeMillis() + timeoutMs;
-    boolean relaunched = false;
-    while ( SystemClock.uptimeMillis() < deadline ) {
-      String currentPackage = mDevice.getCurrentPackageName();
-      if ( PACKAGE_NAME.equals( currentPackage ) ) {
-        if ( dismissStartupDialogsIfPresent() ) continue;
-        if ( isObjectPresent( By.res( PACKAGE_NAME, "td_list" ), 250 ) ) return;
-      } else if ( isDocumentsUiPackage( currentPackage ) ) {
-        // wait for the document picker to return control to the app
-      } else if ( ! relaunched ) {
-        bringMainWindowToForeground();
-        relaunched = true;
-        continue;
-      }
-      SystemClock.sleep( 200 );
+    long deadline=SystemClock.uptimeMillis()+timeoutMs;
+    while(SystemClock.uptimeMillis()<deadline) {
+      if(dismissStartupDialogsIfPresent())continue;
+      if(isFocusedActivityView(R.id.td_list))return;
+      SystemClock.sleep(50);
     }
-    fail( "Timed out waiting for the main survey list after dismissing startup dialogs. currentPackage="
-      + mDevice.getCurrentPackageName() );
+    fail("Main survey list not visible within navigation deadline");
   }
 
   void waitForSurveyWindow()
   {
-    waitForDisplayedView( R.id.survey_team );
+    waitForFocusedActivityView(R.id.survey_team);
   }
 
   void waitForShotWindow()
   {
-    waitForDisplayedView( R.id.list );
+    waitForFocusedActivityView(R.id.list);
   }
 
   void waitForDrawingWindow()
   {
-    waitForDisplayedView( R.id.drawingSurface );
+    waitForFocusedActivityView(R.id.drawingSurface);
+  }
+
+  private boolean isFocusedActivityView(int id)
+  {
+    final boolean[] ready={false};
+    mInstrumentation.runOnMainSync(() -> {
+      for(android.app.Activity activity:androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED)) {
+        View view=activity.findViewById(id);
+        if(view!=null && view.isShown() && view.hasWindowFocus() && view.getWidth()>0 && view.getHeight()>0)ready[0]=true;
+      }
+    });
+    return ready[0];
+  }
+
+  private void waitForFocusedActivityView(int id)
+  {
+    long deadline=SystemClock.uptimeMillis()+10000;
+    while(SystemClock.uptimeMillis()<deadline) {
+      if(isFocusedActivityView(id))return;
+      SystemClock.sleep(50);
+    }
+    try{captureActualScreen(new File(getCaseArtifactsDir(),"navigation-failure.png"));}catch(Exception ex){reportStep("Navigation screenshot: "+ex);}
+    fail("Focused activity view not ready within 10 seconds: "+mTargetContext.getResources().getResourceEntryName(id));
   }
 
   void waitForSurveyOnMainList( String surveyName )
   {
-    waitForMainWindow( FILE_TIMEOUT_MS );
-    long deadline = SystemClock.uptimeMillis() + FILE_TIMEOUT_MS;
-    while ( SystemClock.uptimeMillis() < deadline ) {
-      UiObject2 row = findSurveyOnMainList( surveyName );
-      if ( row != null ) return;
-      SystemClock.sleep( 500 );
+    long deadline=SystemClock.uptimeMillis()+FILE_TIMEOUT_MS;
+    waitForMainWindow(UI_TIMEOUT_MS);
+    while(SystemClock.uptimeMillis()<deadline) {
+      UiObject2 row=mDevice.findObject(By.text(surveyName));
+      if(row!=null) {QaFixtureRule.recordSurvey(surveyName,TopoDroidApp.mData.getSurveyId(surveyName));return;}
+      SystemClock.sleep(100);
     }
-    fail( "Survey not visible on the main list: " + surveyName );
+    fail("Imported survey not visible within 45 seconds: "+surveyName);
   }
 
   void openSurveyWindowFromMainListLongPress( String surveyName )
   {
-    for ( int attempt = 0; attempt < 2; ++attempt ) {
-      UiObject2 row = requireSurveyOnMainList( surveyName );
-      longClickObject( row );
-      waitForIdle();
-      if ( isViewDisplayed( R.id.survey_team ) ) return;
-      if ( isViewDisplayed( R.id.list ) ) {
-        pressBackToMainWindow();
-        continue;
-      }
-    }
+    UiObject2 row=requireSurveyOnMainList(surveyName);
+    longClickObject(row);
     waitForSurveyWindow();
   }
 
@@ -1783,6 +1719,50 @@ selection.mHotItem.getHandleRole() );
     return snapshot[0];
   }
 
+  void waitForVisibleReferenceFrame() throws Exception
+  {
+    ReferenceSnapshot metadata=getFirstReferenceSnapshot();
+    assertTrue("Reference metadata must be visible, finite, and nonempty",metadata.visible && metadata.alphaPercent>0 && metadata.alphaPercent<=100 && metadata.sourceName!=null && !metadata.sourceName.isEmpty() && metadata.sceneWidth>0 && metadata.sceneHeight>0 && Double.isFinite(metadata.orientation));
+    File source=getSurveyPhotoFile(TDInstance.survey,metadata.sourceName);
+    assertTrue("Reference asset must belong to the current survey fixture: "+source,QaFixtureRule.owns(source) && source.isFile() && source.length()>0);
+    BitmapFactory.Options imageBounds=new BitmapFactory.Options();imageBounds.inJustDecodeBounds=true;
+    BitmapFactory.decodeFile(source.getAbsolutePath(),imageBounds);
+    assertTrue("Reference asset must decode to valid dimensions",imageBounds.outWidth>0 && imageBounds.outHeight>0);
+    runOnMainChecked("reference must intersect the visible canvas",() -> {
+      DrawingWindow window=requireCurrentDrawingWindow();
+      DrawingReferencePath reference=requireFirstReferencePoint(window);
+      DrawingSurface surface=requireCurrentDrawingSurface(window);
+      PointF offset=(PointF)getPrivateField(window,"mOffset");
+      float zoom=getPrivateFloat(window,"mZoom");
+      android.graphics.RectF bounds=new android.graphics.RectF(); reference.computeBounds(bounds,false);
+      bounds.set((bounds.left+offset.x)*zoom,(bounds.top+offset.y)*zoom,(bounds.right+offset.x)*zoom,(bounds.bottom+offset.y)*zoom);
+      assertTrue("Reference is offscreen: " + bounds,android.graphics.RectF.intersects(bounds,new android.graphics.RectF(0,0,surface.getWidth(),surface.getHeight())));
+    });
+    enableDemoMode();
+    long deadline=SystemClock.uptimeMillis()+10000;
+    int[] counts=new int[3];
+    int captureFailures=0;
+    File probe=new File(getCaseArtifactsDir(),"reference-readiness.png"); ensureParentDir(probe);
+    while(SystemClock.uptimeMillis()<deadline) {
+      if(!captureActualScreen(probe)) {
+        captureFailures++; reportStep("live frame capture unavailable; count="+captureFailures);
+        SystemClock.sleep(100);continue;
+      }
+      Bitmap frame=BitmapFactory.decodeFile(probe.getAbsolutePath());
+      counts=new int[3];
+      int[] row=new int[frame.getWidth()];
+      int[] targets={0xffff00ff,0xff00ffff,0xffffff00};
+      for(int y=0;y<frame.getHeight();y++) {
+        frame.getPixels(row,0,row.length,0,y,row.length,1);
+        for(int pixel:row)for(int k=0;k<3;k++)if(pixelsWithinTolerance(targets[k],pixel,30))counts[k]++;
+      }
+      frame.recycle();
+      if(counts[0]>=80 && counts[1]>=80 && counts[2]>=80)return;
+      SystemClock.sleep(100);
+    }
+    fail("Live reference fixture colors absent after 10 seconds: magenta/cyan/yellow="+java.util.Arrays.toString(counts)+" unavailable captures="+captureFailures);
+  }
+
   int countReferencePoints()
   {
     final int[] count = new int[1];
@@ -1883,15 +1863,16 @@ selection.mHotItem.getHandleRole() );
 
   void replaceTextInField( int viewId, String value )
   {
-    onView( withId( viewId ) ).perform( replaceText( value ) );
-    closeSoftKeyboard();
-    waitForIdle();
+    String name=mTargetContext.getResources().getResourceEntryName(viewId);
+    UiObject2 field=mDevice.wait(Until.findObject(By.res(PACKAGE_NAME,name)),5000);
+    assertNotNull("Editable field missing: " + name,field);
+    field.setText(value);
+    assertEquals("Field did not accept text: " + name,value,field.getText());
   }
 
   void tapView( int viewId )
   {
-    onView( withId( viewId ) ).perform( click() );
-    waitForIdle();
+    tapViewByDevice(viewId);
   }
 
   void tapViewByDevice( int viewId )
@@ -1903,20 +1884,13 @@ selection.mHotItem.getHandleRole() );
 
   void setCheckboxChecked( int viewId, boolean checked )
   {
-    final boolean[] current = new boolean[1];
-    onView( withId( viewId ) ).check( ( View view, NoMatchingViewException error ) -> {
-      if ( error != null ) throw error;
-      assertTrue( "Expected a checkable widget for " + viewId, view instanceof CompoundButton );
-      current[0] = ((CompoundButton)view).isChecked();
-    } );
-    if ( current[0] != checked ) {
-      tapViewCenter( viewId, "checkbox " + viewId );
-    }
-    onView( withId( viewId ) ).check( ( View view, NoMatchingViewException error ) -> {
-      if ( error != null ) throw error;
-      assertTrue( "Expected a checkable widget for " + viewId, view instanceof CompoundButton );
-      assertEquals( "Unexpected checkbox state for " + viewId, checked, ((CompoundButton)view).isChecked() );
-    } );
+    String name=mTargetContext.getResources().getResourceEntryName(viewId);
+    UiObject2 box=mDevice.wait(Until.findObject(By.res(PACKAGE_NAME,name)),5000);
+    assertNotNull("Checkbox missing: " + name,box);
+    if(box.isChecked()!=checked)box.click();
+    long deadline=SystemClock.uptimeMillis()+5000;
+    while(box.isChecked()!=checked && SystemClock.uptimeMillis()<deadline)SystemClock.sleep(50);
+    assertEquals("Checkbox did not change: " + name,checked,box.isChecked());
   }
 
   void setReferenceEraseEnabled( boolean enabled )
@@ -1929,19 +1903,118 @@ selection.mHotItem.getHandleRole() );
     TDSetting.mEraseReferenceImages = enabled;
   }
 
-  void tapText( String text )
+  void tapText( String value )
   {
-    onView( withText( text ) ).perform( click() );
-    waitForIdle();
+    UiObject2 control=mDevice.wait(Until.findObject(By.text(value)),5000);
+    assertNotNull("Text control missing: " + value,control); control.click();
   }
 
   void chooseSpinnerValue( int spinnerId, String value )
   {
-    onView( withId( spinnerId ) ).perform( click() );
-    onData( allOf( is( instanceOf( String.class ) ), is( value ) ) )
-      .inRoot( isPlatformPopup() )
-      .perform( click() );
-    waitForIdle();
+    try {
+      chooseSpinnerValue(mDevice,PACKAGE_NAME,mTargetContext.getResources().getResourceEntryName(spinnerId),value);
+    } catch ( RuntimeException | AssertionError failure ) {
+      try {
+        mDevice.dumpWindowHierarchy(new File(getCaseArtifactsDir(),"format-picker-failure.xml"));
+        captureActualScreen(new File(getCaseArtifactsDir(),"format-picker-failure.png"));
+      } catch ( Throwable diagnostics ) { failure.addSuppressed(diagnostics); }
+      throw failure;
+    }
+  }
+
+  /** A focused window snapshot avoids matching a cached list in another window. */
+  private static android.view.accessibility.AccessibilityNodeInfo activeNode(String packageName,String id)
+  {
+    android.view.accessibility.AccessibilityNodeInfo root=InstrumentationRegistry.getInstrumentation().getUiAutomation().getRootInActiveWindow();
+    if(root==null)return null;
+    try {
+      if(!android.text.TextUtils.equals(packageName,root.getPackageName()))return null;
+      List<android.view.accessibility.AccessibilityNodeInfo> nodes=root.findAccessibilityNodeInfosByViewId(id);
+      android.view.accessibility.AccessibilityNodeInfo found=null;
+      for(android.view.accessibility.AccessibilityNodeInfo node:nodes) {
+        android.graphics.Rect bounds=new android.graphics.Rect();node.getBoundsInScreen(bounds);
+        if(found==null && node.isVisibleToUser() && !bounds.isEmpty())found=node;
+        else node.recycle();
+      }
+      return found;
+    } finally {root.recycle();}
+  }
+
+  private static android.view.accessibility.AccessibilityNodeInfo waitForActiveNode(String packageName,String id)
+  {
+    long deadline=SystemClock.uptimeMillis()+5000;
+    while(SystemClock.uptimeMillis()<deadline) {
+      android.view.accessibility.AccessibilityNodeInfo node=activeNode(packageName,id);
+      if(node!=null)return node;
+      SystemClock.sleep(50);
+    }
+    return null;
+  }
+
+  private static android.view.accessibility.AccessibilityNodeInfo activeDocumentsNode(String resourceName)
+  {
+    android.view.accessibility.AccessibilityNodeInfo node=activeNode(GOOGLE_DOCUMENTS_UI_PACKAGE,GOOGLE_DOCUMENTS_UI_PACKAGE+":id/"+resourceName);
+    return node!=null ? node : activeNode(DOCUMENTS_UI_PACKAGE,DOCUMENTS_UI_PACKAGE+":id/"+resourceName);
+  }
+
+  private static boolean nodeShowsText(android.view.accessibility.AccessibilityNodeInfo node,String value)
+  {
+    if(android.text.TextUtils.equals(value,node.getText()))return true;
+    List<android.view.accessibility.AccessibilityNodeInfo> children=node.findAccessibilityNodeInfosByText(value);
+    boolean matches=false;
+    for(android.view.accessibility.AccessibilityNodeInfo child:children) {
+      if(child.isVisibleToUser() && android.text.TextUtils.equals(value,child.getText()))matches=true;
+      child.recycle();
+    }
+    return matches;
+  }
+
+  static void chooseSpinnerValue(UiDevice device,String packageName,String resourceName,String value)
+  {
+    String pickerId=packageName+":id/"+resourceName;
+    String listId="android:id/select_dialog_listview";
+    android.view.accessibility.AccessibilityNodeInfo picker=waitForActiveNode(packageName,pickerId);
+    assertNotNull("Format picker missing",picker);
+    try {
+      android.graphics.Rect bounds=new android.graphics.Rect();picker.getBoundsInScreen(bounds);
+      assertTrue("Format picker is disabled",picker.isEnabled());
+      assertTrue("Format picker touch was not injected",device.click(bounds.centerX(),bounds.centerY()));
+    } finally {picker.recycle();}
+    long deadline=SystemClock.uptimeMillis()+5000;
+    android.graphics.Rect previous=null,choiceBounds=null;
+    while(SystemClock.uptimeMillis()<deadline) {
+      android.view.accessibility.AccessibilityNodeInfo list=activeNode(packageName,listId);
+      if(list!=null) {
+        try {
+          android.graphics.Rect listBounds=new android.graphics.Rect();list.getBoundsInScreen(listBounds);
+          List<android.view.accessibility.AccessibilityNodeInfo> choices=list.findAccessibilityNodeInfosByText(value);
+          android.graphics.Rect current=null;
+          for(android.view.accessibility.AccessibilityNodeInfo choice:choices) {
+            android.graphics.Rect bounds=new android.graphics.Rect();choice.getBoundsInScreen(bounds);
+            if(android.text.TextUtils.equals(value,choice.getText()) && choice.isVisibleToUser() && choice.isEnabled() && !bounds.isEmpty() && listBounds.contains(bounds))current=new android.graphics.Rect(bounds);
+            choice.recycle();
+          }
+          if(current!=null && current.equals(previous)){choiceBounds=current;break;}
+          previous=current;
+        } finally {list.recycle();}
+      } else {previous=null;}
+      SystemClock.sleep(50);
+    }
+    assertNotNull("Format choice did not become visible and stable in the active dialog: "+value,choiceBounds);
+    assertTrue("Format choice touch was not injected",device.click(choiceBounds.centerX(),choiceBounds.centerY()));
+    deadline=SystemClock.uptimeMillis()+5000;
+    while(SystemClock.uptimeMillis()<deadline) {
+      android.view.accessibility.AccessibilityNodeInfo list=activeNode(packageName,listId);
+      if(list!=null)list.recycle();
+      else {
+        android.view.accessibility.AccessibilityNodeInfo selected=activeNode(packageName,pickerId);
+        if(selected!=null) {
+          try {if(nodeShowsText(selected,value))return;}finally{selected.recycle();}
+        }
+      }
+      SystemClock.sleep(50);
+    }
+    fail("Active format dialog did not dismiss with selected value: "+value);
   }
 
   void confirmAlertOk()
@@ -1963,6 +2036,45 @@ selection.mHotItem.getHandleRole() );
 
   void createSurveyAndOpenShots( String surveyName, String team, String startStation, String comment )
   {
+    seedSurveyAndOpenShots(surveyName, team, startStation, comment);
+  }
+
+  void seedSurveyData( String surveyName, String team, String startStation, String comment )
+  {
+    long sid=TopoDroidApp.mData.setSurvey(surveyName,0);
+    assertTrue("Could not seed survey",sid>0);
+    QaFixtureRule.recordSurvey(surveyName,sid);
+    // Match the production survey dialog's canonical yyyy.MM.dd representation.
+    TopoDroidApp.mData.updateSurveyInfo(sid,"2026.11.03",team,0,comment,startStation,0);
+    ((TopoDroidApp)mTargetContext.getApplicationContext()).setSurveyFromName(surveyName,0,false,true);
+    mSeededShots=true;
+  }
+
+  void seedSurveyAndOpenShots( String surveyName, String team, String startStation, String comment )
+  {
+    seedSurveyData(surveyName,team,startStation,comment);
+    assertNotNull("Main scenario required for seeded survey",mScenario);
+    mScenario.onActivity(activity -> {activity.updateDisplay();activity.startShowWindow(surveyName);});
+    waitForShotWindow();
+    reportStep("seeded survey opened: "+surveyName);
+  }
+
+  File exportCurrentSurveyData(boolean csv)
+  {
+    File file=csv ? getCsvExportFile(TDInstance.survey) : getCompassExportFile(TDInstance.survey);
+    ensureParentDir(file);
+    SurveyInfo info=TopoDroidApp.mData.selectSurveyInfo(TDInstance.sid);
+    try(java.io.BufferedWriter writer=new java.io.BufferedWriter(new java.io.OutputStreamWriter(new FileOutputStream(file),StandardCharsets.UTF_8))) {
+      int result=csv ? TDExporter.exportSurveyAsCsv(writer,TDInstance.sid,TopoDroidApp.mData,info,TDInstance.survey)
+        : TDExporter.exportSurveyAsDat(writer,TDInstance.sid,TopoDroidApp.mData,info,TDInstance.survey,"");
+      assertEquals("Production survey export failed",1,result);
+    }catch(IOException ex){throw new AssertionError("Production export could not be written",ex);}
+    return file;
+  }
+
+  void createSurveyThroughUiAndOpenShots( String surveyName, String team, String startStation, String comment )
+  {
+    mSeededShots = false;
     openNewSurveyDialogFromToolbar();
     replaceTextInField( R.id.survey_name, surveyName );
     replaceTextInField( R.id.survey_team, team );
@@ -1971,10 +2083,27 @@ selection.mHotItem.getHandleRole() );
     replaceTextInField( R.id.survey_comment, comment );
     tapView( R.id.surveyOpen );
     waitForShotWindow();
+    QaFixtureRule.recordSurvey(surveyName,TopoDroidApp.mData.getSurveyId(surveyName));
   }
 
   void addManualShot( String from, String to, String distance, String bearing, String clino, boolean closeAfterSave )
   {
+    if (mSeededShots) {
+      DBlock inserted=((TopoDroidApp)mTargetContext.getApplicationContext()).insertManualShot(-1,from,to,
+        Float.parseFloat(distance),Float.parseFloat(bearing),Float.parseFloat(clino),1,DBlock.FLAG_SURVEY,
+        null,null,null,null,null);
+      assertNotNull("Production manual-shot API could not seed shot",inserted);
+      long id=inserted.mId;
+      mInstrumentation.runOnMainSync(() -> {
+        for (android.app.Activity activity : androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(androidx.test.runner.lifecycle.Stage.RESUMED))
+          if (activity instanceof ShotWindow) ((ShotWindow)activity).updateDisplay();
+      });
+      DBlock persisted=TopoDroidApp.mData.selectShot(id,TDInstance.sid);
+      assertNotNull("Seeded shot did not persist",persisted);
+      assertEquals("Seeded FROM station",from,persisted.mFrom);
+      assertEquals("Seeded TO station",to,persisted.mTo);
+      return;
+    }
     openManualShotDialogFromShotToolbar();
     replaceTextInField( R.id.shot_from, from );
     replaceTextInField( R.id.shot_to, to );
@@ -1993,10 +2122,45 @@ selection.mHotItem.getHandleRole() );
   {
     openPlotListFromShotToolbar();
     tapView( R.id.plot_new );
+    UiObject2 plotNameField = mDevice.wait( Until.findObject( By.res( PACKAGE_NAME, "edit_plot_name" ) ), UI_TIMEOUT_MS );
+    if ( plotNameField == null ) {
+      try {
+        mDevice.dumpWindowHierarchy( new File( getCaseArtifactsDir(), "new-plot-dialog-failure.xml" ) );
+        captureActualScreen( new File( getCaseArtifactsDir(), "new-plot-dialog-failure.png" ) );
+      } catch ( Exception diagnostics ) { reportStep( "New-plot dialog diagnostics: " + diagnostics ); }
+      fail( "New-plot dialog did not open within ten seconds" );
+    }
     replaceTextInField( R.id.edit_plot_name, plotName );
     replaceTextInField( R.id.edit_plot_start, startStation );
     tapView( R.id.btn_ok );
     waitForDrawingWindow();
+    reportStep("new plot ready: "+plotName);
+  }
+
+  /** Production plot-creation callback; a file-content fixture need not exercise its dialog. */
+  void createPlotThroughProductionApi(String plotName,String startStation)
+  {
+    runOnMainChecked("seed plot through production API", () -> {
+      android.app.Activity current=findCurrentActivity();
+      assertTrue("Plot fixture requires the shot window",current instanceof ShotWindow);
+      ((ShotWindow)current).makeNewPlot(plotName,startStation,true,0,0);
+    });
+    waitForDrawingWindow();
+    reportStep("production plot ready: "+plotName);
+  }
+
+  File exportPngThroughProductionApi(SketchPngExportOptions options) throws Exception
+  {
+    File target=getPngExportFile(TDInstance.survey,options.filename);
+    assertFalse("PNG fixture must use a fresh output filename: "+target,target.exists());
+    runOnMainChecked("production PNG export", () -> requireCurrentDrawingWindow().doExportPng(options));
+    reportStep("production PNG export submitted: "+options.filename);
+    return waitForFile(target,FILE_TIMEOUT_MS);
+  }
+
+  File exportPngThroughProductionApi(String filename) throws Exception
+  {
+    return exportPngThroughProductionApi(new SketchPngExportOptions(true,true,false,true,true,true,true,true,1.0f,filename));
   }
 
   void openExistingPlanPlot( String plotName )
@@ -2009,42 +2173,35 @@ selection.mHotItem.getHandleRole() );
 
   void pressBackToShotWindow()
   {
-    int attempts = 0;
-    while ( attempts < 4 ) {
-      if ( isViewDisplayed( R.id.list ) ) return;
-      if ( dismissStartupDialogsIfPresent() ) {
-        ++ attempts;
-        continue;
-      }
-      mDevice.pressBack();
-      waitForIdle();
-      SystemClock.sleep( 300 );
-      ++ attempts;
-    }
-    waitForShotWindow();
+    backToWindow(R.id.list,"shot");
   }
 
   void pressBackToMainWindow()
   {
-    int attempts = 0;
-    while ( attempts < 4 ) {
-      if ( dismissStartupDialogsIfPresent() ) continue;
-      if ( isViewDisplayed( R.id.td_list ) ) return;
-      mDevice.pressBack();
-      waitForIdle();
-      SystemClock.sleep( 300 );
-      ++ attempts;
-    }
-    waitForMainWindow();
+    backToWindow(R.id.td_list,"main");
   }
 
-  private void returnToMainWindowForCleanup()
+  private void backToWindow(int target,String label)
   {
-    if ( ! PACKAGE_NAME.equals( mDevice.getCurrentPackageName() ) ) return;
-    if ( isViewDisplayed( R.id.td_list ) ) return;
-    pressBackToMainWindow();
-    waitForIdle();
-    SystemClock.sleep( 500 );
+    for(int level=0;level<4;level++) {
+      if(isFocusedActivityView(target))return;
+      final android.app.Activity[] before={null};final boolean[] focused={false};
+      mInstrumentation.runOnMainSync(() -> {before[0]=findCurrentActivity();focused[0]=before[0]!=null && before[0].hasWindowFocus();});
+      mDevice.pressBack();
+      long deadline=SystemClock.uptimeMillis()+10000;boolean changed=false;
+      while(SystemClock.uptimeMillis()<deadline) {
+        if(isFocusedActivityView(target))return;
+        final boolean[] next={false};
+        mInstrumentation.runOnMainSync(() -> {
+          android.app.Activity activity=findActivityInStage(androidx.test.runner.lifecycle.Stage.RESUMED);
+          next[0]=activity!=null && activity.hasWindowFocus() && (activity!=before[0] || !focused[0]);
+        });
+        if(next[0]){changed=true;break;}
+        SystemClock.sleep(50);
+      }
+      assertTrue("Back navigation toward "+label+" did not change the focused activity within 10 seconds; before="+before[0],changed);
+    }
+    fail("More than four activity transitions while navigating to "+label);
   }
 
   /** Draw a curved stroke on the sketch surface. The path is a quadratic
@@ -2086,10 +2243,17 @@ selection.mHotItem.getHandleRole() );
         top  + (int)Math.round( height * y )
       );
     }
-    mDevice.swipe( path, Math.max( 1, segmentSteps ) );
+    int before = countSketchLinePaths();
+    assertTrue("Input injection failed", mDevice.swipe( path, Math.max( 1, segmentSteps ) ));
     SystemClock.sleep( 500 );
     waitForDeviceIdle();
+    long deadline = SystemClock.uptimeMillis() + 5000;
+    while (countSketchLinePaths() == before && SystemClock.uptimeMillis() < deadline) SystemClock.sleep(50);
+    assertEquals("Dispatched stroke must commit exactly one line", before + 1, countSketchLinePaths());
   }
+
+  void tapUndo() { tapToolbarChild("listview", 3); }
+  void tapRedo() { tapToolbarChild("listview", 4); }
 
   void addUserLineCurveWithActiveStyle( double startX, double startY, double endX, double endY,
                                         double curveOffset, int samples )
@@ -2152,6 +2316,7 @@ selection.mHotItem.getHandleRole() );
 
   void setCanonicalToolbarState()
   {
+    enterDrawMode();
     tapPresetButton( 1 );
     tapStyleButton( 2 );
     // Resolve by th_name so the active-line highlight sits on the normal user
@@ -2161,7 +2326,7 @@ selection.mHotItem.getHandleRole() );
 
   File getPublicRoot()
   {
-    return new File( Environment.getExternalStoragePublicDirectory( Environment.DIRECTORY_DOCUMENTS ), "TopoDroid Sketch" );
+    return QaFixtureRule.root();
   }
 
   File getSurveyDir( String surveyName )
@@ -2194,7 +2359,8 @@ selection.mHotItem.getHandleRole() );
 
   File getDownloadFile( String filename )
   {
-    return new File( Environment.getExternalStoragePublicDirectory( Environment.DIRECTORY_DOWNLOADS ), filename );
+    return new File( Environment.getExternalStoragePublicDirectory( Environment.DIRECTORY_DOWNLOADS ),
+      "qa-" + Integer.toHexString(QaFixtureRule.root().getAbsolutePath().hashCode()) + "-" + filename );
   }
 
   File getSurveyPhotoFile( String surveyName, String sourceName )
@@ -2205,6 +2371,8 @@ selection.mHotItem.getHandleRole() );
   File createReferenceFixtureInDownloads( String filename, boolean jpeg ) throws Exception
   {
     File target = getDownloadFile( filename );
+    assertFalse("Refusing to replace an existing reference fixture", target.exists());
+    QaFixtureRule.record(target);
     ensureParentDir( target );
     Bitmap bitmap = Bitmap.createBitmap( 160, 100, Bitmap.Config.ARGB_8888 );
     for ( int y = 0; y < bitmap.getHeight(); ++y ) {
@@ -2486,12 +2654,27 @@ selection.mHotItem.getHandleRole() );
 
   File waitForFile( File file, long timeoutMs )
   {
-    long deadline = System.currentTimeMillis() + timeoutMs;
-    while ( System.currentTimeMillis() < deadline ) {
-      if ( file.exists() ) return file;
-      SystemClock.sleep( 250 );
+    long deadline = SystemClock.uptimeMillis() + Math.min(timeoutMs,FILE_TIMEOUT_MS);
+    long previousLength=-1,previousModified=-1,stableSince=0;
+    while ( SystemClock.uptimeMillis() < deadline ) {
+      long length=file.length(),modified=file.lastModified();
+      if(file.isFile() && length>0) {
+        if(length==previousLength && modified==previousModified) {
+          boolean complete=SystemClock.uptimeMillis()-stableSince>=200;
+          String name=file.getName().toLowerCase(Locale.US);
+          try {
+            if(complete && name.endsWith(".zip"))try(java.util.zip.ZipFile zip=new java.util.zip.ZipFile(file)){complete=zip.size()>0;}
+            if(complete && name.endsWith(".png"))try(java.io.RandomAccessFile png=new java.io.RandomAccessFile(file,"r")) {
+              complete=length>=12;
+              if(complete){png.seek(length-12);complete=png.readInt()==0 && png.readInt()==0x49454e44 && png.readInt()==0xae426082;}
+            }
+          } catch(IOException pendingWrite) {complete=false;}
+          if(complete)return file;
+        } else {stableSince=SystemClock.uptimeMillis();previousLength=length;previousModified=modified;}
+      }
+      SystemClock.sleep(50);
     }
-    fail( "Timed out waiting for file " + file.getAbsolutePath() );
+    fail( "Export did not finish within its deadline: " + file.getAbsolutePath()+" bytes="+file.length() );
     return file;
   }
 
@@ -2549,6 +2732,8 @@ selection.mHotItem.getHandleRole() );
   File copyFileToDownloads( File sourceFile ) throws Exception
   {
     File targetFile = getDownloadFile( sourceFile.getName() );
+    assertFalse("Refusing to replace an existing download", targetFile.exists());
+    QaFixtureRule.record(targetFile);
     copyFile( sourceFile, targetFile );
     assertTrue( "Failed to copy import fixture to Downloads: " + targetFile.getAbsolutePath(), targetFile.exists() );
     // Make freshly copied imports show up in DocumentsUI immediately instead
@@ -2559,9 +2744,56 @@ selection.mHotItem.getHandleRole() );
     return targetFile;
   }
 
+  void importArchiveThroughProductionApi(File archive,String surveyName) throws Exception
+  {
+    assertTrue("Production archive fixture is missing: "+archive,archive.isFile());
+    reportStep("production archive import started: "+surveyName);
+    QaFixtureRule.closeActivities();
+    DrawingSurface.clearManagersCache();
+    TopoDroidApp app=(TopoDroidApp)mTargetContext.getApplicationContext();
+    int result=new Archiver().unArchive(app,archive.getAbsolutePath(),false);
+    assertTrue("Production archive import failed: "+result,result>=0);
+    reportStep("production archive import complete: "+surveyName);
+    long sid=TopoDroidApp.mData.getSurveyId(surveyName);
+    assertTrue("Imported survey missing from production database",sid>0);
+    QaFixtureRule.recordSurvey(surveyName,sid);
+    assertNotNull("Main scenario required for imported survey fixture",mScenario);
+    mScenario.onActivity(activity -> {activity.updateDisplay();activity.startShowWindow(surveyName);});
+    waitForShotWindow();
+  }
+
+  File exportCurrentArchiveThroughProductionApi() throws Exception
+  {
+    File archive=getZipFile(TDInstance.survey);ensureParentDir(archive);
+    reportStep("production archive export started: "+TDInstance.survey);
+    assertTrue("Production archive export failed",new Archiver().archiveSurvey((TopoDroidApp)mTargetContext.getApplicationContext(),Uri.fromFile(archive)));
+    return waitForFile(archive,FILE_TIMEOUT_MS);
+  }
+
+  File copyArchiveForProductionImport(File source) throws Exception
+  {
+    File target=new File(QaFixtureRule.root(),"incoming/"+source.getName());
+    assertFalse("Import copy must be new",target.exists());
+    QaFixtureRule.record(target);ensureParentDir(target);copyFile(source,target);
+    return target;
+  }
+
+  File copyAssetForProductionImport(String assetName,String filename) throws Exception
+  {
+    File target=new File(QaFixtureRule.root(),"incoming/"+filename);
+    assertFalse("Import fixture must be new",target.exists());
+    QaFixtureRule.record(target);ensureParentDir(target);
+    try(InputStream input=mTestContext.getAssets().open(assetName);OutputStream output=new FileOutputStream(target)) {
+      copyStream(input,output);
+    }
+    return target;
+  }
+
   File copyAssetToDownloads( String assetName, String targetFilename ) throws Exception
   {
     File targetFile = getDownloadFile( targetFilename );
+    assertFalse("Refusing to replace an existing download", targetFile.exists());
+    QaFixtureRule.record(targetFile);
     ensureParentDir( targetFile );
     InputStream input = mTestContext.getAssets().open( assetName );
     try {
@@ -2615,11 +2847,29 @@ selection.mHotItem.getHandleRole() );
     enableDemoMode();
     File actualFile = new File( getCaseArtifactsDir(), assetName );
     assertTrue( "Failed to capture screenshot", takeScreenshotWithRetry( actualFile ) );
-    if ( mRecordMode ) {
-      copyFile( actualFile, getRecordedGoldenFile( assetName ) );
-      return;
-    }
-    compareBitmapFileToGolden( actualFile, assetName, SCREEN_MAX_DIFF_RATIO, SCREEN_MAX_CHANNEL_DELTA );
+    Bitmap actual=BitmapFactory.decodeFile(actualFile.getAbsolutePath());
+    Bitmap expected=mRecordMode ? null : decodeGoldenBitmap(assetName,1);
+    try {
+      java.util.Map<String,android.graphics.Rect> regions=screenRegions();
+      if (assetName.equals("sketch_screen.png") || assetName.equals("zip_roundtrip_screen.png")) {
+        regions.putAll(QaBitmapChecks.canonicalStrokeRegions());
+        for (android.graphics.Rect region : QaBitmapChecks.canonicalStrokeRegions().values())
+          assertTrue("Canonical stroke has no foreground ink: " + region, QaBitmapChecks.foreground(actual,region)>80);
+        assertEquals("Canonical rendering fixture must retain all three committed lines",3,countSketchLinePaths());
+      }
+      if(mRecordMode) {
+        copyFile(actualFile,getRecordedGoldenFile(assetName));
+        Bundle authored=new Bundle();authored.putString("stream","QA_BASELINE|"+assetName+"|"+mCaseName+"\n");
+        mInstrumentation.sendStatus(0,authored);
+        return;
+      }
+      QaBitmapChecks.assertRegions(expected,actual,regions);
+    } catch (AssertionError failure) {
+      if(expected==null)throw failure;
+      saveBitmap(expected,new File(getCaseArtifactsDir(),"expected-"+assetName));
+      if(expected.getWidth()==actual.getWidth() && expected.getHeight()==actual.getHeight())saveBitmap(createDiffBitmap(expected,actual),new File(getCaseArtifactsDir(),"diff-"+assetName));
+      throw failure;
+    } finally {actual.recycle();if(expected!=null)expected.recycle();}
   }
 
   File captureScreen( String assetName ) throws Exception
@@ -2649,6 +2899,91 @@ selection.mHotItem.getHandleRole() );
       return;
     }
     compareBitmapFileToGolden( actualFile, assetName, maxDiffRatio, PNG_MAX_CHANNEL_DELTA, sampleSize );
+  }
+
+  boolean isBaselineAuthoring() {return mRecordMode;}
+
+  void configureCanonicalExportInk()
+  {
+    SharedPreferences.Editor editor=PreferenceManager.getDefaultSharedPreferences(mTargetContext).edit();
+    editor.putString("DISTOX_LINE_THICKNESS","1.0");
+    for(int style=1;style<=3;style++) {
+      editor.putString(TDSetting.sketchStyleWeightKey(style),style==1?"1.0":style==2?"2.0":"5.0");
+      editor.putString(TDSetting.sketchStyleOpacityKey(style),"1.0");
+      editor.putBoolean(TDSetting.sketchStyleColorEnabledKey(style),false);
+    }
+    assertTrue("Could not set canonical export preferences",editor.commit());
+    TDSetting.loadSecondaryPreferences(new TDPrefHelper(mTargetContext));
+    assertEquals("Canonical line width",1.0f,TDSetting.mLineThickness,0.0001f);
+    assertEquals("Approved July 7 ink recenter",0.3f,TDSetting.inkUnit(),0.0001f);
+  }
+
+  void assertCanonicalPngGolden(File actualFile,String asset,int capture) throws Exception
+  {
+    Bitmap image=decodeBitmapFile(actualFile,1);
+    assertNotNull("Canonical export must decode",image);
+    try {
+      assertEquals("Canonical export width",2530,image.getWidth());
+      assertEquals("Canonical export height",1915,image.getHeight());
+      // The unchanged survey geometry puts all three curves across this clear
+      // vertical slice. Gray grid and station labels cannot supply white ink.
+      int[][] bands={{804,996},{1034,1244},{1398,1589}};
+      int[] expected={3,6,15}; // 10 export pixels/scene unit * 0.3 ink * weights 1/2/5.
+      for(int stroke=0;stroke<3;stroke++) {
+        int white=0;
+        for(int y=bands[stroke][0];y<bands[stroke][1];y++) {
+          int pixel=image.getPixel(700,y);
+          if(((pixel>>>24)&255)>220 && ((pixel>>>16)&255)>220 && ((pixel>>>8)&255)>220 && (pixel&255)>220)white++;
+        }
+        assertTrue("Canonical PNG stroke "+stroke+" has wrong/missing ink width: actual="+white+" expected="+expected[stroke],Math.abs(white-expected[stroke])<=1);
+      }
+      stageStablePngBitmap(image,asset,capture);
+      if(!mRecordMode) {
+        Bitmap approved=decodeGoldenBitmap(asset,1);
+        try{QaBitmapChecks.assertRegions(approved,image,QaBitmapChecks.canonicalPngStrokeRegions());}
+        finally{approved.recycle();}
+      }
+    } finally {image.recycle();}
+    if(!mRecordMode)compareBitmapFileToGolden(actualFile,asset,PNG_MAX_DIFF_RATIO,PNG_MAX_CHANNEL_DELTA,1);
+  }
+
+  private void stageStablePngBitmap(Bitmap image,String asset,int capture) throws Exception
+  {
+    if(!mRecordMode)return;
+    assertTrue("Authoring capture must be one of three actual exports",capture>=1 && capture<=3);
+    File stable=new File(getCaseArtifactsDir(),asset+".stable-"+capture+".png");
+    saveBitmap(image,stable);
+    if(capture>1) {
+      Bitmap first=BitmapFactory.decodeFile(new File(getCaseArtifactsDir(),asset+".stable-1.png").getAbsolutePath());
+      try{assertTrue("Three independent full PNG exports must have identical sampled pixels",first!=null && first.sameAs(image));}
+      finally{if(first!=null)first.recycle();}
+    }
+    if(capture==3) {
+      copyFile(stable,getRecordedGoldenFile(asset));
+      Bundle authored=new Bundle();authored.putString("stream","QA_BASELINE|"+asset+"|"+mCaseName+"\n");
+      mInstrumentation.sendStatus(0,authored);
+    }
+  }
+
+  /** Exercise the complete large export, but store its lossless sampled comparison image. */
+  void assertCompleteSampledPngGolden(File actualFile,String asset,double ratio,int sample,int capture) throws Exception
+  {
+    Bitmap image=decodeBitmapFile(actualFile,sample);
+    assertNotNull("Complete export must decode",image);
+    try {
+      // Grid/background ink alone cannot qualify a truncated drawing as a baseline.
+      int[] row=new int[image.getWidth()];
+      for(int band=0;band<3;band++) {
+        long bright=0;
+        for(int y=band*image.getHeight()/3;y<(band+1)*image.getHeight()/3;y++) {
+          image.getPixels(row,0,row.length,0,y,row.length,1);
+          for(int color:row)if(((color>>>16)&255)>180 && ((color>>>8)&255)>180 && (color&255)>180 && ((color>>>24)&255)>180)bright++;
+        }
+        assertTrue("Export must contain drawing strokes in vertical third "+band+"; bright pixels="+bright,bright>100);
+      }
+      stageStablePngBitmap(image,asset,capture);
+    } finally {image.recycle();}
+    if(!mRecordMode)compareBitmapFileToGolden(actualFile,asset,ratio,PNG_MAX_CHANNEL_DELTA,sample,1);
   }
 
   void assertBitmapContainsColor( File actualFile, int expectedColor, int tolerance, int minCount )
@@ -2729,197 +3064,132 @@ selection.mHotItem.getHandleRole() );
 
   void pickDocumentByFileName( String fileName ) throws Exception
   {
-    resolveDocumentPickerChooserIfPresent();
-    String documentsUiPackage = waitForDocumentsUi();
-
-    if ( tryPickVisibleDocument( fileName, documentsUiPackage, 5000 ) ) return;
-
-    UiObject2 showRootsButton = findAnyObject( 3000,
-      By.descContains( "Show roots" ),
-      By.descContains( "Open roots" )
-    );
-    if ( showRootsButton != null && tryClickObject( showRootsButton ) ) {
-      if ( tryTapDocumentText( "Downloads", 5000 ) || tryTapDocumentText( "Download", 3000 ) ) {
-        if ( tryPickVisibleDocument( fileName, documentsUiPackage, 5000 ) ) return;
-        if ( trySearchDocument( fileName, documentsUiPackage ) ) return;
-      } else if ( tryTapDocumentText( "sdk_gphone64_x86_64", 3000 )
-        || tryTapDocumentText( "SDCARD", 3000 )
-        || tryTapDocumentText( "Internal storage", 3000 ) ) {
-        openDocumentsUiPath( "Download" );
-        if ( tryPickVisibleDocument( fileName, documentsUiPackage, 5000 ) ) return;
-        if ( trySearchDocument( fileName, documentsUiPackage ) ) return;
+    long started=SystemClock.uptimeMillis(),deadline=started+10000;
+    String phase="initial document navigation";
+    boolean rootsOpened=false,downloadsOpened=false,drawerDismissRequested=false,searchOpened=false,queryEntered=false,picked=false,confirmed=false;
+    android.graphics.Rect previousDownloads=null;
+    android.graphics.Rect previousFile=null;
+    while(true) {
+      // A click can synchronously close DocumentsUI before it returns. Observe
+      // that result before checking whether another waiting iteration is allowed.
+      // Otherwise a successful final action at the deadline is reported as a
+      // timeout without ever inspecting its result. No extra wait is granted.
+      if(picked && !areDocumentsUiVisible()) {
+        reportStep("document picker closed: "+fileName+" elapsedMs="+(SystemClock.uptimeMillis()-started));
+        return;
       }
-    }
-
-    if ( ! isDocumentsUiPackage( mDevice.getCurrentPackageName() ) ) return;
-
-    captureDocumentPickerFailure( fileName );
-    fail( "Requested document not visible in picker: " + fileName );
-  }
-
-  private boolean trySearchDocument( String fileName, String documentsUiPackage )
-  {
-    UiObject2 searchButton = findAnyObject( 3000,
-      By.res( documentsUiPackage, "option_menu_search" ),
-      By.res( documentsUiPackage, "menu_search" ),
-      By.res( documentsUiPackage, "action_menu_search" ),
-      By.descContains( "Search" ),
-      By.text( "Search" )
-    );
-    if ( searchButton == null || ! tryClickObject( searchButton ) ) return false;
-
-    UiObject2 searchBox = findAnyObject( 5000,
-      By.res( "android", "search_src_text" ),
-      By.res( documentsUiPackage, "search_src_text" ),
-      By.clazz( "android.widget.EditText" )
-    );
-    if ( searchBox == null ) {
-      return false;
-    }
-
-    try {
-      searchBox.setText( fileName );
-    } catch ( StaleObjectException e ) {
-      return false;
-    }
-    waitForIdle();
-    SystemClock.sleep( 1000 );
-    if ( tryPickVisibleDocument( fileName, documentsUiPackage, 8000 ) ) return true;
-    return false;
-  }
-
-  private void captureDocumentPickerFailure( String fileName ) throws Exception
-  {
-    File artifactDir = getCaseArtifactsDir();
-    takeScreenshotWithRetry( new File( artifactDir, "document-picker-failure.png" ) );
-    File hierarchy = new File( artifactDir, "document-picker-failure.xml" );
-    ensureParentDir( hierarchy );
-    mDevice.dumpWindowHierarchy( hierarchy );
-    writeTextFile( new File( artifactDir, "document-picker-failure.txt" ),
-      "file=" + fileName + "\n"
-      + "package=" + mDevice.getCurrentPackageName() + "\n" );
-  }
-
-  private boolean tryPickVisibleDocument( String fileName, String documentsUiPackage, long waitMs )
-  {
-    long deadline = SystemClock.uptimeMillis() + waitMs;
-    boolean scrolled = false;
-    while ( SystemClock.uptimeMillis() < deadline ) {
-      // Some DocumentsUI providers close immediately after a matching search
-      // result is accepted. Let the caller assert the import postcondition.
-      if ( ! isDocumentsUiPackage( mDevice.getCurrentPackageName() ) ) return true;
-
-      UiObject2 row = findDocumentObject( fileName, 500 );
-      if ( row != null && tryClickObject( row ) ) {
-        if ( waitForDocumentsUiToClose( 1500 ) ) return true;
-
-        UiObject2 openButton = findAnyObject( 1500,
-          By.res( documentsUiPackage, "action_menu_select" ),
-          By.text( "Open" ),
-          By.textContains( "Open" ),
-          By.text( "Select" ),
-          By.descContains( "Open" ),
-          By.descContains( "Select" )
-        );
-        if ( openButton != null && tryClickObject( openButton ) ) {
-          if ( waitForDocumentsUiToClose( 5000 ) ) return true;
+      if(SystemClock.uptimeMillis()>=deadline)break;
+      if(picked) {
+        UiObject2 open=mDevice.findObject(By.res(java.util.regex.Pattern.compile("(?:com\\.google\\.android\\.documentsui|com\\.android\\.documentsui):id/action_menu_(?:select|open)")));
+        if(open==null)open=mDevice.findObject(By.text(java.util.regex.Pattern.compile("(?i)(?:SELECT|OPEN)")));
+        if(open!=null && !confirmed){
+          UiObject2 selected=mDevice.findObject(By.text(fileName));
+          while(selected!=null && !selected.isSelected())selected=selected.getParent();
+          assertNotNull("Document confirmation requires the requested filename to be selected: "+fileName,selected);
+          assertTrue("Document confirmation is disabled",open.isEnabled());
+          open.click();confirmed=true;
+          deadline=SystemClock.uptimeMillis()+10000;phase="document picker dismissal";
+          reportStep("document selection confirmed: "+fileName);continue;
         }
+        SystemClock.sleep(50);continue;
       }
-
-      if ( ! scrolled ) {
-        scrolled = scrollDocumentsListToText( fileName );
-        continue;
+      if(!areDocumentsUiVisible()) {SystemClock.sleep(50);continue;}
+      android.view.accessibility.AccessibilityNodeInfo rootsList=activeDocumentsNode("roots_list");
+      if(rootsList!=null) {
+        // DocumentsUI exposes files behind its open drawer as visible nodes.
+        // Resolve Downloads within the drawer, then observe its dismissal
+        // before considering any filename coordinates behind it.
+        try {
+          android.graphics.Rect drawer=new android.graphics.Rect();rootsList.getBoundsInScreen(drawer);
+          if(!downloadsOpened) {
+            List<android.view.accessibility.AccessibilityNodeInfo> entries=rootsList.findAccessibilityNodeInfosByText("Download");
+            android.graphics.Rect downloads=null;
+            for(android.view.accessibility.AccessibilityNodeInfo entry:entries) {
+              android.graphics.Rect bounds=new android.graphics.Rect();entry.getBoundsInScreen(bounds);
+              if(entry.isVisibleToUser() && entry.isEnabled() && (android.text.TextUtils.equals("Downloads",entry.getText()) || android.text.TextUtils.equals("Download",entry.getText())) && !bounds.isEmpty() && drawer.contains(bounds))downloads=new android.graphics.Rect(bounds);
+              entry.recycle();
+            }
+            assertNotNull("Downloads root missing from active document drawer",downloads);
+            if(downloads.equals(previousDownloads)) {
+              assertTrue("Downloads root touch was not injected",mDevice.click(downloads.centerX(),downloads.centerY()));
+              downloadsOpened=true;rootsOpened=true;
+              deadline=SystemClock.uptimeMillis()+10000;phase="Downloads navigation";
+              reportStep("Downloads root selected");
+            } else {previousDownloads=downloads;}
+          } else if(!drawerDismissRequested) {
+            // Selecting the already-active root can leave the drawer open.
+            // This outside tap is above the file grid, so a stale drawer
+            // snapshot cannot accidentally open another archive.
+            int x=drawer.right+Math.min(100,(mDevice.getDisplayWidth()-drawer.right)/2);
+            int y=Math.max(1,drawer.top+10);
+            assertTrue("No safe outside-drawer point",x>drawer.right && x<mDevice.getDisplayWidth() && y<mDevice.getDisplayHeight() && !drawer.contains(x,y));
+            assertTrue("Drawer dismissal touch was not injected",mDevice.click(x,y));
+            drawerDismissRequested=true;
+            deadline=SystemClock.uptimeMillis()+10000;phase="roots drawer dismissal";
+            reportStep("outside drawer tap: "+x+","+y+" drawer="+drawer);
+          }
+        } finally {rootsList.recycle();}
+        SystemClock.sleep(50);continue;
       }
-
-      SystemClock.sleep( 200 );
-    }
-    return false;
-  }
-
-  private boolean tryTapDocumentText( String text, long timeoutMs )
-  {
-    long deadline = SystemClock.uptimeMillis() + timeoutMs;
-    boolean scrolled = false;
-    while ( SystemClock.uptimeMillis() < deadline ) {
-      UiObject2 object = findDocumentObject( text, 500 );
-      if ( object != null && tryClickObject( object ) ) return true;
-
-      if ( ! scrolled ) {
-        scrolled = scrollDocumentsListToText( text );
-        continue;
+      // Search input/history can contain the exact filename too. Only a title
+      // inside the active directory's real file listing is a selectable file.
+      android.view.accessibility.AccessibilityNodeInfo directory=activeDocumentsNode("dir_list");
+      android.graphics.Rect fileBounds=null;
+      if(directory!=null) {
+        try {
+          android.graphics.Rect directoryBounds=new android.graphics.Rect();directory.getBoundsInScreen(directoryBounds);
+          List<android.view.accessibility.AccessibilityNodeInfo> titles=directory.findAccessibilityNodeInfosByViewId("android:id/title");
+          for(android.view.accessibility.AccessibilityNodeInfo title:titles) {
+            android.graphics.Rect bounds=new android.graphics.Rect();title.getBoundsInScreen(bounds);
+            if(android.text.TextUtils.equals(fileName,title.getText()) && title.isVisibleToUser() && title.isEnabled() && !bounds.isEmpty() && directoryBounds.contains(bounds))fileBounds=new android.graphics.Rect(bounds);
+            title.recycle();
+          }
+        } finally {directory.recycle();}
       }
-
-      SystemClock.sleep( 200 );
+      if(fileBounds!=null) {
+        if(!fileBounds.equals(previousFile)) {previousFile=fileBounds;SystemClock.sleep(50);continue;}
+        assertTrue("Archive file touch was not injected",mDevice.click(fileBounds.centerX(),fileBounds.centerY()));picked=true;
+        deadline=SystemClock.uptimeMillis()+5000;phase="file selection and confirmation control";
+        reportStep("document filename selected: "+fileName);continue;
+      }
+      previousFile=null;
+      UiObject2 roots=mDevice.findObject(By.descContains("Show roots"));
+      if(roots==null)roots=mDevice.findObject(By.descContains("Open roots"));
+      if(!rootsOpened && roots!=null) {roots.click();rootsOpened=true;deadline=SystemClock.uptimeMillis()+10000;phase="roots drawer navigation";continue;}
+      if(downloadsOpened && directory==null && !searchOpened) {SystemClock.sleep(50);continue;}
+      UiObject2 query=mDevice.findObject(By.res(java.util.regex.Pattern.compile("(?:android|com\\.google\\.android\\.documentsui|com\\.android\\.documentsui):id/search_src_text")));
+      if(query!=null && !queryEntered) {query.setText(fileName);assertEquals("Document search did not accept the exact filename",fileName,query.getText());mDevice.pressEnter();queryEntered=true;deadline=SystemClock.uptimeMillis()+10000;phase="document search results navigation";continue;}
+      UiObject2 search=mDevice.findObject(By.descContains("Search"));
+      if(search!=null && !searchOpened) {search.click();searchOpened=true;deadline=SystemClock.uptimeMillis()+10000;phase="document search navigation";continue;}
+      SystemClock.sleep(50);
     }
-    return false;
-  }
-
-  private void openDocumentsUiPath( String... pathSegments )
-  {
-    if ( pathSegments == null ) return;
-    for ( String segment : pathSegments ) {
-      if ( segment == null || segment.length() == 0 ) continue;
-      assertTrue( "DocumentsUI path segment not found: " + segment,
-        tryTapDocumentText( segment, UI_TIMEOUT_MS ) );
-      SystemClock.sleep( 400 );
-    }
-  }
-
-  private UiObject2 findDocumentObject( String text, long timeoutMs )
-  {
-    if ( text == null || text.length() == 0 ) return null;
-    long deadline = SystemClock.uptimeMillis() + timeoutMs;
-    while ( SystemClock.uptimeMillis() < deadline ) {
-      UiObject2 object = mDevice.findObject( By.text( text ) );
-      if ( object != null ) return object;
-      object = mDevice.findObject( By.textContains( text ) );
-      if ( object != null ) return object;
-      object = mDevice.findObject( By.desc( text ) );
-      if ( object != null ) return object;
-      object = mDevice.findObject( By.descContains( text ) );
-      if ( object != null ) return object;
-      SystemClock.sleep( 150 );
-    }
-    return null;
-  }
-
-  private boolean scrollDocumentsListToText( String text )
-  {
-    try {
-      UiScrollable scrollable = new UiScrollable( new UiSelector().scrollable( true ).instance( 0 ) );
-      scrollable.setAsVerticalList();
-      scrollable.setMaxSearchSwipes( 20 );
-      if ( scrollable.scrollIntoView( new UiSelector().text( text ) ) ) return true;
-    } catch ( UiObjectNotFoundException e ) {
-      // fall through and try a contains-based scroll below
-    }
-
-    try {
-      UiScrollable scrollable = new UiScrollable( new UiSelector().scrollable( true ).instance( 0 ) );
-      scrollable.setAsVerticalList();
-      scrollable.setMaxSearchSwipes( 20 );
-      if ( scrollable.scrollIntoView( new UiSelector().textContains( text ) ) ) return true;
-    } catch ( UiObjectNotFoundException e ) {
-      // fall through to the direct lookup below
-    }
-
-    return mDevice.findObject( By.text( text ) ) != null || mDevice.findObject( By.textContains( text ) ) != null;
-  }
-
-  private boolean waitForDocumentsUiToClose( long timeoutMs )
-  {
-    long deadline = SystemClock.uptimeMillis() + timeoutMs;
-    while ( SystemClock.uptimeMillis() < deadline ) {
-      if ( ! isDocumentsUiPackage( mDevice.getCurrentPackageName() ) ) return true;
-      SystemClock.sleep( 250 );
-    }
-    return false;
+    captureDocumentPickerFailure(fileName);
+    fail("Document picker timed out during "+phase+": "+fileName+"; picked="+picked+" confirmed="+confirmed+" elapsedMs="+(SystemClock.uptimeMillis()-started));
   }
 
   void waitForIdle()
   {
-    mInstrumentation.waitForIdleSync();
-    mDevice.waitForIdle();
+    // Drain already queued UI work; each caller verifies its own observable result.
+    mInstrumentation.runOnMainSync(() -> {});
+  }
+
+  private boolean waitForDocumentsUiToClose(long timeoutMs)
+  {
+    long deadline=SystemClock.uptimeMillis()+timeoutMs;
+    while(SystemClock.uptimeMillis()<deadline) {
+      if(!areDocumentsUiVisible())return true;
+      SystemClock.sleep(50);
+    }
+    return false;
+  }
+
+  private void captureDocumentPickerFailure(String fileName)
+  {
+    try {
+      File directory=getCaseArtifactsDir();ensureDir(directory);
+      mDevice.dumpWindowHierarchy(new File(directory,"document-picker-failure.xml"));
+      captureActualScreen(new File(directory,"document-picker-failure.png"));
+    } catch(Exception ex) {reportStep("Picker diagnostics failed for "+fileName+": "+ex);}
   }
 
   private void waitForDeviceIdle()
@@ -2929,41 +3199,18 @@ selection.mHotItem.getHandleRole() );
 
   private void waitForDisplayedView( int viewId )
   {
-    long deadline = SystemClock.uptimeMillis() + UI_TIMEOUT_MS;
-    Throwable lastError = null;
-    while ( SystemClock.uptimeMillis() < deadline ) {
-      try {
-        onView( withId( viewId ) ).check( ( View view, NoMatchingViewException error ) -> {
-          if ( error != null ) throw error;
-          assertNotNull( "View lookup returned null for " + viewId, view );
-          assertEquals( "Expected visible view for " + viewId, View.VISIBLE, view.getVisibility() );
-          assertTrue( "Expected non-zero size for " + viewId, view.getWidth() > 0 && view.getHeight() > 0 );
-        } );
-        waitForIdle();
-        return;
-      } catch ( AssertionFailedError | RuntimeException e ) {
-        lastError = e;
-        SystemClock.sleep( 200 );
-      }
-    }
-    AssertionError error = new AssertionError( "Timed out waiting for view id " + viewId + " to be displayed" );
-    if ( lastError != null ) error.initCause( lastError );
-    throw error;
+    String name=mTargetContext.getResources().getResourceEntryName(viewId);
+    long timeout=(viewId==R.id.list || viewId==R.id.td_list || viewId==R.id.drawingSurface || viewId==R.id.survey_team)?10000:5000;
+    UiObject2 object=mDevice.wait(Until.findObject(By.res(PACKAGE_NAME,name)),timeout);
+    if(object!=null && !object.getVisibleBounds().isEmpty()) return;
+    try {mDevice.dumpWindowHierarchy(new File(getCaseArtifactsDir(),"missing-"+name+".xml"));}catch(Exception ignored){}
+    fail("View not visible within " + timeout + "ms: " + name);
   }
 
   private boolean isViewDisplayed( int viewId )
   {
-    try {
-      onView( withId( viewId ) ).check( ( View view, NoMatchingViewException error ) -> {
-        if ( error != null ) throw error;
-        assertNotNull( "View lookup returned null for " + viewId, view );
-        assertEquals( "Expected visible view for " + viewId, View.VISIBLE, view.getVisibility() );
-        assertTrue( "Expected non-zero size for " + viewId, view.getWidth() > 0 && view.getHeight() > 0 );
-      } );
-      return true;
-    } catch ( AssertionFailedError | RuntimeException e ) {
-      return false;
-    }
+    UiObject2 view=mDevice.findObject(By.res(PACKAGE_NAME,mTargetContext.getResources().getResourceEntryName(viewId)));
+    return view!=null && !view.getVisibleBounds().isEmpty();
   }
 
   private boolean isViewPresent( int viewId )
@@ -3025,24 +3272,29 @@ selection.mHotItem.getHandleRole() );
 
   private void tapChildInContainer( int containerId, int childIndex, String containerName )
   {
-    final int[] center = new int[2];
-    runOnMainChecked( containerName, () -> {
-      View view = requireCurrentActivityView( containerId, "container " + containerName );
-      assertTrue( "Container " + containerName + " is not a ViewGroup", view instanceof ViewGroup );
-      ViewGroup group = (ViewGroup)view;
-      assertTrue( "Container " + containerName + " does not have child index " + childIndex,
-        childIndex >= 0 && childIndex < group.getChildCount() );
-      View child = group.getChildAt( childIndex );
-      assertNotNull( "Missing child " + childIndex + " in " + containerName, child );
-      assertTrue( "Child " + childIndex + " in " + containerName + " is not visible",
-        child.getVisibility() == View.VISIBLE && child.getWidth() > 0 && child.getHeight() > 0 );
-      int[] location = new int[2];
-      child.getLocationOnScreen( location );
-      center[0] = location[0] + child.getWidth() / 2;
-      center[1] = location[1] + child.getHeight() / 2;
-    } );
-    assertTrue( "Failed to inject tap into " + containerName + " child " + childIndex,
-      mDevice.click( center[0], center[1] ) );
+    int[] center={-1,-1}; int[] previous={-2,-2}; boolean[] ready={false}; boolean stable=false;
+    String[] state={"not observed"};
+    long deadline=SystemClock.uptimeMillis()+5000;
+    while(SystemClock.uptimeMillis()<deadline) {
+      ready[0]=false;
+      runOnMainChecked(containerName,() -> {
+        View view=requireCurrentActivityView(containerId,"container "+containerName);
+        if(!(view instanceof ViewGroup))return;
+        ViewGroup group=(ViewGroup)view;
+        if(childIndex<0 || childIndex>=group.getChildCount())return;
+        View child=group.getChildAt(childIndex);
+        state[0]="activity="+findCurrentActivity()+" child="+child+" shown="+(child!=null && child.isShown())+" focus="+(child!=null && child.hasWindowFocus())+" layout="+view.getRootView().isLayoutRequested();
+        if(child==null || !child.isShown() || !child.hasWindowFocus() || child.getWidth()<=0 || child.getHeight()<=0 || child.getRootView().isLayoutRequested())return;
+        int[] position=new int[2];child.getLocationOnScreen(position);
+        center[0]=position[0]+child.getWidth()/2;center[1]=position[1]+child.getHeight()/2;ready[0]=true;
+      });
+      if(ready[0] && center[0]==previous[0] && center[1]==previous[1]){stable=true;break;}
+      previous[0]=ready[0]?center[0]:-2;previous[1]=ready[0]?center[1]:-2;
+      SystemClock.sleep(50);
+    }
+    if(!stable)try{captureActualScreen(new File(getCaseArtifactsDir(),"toolbar-readiness-failure.png"));}catch(Exception ex){reportStep("Toolbar screenshot: "+ex);}
+    assertTrue("Toolbar control was not focused and stable within five seconds: "+containerName+" child="+childIndex+" "+state[0],stable);
+    assertTrue("Failed to inject toolbar tap",mDevice.click(center[0],center[1]));
     waitForDeviceIdle();
   }
 
@@ -3094,10 +3346,17 @@ selection.mHotItem.getHandleRole() );
   private void compareBitmapFileToGolden( File actualFile, String assetName,
     double maxDiffRatio, int maxChannelDelta, int sampleSize ) throws Exception
   {
+    compareBitmapFileToGolden(actualFile,assetName,maxDiffRatio,maxChannelDelta,sampleSize,sampleSize);
+  }
+
+  private void compareBitmapFileToGolden(File actualFile,String assetName,double maxDiffRatio,int maxChannelDelta,int sampleSize,int expectedSampleSize) throws Exception
+  {
     int effectiveSampleSize = Math.max( 1, sampleSize );
     Bitmap actual = decodeBitmapFile( actualFile, effectiveSampleSize );
     assertNotNull( "Unable to decode bitmap " + actualFile.getAbsolutePath(), actual );
-    Bitmap expected = decodeGoldenBitmap( assetName, effectiveSampleSize );
+    Bitmap expected=null;
+    try {
+    expected = decodeGoldenBitmap( assetName, Math.max(1,expectedSampleSize) );
     assertNotNull( "Unable to decode golden bitmap " + assetName, expected );
 
     boolean sameSize = expected.getWidth() == actual.getWidth() && expected.getHeight() == actual.getHeight();
@@ -3110,7 +3369,8 @@ selection.mHotItem.getHandleRole() );
     File diffCopy = new File( getCaseArtifactsDir(), "diff-" + assetName );
     saveBitmap( expected, expectedCopy );
     if ( sameSize ) {
-      saveBitmap( createDiffBitmap( expected, actual ), diffCopy );
+      Bitmap difference=createDiffBitmap(expected,actual);
+      try{saveBitmap(difference,diffCopy);}finally{difference.recycle();}
     }
     fail(
       "Bitmap golden mismatch for " + assetName
@@ -3119,6 +3379,7 @@ selection.mHotItem.getHandleRole() );
         + (sameSize ? " diff=" + diffCopy.getAbsolutePath() + " diffRatio=" + diffRatio : " (size mismatch)")
         + (effectiveSampleSize > 1 ? " sampleSize=" + effectiveSampleSize : "")
     );
+    } finally {actual.recycle();if(expected!=null)expected.recycle();}
   }
 
   private Bitmap decodeBitmapFile( File file, int sampleSize )
@@ -3131,15 +3392,14 @@ selection.mHotItem.getHandleRole() );
 
   private Bitmap decodeGoldenBitmap( String assetName, int sampleSize ) throws Exception
   {
-    InputStream input = mTestContext.getAssets().open( getGoldenAssetPath( assetName ) );
-    try {
-      if ( sampleSize <= 1 ) return BitmapFactory.decodeStream( input );
-      BitmapFactory.Options options = new BitmapFactory.Options();
-      options.inSampleSize = sampleSize;
-      return BitmapFactory.decodeStream( input, null, options );
-    } finally {
-      input.close();
+    byte[] bytes;
+    try(InputStream input=mTestContext.getAssets().open(getGoldenAssetPath(assetName));java.io.ByteArrayOutputStream encoded=new java.io.ByteArrayOutputStream()) {
+      copyStream(input,encoded);bytes=encoded.toByteArray();
     }
+    byte[] end={0,0,0,0,73,69,78,68,(byte)174,66,96,(byte)130};
+    assertTrue("Approved PNG is incomplete (missing IEND): "+assetName,bytes.length>=12 && java.util.Arrays.equals(end,java.util.Arrays.copyOfRange(bytes,bytes.length-12,bytes.length)));
+    BitmapFactory.Options options=new BitmapFactory.Options();options.inSampleSize=Math.max(1,sampleSize);
+    return BitmapFactory.decodeByteArray(bytes,0,bytes.length,options);
   }
 
   private double bitmapDifferenceRatio( Bitmap expected, Bitmap actual, int maxChannelDelta )
@@ -3255,6 +3515,23 @@ selection.mHotItem.getHandleRole() );
     fail( "DocumentsUI did not close after selecting the import file" );
   }
 
+  private boolean areDocumentsUiVisible()
+  {
+    // Search APIs can retain background provider roots. Check the focused
+    // application window rather than its last package event or any cached root.
+    for(android.view.accessibility.AccessibilityWindowInfo window:mInstrumentation.getUiAutomation().getWindows()) {
+      if(window.getType()!=android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION || (!window.isActive() && !window.isFocused()))continue;
+      android.view.accessibility.AccessibilityNodeInfo root=window.getRoot();
+      if(root==null)continue;
+      try {if(root.isVisibleToUser())return isDocumentsUiPackage(String.valueOf(root.getPackageName()));}
+      finally {root.recycle();}
+    }
+    android.view.accessibility.AccessibilityNodeInfo root=mInstrumentation.getUiAutomation().getRootInActiveWindow();
+    if(root==null)return true;
+    try{return root.isVisibleToUser() && isDocumentsUiPackage(String.valueOf(root.getPackageName()));}
+    finally{root.recycle();}
+  }
+
   private boolean isDocumentsUiPackage( String packageName )
   {
     return DOCUMENTS_UI_PACKAGE.equals( packageName ) || GOOGLE_DOCUMENTS_UI_PACKAGE.equals( packageName );
@@ -3275,6 +3552,7 @@ selection.mHotItem.getHandleRole() );
 
   private void enableDemoMode() throws Exception
   {
+    if("true".equals(InstrumentationRegistry.getArguments().getString("qa_physical")))return;
     if ( mDemoModeEnabled ) return;
     runShellCommand( "settings put global sysui_demo_allowed 1" );
     runShellCommand( "am broadcast -a com.android.systemui.demo -e command enter" );
@@ -3342,6 +3620,9 @@ selection.mHotItem.getHandleRole() );
 
   private void configureStableRuntimeState()
   {
+    // Existing approved survey fixtures describe manual input in feet/degrees.
+    TDSetting.mUnitLength=TDUtil.M2FT;TDSetting.mUnitLengthStr="ft";
+    TDSetting.mUnitAngle=1.0f;TDSetting.mUnitAngleStr="deg";
     TDSetting.mSingleBack = true;
     TDSetting.mEraseReferenceImages = false;
     TDSetting.mExportDataShare = false;
@@ -3356,7 +3637,7 @@ selection.mHotItem.getHandleRole() );
   private void ensureDefaultSymbolsReady()
   {
     if ( BrushManager.getLineIndexByThName( SymbolLibrary.USER ) < 0 ) {
-      TopoDroidApp.installSymbols( true );
+      QaFixtureRule.ensureSymbols();
       BrushManager.reloadPointLibrary( mTargetContext, mTargetContext.getResources() );
       BrushManager.reloadLineLibrary( mTargetContext.getResources() );
       BrushManager.reloadAreaLibrary( mTargetContext.getResources() );
@@ -3395,11 +3676,8 @@ selection.mHotItem.getHandleRole() );
         //noinspection ResultOfMethodCallIgnored
         zipFile.delete();
       }
-      File downloadCopy = getDownloadFile( surveyName + ".zip" );
-      if ( downloadCopy.exists() ) {
-        //noinspection ResultOfMethodCallIgnored
-        downloadCopy.delete();
-      }
+      // Import copies remain owned by the fixture and are removed only after
+      // the case; deleting a source survey must not delete its round-trip input.
     }
   }
 
@@ -3409,6 +3687,7 @@ selection.mHotItem.getHandleRole() );
     for ( String surveyName : surveyNames ) {
       long sid = TopoDroidApp.mData.getSurveyId( surveyName );
       if ( sid > 0L ) {
+        QaFixtureRule.requireSurvey(surveyName,sid);
         TopoDroidApp.mData.doDeleteSurvey( sid );
       }
     }
@@ -3437,12 +3716,7 @@ selection.mHotItem.getHandleRole() );
   private void clearCaseArtifacts()
   {
     deleteRecursively( getCaseArtifactsDir() );
-    if ( ! mRecordMode ) {
-      deleteRecursively( new File( getArtifactsRootDir(), RECORDED_GOLDENS_DIR ) );
-    } else if ( ! sRecordedGoldensCleared ) {
-      deleteRecursively( new File( getArtifactsRootDir(), RECORDED_GOLDENS_DIR ) );
-      sRecordedGoldensCleared = true;
-    }
+
   }
 
   private File getExternalFilesDir()
@@ -3480,14 +3754,14 @@ selection.mHotItem.getHandleRole() );
 
   private UiObject2 waitForObject( BySelector selector )
   {
-    UiObject2 object = mDevice.wait( Until.findObject( selector ), UI_TIMEOUT_MS );
+    UiObject2 object = mDevice.wait( Until.findObject( selector ), 5000 );
     assertNotNull( "Timed out waiting for " + selector, object );
     return object;
   }
 
   private UiObject2 waitForAnyObject( BySelector... selectors )
   {
-    return findAnyObject( UI_TIMEOUT_MS, selectors );
+    return findAnyObject( 5000, selectors );
   }
 
   private UiObject2 findAnyObject( long timeoutMs, BySelector... selectors )
@@ -3505,30 +3779,13 @@ selection.mHotItem.getHandleRole() );
 
   private void waitUntilGone( BySelector selector )
   {
-    mDevice.wait( Until.gone( selector ), UI_TIMEOUT_MS );
+    mDevice.wait( Until.gone( selector ), 5000 );
   }
 
   private UiObject2 findSurveyOnMainList( String surveyName )
   {
-    waitForMainWindow();
-    // Most callers just created the survey — check the current viewport first.
-    UiObject2 row = mDevice.findObject( By.text( surveyName ) );
-    if ( row != null ) return row;
-
-    // Let UiScrollable fling through the list in both directions (fast; uses
-    // fling momentum instead of the drag-sized swipes this used to do).
-    try {
-      UiScrollable scrollable = new UiScrollable(
-        new UiSelector().resourceId( PACKAGE_NAME + ":id/td_list" ) );
-      scrollable.setAsVerticalList();
-      scrollable.setMaxSearchSwipes( 60 );
-      if ( scrollable.scrollIntoView( new UiSelector().text( surveyName ) ) ) {
-        return mDevice.findObject( By.text( surveyName ) );
-      }
-    } catch ( UiObjectNotFoundException e ) {
-      // fall through — let the caller treat "not found" as a miss
-    }
-    return null;
+    // Method-owned databases contain only this case's deliberately seeded surveys.
+    return mDevice.findObject(By.text(surveyName));
   }
 
   private UiObject2 requireSurveyOnMainList( String surveyName )
@@ -3544,14 +3801,72 @@ selection.mHotItem.getHandleRole() );
     assertTrue( "Failed to click object", tryClickObject( object ) );
   }
 
+  private java.util.Map<String,android.graphics.Rect> screenRegions()
+  {
+    java.util.Map<String,android.graphics.Rect> regions=new java.util.LinkedHashMap<>();
+    mInstrumentation.runOnMainSync(() -> {
+      DrawingWindow window=findCurrentDrawingWindow();
+      if(window==null) {regions.put("screen",new android.graphics.Rect(0,0,mDevice.getDisplayWidth(),mDevice.getDisplayHeight()));return;}
+      android.graphics.Rect canvas=new android.graphics.Rect();
+      window.findViewById(R.id.drawingSurface).getGlobalVisibleRect(canvas);
+      android.graphics.Rect tools=new android.graphics.Rect();
+      assertTrue("Toolbar container missing",window.findViewById(R.id.layout_tools).getGlobalVisibleRect(tools));
+      canvas.bottom=Math.min(canvas.bottom,tools.top);
+      for(int id:new int[]{R.id.layout_tool_p,R.id.layout_tool_l,R.id.layout_tool_a,R.id.layout_tool_preset,R.id.layout_tool_style}) {
+        View row=window.findViewById(id); android.graphics.Rect bounds=new android.graphics.Rect();
+        boolean visible=row!=null && row.getGlobalVisibleRect(bounds) && !bounds.isEmpty();
+        if(id==R.id.layout_tool_preset || id==R.id.layout_tool_style)assertTrue("Required toolbar region is missing: " + id,visible);
+        if(!visible)continue;
+        regions.put(mTargetContext.getResources().getResourceEntryName(id),bounds);
+        canvas.bottom=Math.min(canvas.bottom,bounds.top);
+      }
+      regions.put("canvas",canvas);
+    });
+    return regions;
+  }
+
   private boolean takeScreenshotWithRetry( File file ) throws Exception
   {
-    for ( int attempt = 0; attempt < 5; ++attempt ) {
-      waitForIdle();
-      if ( mDevice.takeScreenshot( file ) ) return true;
-      SystemClock.sleep( 400 );
+    // Observe stable actual frames within one deadline. No offscreen render or test retry.
+    long deadline=SystemClock.uptimeMillis()+10000;
+    Bitmap previous=null; int stable=0;
+    ensureParentDir(file);
+    try {
+      while(SystemClock.uptimeMillis()<deadline) {
+        if(!captureActualScreen(file)) {stable=0;reportStep("stable-frame capture unavailable");SystemClock.sleep(100);continue;}
+        Bitmap frame=BitmapFactory.decodeFile(file.getAbsolutePath());
+        assertNotNull("Undecodable screen capture",frame);
+        stable=previous!=null && previous.sameAs(frame) ? stable+1 : 1;
+        if(previous!=null)previous.recycle(); previous=frame;
+        if(mRecordMode) copyFile(file,new File(getCaseArtifactsDir(),file.getName()+".stable-"+stable+".png"));
+        if(stable>=3)return true;
+        SystemClock.sleep(100);
+      }
+      fail("Actual screen did not produce three stable frames within 10 seconds: " + file);
+      return false;
+    } finally {if(previous!=null)previous.recycle();}
+  }
+
+  private boolean captureActualScreen(File file) throws Exception
+  {
+    // Android's native screen capture reads the actual display. UiAutomation's
+    // bitmap capture intermittently returns null on this emulator; never replace
+    // a live frame with DrawingSurface.drawCanvas or an offscreen model render.
+    ensureParentDir(file);
+    try(InputStream input=new ParcelFileDescriptor.AutoCloseInputStream(mInstrumentation.getUiAutomation().executeShellCommand("screencap -p"));
+        OutputStream output=new FileOutputStream(file)) {
+      copyStream(input,output);
     }
-    return false;
+    BitmapFactory.Options bounds=new BitmapFactory.Options();bounds.inJustDecodeBounds=true;
+    BitmapFactory.decodeFile(file.getAbsolutePath(),bounds);
+    return bounds.outWidth>0 && bounds.outHeight>0;
+  }
+
+  void captureFailureEvidence(String label) throws Exception
+  {
+    File directory=getCaseArtifactsDir();
+    mDevice.dumpWindowHierarchy(new File(directory,label+".xml"));
+    assertTrue("Failure screen capture unavailable",captureActualScreen(new File(directory,label+".png")));
   }
 
   private void longClickObject( UiObject2 object )
@@ -3576,43 +3891,25 @@ selection.mHotItem.getHandleRole() );
   private boolean tryClickObject( UiObject2 object )
   {
     assertNotNull( "Cannot click a null object", object );
-    for ( int attempt = 0; attempt < 3; ++attempt ) {
-      try {
-        UiObject2 target = getInteractiveObject( object );
-        if ( target == null ) {
-          SystemClock.sleep( 150 );
-          continue;
-        }
-        target.click();
-        waitForIdle();
-        return true;
-      } catch ( StaleObjectException e ) {
-        SystemClock.sleep( 150 );
-      }
-    }
-    return false;
+    try {
+      UiObject2 target=getInteractiveObject(object);
+      if(target==null)return false;
+      target.click();waitForIdle();return true;
+    } catch(StaleObjectException ex) {return false;}
   }
 
   private boolean tryLongClickObject( UiObject2 object )
   {
     assertNotNull( "Cannot long-click a null object", object );
-    for ( int attempt = 0; attempt < 3; ++attempt ) {
-      try {
-        UiObject2 target = getInteractiveObject( object );
-        if ( target == null ) {
-          SystemClock.sleep( 150 );
-          continue;
-        }
+    try {
+        UiObject2 target=getInteractiveObject(object);
+        if(target==null)return false;
         int centerX = target.getVisibleBounds().centerX();
         int centerY = target.getVisibleBounds().centerY();
         mDevice.swipe( centerX, centerY, centerX, centerY, 120 );
         waitForIdle();
         return true;
-      } catch ( StaleObjectException e ) {
-        SystemClock.sleep( 150 );
-      }
-    }
-    return false;
+    } catch(StaleObjectException ex) {return false;}
   }
 
   private String runShellCommand( String command ) throws Exception
@@ -3725,6 +4022,12 @@ selection.mHotItem.getHandleRole() );
   private void deleteRecursively( File file )
   {
     if ( file == null || ! file.exists() ) return;
+    File privateRoot = mTargetContext.getExternalFilesDir( null );
+    try {
+      String canonical = file.getCanonicalPath();
+      if ( !QaFixtureRule.owns(file) && (privateRoot == null || !canonical.startsWith(privateRoot.getCanonicalPath() + File.separator)) )
+        throw new SecurityException("Refusing to remove unowned path " + file);
+    } catch ( IOException ex ) { throw new IllegalStateException(ex); }
     if ( file.isDirectory() ) {
       File[] children = file.listFiles();
       if ( children != null ) {
@@ -3738,22 +4041,10 @@ selection.mHotItem.getHandleRole() );
   private void closeScenario()
   {
     if ( mScenario != null ) {
+      QaFixtureRule.closeActivities();
       mScenario.close();
       mScenario = null;
       waitForIdle();
-      waitForPackageToLeaveForeground();
-    }
-  }
-
-  private void waitForPackageToLeaveForeground()
-  {
-    long deadline = SystemClock.uptimeMillis() + UI_TIMEOUT_MS;
-    while ( SystemClock.uptimeMillis() < deadline ) {
-      if ( ! PACKAGE_NAME.equals( mDevice.getCurrentPackageName() ) ) {
-        SystemClock.sleep( 500 );
-        return;
-      }
-      SystemClock.sleep( 200 );
     }
   }
 

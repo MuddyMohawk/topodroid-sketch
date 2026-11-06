@@ -10,7 +10,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.SystemClock;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
 import org.junit.Test;
@@ -20,10 +19,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.util.Locale;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.EXCHANGE})
 public class PngFastWriterInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   @Test
   public void encodedPng_preservesTransparentAndOpaquePixels() throws Exception
   {
@@ -31,6 +33,7 @@ public class PngFastWriterInstrumentedTest
     assertRoundTrip( makeSample( 257, 193, false ) );
   }
 
+  @com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.DIAGNOSTIC)
   @Test
   public void benchmarkLineArt_reportsFastAndPlatformTimes() throws Exception
   {

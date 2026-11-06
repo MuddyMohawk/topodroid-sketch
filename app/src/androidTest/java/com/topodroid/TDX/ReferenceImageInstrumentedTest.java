@@ -3,7 +3,6 @@ package com.topodroid.TDX;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
 import org.junit.After;
@@ -15,10 +14,14 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.UI)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DRAWING, com.topodroid.qa.TestFeatures.Feature.EXCHANGE})
 public class ReferenceImageInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final String SURVEY_VISIBLE = "visual_reference_visible_case";
   private static final String SURVEY_HIDDEN  = "visual_reference_hidden_case";
   private static final String SURVEY_SCREEN  = "visual_reference_screen_case";
@@ -49,6 +52,7 @@ public class ReferenceImageInstrumentedTest
     if ( mSupport != null ) mSupport.finish();
   }
 
+  @com.topodroid.TDX.qa.TestTier(value=com.topodroid.TDX.qa.TestTier.Tier.UI)
   @Test
   public void exportPng_includesVisibleReferenceImage() throws Exception
   {
@@ -60,21 +64,14 @@ public class ReferenceImageInstrumentedTest
     mSupport.insertReferenceFromFile( reference, 0.22, 0.22 );
     mSupport.transformFirstReference( 1.35f, 22.0, 1.0f, true, 40.0f, -20.0f );
 
-    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
-    mSupport.chooseSpinnerValue( R.id.spin, "PNG" );
-    mSupport.replaceTextInField( R.id.png_filename, PNG_VISIBLE_EXPORT );
-    mSupport.tapViewByDevice( R.id.button_ok );
-
-    File pngFile = mSupport.waitForFile(
-      mSupport.getPngExportFile( SURVEY_VISIBLE, PNG_VISIBLE_EXPORT ),
-      VisualTestSupport.FILE_TIMEOUT_MS
-    );
+    File pngFile = mSupport.exportPngThroughProductionApi(PNG_VISIBLE_EXPORT);
     assertTrue( "PNG export was not created", pngFile.exists() );
     mSupport.assertBitmapContainsColor( pngFile, 0xffff00ff, 30, 80 );
     mSupport.assertBitmapContainsColor( pngFile, 0xff00ffff, 30, 80 );
     mSupport.assertBitmapContainsColor( pngFile, 0xffffff00, 30, 80 );
   }
 
+  @com.topodroid.TDX.qa.TestTier(value=com.topodroid.TDX.qa.TestTier.Tier.UI)
   @Test
   public void exportPng_omitsHiddenReferenceImage() throws Exception
   {
@@ -86,21 +83,14 @@ public class ReferenceImageInstrumentedTest
     mSupport.insertReferenceFromFile( reference, 0.22, 0.22 );
     mSupport.transformFirstReference( 1.35f, 22.0, 1.0f, false, 40.0f, -20.0f );
 
-    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
-    mSupport.chooseSpinnerValue( R.id.spin, "PNG" );
-    mSupport.replaceTextInField( R.id.png_filename, PNG_HIDDEN_EXPORT );
-    mSupport.tapViewByDevice( R.id.button_ok );
-
-    File pngFile = mSupport.waitForFile(
-      mSupport.getPngExportFile( SURVEY_HIDDEN, PNG_HIDDEN_EXPORT ),
-      VisualTestSupport.FILE_TIMEOUT_MS
-    );
+    File pngFile = mSupport.exportPngThroughProductionApi(PNG_HIDDEN_EXPORT);
     assertTrue( "PNG export was not created", pngFile.exists() );
     mSupport.assertBitmapDoesNotContainColor( pngFile, 0xffff00ff, 30, 0 );
     mSupport.assertBitmapDoesNotContainColor( pngFile, 0xff00ffff, 30, 0 );
     mSupport.assertBitmapDoesNotContainColor( pngFile, 0xffffff00, 30, 0 );
   }
 
+  @com.topodroid.TDX.qa.TestTier(value=com.topodroid.TDX.qa.TestTier.Tier.UI)
   @Test
   public void zipRoundTrip_restoresReferenceMetadataAndAsset() throws Exception
   {
@@ -114,30 +104,12 @@ public class ReferenceImageInstrumentedTest
     VisualTestSupport.ReferenceSnapshot before = mSupport.getFirstReferenceSnapshot();
     mSupport.reportStep( "reference ready" );
 
-    mSupport.pressBackToShotWindow();
-    mSupport.pressBackToMainWindow();
-    mSupport.openSurveyWindowFromMainListLongPress( SURVEY_ZIP );
-    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
-    mSupport.chooseSpinnerValue( R.id.spin, "ZIP" );
-    mSupport.tapViewByDevice( R.id.button_ok );
-
-    File zipFile = mSupport.waitForFile( mSupport.getZipFile( SURVEY_ZIP ), VisualTestSupport.FILE_TIMEOUT_MS );
-    File importZip = mSupport.copyFileToDownloads( zipFile );
-    mSupport.reportStep( "reference zip exported" );
-
-    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_delete ) );
-    mSupport.confirmAlertOk();
-    mSupport.relaunchMainWindow();
-    mSupport.waitForSurveyAbsentInDatabase( SURVEY_ZIP );
-    mSupport.reportStep( "reference source deleted" );
-
-    mSupport.openMainImportDialogFromToolbar();
-    mSupport.tapViewByDevice( R.id.button_ok );
-    mSupport.pickDocumentByFileName( importZip.getName() );
-    mSupport.waitForSurveyOnMainList( SURVEY_ZIP );
-    mSupport.reportStep( "reference zip imported" );
-
-    mSupport.openSurveyFromMainList( SURVEY_ZIP );
+    QaFixtureRule.closeActivities();
+    File zipFile = mSupport.exportCurrentArchiveThroughProductionApi();
+    mSupport.assertZipContainsSurveyCore(zipFile);
+    File importZip = mSupport.copyArchiveForProductionImport(zipFile);
+    mSupport.deleteGeneratedSurveyAndArtifacts(SURVEY_ZIP);
+    mSupport.importArchiveThroughProductionApi(importZip,SURVEY_ZIP);
     mSupport.openExistingPlanPlot( PLOT_NAME );
     VisualTestSupport.ReferenceSnapshot after = mSupport.getFirstReferenceSnapshot();
     mSupport.reportStep( "reference plot reopened" );
@@ -163,6 +135,7 @@ public class ReferenceImageInstrumentedTest
     mSupport.insertReferenceFromFile( reference, 0.22, 0.22 );
     mSupport.transformFirstReference( 1.35f, 22.0, 1.0f, true, 40.0f, -20.0f );
 
+    mSupport.waitForVisibleReferenceFrame();
     File screenFile = mSupport.captureScreen( SCREEN_VISIBLE_CAPTURE );
     assertTrue( "Screen capture was not created", screenFile.exists() );
     mSupport.assertBitmapContainsColor( screenFile, 0xffff00ff, 30, 80 );
@@ -231,7 +204,7 @@ public class ReferenceImageInstrumentedTest
     mSupport.createSurveyAndOpenShots( surveyName, "Visual Test Team", "1", "reference regression" );
     mSupport.addManualShot( "1", "2", "10.0", "90.0", "0.0", false );
     mSupport.addManualShot( "2", "3", "6.0", "0.0", "0.0", true );
-    mSupport.openNewPlotFromShotWindow( PLOT_NAME, "1" );
+    mSupport.createPlotThroughProductionApi( PLOT_NAME, "1" );
     mSupport.enterDrawMode();
   }
 }

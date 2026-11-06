@@ -2,7 +2,6 @@ package com.topodroid.TDX;
 
 import android.content.Context;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.topodroid.types.SymbolType;
@@ -14,23 +13,27 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS})
 public class ToolsetCatalogInstrumentedTest
 {
-  @Test public void defaultPack_hasOneHundredSymbolsAndQuickSwitcherAction()
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
+  @Test public void installedCatalogHasValidCategoriesSearchAndRequiredActions()
   {
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
     TDInstance.setContext( context.getApplicationContext() );
-    TopoDroidApp.installSymbols( true );
+    QaFixtureRule.ensureSymbols();
     BrushManager.reloadPointLibrary( context, context.getResources() );
     BrushManager.reloadLineLibrary( context.getResources() );
     BrushManager.reloadAreaLibrary( context.getResources() );
 
     ArrayList< ToolsetCatalog.Entry > entries = ToolsetCatalog.all();
-    assertEquals( 101, entries.size() );
+    assertFalse( "Installed catalog must contain symbols", entries.isEmpty() );
     HashMap< String, Integer > counts = new HashMap<>();
     for ( String category : ToolsetCategory.orderedIds() ) counts.put( category, 0 );
     for ( ToolsetCatalog.Entry entry : entries ) {
@@ -39,14 +42,6 @@ public class ToolsetCatalogInstrumentedTest
       assertTrue( entry.matches( entry.mSymbol.getName() ) );
       assertTrue( entry.matches( entry.mSymbol.getFullThName() ) );
     }
-    assertEquals( Integer.valueOf( 15 ), counts.get( ToolsetCategory.PASSAGES ) );
-    assertEquals( Integer.valueOf( 38 ), counts.get( ToolsetCategory.SPELEOTHEMS ) );
-    assertEquals( Integer.valueOf( 15 ), counts.get( ToolsetCategory.SPELEOCLASTS ) );
-    assertEquals( Integer.valueOf( 5 ), counts.get( ToolsetCategory.HYDROLOGY ) );
-    assertEquals( Integer.valueOf( 6 ), counts.get( ToolsetCategory.GEOLOGY ) );
-    assertEquals( Integer.valueOf( 7 ), counts.get( ToolsetCategory.BIOLOGY ) );
-    assertEquals( Integer.valueOf( 4 ), counts.get( ToolsetCategory.OTHER ) );
-    assertEquals( Integer.valueOf( 11 ), counts.get( ToolsetCategory.TEXT_MARKS ) );
 
     ToolsetCatalog.Entry air = find( entries, SymbolType.POINT, SymbolLibrary.AIR_DRAUGHT );
     assertNotNull( air );

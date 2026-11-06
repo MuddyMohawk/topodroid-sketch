@@ -12,6 +12,8 @@ import org.junit.Test;
  *  This uses the production estimator and declared random-error model; it does
  *  not claim coverage for compass bias, misidentified beds, or correlated geology.
  */
+@org.junit.experimental.categories.Category(com.topodroid.qa.SlowChecks.class)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS})
 public class BeddingCoverageCalibrationTest
 {
   private static final int REPLICATES = 400;

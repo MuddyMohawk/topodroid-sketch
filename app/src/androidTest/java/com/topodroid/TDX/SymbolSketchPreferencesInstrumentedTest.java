@@ -10,7 +10,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import com.topodroid.util.TDFile;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.topodroid.prefs.TDPrefCat;
@@ -40,9 +39,13 @@ import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.UI)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.DATA})
 public class SymbolSketchPreferencesInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final String UI_SURVEY = "symbol_memory_ui_case";
   private Context mContext;
   private Context mPreviousContext;
@@ -107,6 +110,7 @@ public class SymbolSketchPreferencesInstrumentedTest
     return SymbolSketchPreferences.load( mData, survey, type, name );
   }
 
+  @com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
   @Test public void choicesPersistIndependentlyAndDoNotLeakAcrossSurveysOrTypes()
   {
     assertTrue( TDSetting.mRememberSymbolStyle );
@@ -124,6 +128,7 @@ public class SymbolSketchPreferencesInstrumentedTest
     assertEquals( 2, choice( mSurvey, SymbolType.LINE, "wall" ).preset );
   }
 
+  @com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
   @Test public void firstUseFillsMissingFieldsWithoutOverwritingNewerManualChoices()
   {
     SymbolSketchPreferences.Use wall = use( mSurvey, SymbolType.LINE, "wall", 2, 1 );
@@ -136,6 +141,7 @@ public class SymbolSketchPreferencesInstrumentedTest
     assertEquals( 1, choice( mSurvey, SymbolType.LINE, "wall" ).preset );
   }
 
+  @com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
   @Test public void disabledSettingsFreezeEachKindOfMemoryIndependently()
   {
     SymbolSketchPreferences.Use point = use( mSurvey, SymbolType.POINT, "stalactite", 2, 1 );
@@ -157,6 +163,7 @@ public class SymbolSketchPreferencesInstrumentedTest
     assertFalse( TDSetting.mRememberSymbolPreset );
   }
 
+  @com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
   @Test public void malformedEntriesAreIgnoredAndHiddenSlotReferencesSurvive()
   {
     String stored = "{\"2\":{\"wall\":{\"style\":5,\"preset\":6},\"bad\":{\"style\":2.5,\"preset\":99}}}";
@@ -175,6 +182,7 @@ public class SymbolSketchPreferencesInstrumentedTest
     assertEquals( 2, choice( mSurvey, SymbolType.LINE, "wall" ).style );
   }
 
+  @com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
   @Test public void renameRetainsMemoryAndDeletionRemovesIt()
   {
     SymbolSketchPreferences.rememberMissing( mData, use( mSurvey, SymbolType.AREA, "water", 3, 2 ) );
@@ -184,6 +192,7 @@ public class SymbolSketchPreferencesInstrumentedTest
     assertNull( mData.getValue( SymbolSketchPreferences.key( mSurvey ) ) );
   }
 
+  @com.topodroid.TDX.qa.TestTier(value=com.topodroid.TDX.qa.TestTier.Tier.FAST)
   @Test public void recallSwitchesRoundTripThroughSettingsExportAndImport() throws Exception
   {
     File file = TDFile.getSettingsFile();
@@ -207,82 +216,6 @@ public class SymbolSketchPreferencesInstrumentedTest
       if ( previous != null ) Files.write( file.toPath(), previous );
       else Files.deleteIfExists( file.toPath() );
     }
-  }
-
-  @Test public void drawingWindowRecallsWallPointAndAreaAndLearnsSuccessfulPlacement() throws Exception
-  {
-    VisualTestSupport support = openSketch();
-    try {
-      support.clickRecentLineByThName( SymbolLibrary.WALL );
-      support.tapStyleButton( 3 );
-      support.tapPresetButton( 2 );
-      main( () -> assertTrue( window().handleActionBindingAction( TDSetting.SPEN_ACTION_TOGGLE_PRESET ) ) );
-      assertEquals( 3, TDSetting.getActiveSketchPreset() );
-      int point = BrushManager.getPointIndexByThName( SymbolLibrary.STALACTITE );
-      assertTrue( point >= 0 );
-      main( () -> window().pointSelected( point, false ) );
-      assertEquals( 2, TDSetting.getActiveSketchStyle() );
-      assertEquals( 3, TDSetting.getActiveSketchPreset() );
-      long survey = surveyId();
-      String pointName = BrushManager.getPointByIndex( point ).getFullThName();
-      assertEquals( 0, choice( survey, SymbolType.POINT, pointName ).style );
-      support.tapDrawingSurfaceNormalized( 0.45, 0.50 );
-      assertEquals( 2, choice( survey, SymbolType.POINT, pointName ).style );
-      support.assertLatestPointBrushWeight( 2.0f );
-      support.tapPresetButton( 1 );
-      support.clickRecentLineByThName( SymbolLibrary.WALL );
-      assertEquals( 3, TDSetting.getActiveSketchStyle() );
-      assertEquals( 3, TDSetting.getActiveSketchPreset() );
-      main( () -> window().pointSelected( point, false ) );
-      assertEquals( 2, TDSetting.getActiveSketchStyle() );
-      assertEquals( 1, TDSetting.getActiveSketchPreset() );
-      int area = BrushManager.getAreaIndexByThName( SymbolLibrary.WATER );
-      assertTrue( area >= 0 );
-      main( () -> window().areaSelected( area, false ) );
-      support.tapStyleButton( 1 );
-      support.tapPresetButton( 4 );
-      support.clickRecentLineByThName( SymbolLibrary.WALL );
-      main( () -> window().areaSelected( area, false ) );
-      assertEquals( 1, TDSetting.getActiveSketchStyle() );
-      assertEquals( 4, TDSetting.getActiveSketchPreset() );
-      String saved = mData.getValue( SymbolSketchPreferences.key( survey ) );
-      main( () -> invoke( "setToolsToolbars", new Class<?>[0] ) );
-      assertEquals( saved, mData.getValue( SymbolSketchPreferences.key( survey ) ) );
-      // Simulate restoring the active tool after another window changed global selections.
-      main( () -> {
-        TDSetting.selectSketchStyle( mPrefs, 3 );
-        Field recalled = DrawingWindow.class.getDeclaredField( "mRecalledSymbol" );
-        recalled.setAccessible( true );
-        recalled.set( window(), null );
-        invoke( "restoreSymbolPreferences", new Class<?>[0] );
-      } );
-      assertEquals( 1, TDSetting.getActiveSketchStyle() );
-      TDPrefHelper helper = new TDPrefHelper( mContext );
-      main( () -> {
-        TDSetting.updatePreference( helper, TDPrefCat.PREF_STYLE_1, TDSetting.sketchStyleNameKey( 1 ), "Detail" );
-        TDSetting.updatePreference( helper, TDPrefCat.PREF_STYLE_1, TDSetting.sketchStyleWeightKey( 1 ), "1.5" );
-      } );
-      support.clickRecentLineByThName( SymbolLibrary.WALL );
-      main( () -> window().areaSelected( area, false ) );
-      assertEquals( "Detail", TDSetting.getSketchStyleName( TDSetting.getActiveSketchStyle() ) );
-      assertEquals( 1.5f, TDSetting.getSketchStyle( 1 ).weightOr( 0 ), 0.001f );
-      int label = BrushManager.getPointIndexByThName( SymbolLibrary.LABEL );
-      String labelName = BrushManager.getPointByIndex( label ).getFullThName();
-      main( () -> window().pointSelected( label, false ) );
-      support.tapDrawingSurfaceNormalized( 0.55, 0.55 );
-      onView( withId( R.id.label_cancel ) ).perform( click() );
-      assertEquals( 0, choice( survey, SymbolType.POINT, labelName ).style );
-      support.tapDrawingSurfaceNormalized( 0.55, 0.55 );
-      onView( withId( R.id.label_text ) ).perform( replaceText( "Memory label" ), closeSoftKeyboard() );
-      onView( withId( R.id.label_ok ) ).perform( click() );
-      assertEquals( 2, choice( survey, SymbolType.POINT, labelName ).style );
-      support.tapStyleSettingsButton();
-      onView( withText( R.string.pref_remember_symbol_style_title ) ).check( matches( isDisplayed() ) );
-      support.pressBackToDrawingWindow();
-      support.tapPresetSettingsButton();
-      onView( withText( R.string.pref_remember_symbol_preset_title ) ).check( matches( isDisplayed() ) );
-      support.pressBackToDrawingWindow();
-    } finally { support.finish(); cleanupUiSurvey(); }
   }
 
   @Test public void drawingWindowDefersManualChoicesWithoutChangingCompletedStrokeAndCancelsCleanly() throws Exception

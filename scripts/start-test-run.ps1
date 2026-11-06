@@ -1,28 +1,33 @@
 param(
-  [ValidateSet("fast", "full", "refresh", "physical")]
+  [ValidateSet("fast", "smoke", "full", "diagnostics", "all", "refresh", "physical")]
   [string]$Suite = "fast",
   [string]$Serial = "emulator-5554",
   [string]$LogDir = "",
+  [string]$PhysicalSerial = "",
+  [ValidateSet('symbols','drawing','data','exchange','devices','runner','vanilla')][string[]]$Feature = @(),
+  [switch]$Apply,
+  [string]$CandidateDirectory = "",
   [string]$GradleUserHome = "",
   [string]$VanillaApk = "",
   [string]$SketchApk = "",
   [string]$TestApk = "",
   [string]$ExpectedModel = "",
   [switch]$AllowDowngrade,
-  [switch]$DestructiveClean,
   [switch]$SkipBuild
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+if ($Suite -in @('all','physical') -and !$PhysicalSerial) {
+  throw "$Suite requires an explicit -PhysicalSerial; no field tablet is selected automatically."
+}
+if ($Apply -and $Suite -ne 'refresh') {throw '-Apply is only valid with refresh.'}
+if($Suite -in @('all','physical','refresh') -and $Feature.Count){throw "$Suite does not accept a feature subset."}
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = Split-Path -Parent $ScriptDir
 if ([string]::IsNullOrWhiteSpace($LogDir)) {
-  $LogDir = Join-Path $RepoRoot "tmp-test-runs"
-}
-if ($Suite -eq "physical" -and $Serial -eq "emulator-5554") {
-  $Serial = "R32X200DN0T"
+  $LogDir = Join-Path $RepoRoot "workbench/artifacts/launcher-logs"
 }
 if (-not [string]::IsNullOrWhiteSpace($GradleUserHome)) {
   if (-not [System.IO.Path]::IsPathRooted($GradleUserHome)) {
@@ -31,12 +36,7 @@ if (-not [string]::IsNullOrWhiteSpace($GradleUserHome)) {
   $GradleUserHome = [System.IO.Path]::GetFullPath($GradleUserHome)
 }
 
-$targetScript = switch ($Suite) {
-  "fast" { Join-Path $ScriptDir "test-fast.ps1" }
-  "full" { Join-Path $ScriptDir "test-full.ps1" }
-  "refresh" { Join-Path $ScriptDir "refresh-visual-baselines.ps1" }
-  "physical" { Join-Path $ScriptDir "test-physical-compat.ps1" }
-}
+$targetScript = if ($Suite -eq 'refresh') { Join-Path $ScriptDir 'refresh-visual-baselines.ps1' } else { Join-Path $ScriptDir 'test-suite.ps1' }
 
 if (-not (Test-Path $targetScript)) {
   throw "Test script not found: $targetScript"
@@ -65,25 +65,13 @@ $skipBuildParamLine = if ($SkipBuild) {
   ""
 }
 $physicalParamLines = @()
-if ($Suite -eq "physical") {
-  if (-not [string]::IsNullOrWhiteSpace($VanillaApk)) {
-    $physicalParamLines += "`$scriptParams['VanillaApk'] = $(Quote-PowerShellString $VanillaApk)"
-  }
-  if (-not [string]::IsNullOrWhiteSpace($SketchApk)) {
-    $physicalParamLines += "`$scriptParams['SketchApk'] = $(Quote-PowerShellString $SketchApk)"
-  }
-  if (-not [string]::IsNullOrWhiteSpace($TestApk)) {
-    $physicalParamLines += "`$scriptParams['TestApk'] = $(Quote-PowerShellString $TestApk)"
-  }
-  if (-not [string]::IsNullOrWhiteSpace($ExpectedModel)) {
-    $physicalParamLines += "`$scriptParams['ExpectedModel'] = $(Quote-PowerShellString $ExpectedModel)"
-  }
-  if ($AllowDowngrade) {
-    $physicalParamLines += "`$scriptParams['AllowDowngrade'] = `$true"
-  }
-  if ($DestructiveClean) {
-    $physicalParamLines += "`$scriptParams['DestructiveClean'] = `$true"
-  }
+if ($Suite -ne 'refresh') { $physicalParamLines += "`$scriptParams['Suite'] = $(Quote-PowerShellString $Suite)" }
+if ($PhysicalSerial) { $physicalParamLines += "`$scriptParams['PhysicalSerial'] = $(Quote-PowerShellString $PhysicalSerial)" }
+if ($Feature.Count) { $physicalParamLines += "`$scriptParams['Feature'] = @(" + (($Feature | ForEach-Object {Quote-PowerShellString $_}) -join ',') + ')' }
+if ($Apply) { $physicalParamLines += "`$scriptParams['Apply'] = `$true" }
+if ($CandidateDirectory) {
+  if ($Suite -ne 'refresh') {throw '-CandidateDirectory is only valid with refresh.'}
+  $physicalParamLines += "`$scriptParams['CandidateDirectory'] = $(Quote-PowerShellString $CandidateDirectory)"
 }
 $physicalParamsLine = $physicalParamLines -join "`n"
 $skipBuildLogLine = if ($SkipBuild) {

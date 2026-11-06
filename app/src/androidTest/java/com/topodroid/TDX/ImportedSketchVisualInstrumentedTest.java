@@ -2,7 +2,6 @@ package com.topodroid.TDX;
 
 import static org.junit.Assert.assertTrue;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
 import org.junit.After;
@@ -14,10 +13,14 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.UI)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.EXCHANGE})
 public class ImportedSketchVisualInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final String FIXTURE_ASSET = "fixtures/Demo.zip";
   private static final String FIXTURE_FILE  = "Demo.zip";
   private static final String SURVEY_NAME   = "Demo";
@@ -43,23 +46,19 @@ public class ImportedSketchVisualInstrumentedTest
     if ( mSupport != null ) mSupport.finish();
   }
 
+  @com.topodroid.TDX.qa.TestTier(value=com.topodroid.TDX.qa.TestTier.Tier.UI, baseline=true)
   @Test
   public void importDemoSketch_liveScreenAndPngExport_matchGoldens() throws Exception
   {
     mSupport.prepareForCase( VisualTestSupport.allSurveyNames( SURVEY_NAME ) );
     mSupport.launchMainWindow();
 
-    File importZip = mSupport.copyAssetToDownloads( FIXTURE_ASSET, FIXTURE_FILE );
+    File importZip = mSupport.copyAssetForProductionImport( FIXTURE_ASSET, FIXTURE_FILE );
     mSupport.assertZipContainsSurveyCore( importZip );
     mSupport.reportStep( "demo fixture copied" );
 
-    mSupport.openMainImportDialogFromToolbar();
-    mSupport.tapViewByDevice( R.id.button_ok );
-    mSupport.pickDocumentByFileName( importZip.getName() );
-    mSupport.waitForSurveyOnMainList( SURVEY_NAME );
-    mSupport.reportStep( "demo fixture imported" );
+    mSupport.importArchiveThroughProductionApi(importZip,SURVEY_NAME);
 
-    mSupport.openSurveyFromMainList( SURVEY_NAME );
     mSupport.openExistingPlanPlot( PLAN_PLOT_LABEL );
     mSupport.enterDrawMode();
     mSupport.setCanonicalToolbarState();
@@ -72,22 +71,11 @@ public class ImportedSketchVisualInstrumentedTest
     mSupport.reportStep( "demo fixture plot opened" );
     mSupport.captureAndAssertScreen( "demo_fixture_screen.png" );
 
-    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
-    mSupport.chooseSpinnerValue( R.id.spin, "PNG" );
-    mSupport.replaceTextInField( R.id.png_filename, PNG_EXPORT_FILENAME );
-    mSupport.tapViewByDevice( R.id.button_ok );
-    mSupport.reportStep( "demo fixture png export submitted" );
-
-    File pngFile = mSupport.waitForFile(
-      mSupport.getPngExportFile( SURVEY_NAME, PNG_EXPORT_FILENAME ),
-      VisualTestSupport.FILE_TIMEOUT_MS
-    );
-    assertTrue( "PNG export was not created", pngFile.exists() );
-    mSupport.assertPngFileMatchesGolden(
-      pngFile,
-      "demo_fixture_export_png.png",
-      DEMO_PNG_MAX_DIFF_RATIO,
-      DEMO_PNG_SAMPLE_SIZE
-    );
+    int captures=mSupport.isBaselineAuthoring()?3:1;
+    for(int capture=1;capture<=captures;capture++) {
+      String filename=captures==1?PNG_EXPORT_FILENAME:"demo_authoring_"+capture+".png";
+      File pngFile=mSupport.exportPngThroughProductionApi(filename);
+      mSupport.assertCompleteSampledPngGolden(pngFile,"demo_fixture_export_png.png",DEMO_PNG_MAX_DIFF_RATIO,DEMO_PNG_SAMPLE_SIZE,capture);
+    }
   }
 }

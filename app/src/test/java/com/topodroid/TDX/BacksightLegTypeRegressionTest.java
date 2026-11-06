@@ -9,6 +9,7 @@ import com.topodroid.types.LegType;
 
 import org.junit.Test;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DATA})
 public class BacksightLegTypeRegressionTest
 {
   @Test public void persistedIds_matchVanillaTopoDroid()

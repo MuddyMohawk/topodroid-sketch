@@ -9,7 +9,6 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.topodroid.prefs.TDSetting;
@@ -21,9 +20,12 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 
 /** Rendering regression cases for placed cross-section overlays. */
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS})
 public class DrawingOutlinePathInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final AreaLinePattern BEDROCK = AreaLinePattern.bedrock(
       0.0f, 0xcc888888, 0.85f, 17.0f, 48.0f, 0.0f );
 

@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DATA})
 public class NumStationExtendReferenceTest
 {
   @Test public void resolver_exposesProductionLegAndExtendDirection()

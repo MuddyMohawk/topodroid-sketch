@@ -11,6 +11,7 @@ import java.util.HashSet;
 
 import org.junit.Test;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS})
 public class TitleLegendModelTest
 {
   @Test public void capacity_expandsWithoutMutatingRequest()

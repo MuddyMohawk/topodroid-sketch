@@ -5,8 +5,6 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.view.View;
 import androidx.test.core.app.ActivityScenario;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
-import androidx.test.platform.app.InstrumentationRegistry;
 import org.junit.Test;
 import org.junit.After;
 import org.junit.runner.RunWith;
@@ -15,9 +13,13 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.*;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.UI)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DATA})
 public class SectionShotsDialogInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private boolean previousDialogR;
   @After public void restoreExitPolicy() { TopoDroidApp.setSayDialogR( previousDialogR ); }
 
@@ -89,23 +91,4 @@ public class SectionShotsDialogInstrumentedTest
     }
   }
 
-  @Test public void dialogRendersWithAppStylesOnTablet() throws Exception
-  {
-    AtomicReference<DrawingSectionShotsDialog> shown = new AtomicReference<>();
-    try ( ActivityScenario<MainWindow> scenario = ActivityScenario.launch( MainWindow.class ) ) {
-      scenario.onActivity( activity -> {
-        keepTestProcessAlive();
-        SectionReferenceSelection choices = new SectionReferenceSelection(); choices.setStation( "A", true );
-        DrawingSectionShotsDialog dialog = new DrawingSectionShotsDialog( activity, choices, stations(), selection -> true );
-        shown.set( dialog ); dialog.show();
-      } );
-      InstrumentationRegistry.getInstrumentation().waitForIdleSync();
-      androidx.test.uiautomator.UiDevice device = androidx.test.uiautomator.UiDevice.getInstance( InstrumentationRegistry.getInstrumentation() );
-      assertTrue( device.wait( androidx.test.uiautomator.Until.hasObject( androidx.test.uiautomator.By.text( "Cross-section shots" ) ), 5000 ) );
-      device.waitForIdle();
-      java.io.File screenshot = new java.io.File( InstrumentationRegistry.getInstrumentation().getTargetContext().getExternalFilesDir( null ), "section-shots-dialog.png" );
-      assertTrue( device.takeScreenshot( screenshot ) );
-      scenario.onActivity( activity -> shown.get().dismiss() );
-    }
-  }
 }

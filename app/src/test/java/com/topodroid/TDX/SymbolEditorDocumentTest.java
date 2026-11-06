@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.DATA})
 public class SymbolEditorDocumentTest
 {
   @Test public void requiredLineSymbols_areIdentifiedByStableTherionName()

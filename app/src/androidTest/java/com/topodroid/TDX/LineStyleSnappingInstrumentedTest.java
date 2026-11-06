@@ -2,7 +2,6 @@ package com.topodroid.TDX;
 
 import static org.junit.Assert.assertEquals;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
 import com.topodroid.math.Point2D;
@@ -13,10 +12,13 @@ import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DRAWING})
 public class LineStyleSnappingInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   @Test
   public void snapEndpoint90_allowsOnlyCardinalAngles()
   {

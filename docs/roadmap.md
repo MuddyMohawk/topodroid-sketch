@@ -76,6 +76,7 @@ The next major planned feature is an overhaul of the symbols to match NSS conven
 - Making the toolbars smaller causes point symbols to become illegible. Even smaller, and other rendering problems come up
 
 ## Future possible features / brainstorming
+- settings save/profiles so that people don't have to redo their toolsbars after each reinstall?
 - Overhaul the sketch creation experience. Need to be able to manage, delete, rename, etc from there. 
 - Editing mode `undo` button 
 - Compass import support

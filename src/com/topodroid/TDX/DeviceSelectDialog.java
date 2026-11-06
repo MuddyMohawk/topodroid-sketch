@@ -84,13 +84,11 @@ class DeviceSelectDialog extends MyDialog
     //   array_adapter.add( "X000" );
     // }
     mDevices.clear();
-    for ( Device device : mApp.knownDevices() ) {
-      if ( device.isBT() || device.isBLE() ) {
-        mDevices.add( device );
-        String label = device.toString() + " [" + device.getAddress() + "]";
-        if ( device.hasAddress( TDInstance.deviceAddress() ) ) label += " (active)";
-        array_adapter.add( label );
-      }
+    for ( Device device : SurveyDeviceSelection.pickerDevices( mApp.knownDevices() ) ) {
+      mDevices.add( device );
+      String label = device.toString() + " [" + device.getAddress() + "]";
+      if ( device.hasAddress( TDInstance.deviceAddress() ) ) label += " (active)";
+      array_adapter.add( label );
     }
     mList.setAdapter( array_adapter );
   }
@@ -105,7 +103,8 @@ class DeviceSelectDialog extends MyDialog
   public void onItemClick(AdapterView<?> parent, View view, int pos, long id)
   {
     dismiss();
-    if ( pos >= 0 && pos < mDevices.size() ) mApp.requestSurveyDeviceSwitch( mDevices.get( pos ).getAddress() );
+    String address = SurveyDeviceSelection.pickerAddress( mDevices, pos );
+    if ( address != null ) mApp.requestSurveyDeviceSwitch( address );
   }
 
   /** respond to a user tap - dismiss the dialog

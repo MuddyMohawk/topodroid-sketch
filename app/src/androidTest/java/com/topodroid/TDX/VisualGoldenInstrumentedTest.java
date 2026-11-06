@@ -2,7 +2,6 @@ package com.topodroid.TDX;
 
 import static org.junit.Assert.assertTrue;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
 import org.junit.After;
@@ -14,10 +13,14 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.UI)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DATA, com.topodroid.qa.TestFeatures.Feature.EXCHANGE})
 public class VisualGoldenInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final String SURVEY_SKETCH  = "visual_sketch_case";
   private static final String SURVEY_ZIP     = "visual_zip_case";
   private static final String SURVEY_PNG     = "visual_png_case";
@@ -46,8 +49,10 @@ public class VisualGoldenInstrumentedTest
     if ( mSupport != null ) mSupport.finish();
   }
 
+  @com.topodroid.TDX.qa.TestTier(value=com.topodroid.TDX.qa.TestTier.Tier.UI, baseline=true)
+  @com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.DRAWING})
   @Test
-  public void createSurvey_addShots_createSketch_drawPresetsAndLineWeights_matchesGolden() throws Exception
+  public void renderingFixture_fixedCurvesAndLineWeights_matchesGolden() throws Exception
   {
     mSupport.prepareForCase(
       VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS, SURVEY_CSV )
@@ -61,79 +66,33 @@ public class VisualGoldenInstrumentedTest
     mSupport.captureAndAssertScreen( "sketch_screen.png" );
   }
 
-  @Test
-  public void exportZip_includesSurveyCore_and_importRoundTripsThroughPicker() throws Exception
-  {
-    mSupport.prepareForCase(
-      VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS, SURVEY_CSV )
-    );
-    mSupport.launchMainWindow();
-    createCanonicalSurveyAndOpenSketch( SURVEY_ZIP );
-    drawCanonicalSketch();
-    mSupport.addArchiveContractMetadata();
-    VisualTestSupport.SurveyArchiveSnapshot archiveSnapshot = mSupport.captureSurveyArchiveSnapshot();
-    mSupport.setCanonicalToolbarState();
-    mSupport.reportStep( "zip sketch drawn" );
 
-    mSupport.pressBackToShotWindow();
-    mSupport.pressBackToMainWindow();
-    mSupport.openSurveyWindowFromMainListLongPress( SURVEY_ZIP );
-    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
-    mSupport.chooseSpinnerValue( R.id.spin, "ZIP" );
-    mSupport.tapViewByDevice( R.id.button_ok );
 
-    File zipFile = mSupport.waitForFile( mSupport.getZipFile( SURVEY_ZIP ), VisualTestSupport.FILE_TIMEOUT_MS );
-    mSupport.assertZipContainsSurveyCore( zipFile );
-    File importZip = mSupport.copyFileToDownloads( zipFile );
-    mSupport.reportStep( "zip exported" );
-
-    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_delete ) );
-    mSupport.confirmAlertOk();
-    mSupport.relaunchMainWindow();
-
-    mSupport.waitForSurveyAbsentInDatabase( SURVEY_ZIP );
-    mSupport.reportStep( "zip source deleted" );
-
-    mSupport.openMainImportDialogFromToolbar();
-    mSupport.tapViewByDevice( R.id.button_ok );
-    mSupport.pickDocumentByFileName( importZip.getName() );
-    mSupport.waitForSurveyOnMainList( SURVEY_ZIP );
-    mSupport.reportStep( "zip imported" );
-
-    mSupport.openSurveyFromMainList( SURVEY_ZIP );
-    mSupport.openExistingPlanPlot( PLOT_NAME );
-    mSupport.assertSurveyArchiveSnapshotEquals( archiveSnapshot );
-    mSupport.setCanonicalToolbarState();
-    mSupport.reportStep( "zip plot reopened" );
-    mSupport.captureAndAssertScreen( "zip_roundtrip_screen.png" );
-  }
-
+  @com.topodroid.TDX.qa.TestTier(value=com.topodroid.TDX.qa.TestTier.Tier.UI, baseline=true)
+  @com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.EXCHANGE})
   @Test
   public void exportPng_matchesGolden() throws Exception
   {
     mSupport.prepareForCase(
       VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS, SURVEY_CSV )
     );
+    mSupport.configureCanonicalExportInk();
     mSupport.launchMainWindow();
     createCanonicalSurveyAndOpenSketch( SURVEY_PNG );
     drawCanonicalSketch();
     mSupport.setCanonicalToolbarState();
     mSupport.reportStep( "png sketch drawn" );
 
-    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
-    mSupport.chooseSpinnerValue( R.id.spin, "PNG" );
-    mSupport.replaceTextInField( R.id.png_filename, PNG_EXPORT_FILENAME );
-    mSupport.tapViewByDevice( R.id.button_ok );
-    mSupport.reportStep( "png export submitted" );
-
-    File pngFile = mSupport.waitForFile(
-      mSupport.getPngExportFile( SURVEY_PNG, PNG_EXPORT_FILENAME ),
-      VisualTestSupport.FILE_TIMEOUT_MS
-    );
-    assertTrue( "PNG export was not created", pngFile.exists() );
-    mSupport.assertPngFileMatchesGolden( pngFile, "export_png.png" );
+    int captures=mSupport.isBaselineAuthoring()?3:1;
+    for(int capture=1;capture<=captures;capture++) {
+      String filename=captures==1?PNG_EXPORT_FILENAME:"canonical_authoring_"+capture+".png";
+      File pngFile=mSupport.exportPngThroughProductionApi(new SketchPngExportOptions(
+        true,true,true,true,true,true,false,true,1.0f,filename));
+      mSupport.assertCanonicalPngGolden(pngFile,"export_png.png",capture);
+    }
   }
 
+  @com.topodroid.TDX.qa.TestTier(value=com.topodroid.TDX.qa.TestTier.Tier.UI)
   @Test
   public void exportPng_scaleAndTransparencyOptionsAffectEncodedImage() throws Exception
   {
@@ -142,87 +101,71 @@ public class VisualGoldenInstrumentedTest
     createCanonicalSurveyAndOpenSketch( SURVEY_PNG );
     drawCanonicalSketch();
 
+    mSupport.reportStep( "PNG options: half-scale transparent export starting" );
     exportPngWithContractOptions( PNG_HALF_TRANSPARENT, "0.5", true );
     File halfTransparent = mSupport.waitForFile(
       mSupport.getPngExportFile( SURVEY_PNG, PNG_HALF_TRANSPARENT ),
       VisualTestSupport.FILE_TIMEOUT_MS
     );
 
+    mSupport.reportStep( "PNG options: half-scale transparent file ready; full-scale opaque export starting" );
     exportPngWithContractOptions( PNG_FULL_OPAQUE, "1.0", false );
     File fullOpaque = mSupport.waitForFile(
       mSupport.getPngExportFile( SURVEY_PNG, PNG_FULL_OPAQUE ),
       VisualTestSupport.FILE_TIMEOUT_MS
     );
 
+    mSupport.reportStep( "PNG options: both files ready; checking encoded images" );
     mSupport.assertPngScaleAndTransparencyContract( halfTransparent, fullOpaque );
   }
 
-  @Test
-  public void exportCompass_matchesFixture() throws Exception
+  @com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+  @Test public void exportCompass_matchesFixture() throws Exception
   {
-    mSupport.prepareForCase(
-      VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS, SURVEY_CSV )
-    );
-    mSupport.launchMainWindow();
-    createCanonicalSurveyWithShots( SURVEY_COMPASS );
-    mSupport.pressBackToMainWindow();
-
-    mSupport.openSurveyWindowFromMainListLongPress( SURVEY_COMPASS );
-    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
-    mSupport.chooseSpinnerValue( R.id.spin, "Compass" );
-    mSupport.tapViewByDevice( R.id.button_ok );
-
-    File datFile = mSupport.waitForFile(
-      mSupport.getCompassExportFile( SURVEY_COMPASS ),
-      VisualTestSupport.FILE_TIMEOUT_MS
-    );
-    assertTrue( "Compass export was not created", datFile.exists() );
-    mSupport.assertTextFileMatchesGolden( datFile, "export_compass.dat", VisualTestSupport.COMPASS_NORMALIZER );
+    mSupport.prepareForCase(VisualTestSupport.allSurveyNames(SURVEY_COMPASS));
+    mSupport.seedSurveyData(SURVEY_COMPASS,"Visual Test Team","1","visual regression");
+    addCanonicalShots();
+    File datFile=mSupport.exportCurrentSurveyData(false);
+    mSupport.assertTextFileMatchesGolden(datFile,"export_compass.dat",VisualTestSupport.COMPASS_NORMALIZER);
   }
 
-  @Test
-  public void exportCsv_isStrictlyParseableAndEscapesSurveyMetadata() throws Exception
+  @com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+  @Test public void exportCsv_isStrictlyParseableAndEscapesSurveyMetadata() throws Exception
   {
-    mSupport.prepareForCase(
-      VisualTestSupport.allSurveyNames( SURVEY_SKETCH, SURVEY_ZIP, SURVEY_PNG, SURVEY_COMPASS, SURVEY_CSV )
-    );
-    mSupport.launchMainWindow();
-    createCanonicalSurveyWithShots( SURVEY_CSV );
-    mSupport.addCsvContractMetadata();
-    mSupport.pressBackToMainWindow();
-
-    mSupport.openSurveyWindowFromMainListLongPress( SURVEY_CSV );
-    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
-    mSupport.chooseSpinnerValue( R.id.spin, "CSV" );
-    mSupport.tapViewByDevice( R.id.button_ok );
-
-    File csvFile = mSupport.waitForFile(
-      mSupport.getCsvExportFile( SURVEY_CSV ),
-      VisualTestSupport.FILE_TIMEOUT_MS
-    );
-    mSupport.assertCsvExportContract( csvFile );
+    mSupport.prepareForCase(VisualTestSupport.allSurveyNames(SURVEY_CSV));
+    mSupport.seedSurveyData(SURVEY_CSV,"Visual Test Team","1","visual regression");
+    addCanonicalShots();mSupport.addCsvContractMetadata();
+    mSupport.assertCsvExportContract(mSupport.exportCurrentSurveyData(true));
   }
 
-  @Test
-  public void exportCompass_namedBacksightDoesNotDuplicateTraverseLength() throws Exception
+  @com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+  @Test public void exportCompass_namedBacksightDoesNotDuplicateTraverseLength() throws Exception
   {
-    mSupport.prepareForCase( VisualTestSupport.allSurveyNames( SURVEY_COMPASS_BACK ) );
-    mSupport.launchMainWindow();
-    mSupport.createSurveyAndOpenShots( SURVEY_COMPASS_BACK, "Compass Team", "1", "backsight contract" );
-    mSupport.addManualShot( "1", "2", "10.0", "90.0", "0.0", true );
-    mSupport.addNamedBacksightForExport( "2", "1", 10.0f, 270.0f, 0.0f );
-    mSupport.pressBackToMainWindow();
+    mSupport.prepareForCase(VisualTestSupport.allSurveyNames(SURVEY_COMPASS_BACK));
+    mSupport.seedSurveyData(SURVEY_COMPASS_BACK,"Compass Team","1","backsight contract");
+    mSupport.addManualShot("1","2","10.0","90.0","0.0",true);
+    mSupport.addNamedBacksightForExport("2","1",10,270,0);
+    mSupport.assertCompassNamedBacksightContract(mSupport.exportCurrentSurveyData(false));
+  }
 
-    mSupport.openSurveyWindowFromMainListLongPress( SURVEY_COMPASS_BACK );
-    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
-    mSupport.chooseSpinnerValue( R.id.spin, "Compass" );
-    mSupport.tapViewByDevice( R.id.button_ok );
-
-    File datFile = mSupport.waitForFile(
-      mSupport.getCompassExportFile( SURVEY_COMPASS_BACK ),
-      VisualTestSupport.FILE_TIMEOUT_MS
-    );
-    mSupport.assertCompassNamedBacksightContract( datFile );
+  @com.topodroid.TDX.qa.TestTier(value=com.topodroid.TDX.qa.TestTier.Tier.UI,baseline=true)
+  @com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.EXCHANGE})
+  @Test public void productionArchiveRoundTrip_fixedCurves_matchApprovedScreen() throws Exception
+  {
+    mSupport.prepareForCase(VisualTestSupport.allSurveyNames(SURVEY_ZIP));
+    mSupport.launchMainWindow();createCanonicalSurveyAndOpenSketch(SURVEY_ZIP);
+    drawCanonicalSketch();mSupport.addArchiveContractMetadata();
+    VisualTestSupport.SurveyArchiveSnapshot snapshot=mSupport.captureSurveyArchiveSnapshot();
+    QaFixtureRule.closeActivities();
+    File archive=mSupport.exportCurrentArchiveThroughProductionApi();
+    mSupport.assertZipContainsSurveyCore(archive);
+    File imported=mSupport.copyArchiveForProductionImport(archive);
+    mSupport.deleteGeneratedSurveyAndArtifacts(SURVEY_ZIP);
+    mSupport.importArchiveThroughProductionApi(imported,SURVEY_ZIP);
+    mSupport.openExistingPlanPlot(PLOT_NAME);
+    mSupport.assertSurveyArchiveSnapshotEquals(snapshot);
+    mSupport.setCanonicalToolbarState();
+    mSupport.captureAndAssertScreen("zip_roundtrip_screen.png");
   }
 
   private void createCanonicalSurveyWithShots( String surveyName )
@@ -231,27 +174,16 @@ public class VisualGoldenInstrumentedTest
     addCanonicalShots();
   }
 
-  private void exportPngWithContractOptions( String filename, String scale, boolean transparent )
+  private void exportPngWithContractOptions( String filename, String scale, boolean transparent ) throws Exception
   {
-    mSupport.openCurrentMenuAndClickText( mSupport.string( R.string.menu_export ) );
-    mSupport.chooseSpinnerValue( R.id.spin, "PNG" );
-    mSupport.setCheckboxChecked( R.id.png_stations, false );
-    mSupport.setCheckboxChecked( R.id.png_legs, false );
-    mSupport.setCheckboxChecked( R.id.png_splays, false );
-    mSupport.setCheckboxChecked( R.id.png_grid, false );
-    mSupport.setCheckboxChecked( R.id.png_scale_bar, false );
-    mSupport.setCheckboxChecked( R.id.png_north, false );
-    mSupport.setCheckboxChecked( R.id.png_transparent_background, transparent );
-    mSupport.setCheckboxChecked( R.id.png_overwrite, true );
-    mSupport.replaceTextInField( R.id.png_scale, scale );
-    mSupport.replaceTextInField( R.id.png_filename, filename );
-    mSupport.tapViewByDevice( R.id.button_ok );
+    mSupport.exportPngThroughProductionApi(new SketchPngExportOptions(
+      false,false,false,false,false,false,transparent,true,Float.parseFloat(scale),filename));
   }
 
   private void createCanonicalSurveyAndOpenSketch( String surveyName )
   {
     createCanonicalSurveyWithShots( surveyName );
-    mSupport.openNewPlotFromShotWindow( PLOT_NAME, "1" );
+    mSupport.createPlotThroughProductionApi( PLOT_NAME, "1" );
     mSupport.enterDrawMode();
   }
 
@@ -295,5 +227,6 @@ public class VisualGoldenInstrumentedTest
     mSupport.tapStyleButton( style );
     mSupport.clickRecentLineByThName( SymbolLibrary.USER );
     mSupport.addUserLineCurveWithActiveStyle( startX, startY, endX, endY, curveOffset, 24 );
+    mSupport.assertLatestLineBrushWeight(style==1?1.0f:style==2?2.0f:5.0f);
   }
 }

@@ -8,7 +8,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -24,10 +23,14 @@ import org.junit.runner.RunWith;
 import java.util.HashMap;
 import java.util.Map;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.UI)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.DATA})
 public class SketchStyleBarInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final String STYLE_SLOTS_KEY = "DISTOX_STYLE_SLOTS";
   private static final String STYLE_DEFAULTS_VERSION_KEY = "DISTOX_STYLE_DEFAULTS_VERSION";
   private static final String ACTIVE_STYLE_KEY = "DISTOX_ACTIVE_SKETCH_STYLE";
@@ -75,6 +78,7 @@ public class SketchStyleBarInstrumentedTest
     TDInstance.context = mPreviousContext;
   }
 
+  @com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
   @Test
   public void freshStylePrefs_defaultToThinStandardThickWithStandardActive()
   {
@@ -96,6 +100,7 @@ public class SketchStyleBarInstrumentedTest
     assertEquals( 5.0f, TDSetting.getSketchStyle( 3 ).weightOr( 0.0f ), 0.0001f );
   }
 
+  @com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
   @Test
   public void styleCanStoreFullFieldsAndSurviveReload()
   {
@@ -125,6 +130,7 @@ public class SketchStyleBarInstrumentedTest
     assertStyle( 4, 3.5f, 1.25f, 0.65f, true, 0x123456 );
   }
 
+  @com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
   @Test
   public void loweringSlotCount_hidesButPreservesStyleDefinitions()
   {
@@ -152,6 +158,7 @@ public class SketchStyleBarInstrumentedTest
     assertStyle( 5, 7.5f, 1.4f, 0.4f, false, 0xffffff );
   }
 
+  @com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
   @Test
   public void editingStyle_normalizesInvalidValuesConservatively()
   {
@@ -167,58 +174,6 @@ public class SketchStyleBarInstrumentedTest
     assertEquals( "Standard", TDSetting.getSketchStyleName( 2 ) );
     assertEquals( "STYLE 2 - Standard", TDSetting.getSketchStyleSettingsTitle( 2 ) );
     assertStyle( 2, 2.0f, 1.0f, 1.0f, true, 0xff00ff );
-  }
-
-  @Test
-  public void drawingWindow_styleRowAppliesThickToNewLineAndPoint() throws Exception
-  {
-    VisualTestSupport support = new VisualTestSupport( "style_bar_phase5" );
-    try {
-      support.prepareForPhysicalCompatCase();
-      support.launchMainWindowOnAnyDevice();
-      support.deleteGeneratedSurveyAndArtifacts( SURVEY_STYLE_BAR );
-      support.createSurveyAndOpenShots( SURVEY_STYLE_BAR, "Style Test Team", "1", "style bar regression" );
-      support.addManualShot( "1", "2", "10.0", "90.0", "0.0", true );
-      support.openNewPlotFromShotWindow( PLOT_NAME, "1" );
-      support.enterDrawMode();
-
-      support.assertStyleBarVisible( "Thin", "Standard", "Thick" );
-      support.tapStyleButton( 3 );
-
-      support.clickRecentLineByThName( SymbolLibrary.USER );
-      support.drawCurveStrokeNormalized( 0.25, 0.45, 0.75, 0.48, 0.08, 8, 20 );
-      support.assertLatestLineBrushWeight( 5.0f );
-
-      support.addOrdinaryPointWithActiveStyle( 80.0f, 120.0f );
-      support.assertLatestPointBrushWeight( 5.0f );
-    } finally {
-      support.finish();
-    }
-  }
-
-  @Test
-  public void drawingWindow_shortLineTapDoesNotDelayNextStyleSelection() throws Exception
-  {
-    VisualTestSupport support = new VisualTestSupport( "style_bar_short_line_tap" );
-    try {
-      support.prepareForPhysicalCompatCase();
-      support.launchMainWindowOnAnyDevice();
-      support.deleteGeneratedSurveyAndArtifacts( SURVEY_STYLE_BAR );
-      support.createSurveyAndOpenShots( SURVEY_STYLE_BAR, "Style Test Team", "1", "style bar regression" );
-      support.addManualShot( "1", "2", "10.0", "90.0", "0.0", true );
-      support.openNewPlotFromShotWindow( PLOT_NAME, "1" );
-      support.enterDrawMode();
-
-      support.assertStyleBarVisible( "Thin", "Standard", "Thick" );
-      support.clickRecentLineByThName( SymbolLibrary.USER );
-      support.tapDrawingSurfaceNormalized( 0.50, 0.50 );
-      support.tapStyleButton( 3 );
-
-      support.drawCurveStrokeNormalized( 0.25, 0.45, 0.75, 0.48, 0.08, 8, 20 );
-      support.assertLatestLineBrushWeight( 5.0f );
-    } finally {
-      support.finish();
-    }
   }
 
   private void assertStyle( int style, float weight, float pointScale, float opacity, boolean hasColor, int color )

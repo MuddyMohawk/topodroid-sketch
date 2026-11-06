@@ -1,26 +1,70 @@
+function Invoke-QaBoundedProcess {
+  param([string]$FilePath,[string[]]$Arguments,[int]$TimeoutSeconds=30,[string]$Description='native command')
+  # Redirect asynchronously: a full stdout pipe must not defeat the wall deadline.
+  $info=New-Object Diagnostics.ProcessStartInfo
+  $info.FileName=$FilePath
+  $info.Arguments=($Arguments | ForEach-Object {
+    '"'+[regex]::Replace([regex]::Replace($_,'(\\*)"','$1$1\"'),'(\\+)$','$1$1')+'"'
+  }) -join ' '
+  $info.UseShellExecute=$false;$info.CreateNoWindow=$true
+  $info.RedirectStandardOutput=$true;$info.RedirectStandardError=$true
+  $process=New-Object Diagnostics.Process
+  $process.StartInfo=$info
+  try {
+    $null=$process.Start()
+    $stdout=$process.StandardOutput.ReadToEndAsync();$stderr=$process.StandardError.ReadToEndAsync()
+    if(!$process.WaitForExit($TimeoutSeconds*1000)) {
+      try{$process.Kill()}catch{}
+      throw "$Description timed out after ${TimeoutSeconds}s."
+    }
+    # The client owns both pipes; do not wait indefinitely for inherited handles.
+    if(!$stdout.Wait(1000) -or !$stderr.Wait(1000)){throw "$Description did not close its output pipes."}
+    $output=$stdout.Result+$stderr.Result
+    if($process.ExitCode -ne 0){throw "$Description failed with exit code $($process.ExitCode): $output"}
+    return $output.TrimEnd()
+  } finally {$process.Dispose()}
+}
+
 function Invoke-AdbChecked {
   param(
     [string]$Adb,
     [string]$Serial,
     [string[]]$Arguments,
-    [string]$Description = "adb command"
+    [string]$Description = "adb command",
+    [int]$TimeoutSeconds = 30
   )
 
-  $previousPreference = $ErrorActionPreference
-  $ErrorActionPreference = "Continue"
+  $output=Invoke-QaBoundedProcess -FilePath $Adb -Arguments (@('-s',$Serial)+$Arguments) -TimeoutSeconds $TimeoutSeconds -Description $Description
+  return @($output -split "`r?`n")
+}
+
+function Get-QaDeviceBootId {
+  param([string]$Adb,[string]$Serial)
+  $raw=(Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments @('shell','cat /proc/sys/kernel/random/boot_id; getprop sys.boot_completed') -Description "Device health $Serial" -TimeoutSeconds 5) -join "`n"
+  $parts=@($raw.Trim() -split '\s+')
+  if($parts.Count -ne 2 -or $parts[0] -notmatch '^[a-fA-F0-9-]{36}$' -or $parts[1] -ne '1'){throw "Device $Serial has not finished booting: $raw"}
+  return $parts[0]
+}
+
+function Stop-QaProcessTree {
+  param([Diagnostics.Process]$Process)
   try {
-    $output = & $Adb -s $Serial @Arguments 2>&1
-    $exitCode = $LASTEXITCODE
-  } finally {
-    $ErrorActionPreference = $previousPreference
-  }
+    if(!$Process.HasExited) {
+      # Kill only this runner's wrapper and its adb client, never the shared adb server.
+      $null=Invoke-QaBoundedProcess -FilePath "$env:SystemRoot/System32/taskkill.exe" -Arguments @('/PID',[string]$Process.Id,'/T','/F') -TimeoutSeconds 3 -Description 'Stop stalled instrumentation client'
+    }
+  } catch {try{$Process.Kill()}catch{}}
+}
 
-  if ($exitCode -ne 0) {
-    $output | ForEach-Object { Write-Host $_ }
-    throw "$Description failed with exit code $exitCode."
-  }
-
-  return $output
+function Stop-QaInstrumentationPackages {
+  param([string]$Adb,[string]$Serial,[string]$AppPackage,[string]$TestPackage)
+  if(!$AppPackage -and !$TestPackage){return}
+  $packages=@($TestPackage,$AppPackage | Where-Object {$_})
+  foreach($name in $packages){if($name -notmatch '^com[.]topodroid[.]TDX[.]sketch(?:[.]test)?$'){throw "Refusing to stop a package outside Sketch QA: $name"}}
+  $command=($packages | ForEach-Object {"am force-stop $_"}) -join '; '
+  try {
+    Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments @('shell',$command) -Description 'Stop interrupted Sketch instrumentation on device' -TimeoutSeconds 5 | Out-Null
+  } catch {Write-Host "Bounded instrumentation stop: $_"}
 }
 
 function Invoke-NativeChecked {
@@ -177,6 +221,9 @@ function Clear-LocalArtifactDirectory {
     return
   }
 
+  $resolved = [IO.Path]::GetFullPath($Path)
+  $workspace = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot)).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+  if (!$resolved.StartsWith($workspace, [StringComparison]::OrdinalIgnoreCase)) { throw "Refusing recursive deletion outside workspace: $resolved" }
   $lastError = $null
   for ($attempt = 1; $attempt -le 3; $attempt++) {
     try {
@@ -193,6 +240,26 @@ function Clear-LocalArtifactDirectory {
     throw $message
   }
   Write-Host "WARN $message"
+}
+
+function Resolve-AndroidSdkPath {
+  param([string]$RepoRoot)
+
+  $localProperties = Join-Path $RepoRoot 'local.properties'
+  $sdk = ''
+  if (Test-Path -LiteralPath $localProperties) {
+    $line = Get-Content -LiteralPath $localProperties | Where-Object { $_ -match '^\s*sdk[.]dir\s*[=:]' } | Select-Object -First 1
+    if ($line) {
+      # local.properties escapes Windows backslashes, colons and spaces.
+      $sdk = [regex]::Replace(($line -replace '^\s*sdk[.]dir\s*[=:]\s*', '').Trim(), '\\([\\:= #!])', '$1')
+    }
+  }
+  if (!$sdk) { $sdk = $env:ANDROID_HOME }
+  if (!$sdk) { $sdk = $env:ANDROID_SDK_ROOT }
+  if (!$sdk -and $env:LOCALAPPDATA) { $sdk = Join-Path $env:LOCALAPPDATA 'Android/Sdk' }
+  if (!$sdk) { throw 'Android SDK not configured. Set sdk.dir in local.properties or ANDROID_HOME.' }
+  if (![IO.Path]::IsPathRooted($sdk)) { $sdk = Join-Path $RepoRoot $sdk }
+  return [IO.Path]::GetFullPath($sdk)
 }
 
 function Resolve-GradleUserHome {
@@ -277,6 +344,8 @@ function Assert-EmulatorProfile {
     [string]$Serial
   )
 
+  $qemu = Get-AdbShellText -Adb $Adb -Serial $Serial -Command "getprop ro.kernel.qemu" -Description "Verify emulator safety"
+  if ($qemu -ne '1') { throw "Refusing ordinary tests on physical target $Serial before installation or package reset." }
   $expectedSize = "2560x1600"
   $expectedDensity = "320"
   $expectedFont = "1.0"
@@ -320,7 +389,7 @@ function Install-ApkChecked {
     throw "$Description APK does not exist: $ApkPath"
   }
 
-  $output = Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments @("install", "-r", "-t", $ApkPath) -Description $Description
+  $output = Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments @("install", "-r", "-t", $ApkPath) -Description $Description -TimeoutSeconds 120
   $text = $output -join "`n"
   if ($text -notmatch "Success") {
     $output | ForEach-Object { Write-Host $_ }
@@ -391,35 +460,30 @@ function Write-InstrumentationDiagnostics {
     [string]$ArtifactsLocal
   )
 
-  Write-Host "Instrumentation diagnostics for $Serial"
-  try {
-    Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments @("shell", "dumpsys", "window") -Description "Dump focused window" |
-      Select-String "mCurrentFocus|mFocusedApp" |
-      ForEach-Object { Write-Host $_ }
-  } catch {
-    Write-Host "Focused-window diagnostic failed: $_"
-  }
-
-  try {
-    Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments @("shell", "dumpsys", "activity", "processes") -Description "Dump app process state" |
-      Select-String "$AppPackage|$TestPackage|ANR|Not Responding" |
-      Select-Object -First 40 |
-      ForEach-Object { Write-Host $_ }
-  } catch {
-    Write-Host "Process diagnostic failed: $_"
-  }
-
-  if (-not [string]::IsNullOrWhiteSpace($ArtifactsLocal)) {
+  # Three bounded calls, at most 15s total. Do not ask a frozen Android UI to
+  # construct another hierarchy, or collect a bugreport during validation.
+  $clock=[Diagnostics.Stopwatch]::StartNew()
+  $messages=New-Object 'System.Collections.Generic.List[string]'
+  foreach($probe in @(
+    @{name='health';args=@('shell','cat /proc/sys/kernel/random/boot_id; getprop sys.boot_completed')},
+    @{name='window';args=@('shell','dumpsys window windows | head -100')},
+    @{name='crash-log';args=@('logcat','-b','crash','-d','-t','80')}
+  )) {
     try {
-      New-Item -ItemType Directory -Force -Path $ArtifactsLocal | Out-Null
-      $remote = "/sdcard/Download/topodroid-instrumentation-timeout.xml"
-      $local = Join-Path $ArtifactsLocal "instrumentation-timeout-window.xml"
-      Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments @("shell", "uiautomator", "dump", $remote) -Description "Dump UI hierarchy" | Out-Null
-      Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments @("pull", $remote, $local) -Description "Pull UI hierarchy" | Out-Null
-      Write-Host "Pulled timeout UI hierarchy to $local"
+      $budget=[Math]::Min(5,[Math]::Floor(15-$clock.Elapsed.TotalSeconds))
+      if($budget -lt 1){break}
+      $value=Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments $probe.args -Description $probe.name -TimeoutSeconds $budget
+      $messages.Add("$($probe.name):`n$($value -join "`n")")
     } catch {
-      Write-Host "UI hierarchy diagnostic failed: $_"
+      $messages.Add("$($probe.name): $_")
+      if($probe.name -eq 'health'){break}
     }
+  }
+  $text=$messages -join "`n"
+  Write-Host "Bounded instrumentation diagnostics ($Serial, $([Math]::Round($clock.Elapsed.TotalSeconds,1))s)"
+  if($ArtifactsLocal){
+    New-Item -ItemType Directory -Force -Path $ArtifactsLocal | Out-Null
+    $text | Set-Content -LiteralPath (Join-Path $ArtifactsLocal ('infrastructure-'+$Serial+'-'+(Get-Date -Format 'yyyyMMdd-HHmmss-fff')+'.txt'))
   }
 }
 
@@ -464,9 +528,12 @@ function Invoke-InstrumentationTimed {
     [int]$HeartbeatSeconds = 30,
     [string]$AppPackage = "",
     [string]$TestPackage = "",
-    [string]$ArtifactsLocal = ""
+    [string]$ArtifactsLocal = "",
+    [scriptblock]$OnOutputSaved
   )
 
+  try {$bootId=Get-QaDeviceBootId -Adb $Adb -Serial $Serial}
+  catch {throw "QA_INFRA: Device unavailable before instrumentation: $_"}
   $stamp = Get-Date -Format "yyyyMMdd-HHmmss-fff"
   $safeName = ($Name -replace '[^A-Za-z0-9_.-]', '_')
   $stdout = Join-Path $env:TEMP "topodroid-$stamp-$safeName.out"
@@ -503,10 +570,11 @@ try {
 Set-Content -LiteralPath $(Quote-InstrumentationPowerShellString $exitCodeFile) -Value `$code
 exit `$code
 "@
-  $encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
+  $commandFile = Join-Path $env:TEMP "topodroid-$stamp-$safeName.ps1"
+  Set-Content -LiteralPath $commandFile -Value $command
   $processInfo = New-Object System.Diagnostics.ProcessStartInfo
   $processInfo.FileName = $powershell
-  $processInfo.Arguments = "-NoProfile -ExecutionPolicy Bypass -EncodedCommand $encodedCommand"
+  $processInfo.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $commandFile + '"'
   $processInfo.UseShellExecute = $true
   $processInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden
   $timer = [System.Diagnostics.Stopwatch]::StartNew()
@@ -518,6 +586,8 @@ exit `$code
   $lastOutputAt = 0.0
   $lastHeartbeatAt = 0.0
   $estimateWarned = $false
+  $lastHealthAt=0.0
+  $infrastructureReason=''
 
   while ($true) {
     $completed = $process.WaitForExit(2000)
@@ -528,6 +598,13 @@ exit `$code
     }
     if ($completed) {
       break
+    }
+    if(($timer.Elapsed.TotalSeconds-$lastHealthAt) -ge 15) {
+      $lastHealthAt=$timer.Elapsed.TotalSeconds
+      try {
+        $currentBoot=Get-QaDeviceBootId -Adb $Adb -Serial $Serial
+        if($currentBoot -ne $bootId){$infrastructureReason='Device rebooted during instrumentation';break}
+      } catch {$infrastructureReason="Device health unavailable: $_";break}
     }
     if ($EstimateSeconds -gt 0 -and -not $estimateWarned -and $timer.Elapsed.TotalSeconds -ge $EstimateSeconds) {
       $estimateWarned = $true
@@ -556,23 +633,22 @@ exit `$code
   if (-not $completed) {
     $why = if ($idleTimedOut) { "IDLE TIMEOUT" } elseif ($timedOut) { "TIMEOUT" } else { "STOPPED" }
     Write-Host ("[{0}] {1} {2} after {3:n1}s" -f (Get-Date -Format "HH:mm:ss"), $why, $Name, $timer.Elapsed.TotalSeconds)
-    try { $process.Kill() } catch { }
+    Stop-QaProcessTree $process
     $null = Write-NewProcessOutput -Path $stdout -LineOffset ([ref]$stdoutLines)
+    if ($ArtifactsLocal -and (Test-Path $stdout)) {
+      Copy-Item -LiteralPath $stdout -Destination (Join-Path $ArtifactsLocal ($Name+'.instrumentation.log')) -Force
+    }
+    if(!$infrastructureReason){$infrastructureReason=if($idleTimedOut){"No instrumentation progress for ${IdleTimeoutSeconds}s"}else{"Instrumentation exceeded ${TimeoutSeconds}s"}}
+    if($OnOutputSaved){& $OnOutputSaved $infrastructureReason}
     Write-InstrumentationDiagnostics -Adb $Adb -Serial $Serial -AppPackage $AppPackage -TestPackage $TestPackage -ArtifactsLocal $ArtifactsLocal
-    if (-not [string]::IsNullOrWhiteSpace($TestPackage)) {
-      try { Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments @("shell", "am", "force-stop", $TestPackage) -Description "Stop test package" | Out-Null } catch { }
-    }
-    if (-not [string]::IsNullOrWhiteSpace($AppPackage)) {
-      try { Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments @("shell", "am", "force-stop", $AppPackage) -Description "Stop app package" | Out-Null } catch { }
-    }
-    if ($idleTimedOut) {
-      throw "$Name made no instrumentation progress for $IdleTimeoutSeconds seconds."
-    }
-    throw "$Name timed out after $TimeoutSeconds seconds."
+    Stop-QaInstrumentationPackages -Adb $Adb -Serial $Serial -AppPackage $AppPackage -TestPackage $TestPackage
+    Remove-Item -LiteralPath $stdout,$exitCodeFile,$commandFile -Force -ErrorAction SilentlyContinue
+    throw "QA_INFRA: $infrastructureReason"
   }
 
   $process.WaitForExit()
   $process.Refresh()
+  Remove-Item -LiteralPath $commandFile -Force -ErrorAction SilentlyContinue
   $null = Write-NewProcessOutput -Path $stdout -LineOffset ([ref]$stdoutLines)
   $output = @()
   if (Test-Path $stdout) { $output += Get-Content -LiteralPath $stdout }
@@ -584,9 +660,25 @@ exit `$code
       $exitCode = $parsedExitCode
     }
   }
+  if ($ArtifactsLocal) {
+    New-Item -ItemType Directory -Force -Path $ArtifactsLocal | Out-Null
+    $output | Set-Content -LiteralPath (Join-Path $ArtifactsLocal ($Name + '.instrumentation.log'))
+  }
   Remove-Item -LiteralPath $stdout, $exitCodeFile -Force -ErrorAction SilentlyContinue
 
   $text = $output -join "`n"
+  try {
+    if((Get-QaDeviceBootId -Adb $Adb -Serial $Serial) -ne $bootId){$infrastructureReason='Device rebooted during instrumentation'}
+  } catch {$infrastructureReason="Device health unavailable: $_"}
+  if(!$infrastructureReason -and ($text -notmatch '(?m)^INSTRUMENTATION_CODE:' -or $text -match 'INSTRUMENTATION_FAILED|INSTRUMENTATION_RESULT: shortMsg=')) {
+    $infrastructureReason='Instrumentation aborted without normal completion; see raw log (ANR/process crash is distinct from an assertion failure)'
+  }
+  if($OnOutputSaved){& $OnOutputSaved $infrastructureReason}
+  if($infrastructureReason){
+    Write-InstrumentationDiagnostics -Adb $Adb -Serial $Serial -AppPackage $AppPackage -TestPackage $TestPackage -ArtifactsLocal $ArtifactsLocal
+    Stop-QaInstrumentationPackages -Adb $Adb -Serial $Serial -AppPackage $AppPackage -TestPackage $TestPackage
+    throw "QA_INFRA: $infrastructureReason"
+  }
   $hasInstrumentationResult = ($text -match "INSTRUMENTATION_CODE:") -or ($text -match "INSTRUMENTATION_RESULT:")
   if ($exitCode -ne 0 -and -not $hasInstrumentationResult) {
     throw "$Name instrumentation command failed with exit code $exitCode."
@@ -602,7 +694,7 @@ exit `$code
     $ok = $false
     Write-InstrumentationDiagnostics -Adb $Adb -Serial $Serial -AppPackage $AppPackage -TestPackage $TestPackage -ArtifactsLocal $ArtifactsLocal
   }
-  if ($text -notmatch "OK \(\d+ tests?\)") {
+  if ($text -notmatch "OK \([1-9]\d* tests?\)") {
     $ok = $false
   }
 

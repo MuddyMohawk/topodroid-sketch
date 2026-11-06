@@ -13,7 +13,6 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.topodroid.prefs.TDSetting;
@@ -39,9 +38,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.DATA, com.topodroid.qa.TestFeatures.Feature.EXCHANGE})
 public class SketchTextObjectInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final int TDR_VERSION = 602055;
 
   private Context mPreviousContext;
@@ -55,7 +57,7 @@ public class SketchTextObjectInstrumentedTest
     mPreviousContext = TDInstance.context;
     Context context = InstrumentationRegistry.getInstrumentation().getTargetContext().getApplicationContext();
     TDInstance.setContext( context );
-    TopoDroidApp.installSymbols( true );
+    QaFixtureRule.ensureSymbols();
     BrushManager.reloadPointLibrary( context, context.getResources() );
     mPreviousGrid = TDSetting.mUnitGrid;
     mPreviousLineThickness = TDSetting.mLineThickness;

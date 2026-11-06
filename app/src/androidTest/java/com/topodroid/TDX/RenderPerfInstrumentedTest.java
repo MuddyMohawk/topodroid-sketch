@@ -2,11 +2,7 @@ package com.topodroid.TDX;
 
 import static org.junit.Assert.assertTrue;
 
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.os.SystemClock;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
 import org.junit.After;
@@ -30,10 +26,14 @@ import java.util.Locale;
  *  render_perf.txt in the case artifacts. Run on the same device before and
  *  after a renderer change for A/B numbers (emulator or physical tablet).
  */
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.DIAGNOSTIC)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS})
 public class RenderPerfInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final String FIXTURE_ASSET = "fixtures/Demo.zip";
   private static final String FIXTURE_FILE  = "Demo.zip";
   private static final String SURVEY_NAME   = "Demo";
@@ -65,12 +65,8 @@ public class RenderPerfInstrumentedTest
     mSupport.launchMainWindowOnAnyDevice(); // perf timings are device-agnostic (off-screen fixed-size canvas)
 
     File importZip = mSupport.copyAssetToDownloads( FIXTURE_ASSET, FIXTURE_FILE );
-    mSupport.openMainImportDialogFromToolbar();
-    mSupport.tapViewByDevice( R.id.button_ok );
-    mSupport.pickDocumentByFileName( importZip.getName() );
-    mSupport.waitForSurveyOnMainList( SURVEY_NAME );
+    mSupport.importArchiveThroughProductionApi(importZip,SURVEY_NAME);
 
-    mSupport.openSurveyFromMainList( SURVEY_NAME );
     mSupport.openExistingPlanPlot( PLAN_PLOT_LABEL );
     mSupport.enterDrawMode();
     mSupport.setCanonicalToolbarState();

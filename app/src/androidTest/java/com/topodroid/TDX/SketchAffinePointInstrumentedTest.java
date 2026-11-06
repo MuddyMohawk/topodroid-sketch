@@ -15,7 +15,6 @@ import android.graphics.Paint;
 import android.graphics.PointF;
 import android.graphics.RectF;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -33,10 +32,13 @@ import java.io.DataOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.DATA})
 public class SketchAffinePointInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final int TDR_VERSION_WITH_STYLE_OPTIONS = 602055;
 
   private Context mContext;
@@ -48,7 +50,7 @@ public class SketchAffinePointInstrumentedTest
     mPreviousContext = TDInstance.context;
     mContext = InstrumentationRegistry.getInstrumentation().getTargetContext().getApplicationContext();
     TDInstance.setContext( mContext );
-    TopoDroidApp.installSymbols( true );
+    QaFixtureRule.ensureSymbols();
     BrushManager.reloadPointLibrary( mContext, mContext.getResources() );
     mBoulder = BrushManager.getPointIndexByThName( "boulder" );
     assertTrue( "Missing boulder point", mBoulder >= 0 );

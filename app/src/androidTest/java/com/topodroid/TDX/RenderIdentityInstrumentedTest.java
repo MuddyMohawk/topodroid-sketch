@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.filters.LargeTest;
 
 import org.junit.After;
@@ -28,10 +27,14 @@ import java.util.List;
  *  Identical hashes prove the change is pixel-identical, which the golden
  *  screenshot tests (5% tolerance) cannot.
  */
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
 @LargeTest
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.DIAGNOSTIC)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS})
 public class RenderIdentityInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final String FIXTURE_ASSET = "fixtures/Demo.zip";
   private static final String FIXTURE_FILE  = "Demo.zip";
   private static final String SURVEY_NAME   = "Demo";
@@ -54,19 +57,20 @@ public class RenderIdentityInstrumentedTest
     if ( mSupport != null ) mSupport.finish();
   }
 
-  @Test
-  public void renderDemoFixture_reportsPixelHashes() throws Exception
+  private boolean measurements;
+  @Test public void renderDemoFixture_reportsPixelHashes() throws Exception { measurements=true; renderFixture(); }
+
+  @com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.UI)
+  @Test public void productionWaterAndClayUnion_areDrawOrderIndependent() throws Exception { measurements=false; renderFixture(); }
+
+  private void renderFixture() throws Exception
   {
     mSupport.prepareForCase( VisualTestSupport.allSurveyNames( SURVEY_NAME ) );
     mSupport.launchMainWindow();
 
     File importZip = mSupport.copyAssetToDownloads( FIXTURE_ASSET, FIXTURE_FILE );
-    mSupport.openMainImportDialogFromToolbar();
-    mSupport.tapViewByDevice( R.id.button_ok );
-    mSupport.pickDocumentByFileName( importZip.getName() );
-    mSupport.waitForSurveyOnMainList( SURVEY_NAME );
+    mSupport.importArchiveThroughProductionApi(importZip,SURVEY_NAME);
 
-    mSupport.openSurveyFromMainList( SURVEY_NAME );
     mSupport.openExistingPlanPlot( PLAN_PLOT_LABEL );
     mSupport.enterDrawMode();
     mSupport.setCanonicalToolbarState();
@@ -151,6 +155,8 @@ public class RenderIdentityInstrumentedTest
     report.add( "clayorder_ab " + clayAB );
     report.add( "clayorder_ba " + clayBA );
 
+    if (!measurements) return;
+
     // thick-weight clay pins the brush-weight pattern scaling (5.0 / standard 2.0)
     DrawingAreaPath thick = mSupport.addTestAreaForRenderHash( SymbolLibrary.CLAY, clayCx - 260f / zm, clayCy, half );
     mSupport.applyTestAreaBrushWeight( thick, 5.0f );
@@ -197,6 +203,7 @@ public class RenderIdentityInstrumentedTest
                                boolean landscape, boolean displayPoints, boolean gridVisible, int splayMode )
     throws Exception
   {
+    if (!measurements) return;
     for ( int k = 0; k < transforms.length; ++ k ) {
       String name = variant + "_t" + k;
       String hash = mSupport.captureRenderHash( name,

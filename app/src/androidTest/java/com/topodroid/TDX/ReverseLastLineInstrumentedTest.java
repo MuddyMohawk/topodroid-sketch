@@ -10,7 +10,6 @@ import android.graphics.PointF;
 import android.graphics.RectF;
 import android.os.SystemClock;
 import android.view.MotionEvent;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.topodroid.prefs.TDSetting;
 import com.topodroid.types.SymbolType;
@@ -26,9 +25,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /** Exercises real line rendering and history without opening or saving surveys. */
-@RunWith(AndroidJUnit4.class)
+@RunWith(com.topodroid.TDX.QaJUnit4.class)
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DRAWING, com.topodroid.qa.TestFeatures.Feature.DATA})
 public class ReverseLastLineInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private interface Check { void run() throws Exception; }
   private static void main(Check check) {
     InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {

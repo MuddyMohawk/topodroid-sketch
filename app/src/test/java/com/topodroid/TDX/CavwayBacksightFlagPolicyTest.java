@@ -8,6 +8,7 @@ import com.topodroid.dev.cavway.CavwayConst;
 
 import org.junit.Test;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DEVICES, com.topodroid.qa.TestFeatures.Feature.DATA})
 public class CavwayBacksightFlagPolicyTest
 {
   @Test public void disabled_keepsCavwayBacksightLabelOnly()

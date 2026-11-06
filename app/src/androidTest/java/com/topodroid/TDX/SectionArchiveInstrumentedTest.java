@@ -2,7 +2,6 @@ package com.topodroid.TDX;
 
 import android.net.Uri;
 import androidx.test.core.app.ActivityScenario;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.topodroid.types.PlotType;
 import org.junit.Test;
@@ -15,9 +14,13 @@ import java.util.zip.*;
 import static org.junit.Assert.*;
 
 /** Uses only uniquely named synthetic surveys; never clears the user's survey set. */
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DATA, com.topodroid.qa.TestFeatures.Feature.EXCHANGE})
 public class SectionArchiveInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   @Test public void nativeZipRoundTripsBothImportPathsAndToleratesMissingOrInvalidMetadata() throws Exception
   {
     boolean exitPolicy = TopoDroidApp.sayDialogR();

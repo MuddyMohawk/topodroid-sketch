@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 
 import com.topodroid.prefs.TDSetting;
 import com.topodroid.types.PointScale;
@@ -24,9 +23,12 @@ import java.util.ArrayList;
  *  report whether anything changed, so the surface invalidates the scene
  *  cache only on real mutations.
  */
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DRAWING})
 public class EraseSweepInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final float ZOOM = 1.0f;
   private static final float ERASE_SIZE = 10.0f; // erase radius = mCloseCutoff + ERASE_SIZE/ZOOM ~ 10 scene units
   private static final float ROW_SPACING = 30.0f; // > erase radius: items are NOT covered by neighboring samples

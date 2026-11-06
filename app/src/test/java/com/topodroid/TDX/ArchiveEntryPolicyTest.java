@@ -5,6 +5,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.EXCHANGE, com.topodroid.qa.TestFeatures.Feature.RUNNER})
 public class ArchiveEntryPolicyTest
 {
   @Test public void acceptsSurveyRelativeEntries()

@@ -1,6 +1,5 @@
 package com.topodroid.TDX;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.topodroid.num.TDNum;
 import com.topodroid.types.BlockType;
@@ -13,9 +12,13 @@ import java.util.Arrays;
 import java.util.List;
 import static org.junit.Assert.*;
 
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.TDX.QaFixtureRule.Database
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.DATA, com.topodroid.qa.TestFeatures.Feature.DRAWING})
 public class SectionReferencesInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private DBlock block( long id, String from, String to, float length, float bearing, float clino )
   {
     DBlock block = new DBlock( from, to, length, bearing, clino, 0, 1,

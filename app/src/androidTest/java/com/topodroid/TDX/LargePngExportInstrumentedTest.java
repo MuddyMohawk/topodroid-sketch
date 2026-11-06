@@ -12,7 +12,6 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.topodroid.prefs.TDSetting;
@@ -26,9 +25,12 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 
 /** Exercise the real export path beyond older Android's software clipPath limit. */
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS, com.topodroid.qa.TestFeatures.Feature.EXCHANGE})
 public class LargePngExportInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final float[] POSITIONS = { 10, 700, 1400, 1600, 1700, 2200 };
   private Context mPreviousContext;
   private int mPreviousWithLevels;
@@ -46,7 +48,7 @@ public class LargePngExportInstrumentedTest
     TDSetting.mWithLevels = 0;
     TDSetting.mLineThickness = 1;
     TDSetting.mAreaOverlapDarken = true;
-    TopoDroidApp.installSymbols( true );
+    QaFixtureRule.ensureSymbols();
     BrushManager.reloadAreaLibrary( context.getResources() );
     BrushManager.reloadLineLibrary( context.getResources() );
   }

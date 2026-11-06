@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.EXCHANGE})
 public class ExportRegistryTest
 {
   @Test public void everyVisibleSurveyExportHasFormatFilenameAndMimeType()

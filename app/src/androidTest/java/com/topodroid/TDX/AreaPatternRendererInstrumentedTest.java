@@ -11,7 +11,6 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.topodroid.prefs.TDSetting;
@@ -26,9 +25,12 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 
 /** Raster-level invariants for the programmatic bedrock area pattern. */
-@RunWith( AndroidJUnit4.class )
+@RunWith( com.topodroid.TDX.QaJUnit4.class )
+@com.topodroid.TDX.qa.TestTier(com.topodroid.TDX.qa.TestTier.Tier.FAST)
+@com.topodroid.qa.TestFeatures({com.topodroid.qa.TestFeatures.Feature.SYMBOLS})
 public class AreaPatternRendererInstrumentedTest
 {
+  @org.junit.Rule public final com.topodroid.TDX.QaFixtureRule qaFixture = new com.topodroid.TDX.QaFixtureRule();
   private static final int WIDTH = 640;
   private static final int HEIGHT = 480;
   private static final float SCALE = 4.0f;
@@ -50,7 +52,7 @@ public class AreaPatternRendererInstrumentedTest
     mPreviousDisplayLevel = DrawingLevel.getDisplayLevel();
     mContext = InstrumentationRegistry.getInstrumentation().getTargetContext().getApplicationContext();
     TDInstance.setContext( mContext );
-    TopoDroidApp.installSymbols( true );
+    QaFixtureRule.ensureSymbols();
     BrushManager.reloadAreaLibrary( mContext.getResources() );
   }
 

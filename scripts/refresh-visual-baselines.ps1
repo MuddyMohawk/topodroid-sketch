@@ -1,184 +1,61 @@
 param(
-  [string]$Serial = "emulator-5554",
-  [switch]$SkipBuild
+  [string]$Serial='emulator-5554', [switch]$SkipBuild,
+  [string[]]$Selector=@(), [string]$CandidateDirectory='', [switch]$Apply
 )
-
 Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
-
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-. (Join-Path $ScriptDir "android-test-common.ps1")
-$RepoRoot = Split-Path -Parent $ScriptDir
-$Gradle = Join-Path $RepoRoot "gradlew.bat"
-$GradleUserHome = Resolve-GradleUserHome -RepoRoot $RepoRoot
-$LocalProperties = Join-Path $RepoRoot "local.properties"
-$ArtifactsLocalRoot = Join-Path $RepoRoot "tmp-recorded-latest"
-$ArtifactsLocal = Join-Path $ArtifactsLocalRoot (Get-Date -Format "yyyyMMdd-HHmmss-fff")
-$ArtifactsRemote = "/sdcard/Android/data/com.topodroid.TDX.sketch/files/test-artifacts"
-$GoldenSource = Join-Path $ArtifactsLocal "recorded-goldens\emulator_2560x1600_320dpi_font1.0"
-$GoldenTarget = Join-Path $RepoRoot "app\src\androidTest\assets\goldens\emulator_2560x1600_320dpi_font1.0"
-$AppPackage = "com.topodroid.TDX.sketch"
-$TestPackage = "com.topodroid.TDX.sketch.test"
-$Runner = "androidx.test.runner.AndroidJUnitRunner"
-$Instrumentation = "$TestPackage/$Runner"
-$FullClass = "com.topodroid.TDX.VisualGoldenInstrumentedTest,com.topodroid.TDX.ImportedSketchVisualInstrumentedTest,com.topodroid.TDX.ButtonShortcutsInstrumentedTest#defaultMainAndPickerMatchGoldens"
-
-function Get-SdkPath {
-  if ($env:ANDROID_SDK_ROOT) { return Convert-SdkPath $env:ANDROID_SDK_ROOT }
-  if ($env:ANDROID_HOME) { return Convert-SdkPath $env:ANDROID_HOME }
-  if (Test-Path $LocalProperties) {
-    $sdkLine = Get-Content $LocalProperties | Where-Object { $_ -like 'sdk.dir=*' } | Select-Object -First 1
-    if ($sdkLine) {
-      return Convert-SdkPath ($sdkLine -replace '^sdk.dir=', '')
-    }
+$ErrorActionPreference='Stop'
+$repo=Split-Path -Parent $PSScriptRoot
+$goldens=Join-Path $repo 'app/src/androidTest/assets/goldens/emulator_2560x1600_320dpi_font1.0'
+if ($Apply) {
+  if (!$CandidateDirectory) { throw '-Apply requires a reviewed -CandidateDirectory; it never records new images.' }
+  $manifest=Get-Content (Join-Path $CandidateDirectory 'baseline-manifest.json') -Raw | ConvertFrom-Json
+  if (!$manifest -or @($manifest).Count -eq 0) {throw 'No approved stable candidates.'}
+  foreach ($entry in $manifest) {
+    if ($entry.name -notmatch '^[A-Za-z0-9_.-]+[.]png$' -or !$entry.stable) {throw 'Invalid or unstable candidate'}
+    $candidate=Join-Path $CandidateDirectory $entry.name
+    if ((Get-FileHash $candidate -Algorithm SHA256).Hash -ne $entry.sha256) {throw "Candidate changed since review: $candidate"}
+    $target=Join-Path $goldens $entry.name
+    if ((Get-FileHash $target -Algorithm SHA256).Hash -ne $entry.originalSha256) {throw "Approved asset changed since staging: $target"}
   }
-  return Convert-SdkPath (Join-Path $env:LOCALAPPDATA 'Android\Sdk')
+  foreach ($entry in $manifest) {Copy-Item -LiteralPath (Join-Path $CandidateDirectory $entry.name) -Destination (Join-Path $goldens $entry.name) -Force}
+  Write-Host "Applied $(@($manifest).Count) explicitly reviewed stable candidates."
+  return
 }
-
-function Convert-SdkPath {
-  param([string]$Path)
-  return $Path.Replace('\:', ':')
+if (!$CandidateDirectory) {$CandidateDirectory=Join-Path $repo ('workbench/artifacts/baseline-candidates-'+(Get-Date -Format 'yyyyMMdd-HHmmss-fff'))}
+$CandidateDirectory=[IO.Path]::GetFullPath($CandidateDirectory)
+. "$PSScriptRoot/test-suite-common.ps1"
+Assert-QaEmptyOutputDirectory $CandidateDirectory
+if(!(Get-Command python -ErrorAction SilentlyContinue)){throw 'Python 3 with Pillow is required to review baseline candidates.'}
+& python -c 'from PIL import Image, ImageChops, ImageFile; assert hasattr(Image.new("RGB",(1,1)),"get_flattened_data")'
+if($LASTEXITCODE -ne 0){throw 'The baseline review runtime requires Python 3 with a current Pillow installation.'}
+New-Item -ItemType Directory -Force $CandidateDirectory | Out-Null
+$run=Join-Path $CandidateDirectory 'run'
+$failure=$null
+try {& "$PSScriptRoot/test-suite.ps1" -Suite refresh -Authoring -Serial $Serial -SkipBuild:$SkipBuild -Selector $Selector -OutputDirectory $run} catch {$failure=$_}
+$entries=@()
+$authored=@{}
+foreach($log in @(Get-ChildItem $run -File -Filter '*.instrumentation.log')) {
+  foreach($match in [regex]::Matches((Get-Content $log.FullName -Raw),'QA_BASELINE\|([^|\r\n]+)\|([^\r\n]+)')) {
+    $authored[$match.Groups[2].Value+'/'+$match.Groups[1].Value]=$true
+  }
 }
-
-function Get-JavaHome {
-  $candidates = @()
-  if ($env:JAVA_HOME) { $candidates += $env:JAVA_HOME }
-  $candidates += @(
-    "C:\Program Files\Android\Android Studio\jbr",
-    "C:\Program Files\Java\jdk-21",
-    "C:\Program Files\Java\jdk-21.0.2",
-    "C:\Program Files\Java\jdk-21.0.1"
-  )
-
-  foreach ($candidate in $candidates) {
-    if (Test-Path (Join-Path $candidate 'bin\java.exe')) {
-      return $candidate
-    }
-  }
-
-  throw "Could not find a local JDK 21 installation."
+# Three identical captures are required for each screen independently. A later
+# unrelated export assertion cannot invalidate already validated screen structure.
+foreach ($file in @(Get-ChildItem $run -Recurse -File -Filter '*.stable-3.png')) {
+  $name=$file.Name -replace '[.]stable-3[.]png$',''
+  if(!$authored.ContainsKey($file.Directory.Name+'/'+$name)){continue}
+  $siblings=@(1..3 | ForEach-Object {Join-Path $file.DirectoryName ($name+".stable-$_.png")})
+  if (@($siblings | Where-Object {!(Test-Path -LiteralPath $_)}).Count) {continue}
+  $hashes=@($siblings | ForEach-Object {(Get-FileHash $_ -Algorithm SHA256).Hash} | Select-Object -Unique)
+  if ($hashes.Count -ne 1) {continue}
+  $validated=@(Get-ChildItem $run -Recurse -File -Filter $name | Where-Object {$_.FullName -match '[\\/]recorded-goldens[\\/]' -and (Get-FileHash $_.FullName -Algorithm SHA256).Hash -eq $hashes[0]})
+  if (!$validated.Count) {continue}
+  if (!(Test-Path (Join-Path $goldens $name))) {continue}
+  Copy-Item -LiteralPath $file.FullName -Destination (Join-Path $CandidateDirectory $name)
+  $entries+=[pscustomobject]@{name=$name;sha256=$hashes[0];originalSha256=(Get-FileHash (Join-Path $goldens $name) -Algorithm SHA256).Hash;stable=$true;source=$file.FullName}
 }
-
-function Invoke-Adb {
-  param([string[]]$Arguments)
-  Invoke-AdbChecked -Adb $Adb -Serial $Serial -Arguments $Arguments -Description "adb $($Arguments -join ' ')"
-}
-
-function Invoke-Instrumentation {
-  param([string[]]$Arguments)
-
-  $previousPreference = $ErrorActionPreference
-  $ErrorActionPreference = "Continue"
-  try {
-    $output = & $Adb -s $Serial @Arguments 2>&1
-    $exitCode = $LASTEXITCODE
-  } finally {
-    $ErrorActionPreference = $previousPreference
-  }
-
-  $output | ForEach-Object { Write-Host $_ }
-
-  if ($exitCode -ne 0) {
-    throw "Instrumentation command failed with exit code $exitCode."
-  }
-
-  $text = $output -join "`n"
-  if ($text -match "FAILURES!!!" -or $text -match "INSTRUMENTATION_STATUS: Error" -or $text -match "INSTRUMENTATION_FAILED") {
-    return $false
-  }
-
-  if ($text -notmatch "OK \(\d+ tests?\)") {
-    return $false
-  }
-
-  return $true
-}
-
-function Grant-Permissions {
-  # Only runtime-grantable permissions. BLUETOOTH / BLUETOOTH_ADMIN are
-  # install-time on modern Android and POST_NOTIFICATIONS isn't declared by
-  # the manifest; attempting to grant them just produces SecurityException
-  # noise from the platform and nothing else.
-  $permissions = @(
-    "android.permission.ACCESS_FINE_LOCATION",
-    "android.permission.ACCESS_COARSE_LOCATION",
-    "android.permission.CAMERA",
-    "android.permission.RECORD_AUDIO",
-    "android.permission.BLUETOOTH_SCAN",
-    "android.permission.BLUETOOTH_CONNECT"
-  )
-
-  # $ErrorActionPreference assignment is function-local in PowerShell, so this
-  # reverts automatically when the function returns. Needed because under the
-  # script-wide "Stop" preference, any stderr from a native command raises a
-  # terminating NativeCommandError even when stderr is redirected.
-  $ErrorActionPreference = "Continue"
-
-  foreach ($permission in $permissions) {
-    & $Adb -s $Serial "shell" "pm" "grant" $AppPackage $permission 2>$null | Out-Null
-  }
-
-  & $Adb -s $Serial "shell" "appops" "set" "--uid" $AppPackage "MANAGE_EXTERNAL_STORAGE" "allow" 2>$null | Out-Null
-}
-
-$SdkPath = Get-SdkPath
-$JavaHome = Get-JavaHome
-$Adb = Join-Path $SdkPath "platform-tools\adb.exe"
-$AppApkDir = Join-Path $RepoRoot "app\build\outputs\apk\debug"
-$TestApkDir = Join-Path $RepoRoot "app\build\outputs\apk\androidTest\debug"
-
-Push-Location $RepoRoot
-try {
-  $env:JAVA_HOME = $JavaHome
-  $env:PATH = "$JavaHome\bin;$env:PATH"
-
-  if ($SkipBuild) {
-    Write-Host ("[{0}] SKIP Gradle build; using existing APKs" -f (Get-Date -Format "HH:mm:ss"))
-  } else {
-    Invoke-NativeChecked -FilePath $Gradle -Arguments @("-g", $GradleUserHome, "--console=plain", ":app:assembleDebug", ":app:assembleDebugAndroidTest") -Description "Gradle build" -TimeoutSeconds 1200 -IdleTimeoutSeconds 300
-  }
-
-  $AppApk = Resolve-GradleApkOutput -OutputDirectory $AppApkDir -Description "app debug"
-  $TestApk = Resolve-GradleApkOutput -OutputDirectory $TestApkDir -Description "androidTest debug"
-  Install-TestApksAndPreflight -Adb $Adb -Serial $Serial -AppApk $AppApk -TestApk $TestApk -AppPackage $AppPackage -TestPackage $TestPackage -Runner $Runner
-  Invoke-Adb @("shell", "pm", "clear", $AppPackage) | Out-Null
-  Invoke-Adb @("shell", "pm", "clear", $TestPackage) | Out-Null
-  Grant-Permissions
-
-  $instrumentationOk = Invoke-InstrumentationTimed -Adb $Adb -Serial $Serial `
-    -Arguments @("shell", "am", "instrument", "-w", "-r", "-e", "class", $FullClass, "-e", "visual_baseline_mode", "record", $Instrumentation) `
-    -Name "Refresh visual baselines" -EstimateSeconds 750 -TimeoutSeconds 1200 -IdleTimeoutSeconds 300 -AppPackage $AppPackage -TestPackage $TestPackage -ArtifactsLocal $ArtifactsLocal
-
-  Invoke-Adb @("pull", $ArtifactsRemote, $ArtifactsLocal) | Out-Null
-
-  if (-not $instrumentationOk) {
-    throw "Instrumentation reported test failures."
-  }
-
-  if (-not (Test-Path $GoldenSource)) {
-    throw "Recorded goldens were not pulled to $GoldenSource"
-  }
-
-  New-Item -ItemType Directory -Force -Path $GoldenTarget | Out-Null
-
-  # NOTE: must use -Path, not -LiteralPath, so the trailing '*' is treated as a
-  # wildcard. With -LiteralPath PowerShell looks for a file literally named
-  # '*', finds nothing, and Copy-Item silently no-ops — which means the staged
-  # PNGs under $GoldenSource never reach the committed golden tree, and the
-  # test would appear to "run fine" while leaving stale baselines in place.
-  $sourceItems = Get-ChildItem -LiteralPath $GoldenSource -Force
-  if ( -not $sourceItems -or $sourceItems.Count -eq 0 ) {
-    throw "No recorded goldens found in $GoldenSource to copy"
-  }
-  foreach ( $item in $sourceItems ) {
-    $targetPath = Join-Path $GoldenTarget $item.Name
-    if ( $item.PSIsContainer ) {
-      Copy-Item -LiteralPath $item.FullName -Destination $targetPath -Recurse -Force
-    } else {
-      Copy-Item -LiteralPath $item.FullName -Destination $targetPath -Force
-    }
-  }
-  Write-Host ( "Copied {0} recorded golden(s) -> {1}" -f $sourceItems.Count, $GoldenTarget )
-} finally {
-  Pop-Location
-}
+$entries | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $CandidateDirectory 'baseline-manifest.json')
+if ($entries.Count -gt 0) {& python "$PSScriptRoot/compare-baseline-candidates.py" $goldens $CandidateDirectory; if($LASTEXITCODE -ne 0){throw 'Candidate diff generation failed'}}
+Write-Host "Staged $($entries.Count) stable candidates: $CandidateDirectory. Review images/diffs, then explicitly use -Apply -CandidateDirectory."
+if ($failure) {throw $failure}
+if (!$entries.Count) {throw 'No stable candidates were staged.'}
