@@ -13,6 +13,7 @@ package com.topodroid.TDX;
 
 import com.topodroid.util.TDLog;
 import com.topodroid.util.TDString;
+import com.topodroid.util.TDColor;
 import com.topodroid.ui.MyDialog;
 import com.topodroid.prefs.TDSetting;
 
@@ -32,6 +33,7 @@ import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.TextView;
 
 import android.text.Editable;
 
@@ -54,7 +56,8 @@ public class ExportDialogShot extends MyDialog
 
   private final IExporter mParent;
   private String[]  mTypes; // list of types in drop down 
-  private boolean[] mEnable = TDConst.mSurveyExportEnable;
+  private final ExportDialogFormats mFormats;
+  private TextView mExportWarning;
   private String    mSelected;
   private final int mTitle;
   private int mSelectedPos;
@@ -93,7 +96,8 @@ public class ExportDialogShot extends MyDialog
   {
     super( context, null, R.string.ExportDialog ); // null app
     mParent   = parent;
-    mTypes    = types;
+    mFormats  = ExportDialogFormats.survey( types );
+    mTypes    = mFormats.types;
     mSelected = null;
     mTitle    = title;
     mSurvey   = with_name? survey : resString( R.string.with_prefix );
@@ -114,9 +118,11 @@ public class ExportDialogShot extends MyDialog
     initLayout( R.layout.export_dialog_shot, mTitle );
 
     Spinner spin = (Spinner)findViewById( R.id.spin );
-    spin.setOnItemSelectedListener( this );
     ArrayAdapter adapter = new ArrayAdapter<>( mContext, R.layout.menu, mTypes );
     spin.setAdapter( adapter );
+
+    mExportWarning = (TextView) findViewById( R.id.export_warning );
+    mExportWarning.setTextColor( TDColor.YELLOW );
 
     mLayoutZip      = (LinearLayout) findViewById( R.id.layout_zip );
     mLayoutCompass  = (LinearLayout) findViewById( R.id.layout_compass );
@@ -174,6 +180,7 @@ public class ExportDialogShot extends MyDialog
 
     initOptions();
     updateLayouts();
+    spin.setOnItemSelectedListener( this );
   }
 
   /** set the initial selection according to the default export format
@@ -181,24 +188,10 @@ public class ExportDialogShot extends MyDialog
    */
   private void setSelected( Spinner spin )
   {
-    int pos  =  0; // index in the array of formats
-    int kpos = -1; // index in the enabled formats
-    if ( TDSetting.mExportShotsFormat >= 0 ) {
-      for ( int k = 0; k < TDConst.mSurveyExportIndex.length; ++ k ) {
-        if ( TDConst.mSurveyExportEnable[k] ) {
-          ++ kpos;
-          if ( TDConst.mSurveyExportIndex[k] == TDSetting.mExportShotsFormat ) {
-            pos = kpos;
-            break;
-          }
-        }
-      }
-    }
-    // int ppos = TDConst.surveyIndex( pos );
-    // TDLog.v("EXPORT Set Selected pos " + pos + " ppos " + ppos );
-    // if ( ppos < 0 || ppos >= mTypes.length ) ppos = 0;
-    mSelected = mTypes[ pos ];
-    mSelectedPos = pos;
+    int pos = mFormats.selection( TDSetting.mExportShotsFormat, TDConst.SURVEY_FORMAT_ZIP );
+    mSelected = pos >= 0 ? mTypes[pos] : null;
+    mSelectedPos = pos >= 0 ? mFormats.position( pos ) : -1;
+    mBtnOk.setEnabled( pos >= 0 );
     spin.setSelection( pos );
   }
 
@@ -211,11 +204,8 @@ public class ExportDialogShot extends MyDialog
   @Override
   public void onItemSelected( AdapterView av, View v, int pos, long id ) 
   {
-    int ppos = TDConst.surveyIndex( pos );
-    // TDLog.v( "EXPORT pos " + pos + " ppos " + ppos );
-    if ( ppos < 0 ) return;
-    mSelected = TDConst.mSurveyExportTypes[ ppos ];
-    mSelectedPos = ppos;
+    mSelected = mTypes[pos];
+    mSelectedPos = mFormats.position( pos );
     updateLayouts();
     // TDLog.v( "EXPORT ppos " + ppos + " " + mSelected );
   }
@@ -280,6 +270,9 @@ public class ExportDialogShot extends MyDialog
    */
   private void updateLayouts()
   {
+    boolean supported = mSelected == null || ExportDialogFormats.surveySupported( TDConst.surveyFormatIndex( mSelected ) );
+    mExportWarning.setVisibility( supported ? View.GONE : View.VISIBLE );
+    if ( !supported ) mExportWarning.setText( mContext.getString( R.string.export_unsupported_warning, mSelected ) );
     mLayoutZip.setVisibility( View.GONE );
     mLayoutCompass.setVisibility( View.GONE );
     mLayoutCSurvey.setVisibility( View.GONE );

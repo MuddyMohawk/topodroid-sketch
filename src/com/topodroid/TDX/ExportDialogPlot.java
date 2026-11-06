@@ -16,6 +16,7 @@ import com.topodroid.prefs.TDSetting;
 import com.topodroid.util.TDLog;
 import com.topodroid.util.TDString;
 import com.topodroid.util.TDUtil;
+import com.topodroid.util.TDColor;
 
 import java.util.Locale;
 
@@ -35,6 +36,7 @@ import android.widget.LinearLayout;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.RadioButton;
+import android.widget.TextView;
 
 import android.view.View;
 // import android.view.View.OnKeyListener;
@@ -53,6 +55,8 @@ public class ExportDialogPlot extends MyDialog
 
   private final IExporter mParent;
   private String[]  mTypes;
+  private final ExportDialogFormats mFormats;
+  private TextView mExportWarning;
   private String    mSelected;
   private final int mTitle;
   private int mSelectedPos;
@@ -84,10 +88,11 @@ public class ExportDialogPlot extends MyDialog
   {
     super( context, null, R.string.ExportDialog ); // null app
     mParent = parent;
-    mTypes  = types;
     mSelected = null;
     mTitle = title;
     mParentType = ( parent instanceof OverviewWindow ) ? PARENT_OVERVIEW : PARENT_DRAWING;
+    mFormats = ExportDialogFormats.plot( types, mParentType == PARENT_OVERVIEW );
+    mTypes = mFormats.types;
     mPlotName1  = plotname1;
     mPlotName2  = plotname2;
   }
@@ -101,9 +106,11 @@ public class ExportDialogPlot extends MyDialog
     initLayout( R.layout.export_dialog_plot, mTitle );
 
     Spinner spin = (Spinner)findViewById( R.id.spin );
-    spin.setOnItemSelectedListener( this );
     ArrayAdapter adapter = new ArrayAdapter<>( mContext, R.layout.menu, mTypes );
     spin.setAdapter( adapter );
+
+    mExportWarning = (TextView) findViewById( R.id.export_warning );
+    mExportWarning.setTextColor( TDColor.YELLOW );
 
     mLayoutTherion = (LinearLayout) findViewById( R.id.layout_therion );
     mLayoutCSurvey = (LinearLayout) findViewById( R.id.layout_csurvey );
@@ -145,6 +152,7 @@ public class ExportDialogPlot extends MyDialog
 
     initOptions();
     updateLayouts();
+    spin.setOnItemSelectedListener( this );
   }
 
   /** set the initial selection according to the default export format
@@ -152,17 +160,11 @@ public class ExportDialogPlot extends MyDialog
    */
   private void setSelected( Spinner spin )
   {
-    int pos = 0;
-    if ( TDSetting.mExportPlotFormat >= 0 ) {
-      for ( int k = 0; k < TDConst.mPlotExportIndex.length; ++ k ) {
-        if ( TDConst.mPlotExportIndex[k] == TDSetting.mExportPlotFormat ) {
-          pos = k;
-          break;
-        }
-      }
-    }
-    mSelected = mTypes[ pos ];
-    mSelectedPos = pos;
+    int fallback = mParentType == PARENT_DRAWING ? TDConst.SURVEY_FORMAT_PNG : TDConst.SURVEY_FORMAT_NONE;
+    int pos = mFormats.selection( TDSetting.mExportPlotFormat, fallback );
+    mSelected = pos >= 0 ? mTypes[pos] : null;
+    mSelectedPos = pos >= 0 ? mFormats.position( pos ) : -1;
+    mBtnOk.setEnabled( pos >= 0 );
     spin.setSelection( pos );
   }
 
@@ -176,7 +178,7 @@ public class ExportDialogPlot extends MyDialog
   public void onItemSelected( AdapterView av, View v, int pos, long id ) 
   {
     mSelected = mTypes[ pos ];
-    mSelectedPos = pos;
+    mSelectedPos = mFormats.position( pos );
     updateLayouts();
   }
 
@@ -221,6 +223,9 @@ public class ExportDialogPlot extends MyDialog
    */
   private void updateLayouts()
   {
+    boolean supported = mSelected == null || ExportDialogFormats.plotSupported( TDConst.plotExportIndex( mSelected ) );
+    mExportWarning.setVisibility( supported ? View.GONE : View.VISIBLE );
+    if ( !supported ) mExportWarning.setText( mContext.getString( R.string.export_unsupported_warning, mSelected ) );
     mLayoutTherion.setVisibility( View.GONE );
     mLayoutCSurvey.setVisibility( View.GONE );
     mLayoutDxf.setVisibility( View.GONE );

@@ -12,6 +12,7 @@
 package com.topodroid.TDX;
 
 import com.topodroid.ui.MyDialog;
+import com.topodroid.util.TDColor;
 // import com.topodroid.prefs.TDSetting;
 
 // import android.app.Dialog;
@@ -26,6 +27,7 @@ import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.TextView;
 
 import android.view.View;
 // import android.view.View.OnKeyListener;
@@ -41,6 +43,8 @@ public class ExportDialogTdm extends MyDialog
 
   private final IExporter mParent;
   private String[]  mTypes;
+  private final ExportDialogFormats mFormats;
+  private TextView mExportWarning;
   private String    mSelected;
   private final int mTitle;
   private String    mSurvey;
@@ -57,7 +61,8 @@ public class ExportDialogTdm extends MyDialog
   {
     super( context, null, R.string.ExportDialogTdm ); // null app
     mParent = parent;
-    mTypes  = types;
+    mFormats = ExportDialogFormats.survey( types );
+    mTypes = mFormats.types;
     mSelected = null;
     mTitle    = title;
     mSurvey   = survey;
@@ -72,9 +77,11 @@ public class ExportDialogTdm extends MyDialog
     initLayout( R.layout.export_dialog_calib, mTitle );
 
     Spinner spin = (Spinner)findViewById( R.id.spin );
-    spin.setOnItemSelectedListener( this );
     ArrayAdapter adapter = new ArrayAdapter<>( mContext, R.layout.menu, mTypes );
     spin.setAdapter( adapter );
+
+    mExportWarning = (TextView) findViewById( R.id.export_warning );
+    mExportWarning.setTextColor( TDColor.YELLOW );
 
     mBtnOk   = (Button) findViewById(R.id.button_ok );
     mBtnOk.setOnClickListener( this );
@@ -85,8 +92,13 @@ public class ExportDialogTdm extends MyDialog
     // Bundle extras = getIntent().getExtras();
     // String title  = extras.getString( TopoDroidApp.TOPODROID_SURVEY );
 
-    mSelected = null;
-    mSelectedPos = -1;
+    int pos = mFormats.selection( TDConst.SURVEY_FORMAT_NONE, TDConst.SURVEY_FORMAT_NONE );
+    mSelected = pos >= 0 ? mTypes[pos] : null;
+    mSelectedPos = pos >= 0 ? mFormats.position( pos ) : -1;
+    mBtnOk.setEnabled( pos >= 0 );
+    spin.setSelection( pos );
+    updateWarning();
+    spin.setOnItemSelectedListener( this );
   }
 
   /** react to an item selection
@@ -99,14 +111,26 @@ public class ExportDialogTdm extends MyDialog
   public void onItemSelected( AdapterView av, View v, int pos, long id ) 
   { 
     mSelected = mTypes[ pos ];
-    mSelectedPos = pos;
+    mSelectedPos = mFormats.position( pos );
+    updateWarning();
   }
 
   /** react to a deselection
    * @param av    item adapter
    */
   @Override
-  public void onNothingSelected( AdapterView av ) { mSelected = null; }
+  public void onNothingSelected( AdapterView av )
+  {
+    mSelected = null;
+    mSelectedPos = -1;
+    updateWarning();
+  }
+
+  private void updateWarning()
+  {
+    mExportWarning.setVisibility( mSelected == null ? View.GONE : View.VISIBLE );
+    if ( mSelected != null ) mExportWarning.setText( mContext.getString( R.string.export_unsupported_warning, mSelected ) );
+  }
 
   /** react to a user tap
    * @param v  tapped view
@@ -128,11 +152,7 @@ public class ExportDialogTdm extends MyDialog
    */
   private String getFilename()
   {
-    switch(mSelectedPos) {
-      case 0: return mSurvey + ".th";
-      case 1: return mSurvey + ".svx";
-    }
-    return mSurvey;
+    return TDConst.getSurveyFilename( mSelectedPos, mSurvey );
   } 
 
 }

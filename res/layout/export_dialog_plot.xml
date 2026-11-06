@@ -18,6 +18,8 @@
     android:drawSelectorOnTop="true"
   />
 
+  <include layout="@layout/export_warning" />
+
   <LinearLayout android:id="@+id/layout_therion"
     android:layout_width="match_parent" 
     android:layout_height="wrap_content"

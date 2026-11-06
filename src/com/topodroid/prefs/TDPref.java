@@ -18,6 +18,8 @@ import com.topodroid.TDX.TDConst;
 import com.topodroid.TDX.TopoDroidApp;
 import com.topodroid.TDX.R;
 
+import java.util.ArrayList;
+
 import android.content.Context;
 // import android.content.res.Resources;
 
@@ -771,11 +773,11 @@ public class TDPref implements AdapterView.OnItemSelectedListener
 
   static TDPref[] makePrefs( TDPrefKey[] prefs, Context ctx, TDPrefHelper hlp, int cnt )
   {
-    TDPref[] ret = new TDPref[ cnt ];
+    ArrayList<TDPref> ret = new ArrayList<>();
     for ( int k = 0; k < cnt; ++k ) {
-      ret[k] = makePref( prefs[k], ctx, hlp );
+      if ( prefs[k].isVisible() ) ret.add( makePref( prefs[k], ctx, hlp ) );
     }
-    return ret;
+    return ret.toArray( new TDPref[0] );
   }
 
   static TDPref[] makePrefs( TDPrefKey[] prefs, Context ctx, TDPrefHelper hlp )

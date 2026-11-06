@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="export_unsupported_warning">%1$s export is not currently supported. The exported file may be incomplete or incorrect.</string>
+</resources>

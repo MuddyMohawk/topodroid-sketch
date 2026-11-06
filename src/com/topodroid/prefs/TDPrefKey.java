@@ -1175,6 +1175,14 @@ class TDPrefKey
   }
       
 
+  /** Hide retired export controls without removing persisted keys or their registry positions. */
+  boolean isVisible()
+  {
+    return cat != TDPrefCat.PREF_CATEGORY_TH && cat != TDPrefCat.PREF_CATEGORY_TRO
+      && !key.equals( "EXPORT_DATA_THERION" ) && !key.equals( "EXPORT_DATA_VISUALTOPO" )
+      && !key.equals( "DISTOX_EXPORT_TH_PREF" ) && !key.equals( "DISTOX_EXPORT_TRO_PREF" );
+  }
+
   /** @return the list of TDPrefCat categpries that match a givem setting description
    * @param kay   input key
    */
@@ -1187,6 +1195,7 @@ class TDPrefKey
     for ( TDPrefKey[] keyset : mKeySet ) {
       if ( keyset == null ) continue;
       for ( TDPrefKey k : keyset ) {
+        if ( !k.isVisible() ) continue;
         if ( k.summary < 0 ) continue; // Forward rows have no searchable description resource.
         Matcher m = p.matcher( TDInstance.getResourceString( k.summary ).toUpperCase(Locale.US) );
         if ( m.find() ) {

@@ -341,6 +341,13 @@ public class TDConst
   final static int NR_EXPORT_DATA        = 16;
   final static int NR_EXPORT_DATA_NO_GEO = 13;
 
+  /** UI policy only: keep the registry and export implementations intact. */
+  static boolean isExportFormatVisible( int format )
+  {
+    return format != SURVEY_FORMAT_TH && format != SURVEY_FORMAT_TH2 && format != SURVEY_FORMAT_TH3
+      && format != SURVEY_FORMAT_TRO && format != SURVEY_FORMAT_TROX;
+  }
+
   /** @return the array of enabled export types
    * @param with_geo  whether to include geo-types
    */
@@ -348,11 +355,11 @@ public class TDConst
   {
     int nr = 0;
     int kk = with_geo? NR_EXPORT_DATA : NR_EXPORT_DATA_NO_GEO;
-    for ( int k = 0; k < kk; ++k ) if ( mSurveyExportEnable[k] ) ++ nr;
+    for ( int k = 0; k < kk; ++k ) if ( mSurveyExportEnable[k] && isExportFormatVisible( mSurveyExportIndex[k] ) ) ++ nr;
     String[] ret = new String[nr];
     int n = 0;
     for ( int k = 0; k < kk; ++k ) {
-      if ( mSurveyExportEnable[k] ) {
+      if ( mSurveyExportEnable[k] && isExportFormatVisible( mSurveyExportIndex[k] ) ) {
         ret[n ++] = mSurveyExportTypes[k];
       }
     }
@@ -368,7 +375,7 @@ public class TDConst
     int ppos = 0;
     for ( int k = 0; k < mSurveyExportTypes.length; ++k ) {
       // TDLog.v("Pos " + pos + " k " + k + " " +  mSurveyExportEnable[k] );
-      if ( mSurveyExportEnable[k] ) {
+      if ( mSurveyExportEnable[k] && isExportFormatVisible( mSurveyExportIndex[k] ) ) {
         if ( pos == 0 ) return ppos;
         pos --;
       } 
@@ -572,7 +579,7 @@ public class TDConst
       "PDF",
       "XVI"
   };
-  private static final int[] mOverviewExportIndex = {
+  static final int[] mOverviewExportIndex = {
     SURVEY_FORMAT_TH2,
     SURVEY_FORMAT_DXF,
     SURVEY_FORMAT_SVG,
