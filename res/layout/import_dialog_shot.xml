@@ -17,6 +17,8 @@
     android:drawSelectorOnTop="true"
   />
 
+  <include android:id="@+id/import_warning" layout="@layout/export_warning" />
+
   <LinearLayout android:id="@+id/layout_zip"
     android:layout_width="match_parent" 
     android:layout_height="wrap_content"

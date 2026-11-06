@@ -3,7 +3,6 @@
 The next major planned feature is an overhaul of the symbols to match NSS conventions and be easier to use. In particular, I would like to solve the time-consuming tedium of "generic fill" for things like breakdown blocks and cobbles.
 
 ## TODO
-- Deprecate/hide/warn unsupport import and export formats
 - Add small ceiling channel symbol (alternate)
 - invert colors upon export (white to black, etc) (Ryan)
 - Flip/mirror cross-section

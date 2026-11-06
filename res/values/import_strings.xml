@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="import_unsupported_warning">%1$s import is not currently supported. The imported data may be incomplete or incorrect.</string>
+</resources>

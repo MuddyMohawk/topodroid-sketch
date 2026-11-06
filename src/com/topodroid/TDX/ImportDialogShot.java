@@ -12,6 +12,7 @@
 package com.topodroid.TDX;
 
 import com.topodroid.util.TDLog;
+import com.topodroid.util.TDColor;
 import com.topodroid.ui.MyDialog;
 // import com.topodroid.prefs.TDSetting;
 import com.topodroid.inport.ImportData;
@@ -31,6 +32,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.CheckBox;
+import android.widget.TextView;
 // import android.widget.EditText;
 
 import android.view.View;
@@ -50,6 +52,7 @@ public class ImportDialogShot extends MyDialog
   private String    mSelected;
   private final int mTitle;
   private int mSelectedPos;
+  private TextView mImportWarning;
 
   private LinearLayout mLayoutZip;
   private LinearLayout mLayoutCompass;
@@ -96,9 +99,11 @@ public class ImportDialogShot extends MyDialog
     initLayout( R.layout.import_dialog_shot, mTitle );
 
     Spinner spin = (Spinner)findViewById( R.id.spin );
-    spin.setOnItemSelectedListener( this );
     ArrayAdapter adapter = new ArrayAdapter<>( mContext, R.layout.menu, mTypes );
     spin.setAdapter( adapter );
+
+    mImportWarning = (TextView) findViewById( R.id.import_warning );
+    mImportWarning.setTextColor( TDColor.YELLOW );
 
     mLayoutZip     = (LinearLayout) findViewById( R.id.layout_zip );
     mLayoutCompass = (LinearLayout) findViewById( R.id.layout_compass );
@@ -125,6 +130,7 @@ public class ImportDialogShot extends MyDialog
     mSelected = mTypes[ mSelectedPos ];
     initOptions();
     updateLayouts();
+    spin.setOnItemSelectedListener( this );
   }
 
   @Override
@@ -167,6 +173,21 @@ public class ImportDialogShot extends MyDialog
 
   private void updateLayouts()
   {
+    boolean unsupported = false;
+    if ( mSelected != null ) {
+      switch ( TDConst.surveyImportFormatIndex( mSelected ) ) {
+        case TDConst.SURVEY_FORMAT_SNP: // CaveSniper
+        case TDConst.SURVEY_FORMAT_TH:
+        case TDConst.SURVEY_FORMAT_TRO:
+        case TDConst.SURVEY_FORMAT_SRV:
+        case TDConst.SURVEY_FORMAT_TOP:
+        case TDConst.SURVEY_FORMAT_TRB:
+          unsupported = true;
+          break;
+      }
+    }
+    mImportWarning.setVisibility( unsupported ? View.VISIBLE : View.GONE );
+    if ( unsupported ) mImportWarning.setText( mContext.getString( R.string.import_unsupported_warning, mSelected ) );
     // TDLog.v( "update layout: selected " + mSelectedPos );
     mLayoutZip.setVisibility( View.GONE );
     mLayoutCompass.setVisibility( View.GONE );
