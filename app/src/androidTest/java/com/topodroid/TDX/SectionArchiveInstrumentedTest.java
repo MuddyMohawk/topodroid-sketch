@@ -41,6 +41,11 @@ public class SectionArchiveInstrumentedTest
       assertTrue( SectionReferenceRepository.save( data, sid, pid, choices ) );
       TDInstance.sid = sid; TDInstance.survey = name;
       TDPath.setSurveyPaths( name );
+      SketchManagementService sketches=new SketchManagementService(data,sid);
+      SketchSummary alpha=sketches.create(SketchManagementFixtures.draft("alpha"));
+      SketchSummary beta=sketches.create(SketchManagementFixtures.draft("beta"));
+      sketches.reorder(java.util.Arrays.asList(beta.id(),alpha.id()));
+      sketches.setDeleted(alpha.id(),true);
       assertTrue( new Archiver().archiveSurvey( app, Uri.fromFile( file ) ) );
       Map<String,byte[]> entries = new LinkedHashMap<>();
       try ( ZipInputStream zip = new ZipInputStream( new FileInputStream( file ) ) ) {
@@ -54,13 +59,21 @@ public class SectionArchiveInstrumentedTest
       }
       assertTrue( entries.containsKey( SectionReferenceRepository.ARCHIVE_ENTRY ) );
       byte[] metadata = entries.remove( SectionReferenceRepository.ARCHIVE_ENTRY );
+      byte[] ordering = entries.remove(SketchManagementService.ARCHIVE_ENTRY); assertNotNull(ordering);
       // Put metadata before SQL to verify that restoration is independent of entry order.
-      for ( int mode = 0; mode < 5; ++mode ) {
+      for ( int variant = 0; variant < 8; ++variant ) {
+        int mode=variant%4; // valid, missing, malformed, unsupported, on each import path
+        boolean legacy=variant>=4;
         data.doDeleteSurvey( sid );
         try ( ZipOutputStream zip = new ZipOutputStream( new FileOutputStream( file ) ) ) {
-          if ( mode != 2 ) {
+          if ( mode != 1 ) {
             zip.putNextEntry( new ZipEntry( SectionReferenceRepository.ARCHIVE_ENTRY ) );
-            zip.write( mode < 2 ? metadata : ( mode == 3 ? "{invalid" : "{\"version\":99,\"sections\":{}}" ).getBytes( StandardCharsets.UTF_8 ) );
+            zip.write( mode == 0 ? metadata : ( mode == 2 ? "{invalid" : "{\"version\":99,\"sections\":{}}" ).getBytes( StandardCharsets.UTF_8 ) );
+            zip.closeEntry();
+          }
+          if (mode!=1) {
+            zip.putNextEntry(new ZipEntry(SketchManagementService.ARCHIVE_ENTRY));
+            zip.write(mode==0 ? ordering : (mode==2 ? "{invalid" : "{\"version\":99,\"plans\":[]}").getBytes(StandardCharsets.UTF_8));
             zip.closeEntry();
           }
           for ( Map.Entry<String,byte[]> entry : entries.entrySet() ) {
@@ -68,7 +81,7 @@ public class SectionArchiveInstrumentedTest
           }
         }
         int result;
-        if ( mode == 1 ) {
+        if ( legacy ) {
           // Legacy force imports require the destination survey paths to be set by their caller.
           TDPath.setSurveyPaths( name );
           result = new Archiver().unArchive( app, file.getAbsolutePath(), true );
@@ -77,11 +90,16 @@ public class SectionArchiveInstrumentedTest
           try ( FileInputStream input = new FileInputStream( file ) ) { assertTrue( Archiver.getOkManifest( app, input ) >= 0 ); }
           try ( FileInputStream input = new FileInputStream( file ) ) { result = Archiver.unArchive( app, input ); }
         }
-        assertTrue( "Survey import failed in mode " + mode + ": " + result, result >= 0 );
+        assertTrue( "Survey import failed in variant " + variant + ": " + result, result >= 0 );
         sid = data.getSurveyIdFromName( name ); assertTrue( sid > 0 );
+        java.util.List<SketchSummary> imported=new SketchManagementService(data,sid).list();
+        assertEquals(2,imported.size());
+        assertEquals(mode==0 ? "beta" : "alpha",imported.get(0).name);
+        SketchSummary deletedSketch=imported.get(mode==0 ? 1 : 0);
+        assertEquals("alpha",deletedSketch.name); assertTrue(deletedSketch.deleted);
         PlotInfo plot = data.getPlotInfo( sid, "xx0" ); assertNotNull( plot );
         SectionReferenceSelection restored = SectionReferenceRepository.load( data, sid, plot, java.util.Collections.emptyList() );
-        if ( mode < 2 ) {
+        if ( mode == 0 ) {
           assertEquals( choices.stations, restored.stations ); assertEquals( choices.hiddenSplays, restored.hiddenSplays );
           assertFalse( restored.showOutOfPlane );
         } else {

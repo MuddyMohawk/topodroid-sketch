@@ -129,7 +129,8 @@ class PlotListDialog extends MyDialog
 
       Resources res = TDInstance.getResources();
 
-      List< PlotInfo > list = TopoDroidApp.mData.selectAllPlots( TDInstance.sid, TDStatus.NORMAL ); 
+      List< PlotInfo > list = TopoDroidApp.mData.selectAllPlots( TDInstance.sid, TDStatus.NORMAL );
+      new SketchManagementService(TopoDroidApp.mData,TDInstance.sid).orderPicker(list);
       /* FIXME_SKETCH_3D *
         List< Sketch3dInfo > slist = null;
         if ( TopoDroidApp.mSketches ) {

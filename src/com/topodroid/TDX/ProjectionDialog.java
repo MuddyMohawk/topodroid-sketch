@@ -61,6 +61,8 @@ class ProjectionDialog extends MyDialog
   private View mZoomView;
 
   private final ShotWindow mParent;
+  interface Selection { void accept(int azimuth, int oblique); }
+  private Selection mSelection;
 
   private ProjectionSurface mProjectionSurface;
   private SeekBar mSeekBar;
@@ -119,6 +121,12 @@ class ProjectionDialog extends MyDialog
     mOblique = 0;
     // mApp     = mParent.getApp();
     mWithOblique = TDLevel.overExpert && TDSetting.mObliqueMax > 10;
+  }
+
+  ProjectionDialog(Context context, long sid, String from, int azimuth, int oblique, Selection selection) {
+    this(context,null,sid,"",from);
+    mSelection=selection; mAzimuth=azimuth; mOblique=oblique;
+    mWithOblique=TDSetting.mObliqueMax>10;
   }
 
   /** update the text in the edit field with the current value of the azimuth
@@ -258,6 +266,7 @@ class ProjectionDialog extends MyDialog
    */
   private void computeReferences( )
   {
+    if (mNum == null) return;
     mProjectionSurface.clearReferences( );
     // TDLog.v( "refs " + mOffset.x + " " + mOffset.y + " " + mZoom + " " + mAzimuth );
     // mProjectionSurface.newReferences( ... ); DoubleBuffer NOT NEEDED
@@ -518,7 +527,12 @@ class ProjectionDialog extends MyDialog
     // int width = dm widthPixels;
     // int width = mContext.getResources().getDisplayMetrics().widthPixels; // same as TopoDroidApp.mDisplayWidth
 
+    int selectedAzimuth=mAzimuth, selectedOblique=mOblique;
     doStart();
+    if (mSelection != null && mNum != null) {
+      setAzimuth(selectedAzimuth,true);
+      if (mWithOblique) mProjBar.setProgress(Math.round(200f*(selectedOblique+TDSetting.mObliqueMax)/TDSetting.mObliqueMax));
+    }
   }
 
   /** set the value of the azimuth
@@ -549,7 +563,7 @@ class ProjectionDialog extends MyDialog
   synchronized void setSize( int w, int h )
   {
     // TDLog.v("PROJ set size " + w + " " + h );
-    if ( w == 0 || h == 0 ) return;
+    if ( mNum == null || w == 0 || h == 0 ) return;
     float e1 = DrawingUtil.toSceneX( mNum.surveyEmin(), mNum.surveySmin() );  // CENTER_X + Emin * SCALE referred to upper-left corner
     float s1 = DrawingUtil.toSceneY( mNum.surveyEmin(), mNum.surveySmin() ); 
     float e2 = DrawingUtil.toSceneX( mNum.surveyEmax(), mNum.surveySmax() ); 
@@ -823,7 +837,8 @@ class ProjectionDialog extends MyDialog
     Button b = (Button)view;
     if ( b == mBtnOk ) {
       mProjectionSurface.stopDrawingThread();
-      mParent.doProjectedProfile( mName, mFrom, mAzimuth, mOblique );
+      if (mSelection != null) mSelection.accept(mAzimuth,mOblique);
+      else mParent.doProjectedProfile( mName, mFrom, mAzimuth, mOblique );
       dismiss();
     } else if ( b == mBtnPlus ) {
       setAzimuth( mAzimuth + 1, true ); // calls computeReferences which calls setTheTitle

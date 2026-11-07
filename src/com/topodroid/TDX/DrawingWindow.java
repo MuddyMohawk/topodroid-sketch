@@ -975,70 +975,6 @@ public class DrawingWindow extends ItemDrawer
     return mPlot3.start; // FIXME or should it be null ?
   }
 
-  /** rename a plot
-   * @param name   new plot name
-   */
-  void renamePlot( String name ) 
-  {
-    if ( TDString.isNullOrEmpty( name ) ) {
-      return;
-    }
-    if ( PlotType.isAnySection( mType ) ) {
-      TDLog.e("X-Sections rename not implemented");
-    } else if ( PlotType.isProfile( mType ) || mType == PlotType.PLOT_PLAN ) { 
-      String name1 = name + "p";
-      String name2 = name + "s";
-      // TDLog.v( "rename plot to: " + name1 + " " + name2 );
-      // check if plot name name2 exists
-      if ( mApp_mData.getPlotInfo( TDInstance.sid, name2 ) == null &&
-           mApp_mData.getPlotInfo( TDInstance.sid, name1 ) == null ) {
-        mApp_mData.updatePlotName( TDInstance.sid, mPid1, name1 );
-        mApp_mData.updatePlotName( TDInstance.sid, mPid2, name2 );
-        mName1 = name1;
-        mName2 = name2;
-        mPlot1.name = name1;
-        mPlot2.name = name2;
-        mName = ( PlotType.isProfile( mType ) )?  mName2 : mName1;
-        // rename files
-        String fullName1 = TDInstance.survey + "-" + mName1;
-        String fullName2 = TDInstance.survey + "-" + mName2;
-
-        TDPath.renamePlotFiles( mFullName1, fullName1 );
-        TDPath.renamePlotFiles( mFullName2, fullName2 );
-
-        mFullName1 = fullName1;
-        mFullName2 = fullName2;
-        // TopoDroidApp.mShotWindow.setRecentPlot( name, mType );
-        TDInstance.setRecentPlot( name, mType );
-      } else {
-        TDToast.makeBad( R.string.plot_duplicate_name );
-        // TDLog.v( "plot name already exists");
-      }
-    }
-  }
-
-  /** change the origin of the plot
-   * @param station   name of the new origin
-   */
-  void setPlotOrigin( String station )
-  {
-    if ( PlotType.isAnySection( mType ) ) return;
-    mApp_mData.updatePlotOrigin( TDInstance.sid, mPid1, station );
-    mApp_mData.updatePlotOrigin( TDInstance.sid, mPid2, station );
-    String old_station = mPlot1.start;
-    mPlot1.start = station;
-    mPlot2.start = station;
-    mMultiBad = new ArrayList< StringPair >();
-    recomputeReferences( true );
-
-    NumStation st = mNum.getStation( old_station );
-    if ( st != null ) {
-      mDrawingSurface.shiftXSections( st );
-    // } else {
-    //   // TDLog.v("not found old station " + old_station + " new " + station );
-    }
-  }
-
   /** @return the active plot type
    */
   long getPlotType()   { return mType; }
@@ -1060,6 +996,77 @@ public class DrawingWindow extends ItemDrawer
   public float zoom() { return mZoom; }
 
   // ----------------------------------------------------------------
+  private boolean mManagingSketches;
+  @Override public boolean dispatchTouchEvent(android.view.MotionEvent event) {
+    return mManagingSketches || super.dispatchTouchEvent(event);
+  }
+  @Override protected void onSaveInstanceState(Bundle state) {
+    state.putBoolean("sketch.managing",mManagingSketches);
+    state.putLong("sketch.plan",mPid1);
+    super.onSaveInstanceState(state);
+  }
+
+
+  private void openSketchManager(boolean edit) {
+    if (mManagingSketches || mTh2Edit || !PlotType.isSketch2D(mType)) return;
+    mManagingSketches = true;
+    mDrawingSurface.setDrawing(false);
+    mApp_mData.updatePlot(mPid,mSid,mOffset.x,mOffset.y,mZoom);
+    PlotSaveData plan = makePlotSaveData(1,PlotSave.SAVE,TDPath.NR_BACKUP);
+    PlotSaveData profile = makePlotSaveData(2,PlotSave.SAVE,TDPath.NR_BACKUP);
+    final SavePlotFileTask[] flush = new SavePlotFileTask[2];
+    if (TDInstance.isSurveyMutable) {
+      PlotSaveData[] views = {plan,profile};
+      for (int i=0;i<views.length;i++) {
+        PlotSaveData view=views[i];
+        flush[i]=new SavePlotFileTask(mApp,this,null,this,null,view.num,view.cm,view.plot,view.filename,
+          view.type,view.azimuth,view.clino,PlotSave.SAVE,TDPath.NR_BACKUP,false).forManagement();
+      }
+    }
+    // AsyncTask's serial executor is also used by existing drawing saves. This is a barrier
+    // after their writes; callbacks cannot enqueue another save while management is active.
+    android.os.AsyncTask.SERIAL_EXECUTOR.execute(() -> {
+      boolean success=true;
+      try { for (SavePlotFileTask task : flush) if (task != null) success &= task.doInBackground(); }
+      catch (RuntimeException e) { TDLog.e("Management save: " + e.getMessage()); success=false; }
+      final boolean saved=success;
+      runOnUiThread(() -> {
+        if (isFinishing() || isDestroyed()) return;
+        if (!saved) {
+          mManagingSketches=false; mModified=true; mDrawingSurface.setDrawing(true);
+          TDToast.makeBad("Could not save both views. Sketch management was not opened.");
+          return;
+        }
+        resetModified();
+        startActivityForResult(SketchManagerActivity.intent(this,mSid,mPid1,edit),SketchManagerActivity.REQUEST);
+      });
+    });
+  }
+
+  private void returnFromSketchManager(int result, Intent intent) {
+    try {
+      SketchManagementService service=new SketchManagementService(mApp_mData,mSid);
+      service.recover();
+      long id=result==RESULT_OK && intent!=null ? intent.getLongExtra(SketchManagerActivity.CURRENT,mPid1) : mPid1;
+      SketchSummary sketch=service.find(id);
+      if (sketch.deleted) { finish(); return; }
+      mType=result==RESULT_OK && intent!=null ? intent.getLongExtra(SketchManagerActivity.VIEW,mType) : mType;
+      if (mType!=PlotType.PLOT_PLAN) mType=sketch.profile.type;
+      getIntent().putExtra(SketchManagerActivity.CURRENT,sketch.id());
+      getIntent().putExtra(TDTag.TOPODROID_PLOT_TYPE,mType);
+      mName1=sketch.plan.name; mName2=sketch.profile.name;
+      mFullName1=TDInstance.survey+"-"+mName1; mFullName2=TDInstance.survey+"-"+mName2;
+      mName=mType==PlotType.PLOT_PLAN ? mName1 : mName2;
+      mFrom=sketch.origin(); mLandscape=sketch.plan.isLandscape(); mMoveTo=null;
+      DrawingSurface.clearManagersCache();
+      mDrawingState.reset(); resetModified();
+      doStart(true,-1,null);
+      if (isFinishing()) return;
+      mManagingSketches=false;
+      service.opened(sketch.id(),mType);
+    } catch (java.io.IOException e) { TDToast.makeBad(e.getMessage()); finish(); }
+  }
+
   private Handler saveHandler = new Handler();
   private final HeldCanvasActionController.Canvas mHeldCanvas = new HeldCanvasActionController.Canvas() {
     @Override public void pan( float dx, float dy ) {
@@ -1839,6 +1846,7 @@ public class DrawingWindow extends ItemDrawer
    */
   private void startSaveTdrTask( final long type, int save_mode, int maxTasks, int rotate )
   {
+    if (mManagingSketches) return;
     if ( TDSetting.WITH_IMMUTABLE ) {
       // if ( ! mApp_mData.isSurveyMutable( TDInstance.sid, "startSaveTdrTask" ) ) 
       if ( ! TDInstance.isSurveyMutable ) { 
@@ -1876,6 +1884,7 @@ public class DrawingWindow extends ItemDrawer
    */
   private void doStartSaveTdrTask( final PlotSaveData psd1, final PlotSaveData psd2, int save_mode, int maxTasks, int rotate )
   {
+    if (mManagingSketches) return;
     if ( psd1 == null ) return;
     int r = ( rotate == 0 )? 0 : psd1.rotate;
     Handler saveHandler = null;
@@ -3049,6 +3058,7 @@ public class DrawingWindow extends ItemDrawer
   public void onCreate(Bundle savedInstanceState) 
   {
     super.onCreate(savedInstanceState);
+    mManagingSketches=savedInstanceState!=null && savedInstanceState.getBoolean("sketch.managing");
 
     getWindow().getDecorView().setSystemUiVisibility( TDSetting.mUiVisibility );
 
@@ -3121,6 +3131,17 @@ public class DrawingWindow extends ItemDrawer
       } else {
         // mDecl = mApp_mData.getSurveyDeclination( mSid );
 
+        long restoredPlan=savedInstanceState!=null ? savedInstanceState.getLong("sketch.plan",-1) : extras.getLong(SketchManagerActivity.CURRENT,-1);
+        if (restoredPlan>=0 && PlotType.isSketch2D(extras.getLong(TDTag.TOPODROID_PLOT_TYPE))) {
+          try {
+            SketchManagementService service=new SketchManagementService(mApp_mData,mSid); service.recover();
+            SketchSummary restored=service.find(restoredPlan);
+            extras.putString(TDTag.TOPODROID_PLOT_NAME,restored.plan.name);
+            extras.putString(TDTag.TOPODROID_PLOT_NAME2,restored.profile.name);
+            extras.putString(TDTag.TOPODROID_PLOT_FROM,restored.origin());
+            if (restored.deleted) mManagingSketches=true;
+          } catch (java.io.IOException e) { mManagingSketches=true; TDToast.makeBad(e.getMessage()); }
+        }
         mName1 = extras.getString( TDTag.TOPODROID_PLOT_NAME );
         mName2 = extras.getString( TDTag.TOPODROID_PLOT_NAME2 );
         mFullName1 = TDInstance.survey + "-" + mName1;
@@ -4243,6 +4264,7 @@ public class DrawingWindow extends ItemDrawer
    */
   private void doResume() // restoreInstanceFromData
   {
+    if (mManagingSketches || isFinishing()) return;
     // TDLog.v( "doResume()" );
     // TDLog.v("restore drawing display mode");
     String mode = mApp_mData.getValue( "DISTOX_PLOT_MODE" );
@@ -4252,6 +4274,7 @@ public class DrawingWindow extends ItemDrawer
 
     if ( ! mTh2Edit ) { // TH2EDIT
       PlotInfo info = mApp_mData.getPlotInfo( mSid, mName );
+      if (info == null) { finish(); return; }
       mOffset.x = info.xoffset;
       mOffset.y = info.yoffset;
       mZoom     = info.zoom;
@@ -4269,6 +4292,7 @@ public class DrawingWindow extends ItemDrawer
    */
   private void doPause() // saveInstanceToData
   {
+    if (mManagingSketches) { mDrawingSurface.setDrawing(false); return; }
     mDrawingSurface.setDrawing( false );
     if ( mPid >= 0 ) {
       try {
@@ -4336,6 +4360,10 @@ public class DrawingWindow extends ItemDrawer
       finish();
       return;
     }
+    if (!mTh2Edit) {
+      try { new SketchManagementService(mApp_mData,mSid).recover(); }
+      catch (java.io.IOException e) { mManagingSketches=true; TDToast.makeBad(e.getMessage()); finish(); return; }
+    }
     // assert( mLastLinePath == null); // not needed - guaranteed by callers
     mIntersectionT = tt;
     // TDLog.Log( TDLog.LOG_PLOT, "do Start() " + mName1 + " " + mName2 );
@@ -4363,7 +4391,7 @@ public class DrawingWindow extends ItemDrawer
           // FIXME_POP-INFO recomputeReferences( mNum, mZoom );
           return;
         } else {
-	  finish();
+          mManagingSketches=true; finish(); return;
         }
       }
     }
@@ -4410,6 +4438,10 @@ public class DrawingWindow extends ItemDrawer
     }
     // TDLog.TimeEnd("do start done");
 
+    if (!mTh2Edit && PlotType.isSketch2D(mType) && mPlot1!=null) {
+      try { new SketchManagementService(mApp_mData,mSid).opened(mPlot1.id,mType); }
+      catch (java.io.IOException e) { TDLog.e(e.getMessage()); }
+    }
     mDrawingSurface.setSelectMode( mSelectMode );
   }
 
@@ -5325,6 +5357,7 @@ public class DrawingWindow extends ItemDrawer
    */
   public boolean onTouch( View view, MotionEvent rawEvent )
   {
+    if (mManagingSketches) return true;
     // every touch sample may change the scene; the short burst keeps frames
     // pacing steadily through the gesture instead of stuttering between
     // dirty-driven renders and idle waits
@@ -7743,30 +7776,7 @@ public class DrawingWindow extends ItemDrawer
       modified();
     }
 
-    /** implement the plot delete
-     */
-    private void doDelete()
-    {
-      mApp_mData.deletePlot( mPid1, mSid );
-      if ( mPid2 >= 0 ) mApp_mData.deletePlot( mPid2, mSid );
-      // TopoDroidApp.mShotWindow.setRecentPlot( null, 0 );
-      TDInstance.setRecentPlot( null, 0 );
-      finish();
-    }
 
-    /** delete confirmation dialog
-     */
-    void askDelete()
-    {
-      TopoDroidAlertDialog.makeAlert( mActivity, getResources(), R.string.plot_delete,
-        new DialogInterface.OnClickListener() {
-          @Override
-          public void onClick( DialogInterface dialog, int btn ) {
-            doDelete();
-          }
-        }
-      );
-    }
 
     /** scrap delete confirmation dialog
      */
@@ -8438,6 +8448,9 @@ public class DrawingWindow extends ItemDrawer
       } else if ( PlotType.isProfile( mType ) ) {
         setPlotType1( COMPUTE_NO, PARAMS_YES );
       }
+      try { new SketchManagementService(mApp_mData,mSid).opened(mPid1,mType); }
+      catch (java.io.IOException e) { TDLog.e(e.getMessage()); }
+
     }
 
     /** set the plot as of type 3
@@ -10036,6 +10049,7 @@ public class DrawingWindow extends ItemDrawer
   @Override
   public boolean handleActionBindingAction( int action )
   {
+    if (mManagingSketches) return true;
     if ( action == TDSetting.SPEN_ACTION_NONE ) return false;
     performSPenAction( action );
     return true;
@@ -10053,8 +10067,8 @@ public class DrawingWindow extends ItemDrawer
   {
     // TDLog.v("Drawing Activity set menu adapter - type " + type );
     ArrayAdapter< String > menu_adapter = new ArrayAdapter<>(mActivity, R.layout.menu );
-    if ( PlotType.isSketch2D( type ) && TDLevel.overNormal && ! mTh2Edit ) { // TH2EDIT
-      menu_adapter.add( res.getString( menus[0] ) ); // SWITCH/CLOSE
+    if ( PlotType.isSketch2D( type ) && ! mTh2Edit ) { // TH2EDIT
+      menu_adapter.add( res.getString( R.string.sketch_manager_title ) ); // SWITCH
     } else {
       menu_adapter.add( res.getString( menus[MENU_CLOSE] ) );  // CLOSE
     }
@@ -10081,8 +10095,9 @@ public class DrawingWindow extends ItemDrawer
     if ( TDLevel.overTester ) {
       menu_adapter.add( res.getString( menus[5] ) ); // STATION SEARCH and HIGHLIGHT
     }
-    if ( TDLevel.overAdvanced && (! mTh2Edit) && PlotType.isSketch2D( type ) ) { // TH2EDIT
-      menu_adapter.add( res.getString( menus[6] ) ); // RENAME/DELETE
+    if (!mTh2Edit && PlotType.isSketch2D(type)) menu_adapter.add(res.getString(R.string.sketch_edit));
+    if ( TDLevel.overExpert && TDSetting.mPlotSplit && (! mTh2Edit) && PlotType.isSketch2D( type ) ) { // TH2EDIT
+      menu_adapter.add( res.getString( R.string.sketch_advanced ) );
     }
     if ( TDLevel.overAdvanced && ( PlotType.isSketch2D( type ) || mTh2Edit ) ) { // TH2EDIT
       menu_adapter.add( res.getString( menus[7] ) ); // SCRAPS
@@ -10181,8 +10196,9 @@ public class DrawingWindow extends ItemDrawer
     } else if ( TDLevel.overNormal && p++ == pos ) { // RECOVER RELOAD - OPEN
     } else if ( TDLevel.overNormal && p++ == pos ) { // ZOOM-FIT / ORIENTATION
     } else if ( TDLevel.overTester && p++ == pos ) { // STATION SEARCH and HIGHLIGHT
-    } else if ( TDLevel.overTester && p++ == pos ) { // STATION SEARCH and HIGHLIGHT
-    } else if ( TDLevel.overAdvanced && (! mTh2Edit) && PlotType.isSketch2D( mType ) && p++ == pos ) { // TH2EDIT RENAME - DELETE - SPLIT - OUTLINE - MERGE
+    } else if (!mTh2Edit && PlotType.isSketch2D(mType) && p++ == pos) {
+      return false;
+    } else if ( TDLevel.overExpert && TDSetting.mPlotSplit && (! mTh2Edit) && PlotType.isSketch2D( mType ) && p++ == pos ) { // TH2EDIT RENAME - DELETE - SPLIT - OUTLINE - MERGE
     } else if ( TDLevel.overAdvanced && ( PlotType.isSketch2D( mType ) || mTh2Edit ) && p++ == pos ) { // TH2EDIT SCRAPS
     } else if ( p++ == pos ) { // PALETTE
       // TDLog.v("MENU palette");
@@ -10207,11 +10223,7 @@ public class DrawingWindow extends ItemDrawer
     int p = 0;
     if ( p++ == pos ) {
       if ( ! mTh2Edit && PlotType.isSketch2D( mType ) ) { // SWITCH - CLOSE TH2EDIT
-        if ( TDLevel.overNormal ) {
-          new PlotListDialog( mActivity, null, mApp, this ).show();
-        } else {
-          super.onBackPressed();
-        }
+        openSketchManager(false);
       } else { // close
         super.onBackPressed();
       }
@@ -10285,8 +10297,9 @@ public class DrawingWindow extends ItemDrawer
       }
     } else if ( TDLevel.overTester && p++ == pos ) { // STATION SEARCH and HIGHLIGHT
       ( new PlotSearchDialog( mActivity, this ) ).show();
-    } else if ( TDLevel.overAdvanced && (! mTh2Edit) && PlotType.isSketch2D( mType ) && p++ == pos ) { // TH2EDIT RENAME - DELETE - SPLIT - OUTLINE - MERGE
-      //   askDelete();
+    } else if (!mTh2Edit && PlotType.isSketch2D(mType) && p++ == pos) {
+      openSketchManager(true);
+    } else if ( TDLevel.overExpert && TDSetting.mPlotSplit && (! mTh2Edit) && PlotType.isSketch2D( mType ) && p++ == pos ) { // TH2EDIT RENAME - DELETE - SPLIT - OUTLINE - MERGE
       boolean scrap_copy = (mSplitPaths != null);
       boolean has_outline = mDrawingSurface.hasPlotOutline();
       // TDLog.v("RENAME etc. scrap_copy " + scrap_copy + " has_outline " + has_outline );
@@ -11085,6 +11098,8 @@ public class DrawingWindow extends ItemDrawer
   @Override
   protected void onActivityResult( int reqCode, int resCode, Intent intent )
   {
+    if (reqCode==SketchManagerActivity.REQUEST) { returnFromSketchManager(resCode,intent); return; }
+
     switch ( reqCode ) {
       // case TDRequest.QCAM_COMPASS_DRAWWINDOW: // not used
       //   if ( resCode == Activity.RESULT_OK ) {
@@ -11362,6 +11377,7 @@ public class DrawingWindow extends ItemDrawer
     }
     String name = ( mType == PlotType.PLOT_PLAN )? mPlot1.name : mPlot2.name;
     List< PlotInfo > plots = mApp_mData.selectAllPlotsWithType( TDInstance.sid, TDStatus.NORMAL, mType );
+    new SketchManagementService(mApp_mData,TDInstance.sid).orderPicker(plots);
     for ( PlotInfo plot : plots ) {
       if ( plot.name.equals( name ) ) {
         plots.remove( plot );

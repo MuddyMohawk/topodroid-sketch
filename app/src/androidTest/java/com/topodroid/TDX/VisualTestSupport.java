@@ -388,7 +388,7 @@ final class VisualTestSupport
   void openPlotListFromShotToolbar()
   {
     tapToolbarChild( "listview", 3 );
-    waitForDisplayedView( R.id.plot_new );
+    waitForDisplayedView( R.id.sketch_manager_list );
   }
 
   void openManualShotDialogFromShotToolbar()
@@ -2166,7 +2166,7 @@ selection.mHotItem.getHandleRole() );
   void openExistingPlanPlot( String plotName )
   {
     openPlotListFromShotToolbar();
-    UiObject2 plotRow = waitForObject( By.text( plotName + ": PLAN" ) );
+    UiObject2 plotRow = waitForObject( By.desc( "Open Plan: " + plotName ) );
     clickObject( plotRow );
     waitForDrawingWindow();
   }

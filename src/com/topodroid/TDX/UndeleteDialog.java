@@ -143,23 +143,12 @@ class UndeleteDialog extends MyDialog
         mShots4.add( new UndeleteItem( b.mId, String.format(Locale.US, "%d %.2f %.1f %.1f", b.mId, b.mLength, b.mBearing, b.mClino ), UndeleteItem.UNDELETE_BLUNDER ) );
       }
     }
-    if ( plots != null ) {
-      int np = plots.size();
-      if ( np > 0 && (np%2) == 0 ) {
-        mCanRecover = true;
-        mPlots  = new ArrayList< UndeleteItem >();
-        for ( int k=0; k<np; k+=2 ) {
-          PlotInfo plan = plots.get(k);
-          PlotInfo profile = plots.get(k+1);
-          String name = plan.name;
-          // N.B. this assumes that the list of plots contains plan-profile pairs - could assert
-          int len = name.length() - 1;
-          name = name.substring( 0, len );
-          if ( ! name.equals( profile.name.substring( 0, len) ) ) {
-            TDLog.e("UNDELETE plan-profile name mismatch: " + plan.name + " " + profile.name ); 
-            break;
-          }
-          mPlots.add( new UndeleteItem( plan.id, profile.id, String.format(Locale.US, "%d-%d <%s>", plan.id, profile.id, name ), UndeleteItem.UNDELETE_PLOT ) );
+    if (plots != null) {
+      mPlots = new ArrayList<UndeleteItem>();
+      for (SketchSummary sketch : new SketchManagementService(data,sid).list()) {
+        if (sketch.deleted && sketch.available()) {
+          mCanRecover = true;
+          mPlots.add(new UndeleteItem(sketch.plan.id,sketch.profile.id,sketch.name,UndeleteItem.UNDELETE_PLOT));
         }
       }
     }
@@ -239,8 +228,8 @@ class UndeleteDialog extends MyDialog
       case 0:
         if ( mPlots != null ) {
           for ( UndeleteItem item : mPlots ) if ( item.flag ) {
-            mData.undeletePlot( item.id, mSid );
-            mData.undeletePlot( item.id2, mSid );
+            try { new SketchManagementService(mData,mSid).setDeleted(item.id,false); }
+            catch (java.io.IOException e) { TDToast.makeBad(e.getMessage()); }
           }
         }
         break;

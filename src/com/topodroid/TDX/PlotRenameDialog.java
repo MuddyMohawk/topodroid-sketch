@@ -69,7 +69,7 @@ class PlotRenameDialog extends MyDialog
   {
     super.onCreate(savedInstanceState);
     // TDLog.v("Plot Rename on create");
-    initLayout( R.layout.plot_rename_dialog, R.string.title_plot_rename );
+    initLayout( R.layout.plot_rename_dialog, R.string.sketch_advanced );
     
     mBtnRename = (Button) findViewById(R.id.btn_rename );
     mBtnSketch = (Button) findViewById(R.id.btn_to_sketch );
@@ -89,13 +89,12 @@ class PlotRenameDialog extends MyDialog
 
     mEtOrigin = (EditText) findViewById( R.id.et_station );
     mEtOrigin.setText( mStation );
-    if ( ! TDLevel.overExpert ) {
-      mEtOrigin.setInputType( 0 ); // 0 = not editable
-    }
+    mEtOrigin.setInputType( 0 ); // Split uses the saved origin; metadata edits live in the manager.
+    mEtOrigin.setEnabled(false);
 
-    mBtnRename.setOnClickListener( this );
     mBtnBack.setOnClickListener( this );
-    mBtnDelete.setOnClickListener( this );
+    mBtnDelete.setVisibility(View.GONE);
+    mBtnRename.setVisibility(View.GONE);
     if ( TDLevel.overExpert && TDSetting.mPlotSplit && mParent != null && ! mParent.isAnySection() ) {
       // mCBmove.setOnClickListener( this );
       mCBcopy.setOnClickListener( this );
@@ -156,31 +155,7 @@ class PlotRenameDialog extends MyDialog
       return;
     }
     Button b = (Button) v;
-    if ( b == mBtnRename ) {
-      // TDLog.v("click RENAME");
-      String name = TDString.spacesToUnderscore( mEtName.getText().toString() ); // this trims the string
-      if ( ! TDString.checkName( name, mEtName, mContext.getResources() ) ) {
-        return;
-      }
-      if ( ! mName.equals( name ) ) {
-        INewPlot maker = TopoDroidApp.mShotWindow; // FIXME
-        if ( maker.hasSurveyPlot( name ) ) {
-          mEtName.setError( resString( R.string.plot_duplicate_name ) );
-          return;
-        }
-        mParent.renamePlot( name );
-      }
-
-      if ( TDLevel.overExpert ) {
-        String station = TDString.noSpaces( mEtOrigin.getText().toString() ); // no spaces in station nmaes
-        if ( ! mStation.equals( station ) ) { // change origin name
-          mParent.setPlotOrigin( station );
-        }
-      }
-    } else if ( b == mBtnDelete ) {
-      // TDLog.v("click DELETE");
-      mParent.askDelete();
-    } else if ( TDSetting.mPlotSplit && b == mBtnSketch ) {
+    if ( TDSetting.mPlotSplit && b == mBtnSketch ) {
       // TDLog.v("click SKETCH");
       if ( ! handleSketchSplit( true ) ) return;
     } else if ( TDSetting.mPlotSplit && b == mBtnScrap ) {

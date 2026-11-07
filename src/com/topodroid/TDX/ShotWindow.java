@@ -1437,6 +1437,15 @@ public class ShotWindow extends Activity
   protected void onActivityResult( int reqCode, int resCode, Intent intent )
   {
     // TDLog.Log( TDLog.LOG_DEBUG, "on Activity Result: request " + reqCode + " result " + resCode );
+    if (reqCode == SketchManagerActivity.REQUEST) {
+      if (resCode == RESULT_OK && intent != null) {
+        try {
+          SketchSummary sketch = new SketchManagementService(mApp_mData,TDInstance.sid).find(intent.getLongExtra(SketchManagerActivity.CURRENT,-1));
+          if (!sketch.deleted) startExistingPlot(sketch.name,intent.getLongExtra(SketchManagerActivity.VIEW,PlotType.PLOT_PLAN),null);
+        } catch (java.io.IOException e) { TDToast.makeBad(e.getMessage()); }
+      }
+      return;
+    }
     switch ( reqCode ) {
       // case TDRequest.CAPTURE_IMAGE_SHOTWINDOW:
       //   if ( resCode == Activity.RESULT_OK ) { // RESULT_OK = -1 (0xffffffff)
@@ -1709,6 +1718,8 @@ public class ShotWindow extends Activity
   public synchronized void onResume() 
   {
     super.onResume();
+    try { new SketchManagementService(mApp_mData,TDInstance.sid).recover(); }
+    catch (java.io.IOException e) { TDToast.makeBad(e.getMessage()); finish(); return; }
     ActionKeyBindingManager.registerHost( this );
     TDLog.v( "Shot Activity on Resume SID " + TDInstance.sid );
     // FIXME NOTIFY register ILister
@@ -1902,12 +1913,14 @@ public class ShotWindow extends Activity
         if ( mWaitPlot ) {
           TDToast.make( R.string.pleasewait );
         } else {
-          if ( TDInstance.recentPlot != null ) {
-            startExistingPlot( TDInstance.recentPlot, TDInstance.recentPlotType, null );
-          } else {
-            // onClick( view ); // fall back to onClick
-            new PlotListDialog( mActivity, this, mApp, null ).show();
-          }
+          try {
+            SketchManagementService service = new SketchManagementService(mApp_mData, TDInstance.sid);
+            service.recover();
+            long[] recent = service.recent();
+            SketchSummary sketch = service.find(recent[0]);
+            if (sketch.deleted) openSketchManager();
+            else startExistingPlot(sketch.name,recent[1],null);
+          } catch (java.io.IOException e) { openSketchManager(); }
         }
         ret = true;
       } else if ( isButton1( b, BTN_MANUAL ) ) {
@@ -1987,7 +2000,7 @@ public class ShotWindow extends Activity
         if ( mWaitPlot ) {
           TDToast.make( R.string.pleasewait );
         } else {
-          new PlotListDialog( mActivity, this, mApp, null ).show();
+          openSketchManager();
         }
       } else if ( k1 < mNrButton1 && b == mButton1[k1++] ) { // NOTE
         if ( TDInstance.survey != null ) {
@@ -3320,7 +3333,7 @@ public class ShotWindow extends Activity
     long mPIDp = mApp.insert2dPlot( TDInstance.sid, name, start, extended, azimuth, oblique );
 
     if ( mPIDp >= 0 ) {
-      long mPIDs = mPIDp + 1L; // FIXME !!! this is true but not guaranteed
+      long mPIDs = mApp_mData.getPlotInfo(TDInstance.sid,name+"s").id;
       startDrawingWindow( start, name+"p", mPIDp, name+"s", mPIDs, PlotType.PLOT_PLAN, start, false ); // default no-landscape
     // } else {
     //   TDToast.makeBad( R.string.plot_duplicate_name );
@@ -3384,29 +3397,23 @@ public class ShotWindow extends Activity
 
   // called either by a long-tap on plot button 
   //        or a highlights
+  private void openSketchManager() {
+    startActivityForResult(SketchManagerActivity.intent(this,TDInstance.sid,-1,false),SketchManagerActivity.REQUEST);
+  }
+
   void startExistingPlot( String name, long type, String station ) // name = plot/sketch3d name
   {
-    // TDLog.Log( TDLog.LOG_SHOT, "start Existing Plot \"" + name + "\" type " + type + " sid " + TDInstance.sid );
-    if ( type != PlotType.PLOT_SKETCH_3D ) {
-      PlotInfo plot1 =  mApp_mData.getPlotInfo( TDInstance.sid, name+"p" );
-      if ( plot1 != null ) {
-        TDInstance.setRecentPlot( name, type );
-        PlotInfo plot2 =  mApp_mData.getPlotInfo( TDInstance.sid, name+"s" );
-        startDrawingWindow( plot1.start, plot1.name, plot1.id, plot2.name, plot2.id, type, station, plot1.isLandscape() );
-        return;
-      } else {
-        TDInstance.setRecentPlot( null, 0L );
-      }
-/* FIXME_SKETCH_3D *
-    } else {
-      Sketch3dInfo sketch = mApp_mData.getSketch3dInfo( TDInstance.sid, name );
-      if ( sketch != null ) {
-        startSketchWindow( sketch.name );
+    try {
+      SketchManagementService service = new SketchManagementService(mApp_mData,TDInstance.sid);
+      service.recover();
+      for (SketchSummary sketch : service.list()) if (sketch.name.equals(name) && sketch.available() && !sketch.deleted) {
+        long view = type == PlotType.PLOT_PLAN ? type : sketch.profile.type;
+        startDrawingWindow(sketch.origin(),sketch.plan.name,sketch.plan.id,sketch.profile.name,sketch.profile.id,view,station,sketch.plan.isLandscape());
         return;
       }
- * END_SKETCH_3D */
-    }
-    TDToast.makeBad( R.string.plot_not_found );
+      openSketchManager();
+    } catch (java.io.IOException e) { TDToast.makeBad(e.getMessage()); }
+
   }
 
   /** start the plot-sketching window
@@ -3440,6 +3447,7 @@ public class ShotWindow extends Activity
     
     Intent drawIntent = new Intent( Intent.ACTION_VIEW ).setClass( this, DrawingWindow.class );
     drawIntent.putExtra( TDTag.TOPODROID_SURVEY_ID, TDInstance.sid );
+    drawIntent.putExtra(SketchManagerActivity.CURRENT,plot1_id);
     drawIntent.putExtra( TDTag.TOPODROID_PLOT_NAME, plot1_name );
     drawIntent.putExtra( TDTag.TOPODROID_PLOT_NAME2, plot2_name );
     drawIntent.putExtra( TDTag.TOPODROID_PLOT_TYPE, type );

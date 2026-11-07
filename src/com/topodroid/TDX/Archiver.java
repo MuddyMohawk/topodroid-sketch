@@ -381,6 +381,10 @@ public class Archiver
         zos.closeEntry();
       }
 
+      zos.putNextEntry(new ZipEntry(SketchManagementService.ARCHIVE_ENTRY));
+      zos.write(SketchManagementService.exportArchive(app_data,TDInstance.sid).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      zos.closeEntry();
+
       pathname = TDPath.getSurveyNoteFile( survey );
       TDLog.v("ZIP note file " + pathname );
       ret &= addOptionalEntry( zos, TDFile.getTopoDroidFile( pathname ), pathname );
@@ -654,16 +658,16 @@ public class Archiver
     boolean sql_success = false;
     long loaded_survey_id = -1;
     String section_choices = null;
+    String sketch_order = null;
     int ok_manifest = ERR_UNKNOWN;
     String pathname;
     // mManifestPath = null;
     DataHelper app_data = TopoDroidApp.mData;
-    try {
+    try (ZipFile zip = new ZipFile(filename)) {
       // byte buffer[] = new byte[36768];
       // byte[] buffer = new byte[4096];
       ZipEntry ze;
       // TDLog.Log( TDLog.LOG_ZIP, "unzip " + filename );
-      ZipFile zip = new ZipFile( filename );
       ze = zip.getEntry( "manifest" );
       if ( ze == null ) return ERR_FILE;
       // pathname = TDPath.getManifestFile( );
@@ -719,7 +723,9 @@ public class Archiver
           // TDLog.Log( TDLog.LOG_ZIP, "Zip entry " + nr_entry + " \"" + ze.getName() + "\"" );
           boolean sql = false;
           pathname = null;
-          if ( ze.getName().equals( SectionReferenceRepository.ARCHIVE_ENTRY ) ) {
+          if (ze.getName().equals(SketchManagementService.ARCHIVE_ENTRY)) {
+            sketch_order = readSectionChoices(zin);
+          } else if ( ze.getName().equals( SectionReferenceRepository.ARCHIVE_ENTRY ) ) {
             section_choices = readSectionChoices( zin );
           } else if ( ze.getName().equals( "survey.sql" ) ) {
             if ( manifestSurveyAlreadyPresent( app_data ) ) {
@@ -786,7 +792,13 @@ public class Archiver
       TDLog.e( "ZIP 7 cast: " + e.getMessage() );
       ok_manifest = ERR_FORMAT;
     }
-    if ( sql_success && ok_manifest >= ERR_OK ) restoreSectionChoices( app_data, loaded_survey_id, section_choices );
+    if ( sql_success && ok_manifest >= ERR_OK ) {
+      restoreSectionChoices(app_data,loaded_survey_id,section_choices);
+      if (!SketchManagementService.importArchive(app_data,loaded_survey_id,sketch_order)) {
+        TDLog.e("Survey imported without sketch ordering");
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> TDToast.makeWarn(R.string.sketch_order_import_warning));
+      }
+    }
     if ( ok_manifest == ERR_OK ) {
       if ( ! sql_success ) {
         TDLog.e( "ZIP 7 sql error" );
@@ -886,6 +898,7 @@ public class Archiver
     boolean sql_success = false;
     long loaded_survey_id = -1;
     String section_choices = null;
+    String sketch_order = null;
     String pathname;
     ZipEntry ze;
     DataHelper app_data = TopoDroidApp.mData;
@@ -917,7 +930,9 @@ public class Archiver
           // TDLog.v( "ZIP 8 file entry " + nr_entry + " \"" + ze.getName() + "\"");
           boolean sql = false;
           pathname = null;
-          if ( ze.getName().equals( SectionReferenceRepository.ARCHIVE_ENTRY ) ) {
+          if (ze.getName().equals(SketchManagementService.ARCHIVE_ENTRY)) {
+            sketch_order = readSectionChoices(zin);
+          } else if ( ze.getName().equals( SectionReferenceRepository.ARCHIVE_ENTRY ) ) {
             section_choices = readSectionChoices( zin );
           } else if ( ze.getName().equals( "survey.sql" ) ) {
             if ( manifestSurveyAlreadyPresent( app_data ) ) {
@@ -987,7 +1002,13 @@ public class Archiver
       if ( loaded_survey_id > 0 ) app_data.doDeleteSurvey( loaded_survey_id );
       TDPath.deleteSurveyDir( mManifestSurveyname );
     }
-    if ( ok_manifest == ERR_OK && sql_success ) restoreSectionChoices( app_data, loaded_survey_id, section_choices );
+    if ( ok_manifest == ERR_OK && sql_success ) {
+      restoreSectionChoices(app_data,loaded_survey_id,section_choices);
+      if (!SketchManagementService.importArchive(app_data,loaded_survey_id,sketch_order)) {
+        TDLog.e("Survey imported without sketch ordering");
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> TDToast.makeWarn(R.string.sketch_order_import_warning));
+      }
+    }
     TDLog.v( "unarchive stream returns " + ok_manifest );
     if ( ok_manifest == ERR_OK ) {
       if ( sql_success  && DataHelper.hasResetColor() ) ok_manifest = ERR_OK_WITH_COLOR_RESET;

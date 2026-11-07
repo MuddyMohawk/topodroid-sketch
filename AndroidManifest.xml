@@ -270,6 +270,12 @@
           android:exported="false"
           />
 
+        <activity android:name=".SketchManagerActivity"
+          android:theme="@style/Theme.ToolsetEditor"
+          android:configChanges="orientation|screenSize"
+          android:windowSoftInputMode="stateHidden|adjustResize"
+          android:exported="false" />
+
         <activity android:name=".ToolbarEditorActivity"
           android:theme="@style/Theme.ToolsetEditor"
           android:configChanges="orientation|screenSize"

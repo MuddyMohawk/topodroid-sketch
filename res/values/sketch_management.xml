@@ -1,0 +1,40 @@
+<resources>
+  <item name="sketch_manager_list" type="id" />
+  <string name="sketch_open_plan">Open Plan: %1$s</string>
+  <string name="sketch_open_profile">Open Profile: %1$s</string>
+  <string name="sketch_manager_title">Sketches</string>
+  <string name="sketch_new">+ New sketch</string>
+  <string name="sketch_edit">Edit sketch</string>
+  <string name="sketch_edit_named">Edit sketch %1$s</string>
+  <string name="sketch_advanced">Advanced sketch operations</string>
+  <string name="sketch_deleted">Deleted sketches</string>
+  <string name="sketch_restore">Restore</string>
+  <string name="sketch_more">More sketch options</string>
+  <string name="sketch_working">Saving…</string>
+  <string name="sketch_restore_hint">Restore a sketch to use it again</string>
+  <string name="sketch_open_hint">Tap a view to open · Hold a handle to reorder</string>
+  <string name="sketch_empty">No sketches yet. Create your first Plan and Profile.</string>
+  <string name="sketch_no_deleted">No deleted sketches</string>
+  <string name="sketch_origin_value">ORIGIN %1$s</string>
+  <string name="sketch_reorder">Reorder sketch %1$s</string>
+  <string name="sketch_plan">Plan</string>
+  <string name="sketch_extended">Extended profile</string>
+  <string name="sketch_projected">Projected profile</string>
+  <string name="sketch_projected_value">Projected %1$03d°</string>
+  <string name="sketch_last_opened">LAST OPENED</string>
+  <string name="sketch_name">Sketch name</string>
+  <string name="sketch_origin">Origin station</string>
+  <string name="sketch_allow_missing">Allow an origin not yet in survey data</string>
+  <string name="sketch_azimuth">Projection azimuth (0–359°)</string>
+  <string name="sketch_azimuth_error">Enter an azimuth from 0 to 359</string>
+  <string name="sketch_preview">Choose with graphical preview</string>
+  <string name="sketch_origin_explanation">Ordinary drawing strokes stay fixed. Survey references are recomputed from the new origin, and section lines and viewports receive the existing origin adjustment.</string>
+  <string name="sketch_change_origin">Change origin?</string>
+  <string name="sketch_delete">Delete sketch</string>
+  <string name="sketch_delete_explanation">Move this Plan and Profile to Deleted sketches? You can restore them later. Drawings, backups, sections, and images will be retained. Unsaved edits in this form will be discarded.</string>
+  <string name="sketch_create">Create</string>
+  <string name="sketch_create_open">Create &amp; open Plan</string>
+  <string name="sketch_save">Save</string>
+  <string name="sketch_error">Sketch operation could not finish</string>
+  <string name="sketch_order_import_warning">Survey imported without sketch ordering; using the default order.</string>
+</resources>

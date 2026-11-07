@@ -66,6 +66,14 @@ class SavePlotFileTask extends AsyncTask<Intent,Void,Boolean>
   private Uri mUri;
   private boolean mTh2Edit = false; // TH2EDIT
   private boolean mTherionExported = false;
+  private SketchSaveIdentity mIdentity;
+  private boolean mManagementFlush;
+
+  SavePlotFileTask forManagement() { mManagementFlush = true; return this; }
+  private void captureIdentity(PlotInfo info) {
+    if (info != null) mIdentity=new SketchSaveIdentity(info);
+  }
+
 
   /**
    * @param context  context
@@ -94,6 +102,7 @@ class SavePlotFileTask extends AsyncTask<Intent,Void,Boolean>
      mNum      = num;
      mManager  = manager;
      mInfo     = info;
+     captureIdentity(info);
      mPaths    = null;
      mFullName = fullname;
      mType     = (int)type;
@@ -134,6 +143,7 @@ class SavePlotFileTask extends AsyncTask<Intent,Void,Boolean>
      mManager  = null;
      mPaths    = paths;
      mInfo     = info;
+     captureIdentity(info);
      mFullName = fullname;
      mType     = (int)type;
      mProjDir  = proj_dir;
@@ -210,7 +220,7 @@ class SavePlotFileTask extends AsyncTask<Intent,Void,Boolean>
       // boolean ret2 = true; // false = binary cancelled
       // TDLog.v( "save plot SAVE (no action) " + mFullName );
       // // TDLog.v( "save plot Therion file SAVE " + mFullName );
-      if ( TDLevel.overExpert && TDSetting.mAutoExportPlotFormat >= 0 && mManager != null ) {
+      if ( !mManagementFlush && TDLevel.overExpert && TDSetting.mAutoExportPlotFormat >= 0 && mManager != null ) {
         // APP_OUT_DIR
         switch ( TDSetting.mAutoExportPlotFormat ) { // auto-export format
           case TDConst.SURVEY_FORMAT_TH2:
@@ -295,7 +305,7 @@ class SavePlotFileTask extends AsyncTask<Intent,Void,Boolean>
 
       // TDLog.Log( TDLog.LOG_PLOT, "saving binary " + mFullName );
       // TDLog.v( "saving binary " + mFullName + " file " + file1.getPath() );
-      String tempname1 = Integer.toString(mSuffix) + Long.toString(now);
+      String tempname1 = "sketch-" + java.util.UUID.randomUUID().toString();
       // File file1 = TDFile.getExternalTempFile( Integer.toString(mSuffix) + Long.toString(now) );
       try { 
         // File file1 = TDFile.getExternalTempFile( tempname1 );
@@ -310,8 +320,12 @@ class SavePlotFileTask extends AsyncTask<Intent,Void,Boolean>
           DrawingIO.exportDataStreamFile( mManager, mType, mInfo, dos, mFullName, mProjDir, mOblique );
         }
         dos.close();
+        if (mManagementFlush) SketchDrawingRewrite.rewrite(
+          SketchFileJournal.read(TDFile.getExternalTempFile(tempname1)),java.util.Collections.emptyMap(),0,0);
       } catch ( IOException e ) {
-        e.printStackTrace();
+        TDLog.e("Sketch save failed: " + e.getMessage());
+        TDFile.getExternalTempFile(tempname1).delete();
+        return false;
       }
 
       if ( isCancelled() ) {
@@ -322,16 +336,21 @@ class SavePlotFileTask extends AsyncTask<Intent,Void,Boolean>
         // TDLog.v( "save binary completed. file " + mFullName );
         // TDLog.v( "rotate backups " + filename + " rotate " + mRotate );
         synchronized( TDPath.mTdrLock ) { // FIXME-THREAD_SAFE
-          if ( mRotate > 0 ) {
-            TDPath.rotateBackups( filename, mRotate ); // does not do anything if mRotate <= 0
+          if (mIdentity != null && (TopoDroidApp.mData == null ||
+              !TopoDroidApp.mData.isCurrentSketchSave(mIdentity))) {
+            TDFile.getExternalTempFile(tempname1).delete();
+            return false;
           }
-
-          String filename1 = TDPath.getTdrFileWithExt( mFullName );
-          if ( ! TDFile.renameTopoDroidFile( filename1, filename1 + TDPath.BCK_SUFFIX ) ) {
-            // TDLog.v("failed rename old " + filename1 + TDPath.BCK_SUFFIX );
-          }
-          if ( ! TDFile.renameExternalTempFile( tempname1, filename1 ) ) {
-            TDLog.e("failed rename tempfile to " + filename1 );
+          // The legacy rename helper treats a missing source as success.
+          if (!TDFile.getExternalTempFile(tempname1).isFile()) return false;
+          if (mRotate > 0) TDPath.rotateBackups(filename,mRotate);
+          String filename1 = TDPath.getTdrFileWithExt(mFullName);
+          File original = TDFile.getTopoDroidFile(filename1);
+          boolean hadOriginal = original.exists();
+          if (hadOriginal && !TDFile.renameTopoDroidFile(filename1,filename1+TDPath.BCK_SUFFIX)) return false;
+          if (!TDFile.renameExternalTempFile(tempname1,filename1)) {
+            if (hadOriginal) TDFile.renameTopoDroidFile(filename1+TDPath.BCK_SUFFIX,filename1);
+            return false;
           }
         }
         return true;

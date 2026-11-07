@@ -3215,18 +3215,10 @@ public class TopoDroidApp extends Application
    */
   public long insert2dPlot( long sid , String name, String start, boolean extended, int azimuth, int oblique )
   {
-    // PlotInfo.ORIENTATION_PORTRAIT = 0
-    // TDLog.Log( TDLog.LOG_PLOT, "new plot " + name + " start " + start );
-    long pid_p = mData.insertPlot( sid, -1L, name+"p",
-                 PlotType.PLOT_PLAN, 0L, start, TDString.EMPTY, 0, 0, mScaleFactor, 0, 0, TDString.EMPTY, TDString.EMPTY, 0 );
-    if ( extended ) {
-      long pid_s = mData.insertPlot( sid, -1L, name+"s",
-                   PlotType.PLOT_EXTENDED, 0L, start, TDString.EMPTY, 0, 0, mScaleFactor, 0, 0, TDString.EMPTY, TDString.EMPTY, 0 );
-    } else {
-      long pid_s = mData.insertPlot( sid, -1L, name+"s",
-                   PlotType.PLOT_PROJECTED, 0L, start, TDString.EMPTY, 0, 0, mScaleFactor, azimuth, oblique, TDString.EMPTY, TDString.EMPTY, 0 );
-    }
-    return pid_p;
+    SketchDraft draft = new SketchDraft(); draft.name=name; draft.origin=start;
+    draft.projected=!extended; draft.azimuth=azimuth; draft.oblique=oblique; draft.allowMissing=true;
+    try { return new SketchManagementService(mData,sid).create(draft).id(); }
+    catch (java.io.IOException e) { TDLog.e("Create sketch: " + e.getMessage()); return -1; }
   }
   
   /** insert a new XSection

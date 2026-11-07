@@ -1515,6 +1515,8 @@ public class DataHelper extends DataSetObservable
       myDB.delete( CONFIG_TABLE, "key=?", new String[] { SketchTextDefaults.key( sid ) } );
       myDB.delete( CONFIG_TABLE, "key=?", new String[] { SymbolSketchPreferences.key( sid ) } );
       deleteSectionReferenceValues( sid );
+      for (String key : SketchManagementService.configKeys(sid))
+        myDB.delete(CONFIG_TABLE, "key=?", new String[] { key });
       myDB.delete( SURVEY_TABLE, "id=?", clause );
       myDB.setTransactionSuccessful();
     } catch ( SQLiteDiskIOException e ) {  handleDiskIOError( e );
@@ -3159,20 +3161,60 @@ public class DataHelper extends DataSetObservable
   
   void undeletePlot( long pid, long sid )
   {
-    // isMutable checked in child
-    // TDLog.Log( TDLog.LOG_DB, "undeletePlot: " + pid + "/" + sid );
-    if ( myDB == null ) return;
-    updateStatus( PLOT_TABLE, pid, sid, TDStatus.NORMAL );
-    // get plot type 
-    Cursor cursor = myDB.query( PLOT_TABLE,
-       		         new String[] { "type" }, // columns
-                                WHERE_SID_ID,
-                                new String[] { Long.toString(sid), Long.toString(pid) },
-                                null, null, null );
-    if ( cursor.moveToFirst() && cursor.getLong(0) == PlotType.PLOT_PLAN ) {
-      updateStatus( PLOT_TABLE, pid+1, sid, TDStatus.NORMAL );
+    PlotInfo plot=getPlotInfo(sid,pid);
+    if (plot!=null && !PlotType.isSketch2D(plot.type)) { updateStatus(PLOT_TABLE,pid,sid,TDStatus.NORMAL); return; }
+    try { new SketchManagementService(this, sid).setDeleted(pid, false); }
+    catch (java.io.IOException e) { TDLog.e("Sketch recovery: " + e.getMessage()); }
+  }
+
+  interface SketchWrite<T> { T run() throws java.io.IOException; }
+
+  /** Checked transaction boundary: a failed pair/config write must not look successful. */
+  <T> T writeSketch(long sid, SketchWrite<T> work) throws java.io.IOException {
+    if (myDB == null || !isSurveyMutable(sid)) throw new java.io.IOException("Survey is read-only or unavailable");
+    try {
+      myDB.beginTransaction();
+      try {
+        T result = work.run();
+        myDB.setTransactionSuccessful();
+        return result;
+      } finally { myDB.endTransaction(); }
+    } catch (SQLiteException e) { throw new java.io.IOException("Unable to save sketch metadata", e); }
+  }
+
+  void putSketchConfig(String key, String value) {
+    myDB.delete(CONFIG_TABLE, "key=?", new String[] {key});
+    if (value != null) {
+      ContentValues cv = new ContentValues(); cv.put("key", key); cv.put("value", value);
+      myDB.insertOrThrow(CONFIG_TABLE, null, cv);
     }
-    if ( /* cursor != null && */ !cursor.isClosed()) cursor.close();
+  }
+
+  /** Recovery must distinguish an absent commit token from an unreadable database. */
+  String getSketchConfig(String key) throws java.io.IOException {
+    if (myDB==null) throw new java.io.IOException("Sketch database is unavailable");
+    try (Cursor cursor=myDB.query(CONFIG_TABLE,new String[]{"value"},"key=?",new String[]{key},null,null,null)) {
+      return cursor.moveToFirst() ? cursor.getString(0) : null;
+    } catch (SQLiteException e) { throw new java.io.IOException("Cannot determine whether the sketch edit committed",e); }
+  }
+
+  void updateSketchRow(long sid, PlotInfo plot, int status) throws java.io.IOException {
+    ContentValues cv = new ContentValues();
+    cv.put("name", plot.name); cv.put("start", plot.start); cv.put("hide", plot.hide);
+    if (status >= 0) cv.put("status", status);
+    if (myDB.update(PLOT_TABLE, cv, WHERE_SID_ID,
+        new String[] {Long.toString(sid), Long.toString(plot.id)}) != 1)
+      throw new java.io.IOException("Sketch changed or is no longer available");
+  }
+
+  boolean isCurrentSketchSave(SketchSaveIdentity saved) {
+    if (myDB == null) return false;
+    try (Cursor cursor = myDB.query(PLOT_TABLE, new String[] {"name","status"},
+        "surveyId=? AND id=?", new String[] {Long.toString(saved.survey),Long.toString(saved.id)}, null, null, null)) {
+      if (!cursor.moveToFirst()) return false;
+      PlotInfo current=new PlotInfo(); current.surveyId=saved.survey; current.id=saved.id; current.name=cursor.getString(0);
+      return saved.matches(current,cursor.getInt(1));
+    }
   }
   
 
