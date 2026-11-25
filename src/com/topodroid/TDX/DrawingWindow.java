@@ -3952,7 +3952,7 @@ public class DrawingWindow extends ItemDrawer
   private void showSectionShotsDialog()
   {
     if ( mPlot3 == null || ! PlotType.isAnySection( mType ) ) return;
-    List<DBlock> blocks = mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
+    List<DBlock> blocks = mApp_mData.selectSurveyShots( mSid );
     refreshSectionNumbers( blocks );
     SectionReferenceSelection selection = SectionReferenceRepository.load( mApp_mData, mSid, mPlot3, blocks );
     SectionReferenceBuilder geometry = buildSectionGeometry( mPlot3, blocks, selection );
@@ -4320,7 +4320,7 @@ public class DrawingWindow extends ItemDrawer
 // ----------------------------------------------------------------------------
   private List<DBlock> getXSectionShots( long type, String from, String to )
   {
-    return mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
+    return mApp_mData.selectSurveyShots( mSid );
   }
 
   private void refreshSectionNumbers( List<DBlock> blocks )
@@ -4338,7 +4338,7 @@ public class DrawingWindow extends ItemDrawer
   private void doRestart()
   {
     if ( mPlot3 == null ) return;
-    List<DBlock> blocks = mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
+    List<DBlock> blocks = mApp_mData.selectSurveyShots( mSid );
     refreshSectionNumbers( blocks );
     makeSectionReferences( blocks );
     mDrawingSurface.setAllXSectionOutlines( this, 1 );
@@ -4378,7 +4378,7 @@ public class DrawingWindow extends ItemDrawer
     setButtonTool();
 
     boolean is_section = PlotType.isAnySection( mType );
-    List< DBlock > list = is_section ?  getXSectionShots( mType, mFrom, mTo ) : mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
+    List< DBlock > list = is_section ?  getXSectionShots( mType, mFrom, mTo ) : mApp_mData.selectSurveyShots( mSid );
 
     // TDLog.TimeEnd( "before load" );
 
@@ -4836,7 +4836,7 @@ public class DrawingWindow extends ItemDrawer
   {
     // assert( mLastLinePath == null );
     if ( mType == PlotType.PLOT_EXTENDED ) { 
-      List< DBlock > list = mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
+      List< DBlock > list = mApp_mData.selectSurveyShots( mSid );
       mMultiBad = new ArrayList< StringPair >();
       mNum = new TDNum( list, mPlot1.start, mDecl, mFormatClosure );
       mNum.setBarrierAndHidden( mPlot2.view, mPlot2.hide ); // 20250321
@@ -9750,7 +9750,7 @@ public class DrawingWindow extends ItemDrawer
   {
     if ( PlotType.isAnySection( mType ) ) { doRestart(); return; }
     // TDLog.v( "PLOT compute ref type " + mType + " reset " + reset );
-    List< DBlock > list = mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
+    List< DBlock > list = mApp_mData.selectSurveyShots( mSid );
     mMultiBad = new ArrayList< StringPair >();
     mNum = new TDNum( list, mPlot1.start, mDecl, mFormatClosure );
     // mNum.setBarrierAndHidden( mPlot1.view, mPlot1.hide ); 20250321
@@ -9811,7 +9811,7 @@ public class DrawingWindow extends ItemDrawer
       doRestart();
       updateSectionSelectionButton();
     } else {
-      List< DBlock > list = mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
+      List< DBlock > list = mApp_mData.selectSurveyShots( mSid );
       mMultiBad = new ArrayList< StringPair >();
       TDNum num = new TDNum( list, mPlot1.start, mDecl, mFormatClosure );
       mNum.setBarrierAndHidden( mPlot1.view, mPlot1.hide );
@@ -9830,7 +9830,7 @@ public class DrawingWindow extends ItemDrawer
     if ( PlotType.isAnySection( mType ) ) { doRestart(); return; }
     if ( mType != (int)PlotType.PLOT_PLAN && ! PlotType.isProfile( mType ) ) return;
     if ( mNum == null ) {
-      List< DBlock > list = mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
+      List< DBlock > list = mApp_mData.selectSurveyShots( mSid );
       mMultiBad = new ArrayList< StringPair >();
       TDNum num = new TDNum( list, mPlot1.start, mDecl, mFormatClosure );
       mNum.setBarrierAndHidden( mPlot1.view, mPlot1.hide );
@@ -12398,7 +12398,7 @@ public class DrawingWindow extends ItemDrawer
     if ( PlotType.isAnySection( mType ) ) { doRestart(); return; }
     mDrawingSurface.clearShotsAndStations( );
     if ( redo_num ) {
-      List< DBlock > list = mApp_mData.selectAllShots( mSid, TDStatus.NORMAL );
+      List< DBlock > list = mApp_mData.selectSurveyShots( mSid );
       mNum = new TDNum( list, mPlot1.start, mDecl, mFormatClosure );
       // mNum.setBarrierAndHidden( mPlot1.view, mPlot1.hide ); 20250321
       if ( TDSetting.mLoopClosure == TDSetting.LOOP_SELECTIVE ) setMenuImageRed( mNum.nrInaccurateLoops > 0 );

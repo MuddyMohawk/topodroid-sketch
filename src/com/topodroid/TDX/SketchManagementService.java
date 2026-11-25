@@ -187,7 +187,7 @@ final class SketchManagementService {
       }
       float planX=0, planY=0, profileX=0, profileY=0;
       if (origin) {
-        TDNum num = new TDNum(data.selectAllShots(sid,TDStatus.NORMAL),draft.origin,
+        TDNum num = new TDNum(data.selectSurveyShots(sid),draft.origin,
           0, null);
         NumStation old = num.getStation(sketch.origin());
         if (old != null) { planX=(float)(20*old.e); planY=(float)(20*old.s); profileX=(float)(20*old.h); profileY=(float)(20*old.v); }

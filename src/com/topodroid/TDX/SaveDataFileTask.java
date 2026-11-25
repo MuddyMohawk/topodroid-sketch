@@ -14,7 +14,6 @@ package com.topodroid.TDX;
 import com.topodroid.util.TDLog;
 import com.topodroid.util.TDFile;
 import com.topodroid.util.TDsafUri;
-import com.topodroid.util.TDStatus;
 import com.topodroid.util.TDString;
 import com.topodroid.num.TDNum;
 import com.topodroid.prefs.TDSetting;
@@ -152,7 +151,7 @@ class SaveDataFileTask extends AsyncTask<Void, Void, String >
           case TDConst.SURVEY_FORMAT_DXF:
             // bw = new BufferedWriter( (pfd != null)? TDsafUri.docFileWriter( pfd ) : new FileWriter( TDPath.getDxfFileWithExt( mSurvey ) ) );
             bw = new BufferedWriter( TDsafUri.docFileWriter( pfd ) );
-            List< DBlock > list = mData.selectAllShots( mSid, TDStatus.NORMAL );
+            List< DBlock > list = mData.selectSurveyShots( mSid );
             if ( list.size() > 0 ) {
               DBlock blk = list.get( 0 );
               // TDLog.v( "SURVEY_FORMAT_DXF from " + blk.mFrom );

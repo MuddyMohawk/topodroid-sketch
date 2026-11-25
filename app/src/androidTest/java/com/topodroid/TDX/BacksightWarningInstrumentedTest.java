@@ -191,6 +191,46 @@ public class BacksightWarningInstrumentedTest
     } );
   }
 
+  @Test public void deletingOneBacksightInTheShotWindowPromotesItsNextReading()
+  {
+    scenario.onActivity( activity -> {
+      long head = insertBacksightBlock();
+      activity.updateDisplay();
+      activity.doDeleteShot( head, data.selectShot( head, surveyId ), TDStatus.DELETED, false );
+      DBlock promoted = data.selectShot( head + 1, surveyId );
+      assertTrue( promoted.isBackLeg() );
+      assertEquals( "C", promoted.mFrom );
+      assertEquals( "B", promoted.mTo );
+      assertEquals( DBlock.FLAG_BACKSHOT | 0x20000, promoted.getFlagFully() );
+      assertTrue( data.selectShot( head + 2, surveyId ).isSecLeg() );
+    } );
+  }
+
+  @Test public void cuttingBacksightWithHiddenRepeatsRemovesItsWholeBlock()
+  {
+    scenario.onActivity( activity -> {
+      long head = insertBacksightBlock();
+      activity.setFlags( false, false, false, false, true, false );
+      DBlockAdapter shots = adapter( activity );
+      assertTrue( shots.multiSelect( position( shots, head ), false ) );
+      activity.doMultiDelete();
+      assertEquals( 3, data.selectAllShots( surveyId, TDStatus.DELETED ).size() );
+      assertEquals( 3, data.selectAllShots( surveyId, TDStatus.NORMAL ).size() );
+    } );
+  }
+
+  private long insertBacksightBlock()
+  {
+    long head = insert( "C", "B", 8, 180, 0, "reverse" );
+    data.updateShotLeg( head, surveyId, LegType.BACK );
+    data.updateShotFlag( head, surveyId, DBlock.FLAG_BACKSHOT );
+    long first = data.insertManualShot( surveyId, -1, 0, 0, 8.03, 180, 0, 0, 1, 0, 0x20000, LegType.EXTRA, 1 );
+    long second = data.insertManualShot( surveyId, -1, 0, 0, 8.01, 180, 0, 0, 1, 0, 0, LegType.EXTRA, 1 );
+    assertEquals( head + 1, first );
+    assertEquals( head + 2, second );
+    return head;
+  }
+
   private long insert( String from, String to, float length, float bearing, float clino, String comment )
   {
     long id = data.insertCavwayShot( surveyId, -1, length, bearing, clino, 0, 1000, 1000, 65,

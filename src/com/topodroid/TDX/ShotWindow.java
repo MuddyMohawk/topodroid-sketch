@@ -1354,26 +1354,8 @@ public class ShotWindow extends Activity
   // @param leg  if true delete the whole leg shots
   void doDeleteShot( long id, DBlock blk, int status, boolean leg )
   {
-    mApp_mData.deleteShot( id, TDInstance.sid, status );
-    if ( blk != null && blk.isMainLeg() ) { //  DBlock.BLOCK_MAIN_LEG 
-      if ( leg ) {
-        for ( ++id; ; ++id ) {
-          DBlock b = mApp_mData.selectShot( id, TDInstance.sid );
-          if ( b == null || ! b.isSecLeg() ) { // != DBlock.BLOCK_SEC_LEG 
-            break;
-	  }
-          mApp_mData.deleteShot( id, TDInstance.sid, status );
-        }
-      } else { // set station to next leg shot
-        ++id;
-        DBlock b = mApp_mData.selectShot( id, TDInstance.sid );
-        if ( b != null && b.isSecLeg() ) { //  DBlock.BLOCK_SEC_LEG --> leg-flag = 0
-          long flag = blk.getFlag() | b.cavwayBits();
-          mApp_mData.updateShotNameAndDataStatus( id, TDInstance.sid, blk.mFrom, blk.mTo, blk.getIntExtend(), flag, 0, blk.mComment, 0 );
-          // mApp_mData.updateShotStatus( id, TDInstance.sid, 0 ); // status normal
-        }
-      }
-    }
+    if ( blk == null ) mApp_mData.deleteShot( id, TDInstance.sid, status );
+    else mApp_mData.deleteShotSelection( TDInstance.sid, Collections.singletonList( blk ), status, leg );
     // TDLog.v("update display : do delete shot");
     updateDisplay( ); 
   }
@@ -2212,35 +2194,12 @@ public class ShotWindow extends Activity
    */
   void doMultiDelete()
   {
-    if ( TDLevel.overAdvanced ) mDBlockBuffer.clear();
-    for ( DBlock blk : mDataAdapter.getMultiSelect() ) {
-      if ( TDLevel.overAdvanced ) mDBlockBuffer.add( blk );
-      long id = blk.mId;
-      mApp_mData.deleteShot( id, TDInstance.sid, TDStatus.DELETED );
-      // mSurveyAccuracy.removeBlockAMD( blk ); // not necessary: done by updateDisplay
-      if ( /* blk != null && */ blk.isMainLeg() ) { // == DBlock.BLOCK_MAIN_LEG 
-        if ( mFlagLeg ) {
-          for ( ++id; ; ++id ) {
-            DBlock b = mApp_mData.selectShot( id, TDInstance.sid );
-            if ( b == null || ! b.isSecLeg() ) { // != DBlock.BLOCK_SEC_LEG
-              break;
-	    }
-            if ( TDLevel.overAdvanced ) mDBlockBuffer.add( b );
-            mApp_mData.deleteShot( id, TDInstance.sid, TDStatus.DELETED );
-            // mSurveyAccuracy.removeBlockAMD( b );
-          }
-        } else { // set station to next leg shot
-          ++id;
-          DBlock b = mApp_mData.selectShot( id, TDInstance.sid );
-          if ( b != null && b.isSecLeg() ) { // DBlock.BLOCK_SEC_LEG --> leg-flag 0
-            long flag = blk.getFlag() & b.cavwayBits();
-            mApp_mData.updateShotNameAndDataStatus( id, TDInstance.sid, blk.mFrom, blk.mTo, blk.getIntExtend(), flag, 0, blk.mComment, 0 );
-            // mApp_mData.updateShotStatus( id, TDInstance.sid, 0 ); // status normal
-          }
-        }
-      }
+    List<DBlock> removed = mApp_mData.deleteShotSelection( TDInstance.sid, mDataAdapter.getMultiSelect(),
+                                                       TDStatus.DELETED, mFlagLeg );
+    if ( TDLevel.overAdvanced ) {
+      mDBlockBuffer.clear();
+      for ( DBlock shot : removed ) mDBlockBuffer.add( shot );
     }
-    // TDLog.v( TAG + "BUFFER after cut: size " + mDBlockBuffer.size() );
     clearMultiSelect( );
     // TDLog.v("update display : do multiselect");
     updateDisplay( ); 
@@ -2253,17 +2212,12 @@ public class ShotWindow extends Activity
   {
     if ( TDLevel.overAdvanced ) {
       mDBlockBuffer.clear();
+      Set<Long> copied = new TreeSet<>();
       for ( DBlock blk : mDataAdapter.getMultiSelect() ) {
-        mDBlockBuffer.add( blk );
-        if ( /* blk != null && */ blk.isMainLeg() ) { // == DBlock.BLOCK_MAIN_LEG 
-          if ( mFlagLeg ) {
-            for ( long id = blk.mId+1; ; ++id ) {
-              DBlock b = mApp_mData.selectShot( id, TDInstance.sid );
-              if ( b == null || ! b.isSecLeg() ) { // != DBlock.BLOCK_SEC_LEG
-                break;
-              }
-              mDBlockBuffer.add( b );
-            }
+        if ( copied.add( blk.mId ) ) mDBlockBuffer.add( blk );
+        if ( mFlagLeg && blk.isLeg() ) {
+          for ( DBlock repeat : mApp_mData.selectLegRepeats( TDInstance.sid, blk.mId ) ) {
+            if ( copied.add( repeat.mId ) ) mDBlockBuffer.add( repeat );
           }
         }
       }

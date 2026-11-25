@@ -608,7 +608,7 @@ public class OverviewWindow extends ItemDrawer
     }
     // TDLog.Log( TDLog.LOG_PLOT, "do Start " + mName1 + " " + mName2 );
     // mBlockList = mData.selectAllLegShots( mSid, TDStatus.NORMAL );
-    mBlockList = mData.selectAllShots( mSid, TDStatus.NORMAL );
+    mBlockList = mData.selectSurveyShots( mSid );
     if ( TDUtil.isEmpty(mBlockList) ) {
       TDToast.makeBad( R.string.few_data );
       finish();

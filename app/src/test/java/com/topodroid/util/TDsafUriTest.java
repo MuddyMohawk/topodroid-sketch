@@ -11,7 +11,7 @@ public class TDsafUriTest
   @Test
   public void displayNameWinsOverOpaqueUriId()
   {
-    assertEquals( "TB.dat", TDsafUri.selectDocumentName( "TB.dat", "1000008055" ) );
+    assertEquals( "survey.dat", TDsafUri.selectDocumentName( "survey.dat", "123456" ) );
   }
 
   @Test

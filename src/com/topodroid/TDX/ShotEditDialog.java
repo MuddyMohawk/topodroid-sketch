@@ -1333,7 +1333,7 @@ class ShotEditDialog extends MyDialog
     }
 
     if ( mCBleg != null ) {
-      if ( mBlk.isMainLeg() ) {
+      if ( mBlk.isLeg() ) {
         mCBleg.setChecked( false );
         mCBleg.setVisibility( View.VISIBLE );
       } else {

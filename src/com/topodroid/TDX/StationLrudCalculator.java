@@ -82,7 +82,7 @@ final class StationLrudCalculator
       float sc = TDMath.sind( clino );
 
       if ( TDSetting.mOrthogonalLRUD ) {
-        float cosine = sc * sc0 * ( sb * e0 + cb * n0 ) + cc * cc0;
+        float cosine = cc * cc0 * ( sb * e0 + cb * n0 ) + sc * sc0;
         if ( Math.abs( cosine ) > TDSetting.mOrthogonalLRUDCosine ) continue;
       }
 

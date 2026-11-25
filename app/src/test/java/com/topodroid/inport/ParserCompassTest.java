@@ -196,6 +196,21 @@ public class ParserCompassTest
     assertEquals( "", result.get(1).comment );
   }
 
+  @Test public void flaggedSplayKeepsCorrectedMeasurementAndLeavesStationFacingIntact() throws Exception
+  {
+    String data = survey( "splays", "DECLINATION: 10 FORMAT: DDDDLUDRLADN",
+        "A B 10 80 0" + LRUD + "\nB wall 5 10 -4" + LRUD + " #|SLP# wall shot\n" +
+        "B B 0 -999 -999 2 -999 -999 -999" );
+    ArrayList<ParserShot> result = parse( data, true, false, false, true ).getShots();
+    assertEquals( 3, result.size() );
+    ParserShot splay = result.get(1);
+    assertShot( splay, "B", "", 1.524f, 20, -4 );
+    assertTrue( splay.duplicate );
+    assertTrue( splay.noPlot );
+    assertEquals( "wall shot", splay.comment );
+    assertShot( result.get(2), "B", "", .6096f, 0, 0 );
+  }
+
   @Test public void numericComments_withoutBacksights_areNotMeasurements() throws Exception
   {
     ParserShot shot = parse( "DECLINATION: 0 FORMAT: DDDDLUDRLADN",

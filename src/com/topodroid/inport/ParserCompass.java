@@ -235,7 +235,8 @@ class ParserCompass extends ImportParser
     String comment = column < fields.length ? TDUtil.concat( fields, column ) : "";
     boolean duplicate = flags.indexOf( 'L' ) >= 0;
     boolean noPlot = flags.indexOf( 'P' ) >= 0;
-    boolean stationOnly = from.equals( to ) && rawLength == 0;
+    boolean splay = flags.indexOf( 'S' ) >= 0;
+    boolean stationOnly = !splay && from.equals( to ) && rawLength == 0;
     float length = stationOnly ? 0 : (rawLength + survey.tapeCorrection) * survey.lengthUnit;
     if ( length < 0 || Float.isInfinite( length ) ) throw new NumberFormatException( "invalid corrected length" );
     float clino = mean( forwardClino, backwardClino, false );
@@ -251,6 +252,13 @@ class ParserCompass extends ImportParser
         azimuth = 0;
       }
       if ( mApplyDeclination ) azimuth = bearing( azimuth + survey.declination );
+      if ( splay ) {
+        ParserShot shot = new ParserShot( from, TDString.EMPTY, length, azimuth, clino, 0,
+            ExtendType.EXTEND_UNSET, LegType.NORMAL, duplicate, false, false, comment );
+        shot.noPlot = noPlot;
+        shots.add( shot );
+        return;
+      }
       survey.stationBearings.put( from, azimuth );
       survey.stationBearings.put( to, azimuth );
     }

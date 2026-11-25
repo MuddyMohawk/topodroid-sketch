@@ -60,6 +60,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.Locale;
 import java.util.HashMap;
+import java.util.HashSet;
 
 
 public class DataHelper extends DataSetObservable
@@ -155,7 +156,7 @@ public class DataHelper extends DataSetObservable
 
   static final private String[] mShotFullFields =
     { "id", "fStation", "tStation", "distance", "bearing", "clino", "acceleration", "magnetic", "dip",
-      "extend", "flag", "leg", "comment", "type", "millis", "color", "stretch", "idx", "time", "address"
+      "extend", "flag", "leg", "comment", "type", "millis", "color", "stretch", "idx", "time", "address", "status"
     };
   static final private String[] mShotFields =
     { "id", "fStation", "tStation", "distance", "bearing", "clino", "acceleration", "magnetic", "dip",  // 0 .. 8
@@ -1869,27 +1870,6 @@ public class DataHelper extends DataSetObservable
     return 0;
   }
 
-  int updateShotNameAndDataStatus( long id, long sid, String fStation, String tStation, long extend, long flag, long leg, String comment, int status )
-  {
-    if ( myDB == null ) return -1;
-    // TDLog.v("UPDATE shot " + id + " name and data status - flag " + flag ); 
-    // if ( makesCycle( id, sid, fStation, tStation ) ) return -2;
-    if ( tStation == null ) tStation = TDString.EMPTY;
-    StringWriter sw = new StringWriter();
-    PrintWriter pw = new PrintWriter( sw );
-    if ( comment != null ) {
-      pw.format( Locale.US,
-        "UPDATE shots SET fStation=\"%s\", tStation=\"%s\", extend=%d, flag=%d, leg=%d, comment=\"%s\", status=%d WHERE surveyId=%d AND id=%d",
-        fStation, tStation, extend, flag, leg, comment, status, sid, id );
-    } else {
-      pw.format( Locale.US,
-        "UPDATE shots SET fStation=\"%s\", tStation=\"%s\", extend=%d, flag=%d, leg=%d, status=%d WHERE surveyId=%d AND id=%d",
-        fStation, tStation, extend, flag, leg, status, sid, id );
-    }
-    doExecShotSQL( id, sw );
-    return 0;
-  }
-
   private void shiftShotsId( long sid, long id )
   {
     StringWriter sw = new StringWriter();
@@ -2108,6 +2088,71 @@ public class DataHelper extends DataSetObservable
     // isMutable checked in child
     // if ( myDB == null ) return;
     updateStatus( SHOT_TABLE, id, sid, status );
+  }
+
+  /** Active consecutive repeat readings in stored order, including across gaps in shot IDs. */
+  List< DBlock > selectLegRepeats( long sid, long headId )
+  {
+    List< DBlock > repeats = new ArrayList<>();
+    if ( myDB == null ) return repeats;
+    try ( Cursor cursor = myDB.query( SHOT_TABLE, mShotFullFields, "surveyId=? AND id>?",
+        new String[]{ Long.toString(sid), Long.toString(headId) }, null, null, "id" ) ) {
+      int leg = cursor.getColumnIndexOrThrow( "leg" );
+      int status = cursor.getColumnIndexOrThrow( "status" );
+      while ( cursor.moveToNext() && cursor.getInt( leg ) == LegType.EXTRA ) {
+        if ( cursor.getInt( status ) != TDStatus.NORMAL ) continue;
+        DBlock repeat = new DBlock();
+        fullFillBlock( sid, repeat, cursor );
+        repeats.add( repeat );
+      }
+    }
+    return repeats;
+  }
+
+  /** Delete the selection atomically and return the original readings for the cut buffer. */
+  List< DBlock > deleteShotSelection( long sid, List<DBlock> selected, int status, boolean wholeLeg )
+  {
+    List<DBlock> removed = new ArrayList<>();
+    if ( myDB == null || selected.isEmpty() || !isSurveyMutable( sid, "delete shots" ) ) return removed;
+    String survey = Long.toString( sid );
+    ContentValues deletion = new ContentValues();
+    deletion.put( "status", status );
+    try {
+      myDB.beginTransaction();
+      try {
+        Set<Long> selectedIds = new HashSet<>();
+        for ( DBlock shot : selected ) selectedIds.add( shot.mId );
+        for ( DBlock selectedShot : selected ) {
+          String[] key = { survey, Long.toString(selectedShot.mId), Long.toString(TDStatus.NORMAL) };
+          DBlock shot = selectShot( selectedShot.mId, sid );
+          if ( shot == null || myDB.update( SHOT_TABLE, deletion, WHERE_SID_ID + " AND status=?", key ) == 0 ) continue;
+          removed.add( shot );
+          if ( !shot.isLeg() ) continue;
+          for ( DBlock repeat : selectLegRepeats( sid, shot.mId ) ) {
+            String[] repeatKey = { survey, Long.toString(repeat.mId) };
+            if ( wholeLeg ) {
+              myDB.update( SHOT_TABLE, deletion, WHERE_SID_ID, repeatKey );
+              removed.add( repeat );
+            } else {
+              if ( selectedIds.contains( repeat.mId ) ) continue;
+              ContentValues promotion = new ContentValues();
+              promotion.put( "fStation", shot.mFrom );
+              promotion.put( "tStation", shot.mTo );
+              promotion.put( "leg", shot.getLegType() );
+              promotion.put( "flag", shot.getFlag() | repeat.cavwayBits() );
+              promotion.put( "extend", shot.getIntExtend() );
+              promotion.put( "stretch", shot.getStretch() );
+              if ( shot.mComment != null ) promotion.put( "comment", shot.mComment );
+              myDB.update( SHOT_TABLE, promotion, WHERE_SID_ID, repeatKey );
+              break;
+            }
+          }
+        }
+        myDB.setTransactionSuccessful();
+      } finally { myDB.endTransaction(); }
+    } catch ( SQLiteDiskIOException e ) { handleDiskIOError( e ); removed.clear();
+    } catch ( SQLiteException e ) { logError( "delete shots", e ); removed.clear(); }
+    return removed;
   }
 
   /** undelete a shot, ie set its status to "normal"
@@ -5385,22 +5430,29 @@ public class DataHelper extends DataSetObservable
    */
   List< DBlock > selectAllExportShots( long sid, long status )
   {
-    // TDLog.v( "B3 select shots all");
-    List< DBlock > list = new ArrayList<>();
-    if ( myDB == null ) return list;
-    Cursor cursor = myDB.query(SHOT_TABLE, mShotFullFields,
-                    WHERE_SID_STATUS, new String[]{ Long.toString(sid), Long.toString(status) },
-                    null, null, "id" );
-    if (cursor.moveToFirst()) {
-      do {
-        DBlock block = new DBlock();
-        fullFillBlock( sid, block, cursor );
-        list.add( block );
-      } while (cursor.moveToNext());
+    return status == TDStatus.NORMAL ? selectSurveyShots( sid ) : selectAllShots( sid, status );
+  }
+
+  /** Ordered input for survey geometry. A hidden block head still owns its stored repeats. */
+  List< DBlock > selectSurveyShots( long sid )
+  {
+    List< DBlock > shots = new ArrayList<>();
+    if ( myDB == null ) return shots;
+    try ( Cursor cursor = myDB.query( SHOT_TABLE, mShotFullFields, "surveyId=?",
+        new String[]{ Long.toString(sid) }, null, null, "id" ) ) {
+      int status = cursor.getColumnIndexOrThrow( "status" );
+      int leg = cursor.getColumnIndexOrThrow( "leg" );
+      boolean hiddenBlock = false;
+      while ( cursor.moveToNext() ) {
+        boolean active = cursor.getInt( status ) == TDStatus.NORMAL;
+        if ( cursor.getInt( leg ) != LegType.EXTRA ) hiddenBlock = !active;
+        if ( !active || hiddenBlock ) continue;
+        DBlock shot = new DBlock();
+        fullFillBlock( sid, shot, cursor );
+        shots.add( shot );
+      }
     }
-    // TDLog.Log( TDLog.LOG_DB, "select All Shots list size " + list.size() );
-    if ( /* cursor != null && */ !cursor.isClosed()) cursor.close();
-    return list;
+    return shots;
   }
 
   /** get the export shots after a given shot-id

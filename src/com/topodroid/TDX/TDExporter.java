@@ -2522,6 +2522,7 @@ public class TDExporter
       pw.format(Locale.US, "# from%c to%c tape%c compass%c clino%c extend%c flags%c comment%s",sep, sep, sep, sep, sep, sep, sep, newline );
       
       AverageLeg leg = new AverageLeg(0);
+      SurveyShotPairing pairing = new SurveyShotPairing();
       DBlock ref_item = null;
       boolean duplicate = false;
       boolean surface   = false;
@@ -2533,10 +2534,7 @@ public class TDExporter
         String to   = item.mTo;
         if ( TDString.isNullOrEmpty( from ) ) {
           if ( TDString.isNullOrEmpty( to ) ) { // no station: not exported
-            if ( ref_item != null && 
-               ( item.isSecLeg() || item.isRelativeDistance( ref_item ) ) ) {
-              leg.add( item.mLength, item.mBearing, item.mClino );
-            }
+            pairing.addRepeat( leg, ref_item, item );
           } else { // only TO station
             if ( leg.mCnt > 0 && ref_item != null ) {
               writeCsvLeg( pw, leg, ul, ua, leg_extend, sep );
@@ -2591,12 +2589,7 @@ public class TDExporter
             //   pw.format(",\"%s\"\n", item.mComment );
             // }
           } else {
-            if ( ref_item != null && SurveyShotPairing.isNamedBacksightPair(
-                   ref_item.mFrom, ref_item.mTo, from, to, item.isBackLeg() ) ) {
-              leg.add( item.mLength, SurveyShotPairing.forwardBearing( item.mBearing ),
-                       SurveyShotPairing.forwardClino( item.mClino ) );
-              continue;
-            }
+            if ( pairing.addBacksight( leg, ref_item, item ) ) continue;
             if ( leg.mCnt > 0 && ref_item != null ) {
               writeCsvLeg( pw, leg, ul, ua, leg_extend, sep );
               writeCsvFlag( pw, duplicate, surface, ref_item.isCommented(), ref_item.mComment, sep, newline );
@@ -2613,7 +2606,7 @@ public class TDExporter
             leg_extend = item.getIntExtend();
             pw.format("%s%c%s", DelimitedText.field( from + "@" + info.name, sep ), sep,
                       DelimitedText.field( to + "@" + info.name, sep ) );
-            leg.set( item.mLength, item.mBearing, item.mClino );
+            pairing.start( leg, item );
           }
         }
       }
@@ -3012,6 +3005,7 @@ public class TDExporter
       pw.format( "\r\n" );
 
       AverageLeg leg = new AverageLeg(0);
+      SurveyShotPairing pairing = new SurveyShotPairing();
       DBlock ref_item = null;
 
       int extra_cnt = 0;
@@ -3026,10 +3020,7 @@ public class TDExporter
         String to   = item.mTo;
         if ( TDString.isNullOrEmpty( from ) ) {
           if ( TDString.isNullOrEmpty( to ) ) { // no station: not exported
-            if ( ref_item != null && 
-               ( item.isSecLeg() || item.isRelativeDistance( ref_item ) ) ) {
-              leg.add( item.mLength, item.mBearing, item.mClino );
-            }
+            pairing.addRepeat( leg, ref_item, item );
           } else { // only TO station
             if ( leg.mCnt > 0 && ref_item != null ) {
               lrud = computeLRUD( ref_item, list, true );
@@ -3057,12 +3048,7 @@ public class TDExporter
 	      printSplayToDat( pw, prefix, from, from + "ss" + ii, item, false ); // not reverse
 	    }
           } else {
-            if ( ref_item != null && SurveyShotPairing.isNamedBacksightPair(
-                   ref_item.mFrom, ref_item.mTo, from, to, item.isBackLeg() ) ) {
-              leg.add( item.mLength, SurveyShotPairing.forwardBearing( item.mBearing ),
-                       SurveyShotPairing.forwardClino( item.mClino ) );
-              continue;
-            }
+            if ( pairing.addBacksight( leg, ref_item, item ) ) continue;
             if ( leg.mCnt > 0 && ref_item != null ) {
               lrud = computeLRUD( ref_item, list, true );
               writeDatFromTo( pw, prefix, ref_item.mFrom, ref_item.mTo );
@@ -3070,7 +3056,7 @@ public class TDExporter
             }
             ref_item = item;
             duplicate = item.isDuplicate() || item.isSurface();
-            leg.set( item.mLength, item.mBearing, item.mClino );
+            pairing.start( leg, item );
           }
         }
       }
